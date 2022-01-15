@@ -19,6 +19,8 @@ jobs:
   build:
     runs-on: windows-2022
     steps:
+    - uses: actions/checkout@v2
+    
     - name: Get Feanor Core Commit SHA
       run: |
         curl --location --output feanor.core.sha --header "PRIVATE-TOKEN: ${{env.GITLAB_TOKEN}}" "https://gitlab.com/api/v4/projects/${{env.PROJECT_ID}}/repository/commits/master"
@@ -43,14 +45,13 @@ jobs:
         7z x feanor.core.zip
         move core-master-* core
         del feanor.core.zip
+        del feanor.core.sha
     
     - name: Build and install Feanor Core
       if: steps.cache-core.outputs.cache-hit != 'true'
       run: |
         cmake -G "Visual Studio 17 2022" -S core -B core/build -DCMAKE_INSTALL_PREFIX:PATH="${{github.workspace}}\installed" -DBUILD_SHARED_LIBS:BOOL=OFF
         cmake --build core/build --config Release --parallel --target install
-    
-    - uses: actions/checkout@v2
 
     - name: Add FEANOR_ROOT Environment Variable
       run: echo "FEANOR_ROOT=${{github.workspace}}\installed" | Out-File -FilePath $Env:GITHUB_ENV -Encoding utf-8 -Append
