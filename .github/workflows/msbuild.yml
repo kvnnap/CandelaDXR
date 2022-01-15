@@ -1,0 +1,67 @@
+name: MSBuild
+
+on: [push]
+
+env:
+  # Path to the solution file relative to the root of the project.
+  SOLUTION_FILE_PATH: .
+
+  # Configuration type to build.
+  # You can convert this to a build matrix if you need coverage of multiple configuration types.
+  # https://docs.github.com/actions/learn-github-actions/managing-complex-workflows#using-a-build-matrix
+  BUILD_CONFIGURATION: Release
+  
+  OUT_DIR: dist
+  GITLAB_TOKEN: ${{ secrets.GITLAB_TOKEN }}
+  PROJECT_ID: 11660029
+  
+jobs:
+  deps:
+    runs-on: windows-2022
+    steps:
+    - name: Get Feanor Core Repo
+      run: |
+        curl --location --output feanor.core.zip --header "PRIVATE-TOKEN: ${{env.GITLAB_TOKEN}}" "https://gitlab.com/api/v4/projects/${{env.PROJECT_ID}}/repository/archive.zip"
+        7z x feanor.core.zip
+        move core-master-* core
+        del feanor.core.zip
+    - name: Build and install Feanor Core
+      run: |
+        cmake -G "Visual Studio 17 2022" -S core -B core/build -DCMAKE_INSTALL_PREFIX:PATH="${{github.workspace}}\installed" -DBUILD_SHARED_LIBS:BOOL=OFF
+        cmake --build core/build --config Release --parallel --target install
+    - name: Generate Feanor Core Artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: feanor-core
+        path: installed
+  build:
+    runs-on: windows-2022
+    needs: deps
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Fetch feanor-core artifact
+      uses: actions/download-artifact@v2
+      with:
+        name: feanor-core
+        
+    - name: Add FEANOR_ROOT Environment Variable
+      run: echo "FEANOR_ROOT=${{github.workspace}}\installed" | Out-File -FilePath $Env:GITHUB_ENV -Encoding utf-8 -Append
+      
+    - name: Add MSBuild to PATH
+      uses: microsoft/setup-msbuild@v1.1
+
+    - name: Restore NuGet packages
+      working-directory: ${{github.workspace}}
+      run: nuget restore ${{env.SOLUTION_FILE_PATH}}
+
+    - name: Build
+      working-directory: ${{github.workspace}}
+      # Add additional options to the MSBuild command line here (like platform or verbosity level).
+      # See https://docs.microsoft.com/visualstudio/msbuild/msbuild-command-line-reference
+      run: msbuild /m /p:Configuration=${{env.BUILD_CONFIGURATION}} /p:OutDir=${{github.workspace}}\${{env.OUT_DIR}}\ ${{env.SOLUTION_FILE_PATH}}
+      
+    - uses: actions/upload-artifact@v2
+      with:
+        name: my-artifact
+        path: ${{github.workspace}}\${{env.OUT_DIR}}\
