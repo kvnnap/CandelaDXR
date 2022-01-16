@@ -6,8 +6,8 @@
 #include <functional>
 
 #include "WindowClass.h"
-#include "io/ikeywriter.h"
-#include "io/imousewriter.h"
+#include "feanor/core/io/ikeywriter.h"
+#include "feanor/core/io/imousewriter.h"
 
 namespace candela::ui
 {

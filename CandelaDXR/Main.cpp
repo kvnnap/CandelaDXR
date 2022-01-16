@@ -4,11 +4,30 @@
 #include <iostream>
 #include "Window/Window.h"
 
+#include "feanor/core/io/imousewriter.h"
+
 using candela::ui::Window;
 
 int main()
 {
-    Window wnd("test", 800, 600);
+    struct TestWriter 
+        : public feanor::io::IMouseWriter
+    {
+        void pressKey(uint8_t key) override
+        {
+            std::cout << (int)key << std::endl;
+        }
+        void depressKey(uint8_t key) override {}
+        void updatePosition(uint16_t x, uint16_t y) override
+        {
+            //std::cout << x << ", " << y << std::endl;
+        }
+        
+        void scroll(int units) override {}
+    };
+    
+    TestWriter testWriter;
+    Window wnd("test", 800, 600, nullptr, &testWriter);
     while (!wnd.ProcessMessages(true));
     std::cout << "Hello World!\n";
 }
