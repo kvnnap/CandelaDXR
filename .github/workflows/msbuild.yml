@@ -47,6 +47,7 @@ jobs:
         path: installed-core
         key: feanor-core-${{ fromJson(steps.read-core-sha.outputs.content).id }}
     
+    # Should probably change this to use git clone
     - name: Get Feanor Core Repo
       if: steps.cache-core.outputs.cache-hit != 'true'
       run: |
@@ -73,11 +74,10 @@ jobs:
     - name: Get Feanor External Repo
       if: steps.cache-external.outputs.cache-hit != 'true'
       run: |
-        curl --location --output feanor.external.zip --header "PRIVATE-TOKEN: ${{env.GITLAB_TOKEN}}" "https://gitlab.com/api/v4/projects/${{env.FEANOR_EXTERNAL_ID}}/repository/archive.zip"
-        7z x feanor.external.zip
-        move external-master-* feanor-external
-        del feanor.external.zip
-        del feanor.external.sha
+        git clone https://oauth2:${{env.GITLAB_TOKEN}}@gitlab.com/cgvg/feanor/external feanor-external
+        cd feanor-external
+        git submodule update --init --recursive
+        cd ..
         
     - name: Build and install Feanor External
       if: steps.cache-external.outputs.cache-hit != 'true'
