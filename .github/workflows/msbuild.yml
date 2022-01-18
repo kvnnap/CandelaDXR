@@ -56,7 +56,7 @@ jobs:
     - name: Build and install Feanor Core
       if: steps.cache-core.outputs.cache-hit != 'true'
       run: |
-        cmake -S feanor-core -B feanor-core/build -DCMAKE_INSTALL_PREFIX:PATH="installed-core" -DBUILD_SHARED_LIBS:BOOL=OFF
+        cmake -S feanor-core -B feanor-core/build -DCMAKE_INSTALL_PREFIX:PATH="${{github.workspace}}\installed-core" -DBUILD_SHARED_LIBS:BOOL=OFF
         cmake --build feanor-core/build --config Release --parallel --target install
 
     # Feanor External
