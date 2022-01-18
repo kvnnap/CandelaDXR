@@ -81,8 +81,9 @@ jobs:
         
     - name: Build and install Feanor External
       if: steps.cache-external.outputs.cache-hit != 'true'
+      working-directory: ${{github.workspace}}\feanor-external
       run: |
-        .\feanor-external\install.ps1 "${{github.workspace}}\installed-external" OFF
+        .\install.ps1 "${{github.workspace}}\installed-external" OFF
         
     # Merge dirs
     - name: Merge dependency directories into installed directory
