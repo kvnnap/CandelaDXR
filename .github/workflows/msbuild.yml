@@ -47,20 +47,16 @@ jobs:
         path: installed-core
         key: feanor-core-${{ fromJson(steps.read-core-sha.outputs.content).id }}
     
-    # Should probably change this to use git clone
+    # Changed to use git clone
     - name: Get Feanor Core Repo
       if: steps.cache-core.outputs.cache-hit != 'true'
       run: |
-        curl --location --output feanor.core.zip --header "PRIVATE-TOKEN: ${{env.GITLAB_TOKEN}}" "https://gitlab.com/api/v4/projects/${{env.FEANOR_CORE_ID}}/repository/archive.zip"
-        7z x feanor.core.zip
-        move core-master-* feanor-core
-        del feanor.core.zip
-        del feanor.core.sha
+        git clone https://oauth2:${{env.GITLAB_TOKEN}}@gitlab.com/cgvg/feanor/core feanor-core
     
     - name: Build and install Feanor Core
       if: steps.cache-core.outputs.cache-hit != 'true'
       run: |
-        cmake -G "Visual Studio 17 2022" -S feanor-core -B feanor-core/build -DCMAKE_INSTALL_PREFIX:PATH="installed-core" -DBUILD_SHARED_LIBS:BOOL=OFF
+        cmake -S feanor-core -B feanor-core/build -DCMAKE_INSTALL_PREFIX:PATH="installed-core" -DBUILD_SHARED_LIBS:BOOL=OFF
         cmake --build feanor-core/build --config Release --parallel --target install
 
     # Feanor External
@@ -89,8 +85,8 @@ jobs:
     - name: Merge dependency directories into installed directory
       run: |
         New-Item installed -ItemType Directory
-        Copy-Item -Path installed-core\* -Destination installed -Recurse Force
-        Copy-Item -Path installed-external\* -Destination installed -Recurse Force
+        Copy-Item -Path installed-core\* -Destination installed -Recurse -Force
+        Copy-Item -Path installed-external\* -Destination installed -Recurse -Force
     
     - name: Add FEANOR_ROOT Environment Variable
       run: echo "FEANOR_ROOT=${{github.workspace}}\installed" | Out-File -FilePath $Env:GITHUB_ENV -Encoding utf-8 -Append
