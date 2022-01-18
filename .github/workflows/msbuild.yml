@@ -13,7 +13,8 @@ env:
   
   OUT_DIR: dist
   GITLAB_TOKEN: ${{ secrets.GITLAB_TOKEN }}
-  PROJECT_ID: 11660029
+  FEANOR_CORE_ID: 11660029
+  FEANOR_EXTERNAL_ID: 13987704
   
 jobs:
   build:
@@ -21,38 +22,75 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     
-    - name: Get Feanor Core Commit SHA
+    - name: Get Feanor Core and External Commit SHA
       run: |
-        curl --location --output feanor.core.sha --header "PRIVATE-TOKEN: ${{env.GITLAB_TOKEN}}" "https://gitlab.com/api/v4/projects/${{env.PROJECT_ID}}/repository/commits/master"
+        curl --location --output feanor.core.sha --header "PRIVATE-TOKEN: ${{env.GITLAB_TOKEN}}" "https://gitlab.com/api/v4/projects/${{env.FEANOR_CORE_ID}}/repository/commits/master"
+        curl --location --output feanor.external.sha --header "PRIVATE-TOKEN: ${{env.GITLAB_TOKEN}}" "https://gitlab.com/api/v4/projects/${{env.FEANOR_EXTERNAL_ID}}/repository/commits/master"
     
     - name: Read Feanor Core Commit SHA to Variable
       id: read-core-sha
       uses: juliangruber/read-file-action@v1
       with:
         path: feanor.core.sha
+        
+    - name: Read Feanor External Commit SHA to Variable
+      id: read-external-sha
+      uses: juliangruber/read-file-action@v1
+      with:
+        path: feanor.external.sha
     
+    # Feanor Core
     - name: Cache Feanor Core
       id: cache-core
       uses: actions/cache@v2
       with:
-        path: installed
+        path: installed-core
         key: feanor-core-${{ fromJson(steps.read-core-sha.outputs.content).id }}
     
     - name: Get Feanor Core Repo
       if: steps.cache-core.outputs.cache-hit != 'true'
       run: |
-        curl --location --output feanor.core.zip --header "PRIVATE-TOKEN: ${{env.GITLAB_TOKEN}}" "https://gitlab.com/api/v4/projects/${{env.PROJECT_ID}}/repository/archive.zip"
+        curl --location --output feanor.core.zip --header "PRIVATE-TOKEN: ${{env.GITLAB_TOKEN}}" "https://gitlab.com/api/v4/projects/${{env.FEANOR_CORE_ID}}/repository/archive.zip"
         7z x feanor.core.zip
-        move core-master-* core
+        move core-master-* feanor-core
         del feanor.core.zip
         del feanor.core.sha
     
     - name: Build and install Feanor Core
       if: steps.cache-core.outputs.cache-hit != 'true'
       run: |
-        cmake -G "Visual Studio 17 2022" -S core -B core/build -DCMAKE_INSTALL_PREFIX:PATH="${{github.workspace}}\installed" -DBUILD_SHARED_LIBS:BOOL=OFF
-        cmake --build core/build --config Release --parallel --target install
+        cmake -G "Visual Studio 17 2022" -S feanor-core -B feanor-core/build -DCMAKE_INSTALL_PREFIX:PATH="installed-core" -DBUILD_SHARED_LIBS:BOOL=OFF
+        cmake --build feanor-core/build --config Release --parallel --target install
 
+    # Feanor External
+    - name: Cache Feanor External
+      id: cache-external
+      uses: actions/cache@v2
+      with:
+        path: installed-external
+        key: feanor-external-${{ fromJson(steps.read-external-sha.outputs.content).id }}
+        
+    - name: Get Feanor External Repo
+      if: steps.cache-external.outputs.cache-hit != 'true'
+      run: |
+        curl --location --output feanor.external.zip --header "PRIVATE-TOKEN: ${{env.GITLAB_TOKEN}}" "https://gitlab.com/api/v4/projects/${{env.FEANOR_EXTERNAL_ID}}/repository/archive.zip"
+        7z x feanor.external.zip
+        move external-master-* feanor-external
+        del feanor.external.zip
+        del feanor.external.sha
+        
+    - name: Build and install Feanor External
+      if: steps.cache-external.outputs.cache-hit != 'true'
+      run: |
+        .\feanor-external\install.ps1 "${{github.workspace}}\installed-external" OFF
+        
+    # Merge dirs
+    - name: Merge dependency directories into installed directory
+      run: |
+        New-Item installed -ItemType Directory
+        Copy-Item -Path installed-core\* -Destination installed -Recurse Force
+        Copy-Item -Path installed-external\* -Destination installed -Recurse Force
+    
     - name: Add FEANOR_ROOT Environment Variable
       run: echo "FEANOR_ROOT=${{github.workspace}}\installed" | Out-File -FilePath $Env:GITHUB_ENV -Encoding utf-8 -Append
       
@@ -71,5 +109,5 @@ jobs:
       
     - uses: actions/upload-artifact@v2
       with:
-        name: my-artifact
+        name: CandelaDXR
         path: ${{github.workspace}}\${{env.OUT_DIR}}\
