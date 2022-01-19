@@ -94,7 +94,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);dxguid.lib;d3d12.lib;dxgi.lib;d3dcompiler.lib;Core_d.lib</AdditionalDependencies>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);dxguid.lib;d3d12.lib;dxgi.lib;d3dcompiler.lib;Core_d.lib;stb_d.lib;tinyobjloader_d.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(FEANOR_ROOT)\lib</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
@@ -114,7 +114,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);dxguid.lib;d3d12.lib;dxgi.lib;d3dcompiler.lib;Core.lib</AdditionalDependencies>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);dxguid.lib;d3d12.lib;dxgi.lib;d3dcompiler.lib;Core.lib;stb.lib;tinyobjloader.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(FEANOR_ROOT)\lib</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
@@ -130,7 +130,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);dxguid.lib;d3d12.lib;dxgi.lib;d3dcompiler.lib;Core_d.lib</AdditionalDependencies>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);dxguid.lib;d3d12.lib;dxgi.lib;d3dcompiler.lib;Core_d.lib;stb_d.lib;tinyobjloader_d.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(FEANOR_ROOT)\lib</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
@@ -150,7 +150,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);dxguid.lib;d3d12.lib;dxgi.lib;d3dcompiler.lib;Core.lib</AdditionalDependencies>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);dxguid.lib;d3d12.lib;dxgi.lib;d3dcompiler.lib;Core.lib;stb.lib;tinyobjloader.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(FEANOR_ROOT)\lib</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
@@ -162,6 +162,9 @@
     <ClCompile Include="Exception\DxgiInfoException.cpp" />
     <ClCompile Include="Exception\Exception.cpp" />
     <ClCompile Include="Exception\WindowException.cpp" />
+    <ClCompile Include="Scene\Scene.cpp" />
+    <ClCompile Include="Scene\Texture.cpp" />
+    <ClCompile Include="Scene\WavefrontSceneLoader.cpp" />
     <ClCompile Include="Window\Window.cpp" />
     <ClCompile Include="Window\WindowClass.cpp" />
   </ItemGroup>
@@ -174,6 +177,13 @@
     <ClInclude Include="Exception\Exception.h" />
     <ClInclude Include="Exception\GeneralException.h" />
     <ClInclude Include="Exception\WindowException.h" />
+    <ClInclude Include="Mathematics\Constants.h" />
+    <ClInclude Include="Mathematics\Types.h" />
+    <ClInclude Include="Scene\ISceneLoader.h" />
+    <ClInclude Include="Scene\Material.h" />
+    <ClInclude Include="Scene\Scene.h" />
+    <ClInclude Include="Scene\Texture.h" />
+    <ClInclude Include="Scene\WavefrontSceneLoader.h" />
     <ClInclude Include="Window\Window.h" />
     <ClInclude Include="Window\WindowClass.h" />
     <ClInclude Include="Window\WindowsDef.h" />
