@@ -5,6 +5,7 @@
 
 #include "Texture.h"
 #include "Material.h"
+#include "Mathematics/Types.h"
 
 namespace candela::scene
 {
@@ -15,7 +16,7 @@ namespace candela::scene
 		//std::size_t getNumberOfTextures() const;
 
 		const std::vector<Texture>& getTextures() const;
-		void addTexture(Texture texture);
+		std::size_t addTexture(Texture texture);
 
 		const std::vector<Material>& getMaterials() const;
 		void addMaterial(Material texture);
@@ -23,5 +24,10 @@ namespace candela::scene
 	private:
 		std::vector<Texture> textures;
 		std::vector<Material> materials;
+		std::vector<mathematics::Vector3> vertices;
+		std::vector<mathematics::Vector2> textureCoords;
+		std::vector<mathematics::Vector3> normals;
+
+		std::vector<int> indexData;
 	};
 }

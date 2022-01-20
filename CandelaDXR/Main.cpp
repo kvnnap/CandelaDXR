@@ -6,7 +6,12 @@
 
 #include "feanor/core/io/imousewriter.h"
 
+#include "Scene/Material.h"
+
 using candela::ui::Window;
+using candela::scene::Material;
+using std::cout;
+using std::endl;
 
 int main()
 {
@@ -15,17 +20,18 @@ int main()
     {
         void pressKey(uint8_t key) override
         {
-            std::cout << (int)key << std::endl;
+            cout << (int)key << endl;
         }
         void depressKey(uint8_t key) override {}
         void updatePosition(uint16_t x, uint16_t y) override
         {
-            //std::cout << x << ", " << y << std::endl;
+            //cout << x << ", " << y << endl;
         }
         
         void scroll(int units) override {}
     };
     
+    cout << "Material Size: " << sizeof(Material) << endl;
     TestWriter testWriter;
     Window wnd("test", 800, 600, nullptr, &testWriter);
     while (!wnd.ProcessMessages(true));

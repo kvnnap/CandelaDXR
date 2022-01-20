@@ -6,12 +6,11 @@
 
 namespace candela::scene
 {
-	class Material
+	struct alignas(16) Material
 	{
-	public:
-		mathematics::Vector4 Diffuse;
-		mathematics::Vector4 Emissive;
+		mathematics::Vector3 Diffuse; 
 		std::int32_t DiffuseTextureId;
+		mathematics::Vector3 Emissive;
 		std::int32_t EmissiveTextureId;
 	};
 }

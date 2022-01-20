@@ -1,5 +1,6 @@
 #include <vector>
 #include <stdexcept>
+#include <cstdint>
 
 #include "tiny_obj_loader.h"
 
@@ -9,6 +10,7 @@
 using std::string;
 using std::vector;
 using std::runtime_error;
+using std::int32_t;
 
 using tinyobj::attrib_t;
 using tinyobj::material_t;
@@ -16,7 +18,7 @@ using tinyobj::shape_t;
 using tinyobj::LoadObj;
 
 using candela::scene::WavefrontSceneLoader;
-using candela::mathematics::Vector4;
+using candela::mathematics::Vector3;
 
 void WavefrontSceneLoader::loadScene()
 {
@@ -35,22 +37,30 @@ void WavefrontSceneLoader::loadScene()
         throw runtime_error(err);
 
     // Load Materials
-    int diffTexId = scene->getTextures().size();
     for (const auto& tinyMat : materials)
     {
-        int currentDiffTexId = tinyMat.diffuse_texname.length() ? diffTexId++ : -1;
-        if (tinyMat.diffuse_texname.empty())
-            currentDiffTexId = -1;
-        else
-            scene->addTexture(tinyMat.diffuse_texname);
+        int32_t currentDiffTexId = -1;
+        if (!tinyMat.diffuse_texname.empty())
+            currentDiffTexId = static_cast<int>(scene->addTexture(tinyMat.diffuse_texname));
         
+        // Materials point to textures using the identifier
         scene->addMaterial(Material{
-            Vector4(tinyMat.diffuse[0], tinyMat.diffuse[1], tinyMat.diffuse[2], 1.f),
-            Vector4(tinyMat.emission[0], tinyMat.emission[1], tinyMat.emission[2], 0.f),
-            diffTexId,
-            diffTexId
+            Vector3(tinyMat.diffuse[0], tinyMat.diffuse[1], tinyMat.diffuse[2]),
+            currentDiffTexId,
+            Vector3(tinyMat.emission[0], tinyMat.emission[1], tinyMat.emission[2]),
+            -1
         });
     }
+
+    // Load objects
+    attr.vertices;
+
+    // Grouping
+    for (const auto& shape : shapes)
+    {
+        
+    }
+
 }
 
 void WavefrontSceneLoader::setFilePath(const string& filePath)
