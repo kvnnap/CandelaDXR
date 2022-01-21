@@ -2,40 +2,76 @@
 //
 
 #include <iostream>
-#include "Window/Window.h"
+#include <string>
 
-#include "feanor/core/io/imousewriter.h"
 
-#include "Scene/Material.h"
+#include "Exception/Exception.h"
+#include "Environment/Environment.h"
 
-using candela::ui::Window;
-using candela::scene::Material;
 using std::cout;
 using std::endl;
+using std::string;
 
-int main()
+using candela::exception::Exception;
+using candela::environment::Environment;
+
+
+int main(int argc, char** argv)
 {
-    struct TestWriter 
-        : public feanor::io::IMouseWriter
-    {
-        void pressKey(uint8_t key) override
-        {
-            cout << (int)key << endl;
-        }
-        void depressKey(uint8_t key) override {}
-        void updatePosition(uint16_t x, uint16_t y) override
-        {
-            //cout << x << ", " << y << endl;
-        }
-        
-        void scroll(int units) override {}
-    };
-    
-    cout << "Material Size: " << sizeof(Material) << endl;
-    TestWriter testWriter;
-    Window wnd("test", 800, 600, nullptr, &testWriter);
-    while (!wnd.ProcessMessages(true));
-    std::cout << "Hello World!\n";
+    //struct TestWriter 
+    //    : public feanor::io::IMouseWriter
+    //{
+    //    void pressKey(uint8_t key) override
+    //    {
+    //        cout << (int)key << endl;
+    //    }
+    //    void depressKey(uint8_t key) override {}
+    //    void updatePosition(uint16_t x, uint16_t y) override
+    //    {
+    //        //cout << x << ", " << y << endl;
+    //    }
+    //    
+    //    void scroll(int units) override {}
+    //};
+    //
+    //cout << "Material Size: " << sizeof(Material) << endl;
+    //TestWriter testWriter;
+    //Window wnd("test", 800, 600, nullptr, &testWriter);
+    //while (!wnd.ProcessMessages(true));
+    //std::cout << "Hello World!\n";
+
+    string err;
+
+    try {
+        // Get config file name
+        string configFileName = "config.json";
+        if (argc == 2)
+            configFileName = argv[1];
+
+        // Start environment
+        Environment env;
+        env.bootstrap(configFileName);
+
+        // Invoke scene loaders - this will populate shapes and primitives
+        for (auto sceneLoader : env.getSceneLoaderManager().getInstanceManager().asList())
+            sceneLoader->loadScene();
+
+        return EXIT_SUCCESS;
+    }
+    catch (const Exception& e) {
+        err = "App Exception: \n";
+        err += e.what();
+    }
+    catch (const std::exception& e) {
+        err = "Standard Exception: \n";
+        err += e.what();
+    }
+    catch (...) {
+        err = "Unknown Exception\n";
+    }
+
+    cout << err << endl;
+    return EXIT_FAILURE;
 }
 
 // Run program: Ctrl + F5 or Debug > Start Without Debugging menu

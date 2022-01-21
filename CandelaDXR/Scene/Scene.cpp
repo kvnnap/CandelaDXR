@@ -1,11 +1,16 @@
-#include "Scene.h"
-
 #include <stdexcept>
 
+#include "Scene.h"
+
+using std::array;
 using std::vector;
 using std::string;
 using std::size_t;
+using std::uint32_t;
 using std::runtime_error;
+
+using candela::mathematics::Vector2;
+using candela::mathematics::Vector3;
 
 using candela::scene::Texture;
 using candela::scene::Material;
@@ -36,7 +41,6 @@ const vector<Material>& Scene::getMaterials() const
 void Scene::addMaterial(Material material)
 {
 	materials.push_back(std::move(material));
-
 }
 
 void Scene::startGroup(const string& name)
@@ -45,25 +49,103 @@ void Scene::startGroup(const string& name)
 		endGroup();
 	if (spanDataMap.find(name) != spanDataMap.end())
 		throw runtime_error("Scene group " + string(name) + " already exists");
-	spanDataMap[name] = { name, indexData.size(), 0 };
+	currentGroupName = name;
+	spanDataMap.insert({ name, { name, indexData.size(), 0 } });
 }
 
 void Scene::endGroup()
 {
 	if (currentGroupName.empty())
 		return;
-	// Transfer vertices from collission map to buffers
-	// TODO
+
+	// Allocate enough space in vertex, tex and normal buffers
+	std::size_t newSize = vertices.size() + collisionMap.size();
+	vertices.resize(newSize);
+	textureCoords.resize(newSize);
+	normals.resize(newSize);
+
+	// Transfer vertices from collision map to buffers
+	auto it = collisionMap.begin();
+	while (it != collisionMap.end())
+	{
+		auto& key = it->first;
+		auto index = it->second;
+		vertices[index] = Vector3(key[0], key[1], key[2]);
+		textureCoords[index] = Vector2(key[3], key[4]);
+		normals[index] = Vector3(key[5], key[6], key[7]);
+		collisionMap.erase(it++);
+	}
+
 	auto& index = spanDataMap[currentGroupName];
 	index.Size = indexData.size() - index.Start;
 	currentGroupName.clear();
 }
 
 void candela::scene::Scene::addFace(
-	const std::array<mathematics::Vector3, 3>& pos, 
-	const std::array<mathematics::Vector2, 3>& tex,
-	const std::array<mathematics::Vector3, 3>& norm,
-	std::uint32_t materialId)
+	const array<Vector3, 3>& pos, 
+	const array<Vector2, 3>& tex,
+	const array<Vector3, 3>& norm,
+	uint32_t materialId)
 {
+	// Add mesh data and vector attributes
+	for (auto i = 0; i < 3; ++i)
+	{
+		array<float, 8> arr = { pos[i].x, pos[i].y, pos[i].z, tex[i].x, tex[i].y, norm[i].x, norm[i].y, norm[i].z };
+		auto it = collisionMap.find(arr);
+		if (it == collisionMap.end())
+		{
+			auto index = static_cast<int>(vertices.size() + collisionMap.size());
+			collisionMap.insert({ arr, index });
+			indexData.push_back(index);
+		}
+		else
+		{
+			indexData.push_back(it->second);
+		}
+	}
 
+	// Is light?
+	if (materials[materialId].isEmissive())
+	{
+		lights.emplace_back(AreaLight{
+			.Intensity = DirectX::XMVectorSet(1.f, 1.f, 1.f, 1.f),
+			.InstanceIndex = static_cast<uint32_t>(spanDataMap.size()),
+			.PrimitiveId = static_cast<uint32_t>(indexData.size() / 3),
+			.MaterialId = materialId
+		});
+	}
+
+	// Add face attributes
+	faceAttributes.emplace_back(FaceAttributes{
+		materialId,
+		materials[materialId].isEmissive() ? static_cast<uint32_t>(lights.size() - 1) : 0
+	});
+}
+
+void Scene::addSceneNodeToGroupMapping(const string& sceneNodeName, const string& groupName)
+{
+	if (spanDataMap.find(groupName) == spanDataMap.end())
+		return;
+	sceneGraph.addChild(sceneNodeName, groupName);
+}
+
+bool candela::scene::Material::isEmissive()
+{
+	return Emissive.x != 0.f && Emissive.y != 0.f && Emissive.z != 0.f;
+}
+
+void candela::scene::SceneNode::addChild(const string& nodeName, const string& groupName)
+{
+	// Or throw
+	for (auto& child : Children)
+		if (child.NodeName == nodeName)
+			return;
+
+	// Add the mapping
+	Children.emplace_back(SceneNode{
+		.Parent = this,
+		.Transform = DirectX::XMMatrixIdentity(),
+		.NodeName = nodeName,
+		.GroupName = groupName
+	});
 }

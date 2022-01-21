@@ -7,17 +7,24 @@
 
 #include "feanor/core/configuration/parser/iparser.h"
 
+#include "Scene/ISceneLoader.h"
+#include "Scene/Scene.h"
+
 namespace candela::environment
 {
     using ConfigurationManager = feanor::environment::ResourceManager<feanor::configuration::parser::Parser>;
+    using SceneManager = feanor::environment::ResourceManager<scene::Scene>;
+    using SceneLoaderManager = feanor::environment::ResourceManager<scene::ISceneLoader>;
 
     class Environment
     {
     public:
-        ConfigurationManager& getConfigurationManager();
-
-
+        Environment();
         void bootstrap(const std::string& configPath);
+
+        ConfigurationManager& getConfigurationManager();
+        SceneLoaderManager& getSceneLoaderManager();
+        SceneManager& getSceneManager();
 
         static Environment& getInstance();
     private:
@@ -28,5 +35,7 @@ namespace candela::environment
 
         // Managers
         ConfigurationManager configurationManager;
+        SceneManager sceneManager;
+        SceneLoaderManager sceneLoaderManager;
     };
 }

@@ -8,7 +8,6 @@
 #include <unordered_map>
 
 #include "Texture.h"
-#include "Material.h"
 #include "Mathematics/Types.h"
 
 namespace candela::scene
@@ -16,13 +15,16 @@ namespace candela::scene
 	struct SceneNode
 	{
 		// Connectivity
-		std::unique_ptr<SceneNode> Parent;
-		std::vector<std::unique_ptr<SceneNode>> Children;
+		SceneNode *Parent;
+		std::vector<SceneNode> Children;
 
 		// Data
 		mathematics::Matrix Transform;
 		std::string NodeName;
 		std::string GroupName;
+
+		//SceneNode();
+		void addChild(const std::string& nodeName, const std::string& groupName);
 	};
 
 	struct IndexedSpan
@@ -34,15 +36,25 @@ namespace candela::scene
 
 	struct alignas(16) FaceAttributes
 	{
-		std::uint32_t materialId;
-		std::uint32_t areaLightId;
+		std::uint32_t MaterialId;
+		std::uint32_t AreaLightId;
 	};
 
 	struct alignas(16) AreaLight {
-		DirectX::XMVECTOR intensity;
-		std::uint32_t instanceIndex;
-		std::uint32_t primitiveId;
-		std::uint32_t materialId;
+		DirectX::XMVECTOR Intensity;
+		std::uint32_t InstanceIndex;
+		std::uint32_t PrimitiveId;
+		std::uint32_t MaterialId;
+	};
+
+	struct alignas(16) Material
+	{
+		mathematics::Vector3 Diffuse;
+		std::int32_t DiffuseTextureId;
+		mathematics::Vector3 Emissive;
+		std::int32_t EmissiveTextureId;
+
+		bool isEmissive();
 	};
 
 	class Scene
@@ -62,10 +74,11 @@ namespace candela::scene
 					 const std::array<mathematics::Vector2, 3> &tex, 
 					 const std::array<mathematics::Vector3, 3> &norm, 
 					 std::uint32_t materialId);
-	private:
-		// Methods
-		//void addVertex(mathematics::Vector3 pos, mathematics::Vector2 tex, mathematics::Vector3 normal);
 
+		// Scene graph
+		void addSceneNodeToGroupMapping(const std::string& sceneNodeName, const std::string& groupName);
+
+	private:
 		// Data
 		std::vector<Texture> textures;
 		std::vector<Material> materials;
@@ -80,10 +93,14 @@ namespace candela::scene
 		// Global index data - these indices refer to the above arrays
 		std::vector<int> indexData;
 
+		// Used to filter out duplicate triples <pos, tex, norm>
+		std::map<std::array<float, 8>, int> collisionMap;
+
 		// Group data - Divides index data into sections that make up the meshes
 		std::unordered_map<std::string, IndexedSpan> spanDataMap;
 
-		std::map<std::array<float, 8>, int> collisionMap;
+		// Faces
+		std::vector<FaceAttributes> faceAttributes;
 
 		// Groups for the index data - must connect with scene graph
 		SceneNode sceneGraph;

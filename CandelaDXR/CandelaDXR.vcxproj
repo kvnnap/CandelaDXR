@@ -163,8 +163,10 @@
     <ClCompile Include="Exception\Exception.cpp" />
     <ClCompile Include="Exception\WindowException.cpp" />
     <ClCompile Include="Scene\Scene.cpp" />
+    <ClCompile Include="Scene\SceneFactory.cpp" />
     <ClCompile Include="Scene\Texture.cpp" />
     <ClCompile Include="Scene\WavefrontSceneLoader.cpp" />
+    <ClCompile Include="Scene\WavefrontSceneLoaderFactory.cpp" />
     <ClCompile Include="Window\Window.cpp" />
     <ClCompile Include="Window\WindowClass.cpp" />
   </ItemGroup>
@@ -180,10 +182,11 @@
     <ClInclude Include="Mathematics\Constants.h" />
     <ClInclude Include="Mathematics\Types.h" />
     <ClInclude Include="Scene\ISceneLoader.h" />
-    <ClInclude Include="Scene\Material.h" />
     <ClInclude Include="Scene\Scene.h" />
+    <ClInclude Include="Scene\SceneFactory.h" />
     <ClInclude Include="Scene\Texture.h" />
     <ClInclude Include="Scene\WavefrontSceneLoader.h" />
+    <ClInclude Include="Scene\WavefrontSceneLoaderFactory.h" />
     <ClInclude Include="Window\Window.h" />
     <ClInclude Include="Window\WindowClass.h" />
     <ClInclude Include="Window\WindowsDef.h" />

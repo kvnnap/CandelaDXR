@@ -11,11 +11,14 @@ namespace candela::scene
 		: public ISceneLoader
 	{
 	public:
+		WavefrontSceneLoader(Scene* scene);
 		void loadScene() override;
 		void setFilePath(const std::string& filePath);
-
+		void setAlwaysComputeNormals(bool value);
 	private:
 		Scene *scene;
-		std::string& filePath;
+		std::string filePath;
+
+		bool alwaysComputeNormals = false;
 	};
 }
