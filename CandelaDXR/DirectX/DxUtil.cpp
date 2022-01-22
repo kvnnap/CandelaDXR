@@ -24,7 +24,7 @@ void DXUtil::enableDebugLayer()
 #endif
 }
 
-void DXUtil::setupDebugLayer(wrl::ComPtr<ID3D12Device5> pDevice)
+void DXUtil::setupDebugLayer(wrl::ComPtr<ID3D12Device9> pDevice)
 {
 #ifdef _DEBUG
 	HRESULT hr;
@@ -71,6 +71,7 @@ wrl::ComPtr<IDXGIAdapter4> DXUtil::getAdapterLatestFeatureLevel(D3D_FEATURE_LEVE
 {
 	// Get DX12 compatible hardware device - Adapter contains info about the actual device
 	D3D_FEATURE_LEVEL featureLevels[] = {
+		D3D_FEATURE_LEVEL_12_2,
 		D3D_FEATURE_LEVEL_12_1,
 		D3D_FEATURE_LEVEL_12_0,
 		D3D_FEATURE_LEVEL_11_1,
@@ -91,9 +92,8 @@ wrl::ComPtr<IDXGIAdapter4> DXUtil::getAdapterLatestFeatureLevel(D3D_FEATURE_LEVE
 		}
 	}
 
-	if (!adapter) {
+	if (!adapter)
 		ThrowException("Cannot find a compatible DX12 hardware device");
-	}
 
 	return adapter;
 }
@@ -114,7 +114,7 @@ wrl::ComPtr<IDXGIAdapter4> DXUtil::getAdapter(D3D_FEATURE_LEVEL featureLevel, bo
 			dxgiAdapter1->GetDesc1(&dxgiAdapterDesc1);
 
 			const bool isHardware = (dxgiAdapterDesc1.Flags & DXGI_ADAPTER_FLAG_SOFTWARE) == 0;
-			const bool d3d12DeviceCreationSuccess = SUCCEEDED(D3D12CreateDevice(dxgiAdapter1.Get(), featureLevel, __uuidof(ID3D12Device5), nullptr));
+			const bool d3d12DeviceCreationSuccess = SUCCEEDED(D3D12CreateDevice(dxgiAdapter1.Get(), featureLevel, __uuidof(ID3D12Device9), nullptr));
 			if (isHardware && d3d12DeviceCreationSuccess) {
 				GFXTHROWIFFAILED(dxgiAdapter1.As(&dxgiAdapter4));
 				break;
@@ -125,10 +125,10 @@ wrl::ComPtr<IDXGIAdapter4> DXUtil::getAdapter(D3D_FEATURE_LEVEL featureLevel, bo
 	return dxgiAdapter4;
 }
 
-wrl::ComPtr<ID3D12Device5> DXUtil::createDeviceFromAdapter(wrl::ComPtr<IDXGIAdapter4> adapter, D3D_FEATURE_LEVEL featureLevel)
+wrl::ComPtr<ID3D12Device9> DXUtil::createDeviceFromAdapter(wrl::ComPtr<IDXGIAdapter4> adapter, D3D_FEATURE_LEVEL featureLevel)
 {
 	HRESULT hr;
-	wrl::ComPtr<ID3D12Device5> pDevice;
+	wrl::ComPtr<ID3D12Device9> pDevice;
 
 	GFXTHROWIFFAILED(D3D12CreateDevice(adapter.Get(), featureLevel, IID_PPV_ARGS(&pDevice)));
 
@@ -148,7 +148,7 @@ wrl::ComPtr<IDXGIFactory7> DXUtil::createDXGIFactory()
 	return dxgiFactory;
 }
 
-wrl::ComPtr<ID3D12DescriptorHeap> DXUtil::createDescriptorHeap(wrl::ComPtr<ID3D12Device5> device, UINT count, D3D12_DESCRIPTOR_HEAP_TYPE type, bool shaderVisible)
+wrl::ComPtr<ID3D12DescriptorHeap> DXUtil::createDescriptorHeap(wrl::ComPtr<ID3D12Device9> device, UINT count, D3D12_DESCRIPTOR_HEAP_TYPE type, bool shaderVisible)
 {
 	HRESULT hr;
 	wrl::ComPtr<ID3D12DescriptorHeap> descriptorHeap;
@@ -195,7 +195,7 @@ wrl::ComPtr<IDXGISwapChain4> DXUtil::createSwapChain(wrl::ComPtr<ID3D12CommandQu
 }
 
 std::vector<wrl::ComPtr<ID3D12Resource>> DXUtil::createRenderTargetViews(
-	wrl::ComPtr<ID3D12Device5> device,
+	wrl::ComPtr<ID3D12Device9> device,
 	wrl::ComPtr<ID3D12DescriptorHeap> descriptorHeap,
 	wrl::ComPtr<IDXGISwapChain4> swapChain,
 	UINT numRTV)
@@ -218,7 +218,7 @@ std::vector<wrl::ComPtr<ID3D12Resource>> DXUtil::createRenderTargetViews(
 }
 
 std::vector<wrl::ComPtr<ID3D12Resource>> DXUtil::createDepthStencilView(
-	wrl::ComPtr<ID3D12Device5> device,
+	wrl::ComPtr<ID3D12Device9> device,
 	wrl::ComPtr<ID3D12DescriptorHeap> depthDescriptorHeap,
 	UINT winWidth, UINT winHeight,
 	UINT numDSV)
@@ -261,7 +261,7 @@ std::vector<wrl::ComPtr<ID3D12Resource>> DXUtil::createDepthStencilView(
 	return depthBuffers;
 }
 
-wrl::ComPtr<ID3D12Resource> DXUtil::createCommittedResource(wrl::ComPtr<ID3D12Device5> device, D3D12_HEAP_TYPE heapType, UINT64 size, D3D12_RESOURCE_STATES resourceState, D3D12_RESOURCE_FLAGS resourceFlags)
+wrl::ComPtr<ID3D12Resource> DXUtil::createCommittedResource(wrl::ComPtr<ID3D12Device9> device, D3D12_HEAP_TYPE heapType, UINT64 size, D3D12_RESOURCE_STATES resourceState, D3D12_RESOURCE_FLAGS resourceFlags)
 {
 	wrl::ComPtr<ID3D12Resource> buffer;
 
@@ -280,7 +280,7 @@ wrl::ComPtr<ID3D12Resource> DXUtil::createCommittedResource(wrl::ComPtr<ID3D12De
 	return buffer;
 }
 
-Microsoft::WRL::ComPtr<ID3D12Resource> DXUtil::createTextureCommittedResource(Microsoft::WRL::ComPtr<ID3D12Device5> device, D3D12_HEAP_TYPE heapType, UINT64 width, UINT height, D3D12_RESOURCE_STATES resourceState, D3D12_RESOURCE_FLAGS resourceFlags, DXGI_FORMAT format)
+Microsoft::WRL::ComPtr<ID3D12Resource> DXUtil::createTextureCommittedResource(Microsoft::WRL::ComPtr<ID3D12Device9> device, D3D12_HEAP_TYPE heapType, UINT64 width, UINT height, D3D12_RESOURCE_STATES resourceState, D3D12_RESOURCE_FLAGS resourceFlags, DXGI_FORMAT format)
 {
 	wrl::ComPtr<ID3D12Resource> buffer;
 
@@ -300,7 +300,7 @@ Microsoft::WRL::ComPtr<ID3D12Resource> DXUtil::createTextureCommittedResource(Mi
 	return buffer;
 }
 
-wrl::ComPtr<ID3D12Resource> DXUtil::uploadDataToDefaultHeap(wrl::ComPtr<ID3D12Device5> pDevice, wrl::ComPtr<ID3D12GraphicsCommandList4> pCommandList, wrl::ComPtr<ID3D12Resource>& tempResource, const void* ptData, std::size_t dataSize, D3D12_RESOURCE_STATES finalState)
+wrl::ComPtr<ID3D12Resource> DXUtil::uploadDataToDefaultHeap(wrl::ComPtr<ID3D12Device9> pDevice, wrl::ComPtr<ID3D12GraphicsCommandList4> pCommandList, wrl::ComPtr<ID3D12Resource>& tempResource, const void* ptData, std::size_t dataSize, D3D12_RESOURCE_STATES finalState)
 {
 	// Upload buffer to gpu
 	wrl::ComPtr<ID3D12Resource> defaultResource = DXUtil::createCommittedResource(pDevice, D3D12_HEAP_TYPE_DEFAULT, dataSize, D3D12_RESOURCE_STATE_COPY_DEST);
@@ -310,7 +310,7 @@ wrl::ComPtr<ID3D12Resource> DXUtil::uploadDataToDefaultHeap(wrl::ComPtr<ID3D12De
 	return defaultResource;
 }
 
-Microsoft::WRL::ComPtr<ID3D12Resource> DXUtil::uploadTextureDataToDefaultHeap(Microsoft::WRL::ComPtr<ID3D12Device5> device, Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> pCommandList, Microsoft::WRL::ComPtr<ID3D12Resource>& tempResource, const void* ptData, std::size_t width, std::size_t height, std::size_t sizePerPixel, DXGI_FORMAT format, D3D12_RESOURCE_STATES finalState)
+Microsoft::WRL::ComPtr<ID3D12Resource> DXUtil::uploadTextureDataToDefaultHeap(Microsoft::WRL::ComPtr<ID3D12Device9> device, Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> pCommandList, Microsoft::WRL::ComPtr<ID3D12Resource>& tempResource, const void* ptData, std::size_t width, std::size_t height, std::size_t sizePerPixel, DXGI_FORMAT format, D3D12_RESOURCE_STATES finalState)
 {
 	// create texture
 	wrl::ComPtr<ID3D12Resource> texResource = createTextureCommittedResource(device, D3D12_HEAP_TYPE_DEFAULT, width, static_cast<UINT>(height), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_FLAG_NONE, format);
@@ -333,7 +333,7 @@ Microsoft::WRL::ComPtr<ID3D12Resource> DXUtil::uploadTextureDataToDefaultHeap(Mi
 	return texResource;
 }
 
-void DXUtil::updateDataInDefaultHeap(Microsoft::WRL::ComPtr<ID3D12Device5> pDevice, Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> pCommandList, Microsoft::WRL::ComPtr<ID3D12Resource>& resource, Microsoft::WRL::ComPtr<ID3D12Resource>& tempResource, const void* ptData, std::size_t dataSize, D3D12_RESOURCE_STATES previousState, D3D12_RESOURCE_STATES finalState)
+void DXUtil::updateDataInDefaultHeap(Microsoft::WRL::ComPtr<ID3D12Device9> pDevice, Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> pCommandList, Microsoft::WRL::ComPtr<ID3D12Resource>& resource, Microsoft::WRL::ComPtr<ID3D12Resource>& tempResource, const void* ptData, std::size_t dataSize, D3D12_RESOURCE_STATES previousState, D3D12_RESOURCE_STATES finalState)
 {
 	// Transition to correct state
 	if (previousState != D3D12_RESOURCE_STATE_COPY_DEST) {
@@ -355,7 +355,7 @@ void DXUtil::updateDataInDefaultHeap(Microsoft::WRL::ComPtr<ID3D12Device5> pDevi
 }
 
 
-wrl::ComPtr<ID3D12RootSignature> DXUtil::createRootSignature(wrl::ComPtr<ID3D12Device5> pDevice, const D3D12_VERSIONED_ROOT_SIGNATURE_DESC& rootSignatureDesc)
+wrl::ComPtr<ID3D12RootSignature> DXUtil::createRootSignature(wrl::ComPtr<ID3D12Device9> pDevice, const D3D12_VERSIONED_ROOT_SIGNATURE_DESC& rootSignatureDesc)
 {
 	// Check which root signature version we support - 1.1 is better than 1.0...
 	// Root signature - https://docs.microsoft.com/en-us/windows/desktop/direct3d12/root-signatures-overview
@@ -380,10 +380,10 @@ wrl::ComPtr<ID3D12RootSignature> DXUtil::createRootSignature(wrl::ComPtr<ID3D12D
 	return rootSignature;
 }
 
-wrl::ComPtr<ID3D12Device5> DXUtil::createRTDeviceFromAdapter(wrl::ComPtr<IDXGIAdapter4> adapter, D3D_FEATURE_LEVEL featureLevel)
+wrl::ComPtr<ID3D12Device9> DXUtil::createRTDeviceFromAdapter(wrl::ComPtr<IDXGIAdapter4> adapter, D3D_FEATURE_LEVEL featureLevel)
 {
 	HRESULT hr;
-	wrl::ComPtr<ID3D12Device5> pDevice = createDeviceFromAdapter(adapter, featureLevel);
+	wrl::ComPtr<ID3D12Device9> pDevice = createDeviceFromAdapter(adapter, featureLevel);
 
 	D3D12_FEATURE_DATA_D3D12_OPTIONS5 features5 = {};
 	GFXTHROWIFFAILED(pDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS5, &features5, sizeof(D3D12_FEATURE_DATA_D3D12_OPTIONS5)));
@@ -395,7 +395,7 @@ wrl::ComPtr<ID3D12Device5> DXUtil::createRTDeviceFromAdapter(wrl::ComPtr<IDXGIAd
 }
 
 DXUtil::AccelerationStructureBuffers DXUtil::createBottomLevelAS(
-	Microsoft::WRL::ComPtr<ID3D12Device5> pDevice,
+	Microsoft::WRL::ComPtr<ID3D12Device9> pDevice,
 	Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> pCommandList,
 	const std::vector<D3D12_GPU_VIRTUAL_ADDRESS>& pVertexBuffers,
 	const std::vector<UINT>& vertexCounts,
@@ -446,7 +446,7 @@ DXUtil::AccelerationStructureBuffers DXUtil::createBottomLevelAS(
 }
 
 void DXUtil::buildTopLevelAS(
-	Microsoft::WRL::ComPtr<ID3D12Device5> pDevice,
+	Microsoft::WRL::ComPtr<ID3D12Device9> pDevice,
 	Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> pCommandList,
 	std::vector<DXUtil::AccelerationStructureBuffers> blasBuffers,
 	Microsoft::WRL::ComPtr<ID3D12Resource>& tlasTempBuffer,

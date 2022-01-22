@@ -155,6 +155,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="DirectX\CommandQueue.cpp" />
     <ClCompile Include="DirectX\DxUtil.cpp" />
     <ClCompile Include="Environment\Environment.cpp" />
     <ClCompile Include="Main.cpp" />
@@ -162,6 +163,7 @@
     <ClCompile Include="Exception\DxgiInfoException.cpp" />
     <ClCompile Include="Exception\Exception.cpp" />
     <ClCompile Include="Exception\WindowException.cpp" />
+    <ClCompile Include="Renderer\Renderer.cpp" />
     <ClCompile Include="Scene\Scene.cpp" />
     <ClCompile Include="Scene\SceneFactory.cpp" />
     <ClCompile Include="Scene\Texture.cpp" />
@@ -171,6 +173,7 @@
     <ClCompile Include="Window\WindowClass.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="DirectX\CommandQueue.h" />
     <ClInclude Include="DirectX\d3dx12.h" />
     <ClInclude Include="DirectX\DxgiInfoManager.h" />
     <ClInclude Include="DirectX\DxUtil.h" />
@@ -181,6 +184,8 @@
     <ClInclude Include="Exception\WindowException.h" />
     <ClInclude Include="Mathematics\Constants.h" />
     <ClInclude Include="Mathematics\Types.h" />
+    <ClInclude Include="Renderer\IRenderer.h" />
+    <ClInclude Include="Renderer\Renderer.h" />
     <ClInclude Include="Scene\ISceneLoader.h" />
     <ClInclude Include="Scene\Scene.h" />
     <ClInclude Include="Scene\SceneFactory.h" />
