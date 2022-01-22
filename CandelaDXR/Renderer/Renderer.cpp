@@ -6,6 +6,7 @@
 #include "DirectX/d3dx12.h"
 
 using std::make_unique;
+using std::to_string;
 
 using feanor::io::Keyboard;
 using feanor::io::Mouse;
@@ -21,7 +22,7 @@ Renderer::Renderer()
 	  currentBackBufferIndex(),
 	  frameFenceValues()
 {
-	window = make_unique<Window>("Renderer", 800, 600, &keyboard, &mouse);
+	window = make_unique<Window>("CandelaDXR", 800, 600, &keyboard, &mouse);
 
 	// Init DirectX Debugging
 	DXUtil::enableDebugLayer();
@@ -81,4 +82,8 @@ void Renderer::renderFrame()
 	GFXTHROWIFFAILED(pSwapChain->Present(1u, 0u));
 	currentBackBufferIndex = pSwapChain->GetCurrentBackBufferIndex();
 	commandQueue->waitForFenceValue(frameFenceValues[currentBackBufferIndex]);
+
+	// Stats
+	if (fpsCounter.hitFrame())
+		window->setWindowName("CandelaDXR - Frames: " + to_string(fpsCounter.getTotalFrames()) + " FPS: " + to_string(fpsCounter.getFramesPerSecond()));
 }

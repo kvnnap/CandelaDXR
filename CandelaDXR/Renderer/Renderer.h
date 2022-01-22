@@ -10,6 +10,7 @@
 #include "feanor/core/io/mouse.h"
 #include "Window/Window.h"
 #include "DirectX/CommandQueue.h"
+#include "FpsCounter.h"
 
 #include "IRenderer.h"
 
@@ -46,5 +47,8 @@ namespace candela::renderer
 		UINT rtvDescriptorSize;
 		UINT currentBackBufferIndex;
 		uint64_t frameFenceValues[NumBackBuffers];
+
+		// Stats
+		FpsCounter fpsCounter;
 	};
 }
