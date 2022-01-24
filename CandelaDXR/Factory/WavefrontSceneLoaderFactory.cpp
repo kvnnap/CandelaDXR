@@ -1,4 +1,4 @@
-#include "WavefrontSceneLoader.h"
+#include "Scene/WavefrontSceneLoader.h"
 
 #include "WavefrontSceneLoaderFactory.h"
 #include "Environment/Environment.h"

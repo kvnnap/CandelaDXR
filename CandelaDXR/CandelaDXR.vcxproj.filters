@@ -51,10 +51,10 @@
     <ClCompile Include="Scene\Texture.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Scene\WavefrontSceneLoaderFactory.cpp">
+    <ClCompile Include="Factory\WavefrontSceneLoaderFactory.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Scene\SceneFactory.cpp">
+    <ClCompile Include="Factory\SceneFactory.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Renderer\Renderer.cpp">
@@ -64,6 +64,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Renderer\FpsCounter.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Factory\RendererFactory.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -119,10 +122,10 @@
     <ClInclude Include="Scene\Texture.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Scene\WavefrontSceneLoaderFactory.h">
+    <ClInclude Include="Factory\WavefrontSceneLoaderFactory.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Scene\SceneFactory.h">
+    <ClInclude Include="Factory\SceneFactory.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Renderer\IRenderer.h">
@@ -135,6 +138,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Renderer\FpsCounter.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Factory\RendererFactory.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

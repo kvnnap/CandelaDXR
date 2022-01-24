@@ -9,12 +9,14 @@
 
 #include "Scene/ISceneLoader.h"
 #include "Scene/Scene.h"
+#include "Renderer/IRenderer.h"
 
 namespace candela::environment
 {
     using ConfigurationManager = feanor::environment::ResourceManager<feanor::configuration::parser::Parser>;
     using SceneManager = feanor::environment::ResourceManager<scene::Scene>;
     using SceneLoaderManager = feanor::environment::ResourceManager<scene::ISceneLoader>;
+    using RendererManager = feanor::environment::ResourceManager<renderer::IRenderer>;
 
     class Environment
     {
@@ -25,6 +27,7 @@ namespace candela::environment
         ConfigurationManager& getConfigurationManager();
         SceneLoaderManager& getSceneLoaderManager();
         SceneManager& getSceneManager();
+        RendererManager& getRendererManager();
 
         static Environment& getInstance();
     private:
@@ -37,5 +40,6 @@ namespace candela::environment
         ConfigurationManager configurationManager;
         SceneManager sceneManager;
         SceneLoaderManager sceneLoaderManager;
+        RendererManager rendererManager;
     };
 }

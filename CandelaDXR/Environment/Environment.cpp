@@ -4,13 +4,15 @@
 #include "Environment.h"
 
 #include "feanor/core/configuration/parser/json_configuration_parser.h"
-#include "Scene/SceneFactory.h"
-#include "Scene/WavefrontSceneLoaderFactory.h"
+#include "factory/SceneFactory.h"
+#include "factory/WavefrontSceneLoaderFactory.h"
+#include "factory/RendererFactory.h"
 
 using candela::environment::Environment;
 using candela::environment::ConfigurationManager;
 using candela::environment::SceneLoaderManager;
 using candela::environment::SceneManager;
+using candela::environment::RendererManager;
 
 using feanor::configuration::ObjectNode;
 using feanor::configuration::LiteralNode;
@@ -19,6 +21,7 @@ using feanor::configuration::ConfigurationNode;
 using feanor::configuration::parser::JsonConfigurationParserFactory;
 using candela::scene::factory::SceneFactory;
 using candela::scene::factory::WavefrontSceneLoaderFactory;
+using candela::renderer::factory::RendererFactory;
 
 using std::string;
 using std::make_unique;
@@ -27,21 +30,6 @@ using std::runtime_error;
 Environment::Environment()
 {
     loadCoreFactories();
-}
-
-ConfigurationManager& Environment::getConfigurationManager()
-{
-    return configurationManager;
-}
-
-SceneLoaderManager& Environment::getSceneLoaderManager()
-{
-    return sceneLoaderManager;
-}
-
-SceneManager& Environment::getSceneManager()
-{
-    return sceneManager;
 }
 
 void Environment::bootstrap(const string& configPath)
@@ -77,6 +65,11 @@ void Environment::bootstrap(const string& configPath)
     // Load the sections
     sceneManager.loadSection("Scenes", configuration);
     sceneLoaderManager.loadSection("SceneLoaders", configuration);
+    // Invoke scene loaders - this will populate shapes and primitives
+    for (auto sceneLoader : sceneLoaderManager.getInstanceManager().asList())
+        sceneLoader->loadScene();
+    // Load renderers
+    rendererManager.loadSection("Renderers", configuration);
 }
 
 Environment& Environment::getInstance()
@@ -95,4 +88,12 @@ void Environment::loadCoreFactories()
 
     // Register Scene Loaders
     sceneLoaderManager.getFactoryManager().registerItem<WavefrontSceneLoaderFactory>("WavefrontSceneLoader", *this);
+
+    // Renderers
+    rendererManager.getFactoryManager().registerItem<RendererFactory>("Renderer", *this);
 }
+
+ConfigurationManager& Environment::getConfigurationManager() { return configurationManager; }
+SceneLoaderManager& Environment::getSceneLoaderManager() { return sceneLoaderManager; }
+SceneManager& Environment::getSceneManager() { return sceneManager; }
+RendererManager& Environment::getRendererManager() { return rendererManager; }

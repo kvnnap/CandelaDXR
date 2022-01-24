@@ -6,5 +6,7 @@ namespace candela::renderer
 	{
 	public:
 		virtual ~IRenderer() = default;
+
+		virtual void renderFrame() = 0;
 	};
 }

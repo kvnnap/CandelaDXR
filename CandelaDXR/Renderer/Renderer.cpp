@@ -1,6 +1,7 @@
 #include "Renderer.h"
 
 #include "Exception/WindowException.h"
+#include "Mathematics/Types.h"
 
 #include "DirectX/DxUtil.h"
 #include "DirectX/d3dx12.h"
@@ -14,13 +15,18 @@ using feanor::io::Mouse;
 using candela::directx::DXUtil;
 using candela::directx::CommandQueue;
 
+using candela::mathematics::Vector2;
+using candela::mathematics::Vector3;
+
 using candela::ui::Window;
+using candela::scene::Scene;
 using candela::renderer::Renderer;
 
-Renderer::Renderer()
+Renderer::Renderer(Scene *scene)
 	: rtvDescriptorSize(),
 	  currentBackBufferIndex(),
-	  frameFenceValues()
+	  frameFenceValues(),
+	  scene(scene)
 {
 	window = make_unique<Window>("CandelaDXR", 800, 600, &keyboard, &mouse);
 
@@ -50,6 +56,8 @@ Renderer::Renderer()
 	for (int i = 0; i < backBuffers.size(); ++i)
 		pRTVBackBuffers[i] = backBuffers[i];
 
+	// Upload scene resources
+	initSceneResources();
 }
 
 Renderer::~Renderer()
@@ -86,4 +94,31 @@ void Renderer::renderFrame()
 	// Stats
 	if (fpsCounter.hitFrame())
 		window->setWindowName("CandelaDXR - Frames: " + to_string(fpsCounter.getTotalFrames()) + " FPS: " + to_string(fpsCounter.getFramesPerSecond()));
+}
+
+void Renderer::initSceneResources()
+{
+	auto totalSize = scene->getVertices().size() * sizeof(Vector3)
+		+ scene->getTextureCoords().size() * sizeof(Vector2)
+		+ scene->getNormals().size() * sizeof(Vector3)
+		+ scene->getIndices().size() * sizeof(int);
+
+	wrl::ComPtr<ID3D12Resource> tempVB;
+	sceneBuffer = DXUtil::createCommittedResource(pDevice, D3D12_HEAP_TYPE_DEFAULT, totalSize, D3D12_RESOURCE_STATE_COPY_DEST);
+	auto tempResource = DXUtil::createCommittedResource(pDevice, D3D12_HEAP_TYPE_UPLOAD, totalSize, D3D12_RESOURCE_STATE_GENERIC_READ);
+	std::uint8_t* data;
+	auto readRange = D3D12_RANGE(0, 0);
+	tempResource->Map(0, &readRange, reinterpret_cast<void**>(&data));
+	size_t offset = scene->getVertices().size() * sizeof(Vector3);
+	memcpy(data, scene->getVertices().data(), offset);
+	memcpy(data + offset, scene->getTextureCoords().data(), scene->getTextureCoords().size() * sizeof(Vector2));
+	offset += scene->getTextureCoords().size() * sizeof(Vector2);
+	memcpy(data + offset, scene->getNormals().data(), scene->getNormals().size() * sizeof(Vector3));
+	offset += scene->getNormals().size() * sizeof(Vector3);
+	memcpy(data + offset, scene->getIndices().data(), scene->getIndices().size() * sizeof(int));
+	tempResource->Unmap(0, nullptr);
+	pCurrentCommandList = commandQueue->getCommandList();
+	pCurrentCommandList->CopyResource(sceneBuffer.Get(), tempResource.Get());
+	auto fenceValue = commandQueue->executeCommandList(pCurrentCommandList);
+	commandQueue->waitForFenceValue(fenceValue);
 }

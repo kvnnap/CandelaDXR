@@ -15,7 +15,7 @@ namespace candela::scene
 	struct SceneNode
 	{
 		// Connectivity
-		SceneNode *Parent;
+		SceneNode *Parent = nullptr;
 		std::vector<SceneNode> Children;
 
 		// Data
@@ -62,10 +62,7 @@ namespace candela::scene
 	public:
 		Scene();
 
-		const std::vector<Texture>& getTextures() const;
 		std::size_t addTexture(Texture texture);
-
-		const std::vector<Material>& getMaterials() const;
 		void addMaterial(Material texture);
 
 		void startGroup(const std::string& name);
@@ -77,6 +74,19 @@ namespace candela::scene
 
 		// Scene graph
 		void addSceneNodeToGroupMapping(const std::string& sceneNodeName, const std::string& groupName);
+
+		// Getters
+		const std::vector<mathematics::Vector3>& getVertices() const;
+		const std::vector<mathematics::Vector2>& getTextureCoords() const;
+		const std::vector<mathematics::Vector3>& getNormals() const;
+		const std::vector<int>& getIndices() const;
+
+		const std::vector<Texture>& getTextures() const;
+		const std::vector<Material>& getMaterials() const;
+		const std::vector<AreaLight>& getLights() const;
+		const std::vector<FaceAttributes>& getFaceAttributes() const;
+
+		const SceneNode& getSceneGraph() const;
 
 	private:
 		// Data

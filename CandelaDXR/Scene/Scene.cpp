@@ -15,6 +15,9 @@ using candela::mathematics::Vector3;
 using candela::scene::Texture;
 using candela::scene::Material;
 using candela::scene::Scene;
+using candela::scene::SceneNode;
+using candela::scene::AreaLight;
+using candela::scene::FaceAttributes;
 
 Scene::Scene()
 {
@@ -22,20 +25,10 @@ Scene::Scene()
 	sceneGraph.Transform = DirectX::XMMatrixIdentity();
 }
 
-const vector<Texture>& Scene::getTextures() const
-{
-	return textures;
-}
-
 size_t Scene::addTexture(Texture texture)
 {
 	textures.push_back(std::move(texture));
 	return textures.size() - 1;
-}
-
-const vector<Material>& Scene::getMaterials() const
-{
-	return materials;
 }
 
 void Scene::addMaterial(Material material)
@@ -149,3 +142,16 @@ void candela::scene::SceneNode::addChild(const string& nodeName, const string& g
 		.GroupName = groupName
 	});
 }
+
+// Getters
+const vector<Vector3>& Scene::getVertices() const { return vertices; }
+const vector<Vector2>& Scene::getTextureCoords() const { return textureCoords; }
+const vector<Vector3>& Scene::getNormals() const { return normals; }
+const vector<int>& Scene::getIndices() const { return indexData; }
+
+const vector<Texture>& Scene::getTextures() const { return textures; }
+const vector<Material>& Scene::getMaterials() const { return materials; }
+const vector<AreaLight>& Scene::getLights() const { return lights; }
+const vector<FaceAttributes>& Scene::getFaceAttributes() const { return faceAttributes; }
+
+const SceneNode& Scene::getSceneGraph() const { return sceneGraph; }

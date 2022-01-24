@@ -11,7 +11,7 @@
 #include "Window/Window.h"
 #include "DirectX/CommandQueue.h"
 #include "FpsCounter.h"
-
+#include "Scene/Scene.h"
 #include "IRenderer.h"
 
 namespace candela::renderer
@@ -22,12 +22,14 @@ namespace candela::renderer
 		: public IRenderer
 	{
 	public:
-		Renderer();
+		Renderer(scene::Scene *scene);
 		~Renderer();
 
-		void renderFrame();
+		void renderFrame() override;
 
 	private:
+		void initSceneResources();
+
 		// Basic I/O and Window
 		feanor::io::Keyboard keyboard;
 		feanor::io::Mouse mouse;
@@ -50,5 +52,9 @@ namespace candela::renderer
 
 		// Stats
 		FpsCounter fpsCounter;
+
+		// Scene
+		scene::Scene *scene;
+		wrl::ComPtr<ID3D12Resource> sceneBuffer;
 	};
 }

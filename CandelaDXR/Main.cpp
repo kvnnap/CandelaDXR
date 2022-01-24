@@ -7,7 +7,8 @@
 
 #include "Exception/Exception.h"
 #include "Environment/Environment.h"
-#include "Renderer/Renderer.h"
+#include "Window/Window.h"
+#include "Renderer/IRenderer.h"
 
 using std::cout;
 using std::endl;
@@ -15,7 +16,7 @@ using std::string;
 
 using candela::exception::Exception;
 using candela::environment::Environment;
-using candela::renderer::Renderer;
+using candela::renderer::IRenderer;
 using candela::ui::Window;
 
 
@@ -55,11 +56,7 @@ int main(int argc, char** argv)
         Environment env;
         env.bootstrap(configFileName);
 
-        // Invoke scene loaders - this will populate shapes and primitives
-        for (auto sceneLoader : env.getSceneLoaderManager().getInstanceManager().asList())
-            sceneLoader->loadScene();
-
-        Renderer renderer;
+        IRenderer& renderer = env.getRendererManager().getInstanceManager().get(0);
         while (!Window::ProcessMessages())
         {
             renderer.renderFrame();
