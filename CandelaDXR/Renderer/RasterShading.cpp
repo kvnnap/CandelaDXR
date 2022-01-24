@@ -1,0 +1,138 @@
+#include <d3dcompiler.h>
+
+#include "RasterShading.h"
+#include "DirectX/d3dx12.h"
+
+#include "Mathematics/Types.h"
+
+#include "Exception/WindowException.h"
+
+using candela::mathematics::Vector2;
+using candela::mathematics::Vector3; 
+using candela::renderer::RasterShading;
+
+RasterShading::RasterShading(wrl::ComPtr<ID3D12Device9> pDevice, directx::CommandQueue& commandQueue, scene::Scene& scene, wrl::ComPtr<ID3D12Resource> sceneBuffer)
+	: scissorRect(CD3DX12_RECT(0, 0, LONG_MAX, LONG_MAX)),
+	  pDevice(pDevice), commandQueue(commandQueue), scene(scene), sceneBuffer(sceneBuffer)
+{
+	// Handle result used for errors
+	HRESULT hr;
+
+	viewport = CD3DX12_VIEWPORT(0.0f, 0.0f, static_cast<float>(800), static_cast<float>(600));
+
+	// Load shaders
+	wrl::ComPtr<ID3DBlob> pVertexShaderBlob;
+	wrl::ComPtr<ID3DBlob> pPixelShaderBlob;
+	GFXTHROWIFFAILED(D3DReadFileToBlob(L"./Shaders/VertexShader.cso", &pVertexShaderBlob));
+	GFXTHROWIFFAILED(D3DReadFileToBlob(L"./Shaders/PixelShader.cso", &pPixelShaderBlob));
+
+	// Input Assembler config
+	D3D12_INPUT_ELEMENT_DESC ied[] = {
+		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+		{ "TEXUV", 0, DXGI_FORMAT_R32G32_FLOAT, 1, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }, //scene.getVertices().size() * sizeof(Vector3)
+		{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 2, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 } // scene.getVertices().size() * sizeof(Vector3) + scene.getTextureCoords().size() * sizeof(Vector2)
+	};
+	bufferViews[0] = D3D12_VERTEX_BUFFER_VIEW{
+		.BufferLocation = sceneBuffer->GetGPUVirtualAddress(),
+		.SizeInBytes = static_cast<std::uint32_t>(scene.getVertices().size() * sizeof(Vector3)),
+		.StrideInBytes = sizeof(Vector3)
+	};
+	bufferViews[1] = D3D12_VERTEX_BUFFER_VIEW{
+		.BufferLocation = bufferViews[0].BufferLocation + bufferViews[0].SizeInBytes,
+		.SizeInBytes = static_cast<std::uint32_t>(scene.getTextureCoords().size() * sizeof(Vector2)),
+		.StrideInBytes = sizeof(Vector2)
+	};
+	bufferViews[2] = D3D12_VERTEX_BUFFER_VIEW{
+		.BufferLocation = bufferViews[1].BufferLocation + bufferViews[1].SizeInBytes,
+		.SizeInBytes = static_cast<std::uint32_t>(scene.getNormals().size() * sizeof(Vector3)),
+		.StrideInBytes = sizeof(Vector3)
+	};
+	indexView.BufferLocation = sceneBuffer->GetGPUVirtualAddress() + bufferViews[0].SizeInBytes + bufferViews[1].SizeInBytes + bufferViews[2].SizeInBytes;
+	indexView.SizeInBytes = static_cast<UINT>(scene.getIndices().size() * sizeof(int));
+	indexView.Format = DXGI_FORMAT_R32_UINT;
+	//D3D12_INPUT_ELEMENT_DESC ied[] = {};
+
+	// Root signature - https://docs.microsoft.com/en-us/windows/desktop/direct3d12/root-signatures-overview
+	D3D12_FEATURE_DATA_ROOT_SIGNATURE featureData = {};
+	featureData.HighestVersion = D3D_ROOT_SIGNATURE_VERSION_1_1;
+	if (FAILED(pDevice->CheckFeatureSupport(D3D12_FEATURE_ROOT_SIGNATURE, &featureData, sizeof(featureData))))
+	{
+		featureData.HighestVersion = D3D_ROOT_SIGNATURE_VERSION_1_0;
+	}
+
+	// Allow input layout and deny unnecessary access to certain pipeline stages.
+	D3D12_ROOT_SIGNATURE_FLAGS rootSignatureFlags =
+		D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
+		D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS |
+		D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS |
+		D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS |
+		D3D12_ROOT_SIGNATURE_FLAG_DENY_PIXEL_SHADER_ROOT_ACCESS;
+
+	// A single 32-bit constant root parameter that is used by the vertex shader.
+	CD3DX12_ROOT_PARAMETER1 rootParameters[1] = {};
+	rootParameters[0].InitAsConstants(sizeof(DirectX::XMMATRIX) / 4, 0, 0, D3D12_SHADER_VISIBILITY_VERTEX);
+
+	CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC rootSignatureDescription;
+	rootSignatureDescription.Init_1_1(_countof(rootParameters), rootParameters, 0, nullptr, rootSignatureFlags);
+
+	// Serialize the root signature.
+	wrl::ComPtr<ID3DBlob> rootSignatureBlob;
+	wrl::ComPtr<ID3DBlob> errorBlob;
+	GFXTHROWIFFAILED(D3DX12SerializeVersionedRootSignature(&rootSignatureDescription,
+		featureData.HighestVersion, &rootSignatureBlob, &errorBlob));
+	// Create the root signature.
+	GFXTHROWIFFAILED(pDevice->CreateRootSignature(0, rootSignatureBlob->GetBufferPointer(),
+		rootSignatureBlob->GetBufferSize(), IID_PPV_ARGS(&rootSignature)));
+
+	// Setup pipeline - TYPE info is contained within each property in the struct!
+	struct PipelineStateStream
+	{
+		CD3DX12_PIPELINE_STATE_STREAM_ROOT_SIGNATURE pRootSignature;
+		CD3DX12_PIPELINE_STATE_STREAM_INPUT_LAYOUT InputLayout;
+		CD3DX12_PIPELINE_STATE_STREAM_PRIMITIVE_TOPOLOGY PrimitiveTopologyType;
+		CD3DX12_PIPELINE_STATE_STREAM_VS VS;
+		CD3DX12_PIPELINE_STATE_STREAM_PS PS;
+		//CD3DX12_PIPELINE_STATE_STREAM_DEPTH_STENCIL_FORMAT DSVFormat;
+		CD3DX12_PIPELINE_STATE_STREAM_RENDER_TARGET_FORMATS RTVFormats;
+	} pipelineStateStream;
+
+	D3D12_RT_FORMAT_ARRAY rtvFormats = {};
+	rtvFormats.NumRenderTargets = 1;
+	rtvFormats.RTFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
+
+	pipelineStateStream.pRootSignature = rootSignature.Get();
+	pipelineStateStream.InputLayout = { ied, static_cast<std::uint32_t>(std::size(ied)) };
+	pipelineStateStream.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+	pipelineStateStream.VS = CD3DX12_SHADER_BYTECODE(pVertexShaderBlob.Get());
+	pipelineStateStream.PS = CD3DX12_SHADER_BYTECODE(pPixelShaderBlob.Get());
+	//pipelineStateStream.DSVFormat = DXGI_FORMAT_D32_FLOAT;
+	pipelineStateStream.RTVFormats = rtvFormats;
+
+	D3D12_PIPELINE_STATE_STREAM_DESC pipelineStateStreamDesc = {
+		sizeof(PipelineStateStream), &pipelineStateStream
+	};
+	GFXTHROWIFFAILED(pDevice->CreatePipelineState(&pipelineStateStreamDesc, IID_PPV_ARGS(&pipelineState)));
+
+	auto commandList = commandQueue.getCommandList();
+	auto fV = commandQueue.executeCommandList(commandList);
+	commandQueue.waitForFenceValue(fV);
+}
+
+void RasterShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList6> pCurrentCommandList, wrl::ComPtr<ID3D12DescriptorHeap> pRTVDescriptorHeap, UINT currentBackBufferIndex)
+{
+	pCurrentCommandList->SetPipelineState(pipelineState.Get());
+	pCurrentCommandList->SetGraphicsRootSignature(rootSignature.Get());
+
+	pCurrentCommandList->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	pCurrentCommandList->IASetVertexBuffers(0u, 3u, &bufferViews[0]);
+	pCurrentCommandList->IASetIndexBuffer(&indexView);
+
+	pCurrentCommandList->RSSetScissorRects(1u, &scissorRect);
+	pCurrentCommandList->RSSetViewports(1u, &viewport);
+
+	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvDescriptorHandle(pRTVDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), currentBackBufferIndex, pDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV));
+	pCurrentCommandList->OMSetRenderTargets(1u, &rtvDescriptorHandle, FALSE, nullptr);
+
+	//pCurrentCommandList->DrawInstanced(3u, 1u, 0u, 0u);
+	pCurrentCommandList->DrawIndexedInstanced(3u, 1u, 0u, 0u, 0u);
+}

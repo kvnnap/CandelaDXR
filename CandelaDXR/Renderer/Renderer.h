@@ -14,6 +14,8 @@
 #include "Scene/Scene.h"
 #include "IRenderer.h"
 
+#include "RasterShading.h"
+
 namespace candela::renderer
 {
 	namespace wrl = Microsoft::WRL;
@@ -56,5 +58,8 @@ namespace candela::renderer
 		// Scene
 		scene::Scene *scene;
 		wrl::ComPtr<ID3D12Resource> sceneBuffer;
+
+		// TEST AREA
+		std::unique_ptr<RasterShading> rasterShading;
 	};
 }

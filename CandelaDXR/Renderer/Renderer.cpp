@@ -2,6 +2,7 @@
 
 #include "Exception/WindowException.h"
 #include "Mathematics/Types.h"
+#include "Renderer/RasterShading.h"
 
 #include "DirectX/DxUtil.h"
 #include "DirectX/d3dx12.h"
@@ -21,6 +22,7 @@ using candela::mathematics::Vector3;
 using candela::ui::Window;
 using candela::scene::Scene;
 using candela::renderer::Renderer;
+using candela::renderer::RasterShading;
 
 Renderer::Renderer(Scene *scene)
 	: rtvDescriptorSize(),
@@ -58,6 +60,10 @@ Renderer::Renderer(Scene *scene)
 
 	// Upload scene resources
 	initSceneResources();
+	
+
+	// Init shading stuff
+	rasterShading = make_unique<RasterShading>(pDevice, *commandQueue.get(), *scene, sceneBuffer);
 }
 
 Renderer::~Renderer()
@@ -79,6 +85,7 @@ void Renderer::renderFrame()
 	pCurrentCommandList->ClearRenderTargetView(rtvDescriptorHandle, color, 0, nullptr);
 
 	// Draw
+	rasterShading->draw(pCurrentCommandList, pRTVDescriptorHeap, currentBackBufferIndex);
 
 	// End frame
 	barrier = CD3DX12_RESOURCE_BARRIER::Transition(rtvBackBuffer.Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);

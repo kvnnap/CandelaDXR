@@ -40,7 +40,11 @@ void WavefrontSceneLoader::loadScene()
     vector<material_t> materials;
     string warn;
     string err;
-    LoadObj(&attr, &shapes, &materials, &warn, &err, filePath.c_str());
+    string baseDir;
+    if (filePath.find_last_of("/\\") != std::string::npos)
+        baseDir = filePath.substr(0, filePath.find_last_of("/\\"));
+
+    LoadObj(&attr, &shapes, &materials, &warn, &err, filePath.c_str(), baseDir.c_str());
 
     // If tinyobj fails, throw.
     if (!err.empty())

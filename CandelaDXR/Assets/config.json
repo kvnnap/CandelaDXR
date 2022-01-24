@@ -1,0 +1,22 @@
+{
+    "SceneLoaders": [
+        {
+            "Type": "WavefrontSceneLoader",
+            "Scene": "Scene1",
+            "FilePath": "Assets/CornellBox-Original.obj"
+        }
+        
+    ],
+    "Scenes": [
+        {
+            "Type": "Scene",
+            "Name": "Scene1"
+        }
+    ],
+    "Renderers": [
+        {
+            "Type": "Renderer",
+            "Scene": "Scene1"
+        }
+    ]
+}
