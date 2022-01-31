@@ -13,7 +13,7 @@
 #include "FpsCounter.h"
 #include "Scene/Scene.h"
 #include "IRenderer.h"
-
+#include "Camera.h"
 #include "RasterShading.h"
 
 namespace candela::renderer
@@ -31,6 +31,7 @@ namespace candela::renderer
 
 	private:
 		void initSceneResources();
+		void updateCamera();
 
 		// Basic I/O and Window
 		feanor::io::Keyboard keyboard;
@@ -58,6 +59,9 @@ namespace candela::renderer
 		// Scene
 		scene::Scene *scene;
 		wrl::ComPtr<ID3D12Resource> sceneBuffer;
+		wrl::ComPtr<ID3D12Resource> faceAttributeBuffer;
+		wrl::ComPtr<ID3D12Resource> materialBuffer;
+		std::unique_ptr<Camera> camera;
 
 		// TEST AREA
 		std::unique_ptr<RasterShading> rasterShading;

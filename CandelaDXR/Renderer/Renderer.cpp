@@ -6,6 +6,7 @@
 
 #include "DirectX/DxUtil.h"
 #include "DirectX/d3dx12.h"
+#include <DirectXMath.h>
 
 using std::make_unique;
 using std::to_string;
@@ -21,8 +22,13 @@ using candela::mathematics::Vector3;
 
 using candela::ui::Window;
 using candela::scene::Scene;
+using candela::scene::Material;
+using candela::scene::FaceAttributes;
 using candela::renderer::Renderer;
+using candela::renderer::Camera;
 using candela::renderer::RasterShading;
+
+using DirectX::XMVectorSet;
 
 Renderer::Renderer(Scene *scene)
 	: rtvDescriptorSize(),
@@ -58,12 +64,20 @@ Renderer::Renderer(Scene *scene)
 	for (int i = 0; i < backBuffers.size(); ++i)
 		pRTVBackBuffers[i] = backBuffers[i];
 
+	// Init Camera
+	camera = make_unique<Camera>(
+		XMVectorSet(0.f, 1.f, 3.5f, 1.f),
+		XMVectorSet(0.f, 0.f, -1.f, 0.f),
+		(float)800 / 600,
+		1.0f,
+		1.f,
+		10.f);
+
 	// Upload scene resources
 	initSceneResources();
-	
 
 	// Init shading stuff
-	rasterShading = make_unique<RasterShading>(pDevice, *commandQueue.get(), *scene, sceneBuffer, NumBackBuffers);
+	rasterShading = make_unique<RasterShading>(pDevice, *commandQueue.get(), *scene, sceneBuffer, materialBuffer, faceAttributeBuffer, NumBackBuffers, *camera);
 }
 
 Renderer::~Renderer()
@@ -85,6 +99,7 @@ void Renderer::renderFrame()
 	pCurrentCommandList->ClearRenderTargetView(rtvDescriptorHandle, color, 0, nullptr);
 
 	// Draw
+	updateCamera();
 	rasterShading->draw(pCurrentCommandList, pRTVDescriptorHeap, currentBackBufferIndex);
 
 	// End frame
@@ -126,6 +141,44 @@ void Renderer::initSceneResources()
 	tempResource->Unmap(0, nullptr);
 	pCurrentCommandList = commandQueue->getCommandList();
 	pCurrentCommandList->CopyResource(sceneBuffer.Get(), tempResource.Get());
+	
+
+	// Upload materials and face attributes (in separate buffers otherwise we have to take care of alignment)
+	wrl::ComPtr<ID3D12Resource> tempFace;
+	materialBuffer = DXUtil::uploadDataToDefaultHeap(
+		pDevice,
+		pCurrentCommandList,
+		tempFace,
+		scene->getMaterials().data(),
+		sizeof(Material) * scene->getMaterials().size(),
+		D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+
+	wrl::ComPtr<ID3D12Resource> tempFaceAttr;
+	faceAttributeBuffer = DXUtil::uploadDataToDefaultHeap(
+		pDevice,
+		pCurrentCommandList,
+		tempFaceAttr,
+		scene->getFaceAttributes().data(),
+		sizeof(FaceAttributes) * scene->getFaceAttributes().size(),
+		D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+
 	auto fenceValue = commandQueue->executeCommandList(pCurrentCommandList);
 	commandQueue->waitForFenceValue(fenceValue);
+}
+
+void Renderer::updateCamera()
+{
+	auto getValueIfPressed = [this](char key, float value) {
+		return keyboard.isKeyPressed(key) ? value : 0.f;
+	};
+
+	constexpr float unitsPerSec = 3.f;
+
+	float deltaUnits = fpsCounter.getLastFrameTime() / 1000.f * unitsPerSec;
+	camera->incrementPositionAlongDirection(getValueIfPressed('D', -deltaUnits), getValueIfPressed('W', deltaUnits));
+	camera->incrementPositionAlongDirection(getValueIfPressed('A', deltaUnits), getValueIfPressed('S', -deltaUnits));
+
+	deltaUnits = fpsCounter.getLastFrameTime() / 1000.f;
+	camera->incrementDirection(getValueIfPressed('L', -deltaUnits), getValueIfPressed('I', -deltaUnits));
+	camera->incrementDirection(getValueIfPressed('J', deltaUnits), getValueIfPressed('K', deltaUnits));
 }

@@ -11,12 +11,25 @@
 using candela::mathematics::Vector2;
 using candela::mathematics::Vector3; 
 using candela::renderer::RasterShading;
+using candela::renderer::Camera;
 using candela::directx::DXUtil;
+using DirectX::XMMATRIX;
 
-RasterShading::RasterShading(wrl::ComPtr<ID3D12Device9> pDevice, directx::CommandQueue& commandQueue, scene::Scene& scene, wrl::ComPtr<ID3D12Resource> sceneBuffer, UINT numBackBuffers)
-	: scissorRect(CD3DX12_RECT(0, 0, LONG_MAX, LONG_MAX)), numBackBuffers (numBackBuffers),
-	  pDevice(pDevice), commandQueue(commandQueue), scene(scene), sceneBuffer(sceneBuffer)
+RasterShading::RasterShading(
+	wrl::ComPtr<ID3D12Device9> pDevice,
+	directx::CommandQueue& commandQueue,
+	scene::Scene& scene,
+	wrl::ComPtr<ID3D12Resource> sceneBuffer,
+	wrl::ComPtr<ID3D12Resource> materialBuffer,
+	wrl::ComPtr<ID3D12Resource> faceAttributeBuffer,
+	UINT numBackBuffers,
+	Camera& camera)
+	: constBuffer{}, scissorRect(CD3DX12_RECT(0, 0, LONG_MAX, LONG_MAX)), numBackBuffers(numBackBuffers),
+	  pDevice(pDevice), commandQueue(commandQueue), scene(scene), 
+	  sceneBuffer(sceneBuffer), materialBuffer(materialBuffer), faceAttributeBuffer(faceAttributeBuffer), camera(camera)
 {
+	constantTempBuffer.resize(numBackBuffers);
+
 	// Handle result used for errors
 	HRESULT hr;
 
@@ -70,15 +83,19 @@ RasterShading::RasterShading(wrl::ComPtr<ID3D12Device9> pDevice, directx::Comman
 
 	// Allow input layout and deny unnecessary access to certain pipeline stages.
 	D3D12_ROOT_SIGNATURE_FLAGS rootSignatureFlags =
-		D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
-		D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS |
-		D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS |
-		D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS |
-		D3D12_ROOT_SIGNATURE_FLAG_DENY_PIXEL_SHADER_ROOT_ACCESS;
+		  D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT 
+		| D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS
+		| D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS
+		| D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS
+		//| D3D12_ROOT_SIGNATURE_FLAG_DENY_PIXEL_SHADER_ROOT_ACCESS
+		;
 
-	// A single 32-bit constant root parameter that is used by the vertex shader.
-	CD3DX12_ROOT_PARAMETER1 rootParameters[1] = {};
-	rootParameters[0].InitAsConstants(sizeof(DirectX::XMMATRIX) / 4, 0, 0, D3D12_SHADER_VISIBILITY_VERTEX);
+	// A single 32-bit constant root parameter that is used by the vertex shader. (CAMERA)
+	CD3DX12_ROOT_PARAMETER1 rootParameters[3] = {};
+	//rootParameters[0].InitAsConstants(sizeof(XMMATRIX) / 4, 0, 0, D3D12_SHADER_VISIBILITY_VERTEX);
+	rootParameters[0].InitAsConstantBufferView(0);
+	rootParameters[1].InitAsShaderResourceView(0);
+	rootParameters[2].InitAsShaderResourceView(1);
 
 	CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC rootSignatureDescription;
 	rootSignatureDescription.Init_1_1(_countof(rootParameters), rootParameters, 0, nullptr, rootSignatureFlags);
@@ -102,11 +119,15 @@ RasterShading::RasterShading(wrl::ComPtr<ID3D12Device9> pDevice, directx::Comman
 		CD3DX12_PIPELINE_STATE_STREAM_PS PS;
 		CD3DX12_PIPELINE_STATE_STREAM_DEPTH_STENCIL_FORMAT DSVFormat;
 		CD3DX12_PIPELINE_STATE_STREAM_RENDER_TARGET_FORMATS RTVFormats;
+		CD3DX12_PIPELINE_STATE_STREAM_RASTERIZER Rasterizer;
 	} pipelineStateStream;
 
 	D3D12_RT_FORMAT_ARRAY rtvFormats = {};
 	rtvFormats.NumRenderTargets = 1;
 	rtvFormats.RTFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
+
+	auto rasterDesc = CD3DX12_RASTERIZER_DESC(CD3DX12_DEFAULT());
+	rasterDesc.CullMode = D3D12_CULL_MODE_NONE;
 
 	pipelineStateStream.pRootSignature = rootSignature.Get();
 	pipelineStateStream.InputLayout = { ied, static_cast<std::uint32_t>(std::size(ied)) };
@@ -115,6 +136,7 @@ RasterShading::RasterShading(wrl::ComPtr<ID3D12Device9> pDevice, directx::Comman
 	pipelineStateStream.PS = CD3DX12_SHADER_BYTECODE(pPixelShaderBlob.Get());
 	pipelineStateStream.DSVFormat = DXGI_FORMAT_D32_FLOAT;
 	pipelineStateStream.RTVFormats = rtvFormats;
+	pipelineStateStream.Rasterizer = rasterDesc;
 
 	D3D12_PIPELINE_STATE_STREAM_DESC pipelineStateStreamDesc = {
 		sizeof(PipelineStateStream), &pipelineStateStream
@@ -122,6 +144,17 @@ RasterShading::RasterShading(wrl::ComPtr<ID3D12Device9> pDevice, directx::Comman
 	GFXTHROWIFFAILED(pDevice->CreatePipelineState(&pipelineStateStreamDesc, IID_PPV_ARGS(&pipelineState)));
 
 	auto commandList = commandQueue.getCommandList();
+
+	// Init const buffer
+	wrl::ComPtr<ID3D12Resource> cBuffIntBuffer;
+	constantBuffer = DXUtil::uploadDataToDefaultHeap(
+		pDevice,
+		commandList,
+		cBuffIntBuffer,
+		&constBuffer,
+		sizeof(constBuffer),
+		D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
+
 	auto fV = commandQueue.executeCommandList(commandList);
 	commandQueue.waitForFenceValue(fV);
 }
@@ -145,6 +178,22 @@ void RasterShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList6> pCurrentCommand
 	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvDescriptorHandle(pRTVDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), currentBackBufferIndex, pDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV));
 	pCurrentCommandList->OMSetRenderTargets(1u, &rtvDescriptorHandle, FALSE, &dsvDescriptorHandle);
 
+	// Update the MVP matrix
+	constBuffer.MVP = camera.getViewPerspectiveMatrix();
+	constBuffer.CameraPosition = camera.getPosition();
+	DXUtil::updateDataInDefaultHeap(
+		pDevice,
+		pCurrentCommandList,
+		constantBuffer,
+		constantTempBuffer[currentBackBufferIndex],
+		&constBuffer,
+		sizeof(constBuffer),
+		D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER,
+		D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
+	pCurrentCommandList->SetGraphicsRootConstantBufferView(0u, constantBuffer->GetGPUVirtualAddress()); // Const buff (includes Cam)
+	pCurrentCommandList->SetGraphicsRootShaderResourceView(1u, materialBuffer->GetGPUVirtualAddress());  // Material
+	pCurrentCommandList->SetGraphicsRootShaderResourceView(2u, faceAttributeBuffer->GetGPUVirtualAddress());  // Face
+
 	//pCurrentCommandList->DrawInstanced(3u, 1u, 0u, 0u);
-	pCurrentCommandList->DrawIndexedInstanced(scene.getIndices().size(), 1u, 0u, 0u, 0u);
+	pCurrentCommandList->DrawIndexedInstanced(static_cast<UINT>(scene.getIndices().size()), 1u, 0u, 0u, 0u);
 }

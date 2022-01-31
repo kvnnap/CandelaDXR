@@ -13,9 +13,11 @@ namespace candela::renderer
 		bool hitFrame();
 		std::uint64_t getTotalFrames() const;
 		float getFramesPerSecond() const;
+		std::uint64_t getLastFrameTime() const;
 	private:
 		std::uint64_t frames, framesPrev;
 		float fps;
 		std::chrono::milliseconds ms;
+		std::chrono::milliseconds prevMs, currentMs;
 	};
 }

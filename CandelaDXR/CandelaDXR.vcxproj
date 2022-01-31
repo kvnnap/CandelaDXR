@@ -188,6 +188,7 @@
     <ClCompile Include="Exception\DxgiInfoException.cpp" />
     <ClCompile Include="Exception\Exception.cpp" />
     <ClCompile Include="Exception\WindowException.cpp" />
+    <ClCompile Include="Renderer\Camera.cpp" />
     <ClCompile Include="Renderer\FpsCounter.cpp" />
     <ClCompile Include="Renderer\RasterShading.cpp" />
     <ClCompile Include="Renderer\Renderer.cpp" />
@@ -212,6 +213,7 @@
     <ClInclude Include="Factory\RendererFactory.h" />
     <ClInclude Include="Mathematics\Constants.h" />
     <ClInclude Include="Mathematics\Types.h" />
+    <ClInclude Include="Renderer\Camera.h" />
     <ClInclude Include="Renderer\FpsCounter.h" />
     <ClInclude Include="Renderer\IRenderer.h" />
     <ClInclude Include="Renderer\RasterShading.h" />
