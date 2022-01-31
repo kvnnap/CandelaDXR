@@ -63,7 +63,7 @@ Renderer::Renderer(Scene *scene)
 	
 
 	// Init shading stuff
-	rasterShading = make_unique<RasterShading>(pDevice, *commandQueue.get(), *scene, sceneBuffer);
+	rasterShading = make_unique<RasterShading>(pDevice, *commandQueue.get(), *scene, sceneBuffer, NumBackBuffers);
 }
 
 Renderer::~Renderer()

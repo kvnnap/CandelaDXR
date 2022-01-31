@@ -2,6 +2,7 @@
 
 #include "RasterShading.h"
 #include "DirectX/d3dx12.h"
+#include "DirectX/DxUtil.h"
 
 #include "Mathematics/Types.h"
 
@@ -10,9 +11,10 @@
 using candela::mathematics::Vector2;
 using candela::mathematics::Vector3; 
 using candela::renderer::RasterShading;
+using candela::directx::DXUtil;
 
-RasterShading::RasterShading(wrl::ComPtr<ID3D12Device9> pDevice, directx::CommandQueue& commandQueue, scene::Scene& scene, wrl::ComPtr<ID3D12Resource> sceneBuffer)
-	: scissorRect(CD3DX12_RECT(0, 0, LONG_MAX, LONG_MAX)),
+RasterShading::RasterShading(wrl::ComPtr<ID3D12Device9> pDevice, directx::CommandQueue& commandQueue, scene::Scene& scene, wrl::ComPtr<ID3D12Resource> sceneBuffer, UINT numBackBuffers)
+	: scissorRect(CD3DX12_RECT(0, 0, LONG_MAX, LONG_MAX)), numBackBuffers (numBackBuffers),
 	  pDevice(pDevice), commandQueue(commandQueue), scene(scene), sceneBuffer(sceneBuffer)
 {
 	// Handle result used for errors
@@ -50,6 +52,12 @@ RasterShading::RasterShading(wrl::ComPtr<ID3D12Device9> pDevice, directx::Comman
 	indexView.BufferLocation = sceneBuffer->GetGPUVirtualAddress() + bufferViews[0].SizeInBytes + bufferViews[1].SizeInBytes + bufferViews[2].SizeInBytes;
 	indexView.SizeInBytes = static_cast<UINT>(scene.getIndices().size() * sizeof(int));
 	indexView.Format = DXGI_FORMAT_R32_UINT;
+
+	// And for depth stencil view
+	pDepthDescriptorHeap = DXUtil::createDescriptorHeap(pDevice, numBackBuffers, D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
+	dsvDescriptorSize = pDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
+	pDepthBuffers = DXUtil::createDepthStencilView(pDevice, pDepthDescriptorHeap, 800, 600, numBackBuffers);
+
 	//D3D12_INPUT_ELEMENT_DESC ied[] = {};
 
 	// Root signature - https://docs.microsoft.com/en-us/windows/desktop/direct3d12/root-signatures-overview
@@ -92,7 +100,7 @@ RasterShading::RasterShading(wrl::ComPtr<ID3D12Device9> pDevice, directx::Comman
 		CD3DX12_PIPELINE_STATE_STREAM_PRIMITIVE_TOPOLOGY PrimitiveTopologyType;
 		CD3DX12_PIPELINE_STATE_STREAM_VS VS;
 		CD3DX12_PIPELINE_STATE_STREAM_PS PS;
-		//CD3DX12_PIPELINE_STATE_STREAM_DEPTH_STENCIL_FORMAT DSVFormat;
+		CD3DX12_PIPELINE_STATE_STREAM_DEPTH_STENCIL_FORMAT DSVFormat;
 		CD3DX12_PIPELINE_STATE_STREAM_RENDER_TARGET_FORMATS RTVFormats;
 	} pipelineStateStream;
 
@@ -105,7 +113,7 @@ RasterShading::RasterShading(wrl::ComPtr<ID3D12Device9> pDevice, directx::Comman
 	pipelineStateStream.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 	pipelineStateStream.VS = CD3DX12_SHADER_BYTECODE(pVertexShaderBlob.Get());
 	pipelineStateStream.PS = CD3DX12_SHADER_BYTECODE(pPixelShaderBlob.Get());
-	//pipelineStateStream.DSVFormat = DXGI_FORMAT_D32_FLOAT;
+	pipelineStateStream.DSVFormat = DXGI_FORMAT_D32_FLOAT;
 	pipelineStateStream.RTVFormats = rtvFormats;
 
 	D3D12_PIPELINE_STATE_STREAM_DESC pipelineStateStreamDesc = {
@@ -120,6 +128,10 @@ RasterShading::RasterShading(wrl::ComPtr<ID3D12Device9> pDevice, directx::Comman
 
 void RasterShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList6> pCurrentCommandList, wrl::ComPtr<ID3D12DescriptorHeap> pRTVDescriptorHeap, UINT currentBackBufferIndex)
 {
+	// Clear Depth
+	CD3DX12_CPU_DESCRIPTOR_HANDLE dsvDescriptorHandle(pDepthDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), currentBackBufferIndex, dsvDescriptorSize);
+	pCurrentCommandList->ClearDepthStencilView(dsvDescriptorHandle, D3D12_CLEAR_FLAG_DEPTH, 1.f, 0, 0, nullptr);
+
 	pCurrentCommandList->SetPipelineState(pipelineState.Get());
 	pCurrentCommandList->SetGraphicsRootSignature(rootSignature.Get());
 
@@ -131,7 +143,7 @@ void RasterShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList6> pCurrentCommand
 	pCurrentCommandList->RSSetViewports(1u, &viewport);
 
 	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvDescriptorHandle(pRTVDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), currentBackBufferIndex, pDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV));
-	pCurrentCommandList->OMSetRenderTargets(1u, &rtvDescriptorHandle, FALSE, nullptr);
+	pCurrentCommandList->OMSetRenderTargets(1u, &rtvDescriptorHandle, FALSE, &dsvDescriptorHandle);
 
 	//pCurrentCommandList->DrawInstanced(3u, 1u, 0u, 0u);
 	pCurrentCommandList->DrawIndexedInstanced(scene.getIndices().size(), 1u, 0u, 0u, 0u);

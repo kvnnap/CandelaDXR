@@ -4,6 +4,8 @@
 #include <d3d12.h>
 #include <wrl/client.h>
 
+#include <vector>
+
 #include "DirectX/CommandQueue.h"
 #include "Scene/Scene.h"
 
@@ -14,7 +16,7 @@ namespace candela::renderer
 	class RasterShading
 	{
 	public:
-		RasterShading(wrl::ComPtr<ID3D12Device9> pDevice, directx::CommandQueue &commandQueue, scene::Scene &scene, wrl::ComPtr<ID3D12Resource> sceneBuffer);
+		RasterShading(wrl::ComPtr<ID3D12Device9> pDevice, directx::CommandQueue &commandQueue, scene::Scene &scene, wrl::ComPtr<ID3D12Resource> sceneBuffer, UINT numBackBuffers);
 
 		void draw(wrl::ComPtr<ID3D12GraphicsCommandList6> pCurrentCommandList, wrl::ComPtr<ID3D12DescriptorHeap> pRTVDescriptorHeap, UINT currentBackBufferIndex);
 
@@ -24,8 +26,12 @@ namespace candela::renderer
 		D3D12_INDEX_BUFFER_VIEW indexView;
 		D3D12_RECT scissorRect;
 		D3D12_VIEWPORT viewport;
+		const UINT numBackBuffers;
+		UINT dsvDescriptorSize;
+		std::vector<wrl::ComPtr<ID3D12Resource>> pDepthBuffers;
 
 		wrl::ComPtr<ID3D12Device9> pDevice;
+		wrl::ComPtr<ID3D12DescriptorHeap> pDepthDescriptorHeap;
 		directx::CommandQueue &commandQueue;
 		scene::Scene& scene;
 		wrl::ComPtr<ID3D12Resource> sceneBuffer;
