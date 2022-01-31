@@ -134,5 +134,5 @@ void RasterShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList6> pCurrentCommand
 	pCurrentCommandList->OMSetRenderTargets(1u, &rtvDescriptorHandle, FALSE, nullptr);
 
 	//pCurrentCommandList->DrawInstanced(3u, 1u, 0u, 0u);
-	pCurrentCommandList->DrawIndexedInstanced(3u, 1u, 0u, 0u, 0u);
+	pCurrentCommandList->DrawIndexedInstanced(scene.getIndices().size(), 1u, 0u, 0u, 0u);
 }
