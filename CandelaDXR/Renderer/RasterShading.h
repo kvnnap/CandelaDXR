@@ -25,6 +25,7 @@ namespace candela::renderer
 			wrl::ComPtr<ID3D12Resource> sceneBuffer,
 			wrl::ComPtr<ID3D12Resource> materialBuffer,
 			wrl::ComPtr<ID3D12Resource> faceAttributeBuffer,
+			wrl::ComPtr<ID3D12Resource> lightBuffer,
 			UINT numBackBuffers,
 			Camera& camera);
 
@@ -53,6 +54,7 @@ namespace candela::renderer
 		wrl::ComPtr<ID3D12Resource> sceneBuffer;
 		wrl::ComPtr<ID3D12Resource> materialBuffer;
 		wrl::ComPtr<ID3D12Resource> faceAttributeBuffer;
+		wrl::ComPtr<ID3D12Resource> lightBuffer;
 		wrl::ComPtr<ID3D12Resource> constantBuffer;
 		std::vector<wrl::ComPtr<ID3D12Resource>> constantTempBuffer;
 		wrl::ComPtr<ID3D12RootSignature> rootSignature;

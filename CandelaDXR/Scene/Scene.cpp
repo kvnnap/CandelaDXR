@@ -102,8 +102,8 @@ void candela::scene::Scene::addFace(
 	{
 		lights.emplace_back(AreaLight{
 			.Intensity = DirectX::XMVectorSet(1.f, 1.f, 1.f, 1.f),
-			.InstanceIndex = static_cast<uint32_t>(spanDataMap.size()),
-			.PrimitiveId = static_cast<uint32_t>(indexData.size() / 3),
+			.InstanceIndex = static_cast<uint32_t>(spanDataMap.size() - 1),
+			.PrimitiveId = static_cast<uint32_t>(indexData.size() / 3 - 1),
 			.MaterialId = materialId
 		});
 	}

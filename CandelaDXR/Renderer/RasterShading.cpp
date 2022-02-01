@@ -22,11 +22,13 @@ RasterShading::RasterShading(
 	wrl::ComPtr<ID3D12Resource> sceneBuffer,
 	wrl::ComPtr<ID3D12Resource> materialBuffer,
 	wrl::ComPtr<ID3D12Resource> faceAttributeBuffer,
+	wrl::ComPtr<ID3D12Resource> lightBuffer,
 	UINT numBackBuffers,
 	Camera& camera)
 	: constBuffer{}, scissorRect(CD3DX12_RECT(0, 0, LONG_MAX, LONG_MAX)), numBackBuffers(numBackBuffers),
 	  pDevice(pDevice), commandQueue(commandQueue), scene(scene), 
-	  sceneBuffer(sceneBuffer), materialBuffer(materialBuffer), faceAttributeBuffer(faceAttributeBuffer), camera(camera)
+	  sceneBuffer(sceneBuffer), materialBuffer(materialBuffer), faceAttributeBuffer(faceAttributeBuffer), lightBuffer(lightBuffer),
+	  camera(camera)
 {
 	constantTempBuffer.resize(numBackBuffers);
 
@@ -91,11 +93,16 @@ RasterShading::RasterShading(
 		;
 
 	// A single 32-bit constant root parameter that is used by the vertex shader. (CAMERA)
-	CD3DX12_ROOT_PARAMETER1 rootParameters[3] = {};
+	CD3DX12_ROOT_PARAMETER1 rootParameters[8] = {};
 	//rootParameters[0].InitAsConstants(sizeof(XMMATRIX) / 4, 0, 0, D3D12_SHADER_VISIBILITY_VERTEX);
 	rootParameters[0].InitAsConstantBufferView(0);
 	rootParameters[1].InitAsShaderResourceView(0);
 	rootParameters[2].InitAsShaderResourceView(1);
+	rootParameters[3].InitAsShaderResourceView(2);
+	rootParameters[4].InitAsShaderResourceView(3);
+	rootParameters[5].InitAsShaderResourceView(4);
+	rootParameters[6].InitAsShaderResourceView(5);
+	rootParameters[7].InitAsShaderResourceView(6);
 
 	CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC rootSignatureDescription;
 	rootSignatureDescription.Init_1_1(_countof(rootParameters), rootParameters, 0, nullptr, rootSignatureFlags);
@@ -193,6 +200,12 @@ void RasterShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList6> pCurrentCommand
 	pCurrentCommandList->SetGraphicsRootConstantBufferView(0u, constantBuffer->GetGPUVirtualAddress()); // Const buff (includes Cam)
 	pCurrentCommandList->SetGraphicsRootShaderResourceView(1u, materialBuffer->GetGPUVirtualAddress());  // Material
 	pCurrentCommandList->SetGraphicsRootShaderResourceView(2u, faceAttributeBuffer->GetGPUVirtualAddress());  // Face
+	pCurrentCommandList->SetGraphicsRootShaderResourceView(3u, lightBuffer->GetGPUVirtualAddress());  // Face
+	pCurrentCommandList->SetGraphicsRootShaderResourceView(4u, bufferViews[0].BufferLocation);  // Vertices
+	pCurrentCommandList->SetGraphicsRootShaderResourceView(5u, bufferViews[1].BufferLocation);  // Tex
+	pCurrentCommandList->SetGraphicsRootShaderResourceView(6u, bufferViews[2].BufferLocation);  // Normals
+	pCurrentCommandList->SetGraphicsRootShaderResourceView(7u, indexView.BufferLocation);  // Indices
+
 
 	//pCurrentCommandList->DrawInstanced(3u, 1u, 0u, 0u);
 	pCurrentCommandList->DrawIndexedInstanced(static_cast<UINT>(scene.getIndices().size()), 1u, 0u, 0u, 0u);

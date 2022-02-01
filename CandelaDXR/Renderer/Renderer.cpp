@@ -69,15 +69,15 @@ Renderer::Renderer(Scene *scene)
 		XMVectorSet(0.f, 1.f, 3.5f, 1.f),
 		XMVectorSet(0.f, 0.f, -1.f, 0.f),
 		(float)800 / 600,
-		1.0f,
 		1.f,
-		10.f);
+		1.f,
+		100.f);
 
 	// Upload scene resources
 	initSceneResources();
 
 	// Init shading stuff
-	rasterShading = make_unique<RasterShading>(pDevice, *commandQueue.get(), *scene, sceneBuffer, materialBuffer, faceAttributeBuffer, NumBackBuffers, *camera);
+	rasterShading = make_unique<RasterShading>(pDevice, *commandQueue.get(), *scene, sceneBuffer, materialBuffer, faceAttributeBuffer, lightBuffer, NumBackBuffers, *camera);
 }
 
 Renderer::~Renderer()
@@ -145,21 +145,18 @@ void Renderer::initSceneResources()
 
 	// Upload materials and face attributes (in separate buffers otherwise we have to take care of alignment)
 	wrl::ComPtr<ID3D12Resource> tempFace;
-	materialBuffer = DXUtil::uploadDataToDefaultHeap(
-		pDevice,
-		pCurrentCommandList,
-		tempFace,
-		scene->getMaterials().data(),
-		sizeof(Material) * scene->getMaterials().size(),
+	materialBuffer = DXUtil::uploadDataToDefaultHeap(pDevice, pCurrentCommandList, tempFace,
+		scene->getMaterials().data(), sizeof(Material) * scene->getMaterials().size(),
 		D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
 	wrl::ComPtr<ID3D12Resource> tempFaceAttr;
-	faceAttributeBuffer = DXUtil::uploadDataToDefaultHeap(
-		pDevice,
-		pCurrentCommandList,
-		tempFaceAttr,
-		scene->getFaceAttributes().data(),
-		sizeof(FaceAttributes) * scene->getFaceAttributes().size(),
+	faceAttributeBuffer = DXUtil::uploadDataToDefaultHeap(pDevice, pCurrentCommandList, tempFaceAttr,
+		scene->getFaceAttributes().data(), sizeof(FaceAttributes) * scene->getFaceAttributes().size(),
+		D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+
+	wrl::ComPtr<ID3D12Resource> tempLight;
+	lightBuffer = DXUtil::uploadDataToDefaultHeap(pDevice, pCurrentCommandList, tempLight,
+		scene->getLights().data(), sizeof(FaceAttributes) * scene->getLights().size(),
 		D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
 	auto fenceValue = commandQueue->executeCommandList(pCurrentCommandList);
