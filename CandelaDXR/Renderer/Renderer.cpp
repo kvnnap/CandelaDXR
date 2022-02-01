@@ -24,6 +24,7 @@ using candela::ui::Window;
 using candela::scene::Scene;
 using candela::scene::Material;
 using candela::scene::FaceAttributes;
+using candela::scene::AreaLight;
 using candela::renderer::Renderer;
 using candela::renderer::Camera;
 using candela::renderer::RasterShading;
@@ -156,7 +157,7 @@ void Renderer::initSceneResources()
 
 	wrl::ComPtr<ID3D12Resource> tempLight;
 	lightBuffer = DXUtil::uploadDataToDefaultHeap(pDevice, pCurrentCommandList, tempLight,
-		scene->getLights().data(), sizeof(FaceAttributes) * scene->getLights().size(),
+		scene->getLights().data(), sizeof(AreaLight) * scene->getLights().size(),
 		D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
 	auto fenceValue = commandQueue->executeCommandList(pCurrentCommandList);

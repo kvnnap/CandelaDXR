@@ -206,7 +206,6 @@ void RasterShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList6> pCurrentCommand
 	pCurrentCommandList->SetGraphicsRootShaderResourceView(6u, bufferViews[2].BufferLocation);  // Normals
 	pCurrentCommandList->SetGraphicsRootShaderResourceView(7u, indexView.BufferLocation);  // Indices
 
-
 	//pCurrentCommandList->DrawInstanced(3u, 1u, 0u, 0u);
 	pCurrentCommandList->DrawIndexedInstanced(static_cast<UINT>(scene.getIndices().size()), 1u, 0u, 0u, 0u);
 }
