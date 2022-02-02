@@ -75,6 +75,12 @@
     <ClCompile Include="Renderer\Camera.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Factory\CameraFactory.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Factory\VectorFactory.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Exception\GeneralException.h">
@@ -153,6 +159,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Renderer\Camera.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Factory\CameraFactory.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Factory\VectorFactory.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

@@ -35,7 +35,7 @@ RasterShading::RasterShading(
 	// Handle result used for errors
 	HRESULT hr;
 
-	viewport = CD3DX12_VIEWPORT(0.0f, 0.0f, static_cast<float>(800), static_cast<float>(600));
+	viewport = CD3DX12_VIEWPORT(0.0f, 0.0f, static_cast<float>(900), static_cast<float>(600));
 
 	// Load shaders
 	wrl::ComPtr<ID3DBlob> pVertexShaderBlob;
@@ -71,7 +71,7 @@ RasterShading::RasterShading(
 	// And for depth stencil view
 	pDepthDescriptorHeap = DXUtil::createDescriptorHeap(pDevice, numBackBuffers, D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
 	dsvDescriptorSize = pDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
-	pDepthBuffers = DXUtil::createDepthStencilView(pDevice, pDepthDescriptorHeap, 800, 600, numBackBuffers);
+	pDepthBuffers = DXUtil::createDepthStencilView(pDevice, pDepthDescriptorHeap, 900, 600, numBackBuffers);
 
 	//D3D12_INPUT_ELEMENT_DESC ied[] = {};
 

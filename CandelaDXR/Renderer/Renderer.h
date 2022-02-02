@@ -24,7 +24,7 @@ namespace candela::renderer
 		: public IRenderer
 	{
 	public:
-		Renderer(scene::Scene *scene);
+		Renderer(scene::Scene *scene, Camera *camera, const mathematics::UVector2& windowDimensions);
 		~Renderer();
 
 		void renderFrame() override;
@@ -58,11 +58,11 @@ namespace candela::renderer
 
 		// Scene
 		scene::Scene *scene;
+		Camera *camera;
 		wrl::ComPtr<ID3D12Resource> sceneBuffer;
 		wrl::ComPtr<ID3D12Resource> faceAttributeBuffer;
 		wrl::ComPtr<ID3D12Resource> materialBuffer;
 		wrl::ComPtr<ID3D12Resource> lightBuffer;
-		std::unique_ptr<Camera> camera;
 
 		// TEST AREA
 		std::unique_ptr<RasterShading> rasterShading;

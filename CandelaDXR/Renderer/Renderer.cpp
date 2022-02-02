@@ -18,6 +18,7 @@ using candela::directx::DXUtil;
 using candela::directx::CommandQueue;
 
 using candela::mathematics::Vector2;
+using candela::mathematics::UVector2;
 using candela::mathematics::Vector3;
 
 using candela::ui::Window;
@@ -31,13 +32,14 @@ using candela::renderer::RasterShading;
 
 using DirectX::XMVectorSet;
 
-Renderer::Renderer(Scene *scene)
+Renderer::Renderer(Scene *scene, Camera *camera, const UVector2 &windowDimensions)
 	: rtvDescriptorSize(),
 	  currentBackBufferIndex(),
 	  frameFenceValues(),
-	  scene(scene)
+	  scene(scene),
+	  camera(camera)
 {
-	window = make_unique<Window>("CandelaDXR", 800, 600, &keyboard, &mouse);
+	window = make_unique<Window>("CandelaDXR", windowDimensions.x, windowDimensions.y, &keyboard, &mouse);
 
 	// Init DirectX Debugging
 	DXUtil::enableDebugLayer();
@@ -64,15 +66,6 @@ Renderer::Renderer(Scene *scene)
 	auto backBuffers = DXUtil::createRenderTargetViews(pDevice, pRTVDescriptorHeap, pSwapChain, NumBackBuffers);
 	for (int i = 0; i < backBuffers.size(); ++i)
 		pRTVBackBuffers[i] = backBuffers[i];
-
-	// Init Camera
-	camera = make_unique<Camera>(
-		XMVectorSet(0.f, 1.f, 3.5f, 1.f),
-		XMVectorSet(0.f, 0.f, -1.f, 0.f),
-		(float)800 / 600,
-		1.f,
-		1.f,
-		100.f);
 
 	// Upload scene resources
 	initSceneResources();

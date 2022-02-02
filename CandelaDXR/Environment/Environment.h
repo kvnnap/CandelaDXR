@@ -10,10 +10,12 @@
 #include "Scene/ISceneLoader.h"
 #include "Scene/Scene.h"
 #include "Renderer/IRenderer.h"
+#include "Renderer/Camera.h"
 
 namespace candela::environment
 {
     using ConfigurationManager = feanor::environment::ResourceManager<feanor::configuration::parser::Parser>;
+    using CameraManager = feanor::environment::ResourceManager<renderer::Camera>;
     using SceneManager = feanor::environment::ResourceManager<scene::Scene>;
     using SceneLoaderManager = feanor::environment::ResourceManager<scene::ISceneLoader>;
     using RendererManager = feanor::environment::ResourceManager<renderer::IRenderer>;
@@ -25,6 +27,7 @@ namespace candela::environment
         void bootstrap(const std::string& configPath);
 
         ConfigurationManager& getConfigurationManager();
+        CameraManager& getCameraManager();
         SceneLoaderManager& getSceneLoaderManager();
         SceneManager& getSceneManager();
         RendererManager& getRendererManager();
@@ -38,6 +41,7 @@ namespace candela::environment
 
         // Managers
         ConfigurationManager configurationManager;
+        CameraManager cameraManager;
         SceneManager sceneManager;
         SceneLoaderManager sceneLoaderManager;
         RendererManager rendererManager;

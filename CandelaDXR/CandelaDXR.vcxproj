@@ -182,7 +182,9 @@
     <ClCompile Include="DirectX\CommandQueue.cpp" />
     <ClCompile Include="DirectX\DxUtil.cpp" />
     <ClCompile Include="Environment\Environment.cpp" />
+    <ClCompile Include="Factory\CameraFactory.cpp" />
     <ClCompile Include="Factory\RendererFactory.cpp" />
+    <ClCompile Include="Factory\VectorFactory.cpp" />
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="DirectX\DxgiInfoManager.cpp" />
     <ClCompile Include="Exception\DxgiInfoException.cpp" />
@@ -210,6 +212,8 @@
     <ClInclude Include="Exception\Exception.h" />
     <ClInclude Include="Exception\GeneralException.h" />
     <ClInclude Include="Exception\WindowException.h" />
+    <ClInclude Include="Factory\CameraFactory.h" />
+    <ClInclude Include="Factory\VectorFactory.h" />
     <ClInclude Include="Factory\RendererFactory.h" />
     <ClInclude Include="Mathematics\Constants.h" />
     <ClInclude Include="Mathematics\Types.h" />
