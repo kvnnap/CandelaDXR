@@ -9,6 +9,8 @@
 #include "DirectX/CommandQueue.h"
 #include "Scene/Scene.h"
 
+#include "Mathematics/Types.h"
+
 #include "Camera.h"
 
 namespace candela::renderer
@@ -27,7 +29,8 @@ namespace candela::renderer
 			wrl::ComPtr<ID3D12Resource> faceAttributeBuffer,
 			wrl::ComPtr<ID3D12Resource> lightBuffer,
 			UINT numBackBuffers,
-			Camera& camera);
+			Camera& camera,
+			mathematics::UVector2 winDimensions);
 
 		void draw(wrl::ComPtr<ID3D12GraphicsCommandList6> pCurrentCommandList, wrl::ComPtr<ID3D12DescriptorHeap> pRTVDescriptorHeap, UINT currentBackBufferIndex);
 

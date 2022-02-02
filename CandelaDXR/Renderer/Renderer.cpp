@@ -71,7 +71,7 @@ Renderer::Renderer(Scene *scene, Camera *camera, const UVector2 &windowDimension
 	initSceneResources();
 
 	// Init shading stuff
-	rasterShading = make_unique<RasterShading>(pDevice, *commandQueue.get(), *scene, sceneBuffer, materialBuffer, faceAttributeBuffer, lightBuffer, NumBackBuffers, *camera);
+	rasterShading = make_unique<RasterShading>(pDevice, *commandQueue.get(), *scene, sceneBuffer, materialBuffer, faceAttributeBuffer, lightBuffer, NumBackBuffers, *camera, windowDimensions);
 }
 
 Renderer::~Renderer()

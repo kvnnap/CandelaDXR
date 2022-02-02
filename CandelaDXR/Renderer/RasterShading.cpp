@@ -9,7 +9,8 @@
 #include "Exception/WindowException.h"
 
 using candela::mathematics::Vector2;
-using candela::mathematics::Vector3; 
+using candela::mathematics::Vector3;
+using candela::mathematics::UVector2;
 using candela::renderer::RasterShading;
 using candela::renderer::Camera;
 using candela::directx::DXUtil;
@@ -24,7 +25,8 @@ RasterShading::RasterShading(
 	wrl::ComPtr<ID3D12Resource> faceAttributeBuffer,
 	wrl::ComPtr<ID3D12Resource> lightBuffer,
 	UINT numBackBuffers,
-	Camera& camera)
+	Camera& camera,
+	UVector2 winDimensions)
 	: constBuffer{}, scissorRect(CD3DX12_RECT(0, 0, LONG_MAX, LONG_MAX)), numBackBuffers(numBackBuffers),
 	  pDevice(pDevice), commandQueue(commandQueue), scene(scene), 
 	  sceneBuffer(sceneBuffer), materialBuffer(materialBuffer), faceAttributeBuffer(faceAttributeBuffer), lightBuffer(lightBuffer),
@@ -35,7 +37,7 @@ RasterShading::RasterShading(
 	// Handle result used for errors
 	HRESULT hr;
 
-	viewport = CD3DX12_VIEWPORT(0.0f, 0.0f, static_cast<float>(900), static_cast<float>(600));
+	viewport = CD3DX12_VIEWPORT(0.0f, 0.0f, static_cast<float>(winDimensions.x), static_cast<float>(winDimensions.y));
 
 	// Load shaders
 	wrl::ComPtr<ID3DBlob> pVertexShaderBlob;
@@ -71,7 +73,7 @@ RasterShading::RasterShading(
 	// And for depth stencil view
 	pDepthDescriptorHeap = DXUtil::createDescriptorHeap(pDevice, numBackBuffers, D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
 	dsvDescriptorSize = pDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
-	pDepthBuffers = DXUtil::createDepthStencilView(pDevice, pDepthDescriptorHeap, 900, 600, numBackBuffers);
+	pDepthBuffers = DXUtil::createDepthStencilView(pDevice, pDepthDescriptorHeap, winDimensions.x, winDimensions.y, numBackBuffers);
 
 	//D3D12_INPUT_ELEMENT_DESC ied[] = {};
 
