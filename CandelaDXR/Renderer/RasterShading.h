@@ -13,28 +13,23 @@
 
 #include "Camera.h"
 
+#include "IDrawable.h"
+
 namespace candela::renderer
 {
 	namespace wrl = Microsoft::WRL;
 
 	class RasterShading
+		: public IDrawable
 	{
 	public:
-		RasterShading(
-			wrl::ComPtr<ID3D12Device9> pDevice,
-			directx::CommandQueue &commandQueue,
-			scene::Scene &scene,
-			wrl::ComPtr<ID3D12Resource> sceneBuffer,
-			wrl::ComPtr<ID3D12Resource> materialBuffer,
-			wrl::ComPtr<ID3D12Resource> faceAttributeBuffer,
-			wrl::ComPtr<ID3D12Resource> lightBuffer,
-			UINT numBackBuffers,
-			Camera& camera,
-			mathematics::UVector2 winDimensions);
+		RasterShading();
 
-		void draw(wrl::ComPtr<ID3D12GraphicsCommandList6> pCurrentCommandList, wrl::ComPtr<ID3D12DescriptorHeap> pRTVDescriptorHeap, UINT currentBackBufferIndex);
+		void init(RendererResources* rendererResources) override;
+		void draw(wrl::ComPtr<ID3D12GraphicsCommandList6> pCurrentCommandList, std::uint32_t currentBackBufferIndex) override;
 
 	private:
+		RendererResources* rendererResources;
 
 		struct ConstBuff
 		{
@@ -46,23 +41,14 @@ namespace candela::renderer
 		D3D12_INDEX_BUFFER_VIEW indexView;
 		D3D12_RECT scissorRect;
 		D3D12_VIEWPORT viewport;
-		const UINT numBackBuffers;
 		UINT dsvDescriptorSize;
 		std::vector<wrl::ComPtr<ID3D12Resource>> pDepthBuffers;
 
-		wrl::ComPtr<ID3D12Device9> pDevice;
 		wrl::ComPtr<ID3D12DescriptorHeap> pDepthDescriptorHeap;
-		directx::CommandQueue &commandQueue;
-		scene::Scene& scene;
-		wrl::ComPtr<ID3D12Resource> sceneBuffer;
-		wrl::ComPtr<ID3D12Resource> materialBuffer;
-		wrl::ComPtr<ID3D12Resource> faceAttributeBuffer;
-		wrl::ComPtr<ID3D12Resource> lightBuffer;
 		wrl::ComPtr<ID3D12Resource> constantBuffer;
 		std::vector<wrl::ComPtr<ID3D12Resource>> constantTempBuffer;
 		wrl::ComPtr<ID3D12RootSignature> rootSignature;
 		wrl::ComPtr<ID3D12PipelineState> pipelineState;
-		Camera& camera;
 
 	};
 }

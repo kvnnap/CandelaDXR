@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <vector>
 
 #define NOMINMAX
 #include <d3d12.h>
@@ -13,8 +14,8 @@
 #include "FpsCounter.h"
 #include "Scene/Scene.h"
 #include "IRenderer.h"
+#include "IDrawable.h"
 #include "Camera.h"
-#include "RasterShading.h"
 
 namespace candela::renderer
 {
@@ -24,7 +25,7 @@ namespace candela::renderer
 		: public IRenderer
 	{
 	public:
-		Renderer(scene::Scene *scene, Camera *camera, const mathematics::UVector2& windowDimensions);
+		Renderer(scene::Scene *scene, Camera *camera, const mathematics::UVector2& windowDimensions, std::vector<IDrawable*> drawables);
 		~Renderer();
 
 		void renderFrame() override;
@@ -65,6 +66,9 @@ namespace candela::renderer
 		wrl::ComPtr<ID3D12Resource> lightBuffer;
 
 		// TEST AREA
-		std::unique_ptr<RasterShading> rasterShading;
+		std::vector<IDrawable*> drawables;
+
+		// To pass
+		RendererResources rendererResources;
 	};
 }

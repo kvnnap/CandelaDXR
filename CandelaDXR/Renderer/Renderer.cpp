@@ -2,7 +2,6 @@
 
 #include "Exception/WindowException.h"
 #include "Mathematics/Types.h"
-#include "Renderer/RasterShading.h"
 
 #include "DirectX/DxUtil.h"
 #include "DirectX/d3dx12.h"
@@ -10,6 +9,7 @@
 
 using std::make_unique;
 using std::to_string;
+using std::vector;
 
 using feanor::io::Keyboard;
 using feanor::io::Mouse;
@@ -28,16 +28,17 @@ using candela::scene::FaceAttributes;
 using candela::scene::AreaLight;
 using candela::renderer::Renderer;
 using candela::renderer::Camera;
-using candela::renderer::RasterShading;
+using candela::renderer::IDrawable;
 
 using DirectX::XMVectorSet;
 
-Renderer::Renderer(Scene *scene, Camera *camera, const UVector2 &windowDimensions)
+Renderer::Renderer(Scene *scene, Camera *camera, const UVector2 &windowDimensions, vector<IDrawable*> p_drawables)
 	: rtvDescriptorSize(),
 	  currentBackBufferIndex(),
 	  frameFenceValues(),
 	  scene(scene),
-	  camera(camera)
+	  camera(camera),
+	  drawables(std::move(p_drawables))
 {
 	window = make_unique<Window>("CandelaDXR", windowDimensions.x, windowDimensions.y, &keyboard, &mouse);
 
@@ -70,8 +71,26 @@ Renderer::Renderer(Scene *scene, Camera *camera, const UVector2 &windowDimension
 	// Upload scene resources
 	initSceneResources();
 
-	// Init shading stuff
-	rasterShading = make_unique<RasterShading>(pDevice, *commandQueue.get(), *scene, sceneBuffer, materialBuffer, faceAttributeBuffer, lightBuffer, NumBackBuffers, *camera, windowDimensions);
+	// Prepare struct to share with drawables
+	rendererResources = RendererResources
+	{
+		.pDevice = pDevice,
+		.sceneBuffer = sceneBuffer,
+		.materialBuffer = materialBuffer,
+		.faceAttributeBuffer = faceAttributeBuffer,
+		.lightBuffer = lightBuffer,
+		.pRTVDescriptorHeap = pRTVDescriptorHeap,
+		.pRTVBackBuffers = backBuffers,
+		.commandQueue = commandQueue.get(),
+		.winDimensions = windowDimensions,
+		.numBackBuffers = NumBackBuffers,
+		.scene = scene,
+		.camera = camera
+	};
+
+	// Init drawables
+	for(IDrawable * drawable : drawables)
+		drawable->init(&rendererResources);
 }
 
 Renderer::~Renderer()
@@ -94,7 +113,8 @@ void Renderer::renderFrame()
 
 	// Draw
 	updateCamera();
-	rasterShading->draw(pCurrentCommandList, pRTVDescriptorHeap, currentBackBufferIndex);
+	for (IDrawable* drawable : drawables)
+		drawable->draw(pCurrentCommandList, currentBackBufferIndex);
 
 	// End frame
 	barrier = CD3DX12_RESOURCE_BARRIER::Transition(rtvBackBuffer.Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);

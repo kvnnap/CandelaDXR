@@ -15,29 +15,23 @@ using candela::renderer::RasterShading;
 using candela::renderer::Camera;
 using candela::directx::DXUtil;
 using DirectX::XMMATRIX;
+using std::uint32_t;
 
-RasterShading::RasterShading(
-	wrl::ComPtr<ID3D12Device9> pDevice,
-	directx::CommandQueue& commandQueue,
-	scene::Scene& scene,
-	wrl::ComPtr<ID3D12Resource> sceneBuffer,
-	wrl::ComPtr<ID3D12Resource> materialBuffer,
-	wrl::ComPtr<ID3D12Resource> faceAttributeBuffer,
-	wrl::ComPtr<ID3D12Resource> lightBuffer,
-	UINT numBackBuffers,
-	Camera& camera,
-	UVector2 winDimensions)
-	: constBuffer{}, scissorRect(CD3DX12_RECT(0, 0, LONG_MAX, LONG_MAX)), numBackBuffers(numBackBuffers),
-	  pDevice(pDevice), commandQueue(commandQueue), scene(scene), 
-	  sceneBuffer(sceneBuffer), materialBuffer(materialBuffer), faceAttributeBuffer(faceAttributeBuffer), lightBuffer(lightBuffer),
-	  camera(camera)
+RasterShading::RasterShading()
+	: constBuffer{}, scissorRect(CD3DX12_RECT(0, 0, LONG_MAX, LONG_MAX))
 {
-	constantTempBuffer.resize(numBackBuffers);
+}
+
+void candela::renderer::RasterShading::init(RendererResources* rRes)
+{
+	this->rendererResources = rRes;
+
+	constantTempBuffer.resize(rRes->numBackBuffers);
 
 	// Handle result used for errors
 	HRESULT hr;
 
-	viewport = CD3DX12_VIEWPORT(0.0f, 0.0f, static_cast<float>(winDimensions.x), static_cast<float>(winDimensions.y));
+	viewport = CD3DX12_VIEWPORT(0.0f, 0.0f, static_cast<float>(rRes->winDimensions.x), static_cast<float>(rRes->winDimensions.y));
 
 	// Load shaders
 	wrl::ComPtr<ID3DBlob> pVertexShaderBlob;
@@ -52,42 +46,42 @@ RasterShading::RasterShading(
 		{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 2, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 } // scene.getVertices().size() * sizeof(Vector3) + scene.getTextureCoords().size() * sizeof(Vector2)
 	};
 	bufferViews[0] = D3D12_VERTEX_BUFFER_VIEW{
-		.BufferLocation = sceneBuffer->GetGPUVirtualAddress(),
-		.SizeInBytes = static_cast<std::uint32_t>(scene.getVertices().size() * sizeof(Vector3)),
+		.BufferLocation = rRes->sceneBuffer->GetGPUVirtualAddress(),
+		.SizeInBytes = static_cast<std::uint32_t>(rRes->scene->getVertices().size() * sizeof(Vector3)),
 		.StrideInBytes = sizeof(Vector3)
 	};
 	bufferViews[1] = D3D12_VERTEX_BUFFER_VIEW{
 		.BufferLocation = bufferViews[0].BufferLocation + bufferViews[0].SizeInBytes,
-		.SizeInBytes = static_cast<std::uint32_t>(scene.getTextureCoords().size() * sizeof(Vector2)),
+		.SizeInBytes = static_cast<std::uint32_t>(rRes->scene->getTextureCoords().size() * sizeof(Vector2)),
 		.StrideInBytes = sizeof(Vector2)
 	};
 	bufferViews[2] = D3D12_VERTEX_BUFFER_VIEW{
 		.BufferLocation = bufferViews[1].BufferLocation + bufferViews[1].SizeInBytes,
-		.SizeInBytes = static_cast<std::uint32_t>(scene.getNormals().size() * sizeof(Vector3)),
+		.SizeInBytes = static_cast<std::uint32_t>(rRes->scene->getNormals().size() * sizeof(Vector3)),
 		.StrideInBytes = sizeof(Vector3)
 	};
-	indexView.BufferLocation = sceneBuffer->GetGPUVirtualAddress() + bufferViews[0].SizeInBytes + bufferViews[1].SizeInBytes + bufferViews[2].SizeInBytes;
-	indexView.SizeInBytes = static_cast<UINT>(scene.getIndices().size() * sizeof(int));
+	indexView.BufferLocation = rRes->sceneBuffer->GetGPUVirtualAddress() + bufferViews[0].SizeInBytes + bufferViews[1].SizeInBytes + bufferViews[2].SizeInBytes;
+	indexView.SizeInBytes = static_cast<UINT>(rRes->scene->getIndices().size() * sizeof(int));
 	indexView.Format = DXGI_FORMAT_R32_UINT;
 
 	// And for depth stencil view
-	pDepthDescriptorHeap = DXUtil::createDescriptorHeap(pDevice, numBackBuffers, D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
-	dsvDescriptorSize = pDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
-	pDepthBuffers = DXUtil::createDepthStencilView(pDevice, pDepthDescriptorHeap, winDimensions.x, winDimensions.y, numBackBuffers);
+	pDepthDescriptorHeap = DXUtil::createDescriptorHeap(rRes->pDevice, rRes->numBackBuffers, D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
+	dsvDescriptorSize = rRes->pDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
+	pDepthBuffers = DXUtil::createDepthStencilView(rRes->pDevice, pDepthDescriptorHeap, rRes->winDimensions.x, rRes->winDimensions.y, rRes->numBackBuffers);
 
 	//D3D12_INPUT_ELEMENT_DESC ied[] = {};
 
 	// Root signature - https://docs.microsoft.com/en-us/windows/desktop/direct3d12/root-signatures-overview
 	D3D12_FEATURE_DATA_ROOT_SIGNATURE featureData = {};
 	featureData.HighestVersion = D3D_ROOT_SIGNATURE_VERSION_1_1;
-	if (FAILED(pDevice->CheckFeatureSupport(D3D12_FEATURE_ROOT_SIGNATURE, &featureData, sizeof(featureData))))
+	if (FAILED(rRes->pDevice->CheckFeatureSupport(D3D12_FEATURE_ROOT_SIGNATURE, &featureData, sizeof(featureData))))
 	{
 		featureData.HighestVersion = D3D_ROOT_SIGNATURE_VERSION_1_0;
 	}
 
 	// Allow input layout and deny unnecessary access to certain pipeline stages.
 	D3D12_ROOT_SIGNATURE_FLAGS rootSignatureFlags =
-		  D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT 
+		D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT
 		| D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS
 		| D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS
 		| D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS
@@ -115,7 +109,7 @@ RasterShading::RasterShading(
 	GFXTHROWIFFAILED(D3DX12SerializeVersionedRootSignature(&rootSignatureDescription,
 		featureData.HighestVersion, &rootSignatureBlob, &errorBlob));
 	// Create the root signature.
-	GFXTHROWIFFAILED(pDevice->CreateRootSignature(0, rootSignatureBlob->GetBufferPointer(),
+	GFXTHROWIFFAILED(rRes->pDevice->CreateRootSignature(0, rootSignatureBlob->GetBufferPointer(),
 		rootSignatureBlob->GetBufferSize(), IID_PPV_ARGS(&rootSignature)));
 
 	// Setup pipeline - TYPE info is contained within each property in the struct!
@@ -150,25 +144,25 @@ RasterShading::RasterShading(
 	D3D12_PIPELINE_STATE_STREAM_DESC pipelineStateStreamDesc = {
 		sizeof(PipelineStateStream), &pipelineStateStream
 	};
-	GFXTHROWIFFAILED(pDevice->CreatePipelineState(&pipelineStateStreamDesc, IID_PPV_ARGS(&pipelineState)));
+	GFXTHROWIFFAILED(rRes->pDevice->CreatePipelineState(&pipelineStateStreamDesc, IID_PPV_ARGS(&pipelineState)));
 
-	auto commandList = commandQueue.getCommandList();
+	auto commandList = rRes->commandQueue->getCommandList();
 
 	// Init const buffer
 	wrl::ComPtr<ID3D12Resource> cBuffIntBuffer;
 	constantBuffer = DXUtil::uploadDataToDefaultHeap(
-		pDevice,
+		rRes->pDevice,
 		commandList,
 		cBuffIntBuffer,
 		&constBuffer,
 		sizeof(constBuffer),
 		D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
 
-	auto fV = commandQueue.executeCommandList(commandList);
-	commandQueue.waitForFenceValue(fV);
+	auto fV = rRes->commandQueue->executeCommandList(commandList);
+	rRes->commandQueue->waitForFenceValue(fV);
 }
 
-void RasterShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList6> pCurrentCommandList, wrl::ComPtr<ID3D12DescriptorHeap> pRTVDescriptorHeap, UINT currentBackBufferIndex)
+void RasterShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList6> pCurrentCommandList, uint32_t currentBackBufferIndex)
 {
 	// Clear Depth
 	CD3DX12_CPU_DESCRIPTOR_HANDLE dsvDescriptorHandle(pDepthDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), currentBackBufferIndex, dsvDescriptorSize);
@@ -184,14 +178,14 @@ void RasterShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList6> pCurrentCommand
 	pCurrentCommandList->RSSetScissorRects(1u, &scissorRect);
 	pCurrentCommandList->RSSetViewports(1u, &viewport);
 
-	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvDescriptorHandle(pRTVDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), currentBackBufferIndex, pDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV));
+	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvDescriptorHandle(rendererResources->pRTVDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), currentBackBufferIndex, rendererResources->pDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV));
 	pCurrentCommandList->OMSetRenderTargets(1u, &rtvDescriptorHandle, FALSE, &dsvDescriptorHandle);
 
 	// Update the MVP matrix
-	constBuffer.MVP = camera.getViewPerspectiveMatrix();
-	constBuffer.CameraPosition = camera.getPosition();
+	constBuffer.MVP = rendererResources->camera->getViewPerspectiveMatrix();
+	constBuffer.CameraPosition = rendererResources->camera->getPosition();
 	DXUtil::updateDataInDefaultHeap(
-		pDevice,
+		rendererResources->pDevice,
 		pCurrentCommandList,
 		constantBuffer,
 		constantTempBuffer[currentBackBufferIndex],
@@ -200,14 +194,16 @@ void RasterShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList6> pCurrentCommand
 		D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER,
 		D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
 	pCurrentCommandList->SetGraphicsRootConstantBufferView(0u, constantBuffer->GetGPUVirtualAddress()); // Const buff (includes Cam)
-	pCurrentCommandList->SetGraphicsRootShaderResourceView(1u, materialBuffer->GetGPUVirtualAddress());  // Material
-	pCurrentCommandList->SetGraphicsRootShaderResourceView(2u, faceAttributeBuffer->GetGPUVirtualAddress());  // Face
-	pCurrentCommandList->SetGraphicsRootShaderResourceView(3u, lightBuffer->GetGPUVirtualAddress());  // Face
+	pCurrentCommandList->SetGraphicsRootShaderResourceView(1u, rendererResources->materialBuffer->GetGPUVirtualAddress());  // Material
+	pCurrentCommandList->SetGraphicsRootShaderResourceView(2u, rendererResources->faceAttributeBuffer->GetGPUVirtualAddress());  // Face
+	pCurrentCommandList->SetGraphicsRootShaderResourceView(3u, rendererResources->lightBuffer->GetGPUVirtualAddress());  // Face
 	pCurrentCommandList->SetGraphicsRootShaderResourceView(4u, bufferViews[0].BufferLocation);  // Vertices
 	pCurrentCommandList->SetGraphicsRootShaderResourceView(5u, bufferViews[1].BufferLocation);  // Tex
 	pCurrentCommandList->SetGraphicsRootShaderResourceView(6u, bufferViews[2].BufferLocation);  // Normals
 	pCurrentCommandList->SetGraphicsRootShaderResourceView(7u, indexView.BufferLocation);  // Indices
 
 	//pCurrentCommandList->DrawInstanced(3u, 1u, 0u, 0u);
-	pCurrentCommandList->DrawIndexedInstanced(static_cast<UINT>(scene.getIndices().size()), 1u, 0u, 0u, 0u);
+	pCurrentCommandList->DrawIndexedInstanced(static_cast<UINT>(rendererResources->scene->getIndices().size()), 1u, 0u, 0u, 0u);
 }
+
+

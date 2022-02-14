@@ -2,10 +2,14 @@
 
 #include "Environment/Environment.h"
 #include "Renderer/Renderer.h"
+#include "Renderer/IDrawable.h"
 #include "VectorFactory.h"
+
+#include <vector>
 
 using std::unique_ptr;
 using std::make_unique;
+using std::vector;
 
 using feanor::configuration::ConfigurationNode;
 
@@ -30,6 +34,10 @@ unique_ptr<IRenderer> RendererFactory::create(const ConfigurationNode& config) c
 	auto scene = &env.getSceneManager().getInstanceManager().get(config["Scene"]);
 	auto camera = &env.getCameraManager().getInstanceManager().get(config["Camera"]);
 	auto dim = *UVector2Factory().create(config["WindowDimensions"]);
-	auto renderer = make_unique<Renderer>(scene, camera, dim);
+	auto &drawablesConfig = config["Drawables"].asList();
+	std::vector<IDrawable*> drawables;
+	for (auto& drawableConfig : drawablesConfig)
+		drawables.push_back(&env.getDrawableManager().getInstanceManager().get(drawableConfig));
+	auto renderer = make_unique<Renderer>(scene, camera, dim, std::move(drawables));
 	return renderer;
 }

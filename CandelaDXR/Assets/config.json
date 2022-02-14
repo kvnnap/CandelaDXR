@@ -34,11 +34,20 @@
       "Name": "Scene"
     }
   ],
+  "Drawables": [
+    {
+      "Type": "RasterDrawable",
+      "Name": "Raster"
+    }
+  ],
   "Renderers": [
     {
       "Type": "Renderer",
       "Scene": "Scene",
       "Camera": "Camera",
+      "Drawables": [
+        "Raster"
+      ],
       "WindowDimensions": {
         "x": 900,
         "y": 600
