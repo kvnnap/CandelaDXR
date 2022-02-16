@@ -86,6 +86,9 @@ namespace candela::scene
 		const std::vector<AreaLight>& getLights() const;
 		const std::vector<FaceAttributes>& getFaceAttributes() const;
 
+		const IndexedSpan& getMeshIndexedSpan(const std::string& groupName) const;
+		const std::unordered_map<std::string, IndexedSpan>& getMeshIndexedSpanDataMap() const;
+
 		const SceneNode& getSceneGraph() const;
 
 	private:

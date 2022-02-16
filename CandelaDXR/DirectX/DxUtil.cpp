@@ -448,17 +448,15 @@ DXUtil::AccelerationStructureBuffers DXUtil::createBottomLevelAS(
 void DXUtil::buildTopLevelAS(
 	Microsoft::WRL::ComPtr<ID3D12Device9> pDevice,
 	Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> pCommandList,
-	std::vector<DXUtil::AccelerationStructureBuffers> blasBuffers,
+	const std::vector<TopLevelAccelerationData>& instanceData,
 	Microsoft::WRL::ComPtr<ID3D12Resource>& tlasTempBuffer,
-	const std::vector<size_t>& instanceIds,
-	const std::vector<DirectX::XMFLOAT3X4>& transforms,
 	bool update,
 	DXUtil::AccelerationStructureBuffers& tlasBuffers)
 {
 	// Query the buffer sizes that we need to allocate
 	D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_INPUTS rtStructureDescriptor = {};
 	rtStructureDescriptor.DescsLayout = D3D12_ELEMENTS_LAYOUT_ARRAY;
-	rtStructureDescriptor.NumDescs = static_cast<UINT>(blasBuffers.size());
+	rtStructureDescriptor.NumDescs = static_cast<UINT>(instanceData.size());
 	rtStructureDescriptor.Type = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL;
 	rtStructureDescriptor.Flags = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_ALLOW_UPDATE;
 
@@ -466,7 +464,8 @@ void DXUtil::buildTopLevelAS(
 	D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO prebuildInfo = {};
 	pDevice->GetRaytracingAccelerationStructurePrebuildInfo(&rtStructureDescriptor, &prebuildInfo);
 
-	if (update) {
+	if (update)
+	{
 		auto resBarrierDesc = CD3DX12_RESOURCE_BARRIER::UAV(tlasBuffers.pResult.Get());
 		pCommandList->ResourceBarrier(1, &resBarrierDesc);
 	}
@@ -477,25 +476,24 @@ void DXUtil::buildTopLevelAS(
 	}
 
 	std::vector<D3D12_RAYTRACING_INSTANCE_DESC> rtInstanceDescs;
-	rtInstanceDescs.resize(blasBuffers.size());
+	rtInstanceDescs.resize(instanceData.size());
 
-	for (size_t i = 0; i < blasBuffers.size(); ++i) {
+	for (size_t i = 0; i < instanceData.size(); ++i)
+	{
 		D3D12_RAYTRACING_INSTANCE_DESC& rtInstanceDesc = rtInstanceDescs[i];
-		rtInstanceDesc.InstanceID = instanceIds.at(i);
+		rtInstanceDesc.InstanceID = instanceData[i].instanceId;
 		rtInstanceDesc.InstanceContributionToHitGroupIndex = 0;
 		rtInstanceDesc.Flags = D3D12_RAYTRACING_INSTANCE_FLAG_NONE;
-		rtInstanceDesc.AccelerationStructure = blasBuffers[i].pResult->GetGPUVirtualAddress();
-		memcpy(rtInstanceDesc.Transform, &transforms[i], sizeof(rtInstanceDesc.Transform));
+		rtInstanceDesc.AccelerationStructure = instanceData[i].blasBuffer.pResult->GetGPUVirtualAddress();
+		memcpy(rtInstanceDesc.Transform, &instanceData[i].transform, sizeof(rtInstanceDesc.Transform));
 		rtInstanceDesc.InstanceMask = 0xFF;
 	}
 
 	// Upload ray tracing instance desc to GPU
-	if (update) {
+	if (update)
 		updateDataInDefaultHeap(pDevice, pCommandList, tlasBuffers.pInstanceDesc, tlasTempBuffer, rtInstanceDescs.data(), sizeof(D3D12_RAYTRACING_INSTANCE_DESC) * rtInstanceDescs.size(), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-	}
-	else {
+	else
 		tlasBuffers.pInstanceDesc = uploadDataToDefaultHeap(pDevice, pCommandList, tlasTempBuffer, rtInstanceDescs.data(), sizeof(D3D12_RAYTRACING_INSTANCE_DESC) * rtInstanceDescs.size(), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-	}
 
 	rtStructureDescriptor.InstanceDescs = tlasBuffers.pInstanceDesc->GetGPUVirtualAddress();
 
@@ -505,7 +503,8 @@ void DXUtil::buildTopLevelAS(
 	tlasDesc.DestAccelerationStructureData = tlasBuffers.pResult->GetGPUVirtualAddress();
 	tlasDesc.ScratchAccelerationStructureData = tlasBuffers.pScratch->GetGPUVirtualAddress();
 
-	if (update) {
+	if (update)
+	{
 		tlasDesc.Inputs.Flags |= D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_PERFORM_UPDATE;
 		tlasDesc.SourceAccelerationStructureData = tlasBuffers.pResult->GetGPUVirtualAddress();
 	}

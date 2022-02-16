@@ -38,6 +38,10 @@
     {
       "Type": "RasterDrawable",
       "Name": "Raster"
+    },
+    {
+      "Type": "LightTracingDrawable",
+      "Name": "LT"
     }
   ],
   "Renderers": [
@@ -46,7 +50,7 @@
       "Scene": "Scene",
       "Camera": "Camera",
       "Drawables": [
-        "Raster"
+        "LT"
       ],
       "WindowDimensions": {
         "x": 900,

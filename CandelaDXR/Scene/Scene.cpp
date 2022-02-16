@@ -18,6 +18,7 @@ using candela::scene::Scene;
 using candela::scene::SceneNode;
 using candela::scene::AreaLight;
 using candela::scene::FaceAttributes;
+using candela::scene::IndexedSpan;
 
 Scene::Scene()
 {
@@ -153,5 +154,23 @@ const vector<Texture>& Scene::getTextures() const { return textures; }
 const vector<Material>& Scene::getMaterials() const { return materials; }
 const vector<AreaLight>& Scene::getLights() const { return lights; }
 const vector<FaceAttributes>& Scene::getFaceAttributes() const { return faceAttributes; }
+
+//vector<const IndexedSpan*> Scene::getMeshIndexedSpans() const
+//{
+//	vector<const IndexedSpan*> list;
+//	for (auto& item : spanDataMap)
+//		list.push_back(&item.second);
+//	return list;
+//}
+
+const IndexedSpan& Scene::getMeshIndexedSpan(const string& groupName) const
+{
+	return spanDataMap.at(groupName);
+}
+
+const std::unordered_map<std::string, IndexedSpan>& Scene::getMeshIndexedSpanDataMap() const
+{
+	return spanDataMap;
+}
 
 const SceneNode& Scene::getSceneGraph() const { return sceneGraph; }

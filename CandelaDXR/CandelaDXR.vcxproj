@@ -183,6 +183,7 @@
     <ClCompile Include="DirectX\DxUtil.cpp" />
     <ClCompile Include="Environment\Environment.cpp" />
     <ClCompile Include="Factory\CameraFactory.cpp" />
+    <ClCompile Include="Factory\LightTracingDrawableFactory.cpp" />
     <ClCompile Include="Factory\RasterDrawableFactory.cpp" />
     <ClCompile Include="Factory\RendererFactory.cpp" />
     <ClCompile Include="Factory\VectorFactory.cpp" />
@@ -193,6 +194,7 @@
     <ClCompile Include="Exception\WindowException.cpp" />
     <ClCompile Include="Renderer\Camera.cpp" />
     <ClCompile Include="Renderer\FpsCounter.cpp" />
+    <ClCompile Include="Renderer\LightTracingShading.cpp" />
     <ClCompile Include="Renderer\RasterShading.cpp" />
     <ClCompile Include="Renderer\Renderer.cpp" />
     <ClCompile Include="Scene\Scene.cpp" />
@@ -214,6 +216,7 @@
     <ClInclude Include="Exception\GeneralException.h" />
     <ClInclude Include="Exception\WindowException.h" />
     <ClInclude Include="Factory\CameraFactory.h" />
+    <ClInclude Include="Factory\LightTracingDrawableFactory.h" />
     <ClInclude Include="Factory\RasterDrawableFactory.h" />
     <ClInclude Include="Factory\VectorFactory.h" />
     <ClInclude Include="Factory\RendererFactory.h" />
@@ -223,6 +226,7 @@
     <ClInclude Include="Renderer\FpsCounter.h" />
     <ClInclude Include="Renderer\IDrawable.h" />
     <ClInclude Include="Renderer\IRenderer.h" />
+    <ClInclude Include="Renderer\LightTracingShading.h" />
     <ClInclude Include="Renderer\RasterShading.h" />
     <ClInclude Include="Renderer\Renderer.h" />
     <ClInclude Include="Scene\ISceneLoader.h" />

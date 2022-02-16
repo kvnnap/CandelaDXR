@@ -51,10 +51,18 @@ namespace candela::directx
 		// RT Stuff
 		static Microsoft::WRL::ComPtr<ID3D12Device9> createRTDeviceFromAdapter(Microsoft::WRL::ComPtr<IDXGIAdapter4> adapter, D3D_FEATURE_LEVEL featureLevel);
 
-		struct AccelerationStructureBuffers {
+		struct AccelerationStructureBuffers
+		{
 			Microsoft::WRL::ComPtr<ID3D12Resource> pScratch;
 			Microsoft::WRL::ComPtr<ID3D12Resource> pResult;
 			Microsoft::WRL::ComPtr<ID3D12Resource> pInstanceDesc; // For top-level AS
+		};
+
+		struct TopLevelAccelerationData
+		{
+			DirectX::XMFLOAT3X4 transform;
+			std::size_t instanceId;
+			AccelerationStructureBuffers blasBuffer;
 		};
 
 		// Vertex buffer must be in a readable state
@@ -69,10 +77,8 @@ namespace candela::directx
 		static void buildTopLevelAS(
 			Microsoft::WRL::ComPtr<ID3D12Device9> pDevice,
 			Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> pCommandList,
-			std::vector<DXUtil::AccelerationStructureBuffers> blasBuffers,
+			const std::vector<TopLevelAccelerationData>& instanceData,
 			Microsoft::WRL::ComPtr<ID3D12Resource>& tlasTempBuffer,
-			const std::vector<std::size_t>& instanceIds,
-			const std::vector<DirectX::XMFLOAT3X4>& transforms,
 			bool update,
 			AccelerationStructureBuffers& tlasBuffers);
 	};
