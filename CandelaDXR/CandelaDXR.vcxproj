@@ -181,6 +181,8 @@
   <ItemGroup>
     <ClCompile Include="DirectX\CommandQueue.cpp" />
     <ClCompile Include="DirectX\DxUtil.cpp" />
+    <ClCompile Include="DirectX\RootSignatureManager.cpp" />
+    <ClCompile Include="DirectX\ShadingTable.cpp" />
     <ClCompile Include="Environment\Environment.cpp" />
     <ClCompile Include="Factory\CameraFactory.cpp" />
     <ClCompile Include="Factory\LightTracingDrawableFactory.cpp" />
@@ -210,6 +212,8 @@
     <ClInclude Include="DirectX\d3dx12.h" />
     <ClInclude Include="DirectX\DxgiInfoManager.h" />
     <ClInclude Include="DirectX\DxUtil.h" />
+    <ClInclude Include="DirectX\RootSignatureManager.h" />
+    <ClInclude Include="DirectX\ShadingTable.h" />
     <ClInclude Include="Environment\Environment.h" />
     <ClInclude Include="Exception\DxgiInfoException.h" />
     <ClInclude Include="Exception\Exception.h" />
@@ -240,6 +244,28 @@
     <ClInclude Include="Window\WindowsDef.h" />
   </ItemGroup>
   <ItemGroup>
+    <FxCompile Include="Shader\LightTracingShader.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Library</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">6.6</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Library</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">6.6</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Library</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">6.6</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Library</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">6.6</ShaderModel>
+      <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+      </EntryPointName>
+      <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+      </EntryPointName>
+      <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+      </EntryPointName>
+      <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+      </EntryPointName>
+      <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(OutDir)Shaders/%(Filename).cso</ObjectFileOutput>
+      <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(OutDir)Shaders/%(Filename).cso</ObjectFileOutput>
+      <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)Shaders/%(Filename).cso</ObjectFileOutput>
+      <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(OutDir)Shaders/%(Filename).cso</ObjectFileOutput>
+    </FxCompile>
     <FxCompile Include="Shader\PixelShader.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Pixel</ShaderType>

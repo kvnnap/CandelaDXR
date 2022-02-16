@@ -5,10 +5,13 @@
 #include <wrl/client.h>
 
 #include <vector>
+#include <memory>
 
 #include "DirectX/DXUtil.h"
 
 #include "DirectX/CommandQueue.h"
+#include "DirectX/RootSignatureManager.h"
+#include "DirectX/ShadingTable.h"
 #include "Scene/Scene.h"
 
 #include "Mathematics/Types.h"
@@ -31,6 +34,10 @@ namespace candela::renderer
 		void draw(wrl::ComPtr<ID3D12GraphicsCommandList6> pCurrentCommandList, std::uint32_t currentBackBufferIndex) override;
 
 	private:
+		void buildPipeline();
+		void createShaderResources();
+		void createShaderTable(wrl::ComPtr<ID3D12GraphicsCommandList6> &commandList, wrl::ComPtr<ID3D12Resource> &tempResource);
+
 		RendererResources* rendererResources;
 
 		struct ConstBuff
@@ -42,12 +49,17 @@ namespace candela::renderer
 
 		wrl::ComPtr<ID3D12DescriptorHeap> pDepthDescriptorHeap;
 		wrl::ComPtr<ID3D12Resource> constantBuffer;
+		wrl::ComPtr<ID3D12Resource> outputTexture;
 		std::vector<wrl::ComPtr<ID3D12Resource>> constantTempBuffer;
 		wrl::ComPtr<ID3D12RootSignature> rootSignature;
 		wrl::ComPtr<ID3D12RootSignature> globalEmptyRootSignature;
-		wrl::ComPtr<ID3D12PipelineState> pipelineState;
+		wrl::ComPtr<ID3D12StateObject> stateObject;;
 		wrl::ComPtr<ID3D12DescriptorHeap> descriptorHeap;
 		std::vector<directx::DXUtil::AccelerationStructureBuffers> blasBuffers;
 		directx::DXUtil::AccelerationStructureBuffers tlasBuffers;
+
+		// My helpers
+		std::shared_ptr<directx::RootSignatureManager> rootSignatureManager;
+		std::unique_ptr<directx::ShadingTable> shadingTable;
 	};
 }
