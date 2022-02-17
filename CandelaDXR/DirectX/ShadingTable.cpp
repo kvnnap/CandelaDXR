@@ -1,8 +1,12 @@
+#define _SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING
+
 #include "ShadingTable.h"
 
 #include "DXUtil.h"
 #include <stdexcept>
 #include <algorithm>
+#include <locale>
+#include <codecvt>
 
 using std::string;
 using std::to_string;
@@ -252,21 +256,24 @@ void ShadingTable::validateInputs()
 		for (const auto& parameterName : rs.parameterNames) {
 			const auto& parameter = rootSignatureManager->getParameterForRootSignature(shadingRecord.rootSignatureName, parameterName);
 
-			switch (parameter.ParameterType) {
+			string progName = std::wstring_convert<std::codecvt_utf8<wchar_t>, wchar_t>().to_bytes(shadingRecord.programName);
+
+			switch (parameter.ParameterType) 
+			{
 			case D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE:
 				if (shadingRecord.managedDescriptorHeapMap.find(parameterName) == shadingRecord.managedDescriptorHeapMap.end())
-					throw runtime_error("Empty input for parameter '" + parameterName + "' in program '" + string(shadingRecord.programName.begin(), shadingRecord.programName.end()) + "'");
+					throw runtime_error("Empty input for parameter '" + parameterName + "' in program '" + progName + "'");
 				shadingRecord.managedDescriptorHeapMap.at(parameterName)->validate();
 				break;
 			case D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS:
 				if (shadingRecord.constantsMap.find(parameterName) == shadingRecord.constantsMap.end())
-					throw runtime_error("Empty input for parameter '" + parameterName + "' in program '" + string(shadingRecord.programName.begin(), shadingRecord.programName.end()) + "'");
+					throw runtime_error("Empty input for parameter '" + parameterName + "' in program '" + progName + "'");
 				break;
 			case D3D12_ROOT_PARAMETER_TYPE_CBV:
 			case D3D12_ROOT_PARAMETER_TYPE_SRV:
 			case D3D12_ROOT_PARAMETER_TYPE_UAV:
 				if (shadingRecord.viewsMap.find(parameterName) == shadingRecord.viewsMap.end())
-					throw runtime_error("Empty input for parameter '" + parameterName + "' in program '" + string(shadingRecord.programName.begin(), shadingRecord.programName.end()) + "'");
+					throw runtime_error("Empty input for parameter '" + parameterName + "' in program '" + progName + "'");
 				break;
 			}
 		}

@@ -27,6 +27,9 @@ using candela::directx::ShadingRecordType;
 using candela::renderer::LightTracingShading;
 using candela::renderer::RendererResources;
 
+using candela::mathematics::Vector2;
+using candela::mathematics::Vector3;
+
 LightTracingShading::LightTracingShading()
 	: rendererResources(), constBuffer()
 {
@@ -37,22 +40,31 @@ void LightTracingShading::init(RendererResources* rRes)
 	rendererResources = rRes;
 
 	auto commandList = rRes->commandQueue->getCommandList();
-	//vector<D3D12_GPU_VIRTUAL_ADDRESS>& vertexBuffers;
 	auto& scene = *rRes->scene;
 
-	// Build bottom-layer - This incorporates all meshes
+	const DXUtil::BottomLevelAccelerationData blasReferenceData
+	{
+		.vertexBuffer = rRes->sceneBuffer->GetGPUVirtualAddress(),
+		.indexBuffer = rRes->sceneBuffer->GetGPUVirtualAddress()
+					 + scene.getVertices().size() * sizeof(Vector3)
+					 + scene.getTextureCoords().size() * sizeof(Vector2)
+					 + scene.getNormals().size() * sizeof(Vector3),
+		.vertexCount = static_cast<UINT>(scene.getVertices().size()),
+		.indexCount = static_cast<UINT>(scene.getIndices().size()),
+	};
+
+	// Build bottom-layer - This incorporates all meshes - one BLAS per group
 	unordered_map<string, size_t> bufferMap;
 	for (auto &item : scene.getMeshIndexedSpanDataMap())
 	{
 		auto mis = &item.second;
+		
+		DXUtil::BottomLevelAccelerationData blasData = blasReferenceData;
+		blasData.indexBuffer += static_cast<UINT>(mis->Start) * sizeof(int);
+		blasData.indexCount = static_cast<UINT>(mis->Size);
+
 		bufferMap[item.first] = blasBuffers.size();
-		blasBuffers.push_back(
-			DXUtil::createBottomLevelAS(
-				rRes->pDevice, commandList, 
-				{ rRes->sceneBuffer->GetGPUVirtualAddress() + mis->Start * 3 * sizeof(float) },
-				{ static_cast<uint32_t>(mis->Size) / 3 }, 3 * sizeof(float)
-			)
-		);
+		blasBuffers.push_back(DXUtil::createBottomLevelAS(rRes->pDevice, commandList, { blasData }, 3 * sizeof(float)));
 	}
 
 	vector<DXUtil::TopLevelAccelerationData> instanceData;

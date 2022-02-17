@@ -5,10 +5,8 @@
 
 #include "d3dx12.h"
 
-
 #include "Exception/WindowException.h"
 #include "Exception/DxgiInfoException.h"
-
 
 namespace wrl = Microsoft::WRL;
 
@@ -397,26 +395,27 @@ wrl::ComPtr<ID3D12Device9> DXUtil::createRTDeviceFromAdapter(wrl::ComPtr<IDXGIAd
 DXUtil::AccelerationStructureBuffers DXUtil::createBottomLevelAS(
 	Microsoft::WRL::ComPtr<ID3D12Device9> pDevice,
 	Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> pCommandList,
-	const std::vector<D3D12_GPU_VIRTUAL_ADDRESS>& pVertexBuffers,
-	const std::vector<UINT>& vertexCounts,
+	const std::vector<BottomLevelAccelerationData>& blasData,
 	UINT vertexSize)
 {
 	AccelerationStructureBuffers blasBuffers;
 
 	// Create geometry descriptors
 	std::vector<D3D12_RAYTRACING_GEOMETRY_DESC> rtGeoDescriptors;
-	rtGeoDescriptors.reserve(pVertexBuffers.size());
+	rtGeoDescriptors.reserve(blasData.size());
 
-	for (const auto& pVertexBuffer : pVertexBuffers) {
+	for (const auto& blasDatum : blasData) {
 		// Acceleration Structure setup - describes our geometry (similar to ied)
 		D3D12_RAYTRACING_GEOMETRY_DESC geometryDescriptor = {};
 		geometryDescriptor.Type = D3D12_RAYTRACING_GEOMETRY_TYPE_TRIANGLES;
 		geometryDescriptor.Flags = D3D12_RAYTRACING_GEOMETRY_FLAG_OPAQUE;
-		geometryDescriptor.Triangles.VertexBuffer.StartAddress = pVertexBuffer;
+		geometryDescriptor.Triangles.VertexBuffer.StartAddress = blasDatum.vertexBuffer;
 		geometryDescriptor.Triangles.VertexBuffer.StrideInBytes = vertexSize;
-		geometryDescriptor.Triangles.VertexCount = vertexCounts[rtGeoDescriptors.size()];
+		geometryDescriptor.Triangles.VertexCount = blasDatum.vertexCount;
 		geometryDescriptor.Triangles.VertexFormat = DXGI_FORMAT_R32G32B32_FLOAT;
-
+		geometryDescriptor.Triangles.IndexBuffer = blasDatum.indexBuffer;
+		geometryDescriptor.Triangles.IndexCount = blasDatum.indexCount;
+		geometryDescriptor.Triangles.IndexFormat = DXGI_FORMAT_R32_UINT;
 		rtGeoDescriptors.push_back(geometryDescriptor);
 	}
 

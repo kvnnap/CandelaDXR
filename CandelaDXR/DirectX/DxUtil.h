@@ -65,13 +65,20 @@ namespace candela::directx
 			AccelerationStructureBuffers blasBuffer;
 		};
 
+		struct BottomLevelAccelerationData
+		{
+			D3D12_GPU_VIRTUAL_ADDRESS vertexBuffer;
+			D3D12_GPU_VIRTUAL_ADDRESS indexBuffer;
+			UINT vertexCount;
+			UINT indexCount;
+		};
+
 		// Vertex buffer must be in a readable state
 		// The bottom level AS deals with objects at the local level
 		static AccelerationStructureBuffers createBottomLevelAS(
 			Microsoft::WRL::ComPtr<ID3D12Device9> pDevice,
 			Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> pCommandList,
-			const std::vector<D3D12_GPU_VIRTUAL_ADDRESS>& pVertexBuffer,
-			const std::vector<UINT>& vertexCounts,
+			const std::vector<BottomLevelAccelerationData>& blasData,
 			UINT vertexSize);
 
 		static void buildTopLevelAS(
