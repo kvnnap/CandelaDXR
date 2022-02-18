@@ -18,8 +18,10 @@ namespace candela::renderer
 
 		const DirectX::XMVECTOR& getPosition() const;
 		const DirectX::XMVECTOR& getDirection() const;
+		const DirectX::XMVECTOR& getUp() const;
 		const DirectX::XMMATRIX& getViewMatrix() const;
 		const DirectX::XMMATRIX& getPerspectiveMatrix() const;
+		DirectX::XMVECTOR getNearPlaneDimensions() const;
 		DirectX::XMMATRIX getViewPerspectiveMatrix() const;
 
 	private:

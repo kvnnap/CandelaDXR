@@ -39,6 +39,8 @@ void LightTracingShading::init(RendererResources* rRes)
 {
 	rendererResources = rRes;
 
+	constantTempBuffer.resize(rRes->numBackBuffers);
+
 	auto commandList = rRes->commandQueue->getCommandList();
 	auto& scene = *rRes->scene;
 
@@ -88,6 +90,10 @@ void LightTracingShading::init(RendererResources* rRes)
 	// Create Shader resources
 	createShaderResources();
 
+	// Constant buffer
+	wrl::ComPtr<ID3D12Resource> cBuffIntBuffer;
+	constantBuffer = DXUtil::uploadDataToDefaultHeap(rRes->pDevice, commandList, cBuffIntBuffer, &constBuffer, sizeof(constBuffer), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+
 	// Build shading table
 	wrl::ComPtr<ID3D12Resource> stTempBuffer;
 	createShaderTable(commandList, stTempBuffer);
@@ -107,6 +113,17 @@ void LightTracingShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList6> currentCo
 	currentCommandList->SetDescriptorHeaps(1u, descriptorHeap.GetAddressOf());
 	auto t1 = CD3DX12_RESOURCE_BARRIER::Transition(outputTexture.Get(), D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 	currentCommandList->ResourceBarrier(1u, &t1);
+
+	// Copy and update camera
+	auto &cam = rendererResources->camera;
+	constBuffer.w = DirectX::XMVector3Normalize(cam->getDirection());
+	constBuffer.u = DirectX::XMVectorNegate(DirectX::XMVector3Normalize(DirectX::XMVector3Cross(cam->getUp(), cam->getDirection())));
+	constBuffer.v = DirectX::XMVectorNegate(DirectX::XMVector3Normalize(DirectX::XMVector3Cross(constBuffer.w, constBuffer.u)));
+	constBuffer.position = cam->getPosition();
+	constBuffer.direction = cam->getDirection();
+	constBuffer.plane = cam->getNearPlaneDimensions();
+	DXUtil::updateDataInDefaultHeap(rendererResources->pDevice, currentCommandList, constantBuffer, constantTempBuffer[currentBackBufferIndex],
+		&constBuffer, sizeof(constBuffer), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
 	currentCommandList->SetComputeRootSignature(globalEmptyRootSignature.Get());
 	currentCommandList->SetPipelineState1(stateObject.Get());
@@ -158,9 +175,14 @@ void LightTracingShading::buildPipeline()
 	// Third - Local Root Signature for Ray Gen shader
 	rootSignatureManager->addDescriptorRange("BVH", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_NONE)); //gOutput
 	rootSignatureManager->addDescriptorRange("BVH", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_NONE)); //gRtScene
+	if (!rendererResources->textures.empty())
+		rootSignatureManager->addDescriptorRange("BVH", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, static_cast<UINT>(rendererResources->textures.size()), 6, 0, D3D12_DESCRIPTOR_RANGE_FLAG_NONE));
+	
 	rootSignatureManager->setDescriptorTableParameter("BVHDescTable", "BVH");
-
-	rootSignatureManager->addParametersToRootSignature("RayGenRootSignature", { "BVHDescTable" });
+	CD3DX12_ROOT_PARAMETER1 param;
+	param.InitAsConstantBufferView(0);
+	rootSignatureManager->setParameter("ConstBuff", param);
+	rootSignatureManager->addParametersToRootSignature("RayGenRootSignature", { "BVHDescTable", "ConstBuff"});
 	rootSignatureManager->generateRootSignature("RayGenRootSignature", rendererResources->pDevice);
 
 	shadingTable->addProgram(L"rayGen", ShadingRecordType::RayGeneration, "RayGenRootSignature");
@@ -206,6 +228,7 @@ void LightTracingShading::buildPipeline()
 
 void LightTracingShading::createShaderResources()
 {
+	size_t entryNumber = 0;
 	// The descriptor heap to store SRV (Shader resource View) and UAV (Unordered access view) descriptors
 	auto& descHeapManager = shadingTable->generateDescriptorHeap("BVHDescTable", "BVH1", rendererResources->pDevice);
 	descriptorHeap = descHeapManager.getDescriptorHeap();
@@ -216,21 +239,25 @@ void LightTracingShading::createShaderResources()
 
 	D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
 	uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
-	descHeapManager.setUAV(0, uavDesc, rendererResources->pDevice, outputTexture);
+	descHeapManager.setUAV(entryNumber++, uavDesc, rendererResources->pDevice, outputTexture);
 
 	// Create the SRV descriptor in second place (following same order as in root signature)
 	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
 	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_RAYTRACING_ACCELERATION_STRUCTURE;
 	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 	srvDesc.RaytracingAccelerationStructure.Location = tlasBuffers.pResult->GetGPUVirtualAddress();
-	descHeapManager.setSRV(1, srvDesc, rendererResources->pDevice);
+	descHeapManager.setSRV(entryNumber++, srvDesc, rendererResources->pDevice);
 
+	for (const auto& texture : rendererResources->textures)
+		descHeapManager.setSRV(entryNumber++, srvDesc, rendererResources->pDevice, texture);
 }
 
 void LightTracingShading::createShaderTable(wrl::ComPtr<ID3D12GraphicsCommandList6> &commandList, wrl::ComPtr<ID3D12Resource> &tempResource)
 {
 	// Link elements
 	shadingTable->setInputForDescriptorTableParameter(L"rayGen", "BVHDescTable", "BVH1");
+	shadingTable->setInputForViewParameter(L"rayGen", "ConstBuff", constantBuffer);
+
 	//shadingTable->setInputForDescriptorTableParameter(L"HitGroup", "BVHDescTable", "BVH1");
 	shadingTable->generateShadingTable(rendererResources->pDevice, commandList, stateObject, tempResource);
 }

@@ -80,6 +80,17 @@ const XMVECTOR& Camera::getDirection() const
 	return direction;
 }
 
+const XMVECTOR& Camera::getUp() const
+{
+	return up;
+}
+
+XMVECTOR Camera::getNearPlaneDimensions() const
+{
+	return XMVectorSet(nearWidth, nearHeight, nearZ, 0.f);
+}
+
+
 const XMMATRIX& Camera::getViewMatrix() const
 {
 	return viewMatrix;

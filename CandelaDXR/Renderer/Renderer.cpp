@@ -79,6 +79,7 @@ Renderer::Renderer(Scene *scene, Camera *camera, const UVector2 &windowDimension
 		.materialBuffer = materialBuffer,
 		.faceAttributeBuffer = faceAttributeBuffer,
 		.lightBuffer = lightBuffer,
+		.textures = textures,
 		.pRTVDescriptorHeap = pRTVDescriptorHeap,
 		.pRTVBackBuffers = backBuffers,
 		.commandQueue = commandQueue.get(),
@@ -155,7 +156,6 @@ void Renderer::initSceneResources()
 	tempResource->Unmap(0, nullptr);
 	pCurrentCommandList = commandQueue->getCommandList();
 	pCurrentCommandList->CopyResource(sceneBuffer.Get(), tempResource.Get());
-	
 
 	// Upload materials and face attributes (in separate buffers otherwise we have to take care of alignment)
 	wrl::ComPtr<ID3D12Resource> tempFace;
@@ -172,6 +172,23 @@ void Renderer::initSceneResources()
 	lightBuffer = DXUtil::uploadDataToDefaultHeap(pDevice, pCurrentCommandList, tempLight,
 		scene->getLights().data(), sizeof(AreaLight) * scene->getLights().size(),
 		D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+
+	// Upload textures
+	std::vector<wrl::ComPtr<ID3D12Resource>> texTempBuffer (scene->getTextures().size());
+	auto tempTexBuffer = texTempBuffer.begin();
+	for (const auto& texture : scene->getTextures())
+	{
+		textures.push_back(DXUtil::uploadTextureDataToDefaultHeap(
+			pDevice,
+			pCurrentCommandList,
+			*tempTexBuffer++,
+			texture.data(),
+			texture.getWidth(),
+			texture.getHeight(),
+			texture.getChannels(),
+			DXGI_FORMAT_R8G8B8A8_UNORM,
+			D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE));
+	}
 
 	auto fenceValue = commandQueue->executeCommandList(pCurrentCommandList);
 	commandQueue->waitForFenceValue(fenceValue);

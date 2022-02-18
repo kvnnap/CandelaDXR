@@ -40,10 +40,12 @@ namespace candela::renderer
 
 		RendererResources* rendererResources;
 
-		struct ConstBuff
+		struct alignas(16) ConstBuff
 		{
-			DirectX::XMMATRIX MVP;
-			DirectX::XMVECTOR CameraPosition;
+			DirectX::XMVECTOR u, v, w;
+			DirectX::XMVECTOR position;
+			DirectX::XMVECTOR direction;
+			DirectX::XMVECTOR plane; // x, y and z (distance from point to plane)
 		} constBuffer;
 
 
