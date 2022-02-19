@@ -44,6 +44,11 @@ namespace candela::directx
 		std::vector<ResourceSet> resources;
 	};
 
+	struct ViewStruct {
+		Microsoft::WRL::ComPtr<ID3D12Resource> resource;
+		UINT64 offsetInBytes = 0;
+	};
+
 	struct ShadingRecord {
 		std::wstring programName;
 		std::string rootSignatureName;
@@ -51,7 +56,7 @@ namespace candela::directx
 
 		// paramter values
 		std::unordered_map<std::string, UINT32> constantsMap;
-		std::unordered_map<std::string, Microsoft::WRL::ComPtr<ID3D12Resource>> viewsMap;
+		std::unordered_map<std::string, ViewStruct> viewsMap;
 		//std::unordered_map<std::string, Microsoft::WRL::ComPtr<ID3D12DescriptorHeap>> descriptorHeapMap;
 		std::unordered_map<std::string, DescriptorHeap*> managedDescriptorHeapMap;
 	};
@@ -78,7 +83,7 @@ namespace candela::directx
 
 		//void setInputForDescriptorTableParameter(const std::wstring& programName, const std::string& parameterName, Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> descriptorHeap);
 		void setInputForDescriptorTableParameter(const std::wstring& programName, const std::string& parameterName, const std::string& instanceName);
-		void setInputForViewParameter(const std::wstring& programName, const std::string& parameterName, Microsoft::WRL::ComPtr<ID3D12Resource> resource);
+		void setInputForViewParameter(const std::wstring& programName, const std::string& parameterName, Microsoft::WRL::ComPtr<ID3D12Resource> resource, UINT64 offsetInBytes = 0);
 		void setInputForConstantParameter(const std::wstring& programName, const std::string& parameterName, UINT32 constant);
 
 		Microsoft::WRL::ComPtr<ID3D12Resource> generateShadingTable(

@@ -54,7 +54,7 @@ void ShadingTable::setInputForDescriptorTableParameter(const std::wstring& progr
 	programStruct.managedDescriptorHeapMap[parameterName] = &descriptorHeaps.at(instanceName);
 }
 
-void ShadingTable::setInputForViewParameter(const wstring& programName, const std::string& parameterName, Microsoft::WRL::ComPtr<ID3D12Resource> resource)
+void ShadingTable::setInputForViewParameter(const wstring& programName, const std::string& parameterName, Microsoft::WRL::ComPtr<ID3D12Resource> resource, UINT64 offsetInBytes)
 {
 	// Get Program data
 	auto& programStruct = shadingRecords[shadingRecordsMap.at(programName)];
@@ -65,7 +65,7 @@ void ShadingTable::setInputForViewParameter(const wstring& programName, const st
 		throw runtime_error("Paramter '" + parameterName + "' not a CBV/SRV/UAV type");
 
 	// Set
-	programStruct.viewsMap[parameterName] = resource;
+	programStruct.viewsMap[parameterName] = ViewStruct{ resource, offsetInBytes };
 }
 
 void ShadingTable::setInputForConstantParameter(const wstring& programName, const std::string& parameterName, UINT32 constant)
@@ -171,8 +171,8 @@ Microsoft::WRL::ComPtr<ID3D12Resource> ShadingTable::generateShadingTable(
 			case D3D12_ROOT_PARAMETER_TYPE_SRV:
 			case D3D12_ROOT_PARAMETER_TYPE_UAV:
 			{
-				const auto& resource = shadingRecord.viewsMap.at(parameterName);
-				auto handle = resource->GetGPUVirtualAddress();
+				const auto& view = shadingRecord.viewsMap.at(parameterName);
+				auto handle = view.resource->GetGPUVirtualAddress() + view.offsetInBytes;
 				memcpy(localBuffer, &handle, sizeof(handle));
 			}
 			break;

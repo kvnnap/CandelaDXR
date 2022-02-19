@@ -206,4 +206,7 @@
     <FxCompile Include="Shader\VertexShader.hlsl" />
     <FxCompile Include="Shader\LightTracingShader.hlsl" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="Shader\Utils.hlsli" />
+  </ItemGroup>
 </Project>

@@ -191,9 +191,16 @@ void LightTracingShading::buildPipeline()
 	rootSignatureManager->addRootSignature("EmptyRootSignature");
 	rootSignatureManager->generateRootSignature("EmptyRootSignature", rendererResources->pDevice);
 
+	param.InitAsShaderResourceView(1); rootSignatureManager->setParameter("verts", param);
+	param.InitAsShaderResourceView(2); rootSignatureManager->setParameter("texVerts", param);
+	param.InitAsShaderResourceView(3); rootSignatureManager->setParameter("faceAttributes", param);
+	param.InitAsShaderResourceView(4); rootSignatureManager->setParameter("materials", param);
+	rootSignatureManager->addParametersToRootSignature("HitGroupSignature", { "BVHDescTable", "ConstBuff", "verts", "faceAttributes", "materials", "texVerts" });
+	rootSignatureManager->generateRootSignature("HitGroupSignature", rendererResources->pDevice);
+
 	// Sixth - Associate the empty local root signature with the miss programs
 	shadingTable->addProgram(L"miss", ShadingRecordType::Miss, "EmptyRootSignature");
-	shadingTable->addProgram(L"HitGroup", ShadingRecordType::HitGroup, "EmptyRootSignature");
+	shadingTable->addProgram(L"HitGroup", ShadingRecordType::HitGroup, "HitGroupSignature");
 	shadingTable->addProgram(L"ShadowHitGroup", ShadingRecordType::HitGroup, "EmptyRootSignature");
 
 	// Generate/add subobjects
@@ -206,10 +213,8 @@ void LightTracingShading::buildPipeline()
 
 	// Eighth - Associate the shader configuration with all shader programs
 	CD3DX12_SUBOBJECT_TO_EXPORTS_ASSOCIATION_SUBOBJECT shaderConfigAssociation(stateObjectDesc);
-	shaderConfigAssociation.AddExport(L"rayGen");
-	shaderConfigAssociation.AddExport(L"miss");
-	shaderConfigAssociation.AddExport(L"HitGroup");
-	shaderConfigAssociation.AddExport(L"ShadowHitGroup");
+	LPCWSTR exports[] = { L"rayGen", L"miss", L"HitGroup", L"ShadowHitGroup"};
+	shaderConfigAssociation.AddExports(exports);
 	shaderConfigAssociation.SetSubobjectToAssociate(shaderConfig);
 
 	// Ninth - Configure the RAY TRACING PIPELINE
@@ -248,6 +253,15 @@ void LightTracingShading::createShaderResources()
 	srvDesc.RaytracingAccelerationStructure.Location = tlasBuffers.pResult->GetGPUVirtualAddress();
 	descHeapManager.setSRV(entryNumber++, srvDesc, rendererResources->pDevice);
 
+	// Set other resources
+
+
+	// Textures
+	srvDesc = {};
+	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+	srvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+	srvDesc.Texture2D.MipLevels = 1;
 	for (const auto& texture : rendererResources->textures)
 		descHeapManager.setSRV(entryNumber++, srvDesc, rendererResources->pDevice, texture);
 }
@@ -258,6 +272,11 @@ void LightTracingShading::createShaderTable(wrl::ComPtr<ID3D12GraphicsCommandLis
 	shadingTable->setInputForDescriptorTableParameter(L"rayGen", "BVHDescTable", "BVH1");
 	shadingTable->setInputForViewParameter(L"rayGen", "ConstBuff", constantBuffer);
 
-	//shadingTable->setInputForDescriptorTableParameter(L"HitGroup", "BVHDescTable", "BVH1");
+	shadingTable->setInputForViewParameter(L"HitGroup", "ConstBuff", constantBuffer);
+	shadingTable->setInputForViewParameter(L"HitGroup", "verts", rendererResources->sceneBuffer);
+	shadingTable->setInputForDescriptorTableParameter(L"HitGroup", "BVHDescTable", "BVH1");
+	shadingTable->setInputForViewParameter(L"HitGroup", "faceAttributes", rendererResources->faceAttributeBuffer);
+	shadingTable->setInputForViewParameter(L"HitGroup", "materials", rendererResources->materialBuffer);
+	shadingTable->setInputForViewParameter(L"HitGroup", "texVerts", rendererResources->sceneBuffer, rendererResources->scene->getVertices().size() * sizeof(Vector3));
 	shadingTable->generateShadingTable(rendererResources->pDevice, commandList, stateObject, tempResource);
 }

@@ -1,7 +1,32 @@
+struct FaceAttributes
+{
+	uint MaterialId;
+	uint AreaLightId;
+	uint2 padding;
+};
+
+struct AreaLight {
+	float4 Intensity;
+	uint InstanceIndex;
+	uint PrimitiveId;
+	uint MaterialId;
+	uint padding;
+};
+
+struct Material
+{
+	float3 Diffuse;
+	int DiffuseTextureId;
+	float3 Emissive;
+	int EmissiveTextureId;
+};
+
 // Output texture
 RWTexture2D<float4> gOutput : register(u0);
 
 RaytracingAccelerationStructure gRtScene : register(t0);
+StructuredBuffer<FaceAttributes> faceAttributes : register(t3);
+StructuredBuffer<Material> materials : register(t4);
 Texture2D gTextures[]: register(t6);
 
 struct ConstBuff {
@@ -20,6 +45,11 @@ struct RayPayload
 {
 	float3 color;
 };
+
+uint getFaceIndex()
+{
+	return InstanceID() / 3 + PrimitiveIndex();
+}
 
 [shader("raygeneration")]
 void rayGen()
@@ -58,7 +88,7 @@ void rayGen()
 [shader("closesthit")]
 void chs(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attribs)
 {
-	payload.color = float3(1.f, 1.f, 1.f);
+	payload.color = materials.Load(faceAttributes.Load(getFaceIndex()).MaterialId).Diffuse;
 }
 
 [shader("closesthit")]
