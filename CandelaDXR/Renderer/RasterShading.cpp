@@ -46,22 +46,22 @@ void candela::renderer::RasterShading::init(RendererResources* rRes)
 		{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 2, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 } // scene.getVertices().size() * sizeof(Vector3) + scene.getTextureCoords().size() * sizeof(Vector2)
 	};
 	bufferViews[0] = D3D12_VERTEX_BUFFER_VIEW{
-		.BufferLocation = rRes->sceneBuffer->GetGPUVirtualAddress(),
-		.SizeInBytes = static_cast<std::uint32_t>(rRes->scene->getVertices().size() * sizeof(Vector3)),
+		.BufferLocation = rRes->sceneBuffer->GetGPUVirtualAddress() + rRes->scene->getVerticesOffset(),
+		.SizeInBytes = static_cast<std::uint32_t>(rRes->scene->getVerticesSizeBytes()),
 		.StrideInBytes = sizeof(Vector3)
 	};
 	bufferViews[1] = D3D12_VERTEX_BUFFER_VIEW{
-		.BufferLocation = bufferViews[0].BufferLocation + bufferViews[0].SizeInBytes,
-		.SizeInBytes = static_cast<std::uint32_t>(rRes->scene->getTextureCoords().size() * sizeof(Vector2)),
+		.BufferLocation = rRes->sceneBuffer->GetGPUVirtualAddress() + rRes->scene->getTextureCoordsOffset(),
+		.SizeInBytes = static_cast<std::uint32_t>(rRes->scene->getTextureCoordsSizeBytes()),
 		.StrideInBytes = sizeof(Vector2)
 	};
 	bufferViews[2] = D3D12_VERTEX_BUFFER_VIEW{
-		.BufferLocation = bufferViews[1].BufferLocation + bufferViews[1].SizeInBytes,
-		.SizeInBytes = static_cast<std::uint32_t>(rRes->scene->getNormals().size() * sizeof(Vector3)),
+		.BufferLocation = rRes->sceneBuffer->GetGPUVirtualAddress() + rRes->scene->getNormalsOffset(),
+		.SizeInBytes = static_cast<std::uint32_t>(rRes->scene->getNormalsSizeBytes()),
 		.StrideInBytes = sizeof(Vector3)
 	};
-	indexView.BufferLocation = rRes->sceneBuffer->GetGPUVirtualAddress() + bufferViews[0].SizeInBytes + bufferViews[1].SizeInBytes + bufferViews[2].SizeInBytes;
-	indexView.SizeInBytes = static_cast<UINT>(rRes->scene->getIndices().size() * sizeof(int));
+	indexView.BufferLocation = rRes->sceneBuffer->GetGPUVirtualAddress() + rRes->scene->getIndicesOffset();
+	indexView.SizeInBytes = static_cast<UINT>(rRes->scene->getIndicesSizeBytes());
 	indexView.Format = DXGI_FORMAT_R32_UINT;
 
 	// And for depth stencil view

@@ -48,10 +48,9 @@ namespace candela::renderer
 			DirectX::XMVECTOR plane; // x, y and z (distance from point to plane)
 		} constBuffer;
 
-
 		wrl::ComPtr<ID3D12DescriptorHeap> pDepthDescriptorHeap;
-		wrl::ComPtr<ID3D12Resource> constantBuffer;
 		wrl::ComPtr<ID3D12Resource> outputTexture;
+		wrl::ComPtr<ID3D12Resource> constantBuffer;
 		std::vector<wrl::ComPtr<ID3D12Resource>> constantTempBuffer;
 		wrl::ComPtr<ID3D12RootSignature> rootSignature;
 		wrl::ComPtr<ID3D12RootSignature> globalEmptyRootSignature;

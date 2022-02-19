@@ -1,33 +1,4 @@
-struct FaceAttributes
-{
-	uint MaterialId;
-	uint AreaLightId;
-	uint2 padding;
-};
-
-struct AreaLight {
-	float4 Intensity;
-	uint InstanceIndex;
-	uint PrimitiveId;
-	uint MaterialId;
-	uint padding;
-};
-
-struct Material
-{
-	float3 Diffuse;
-	int DiffuseTextureId;
-	float3 Emissive;
-	int EmissiveTextureId;
-};
-
-// Output texture
-RWTexture2D<float4> gOutput : register(u0);
-
-RaytracingAccelerationStructure gRtScene : register(t0);
-StructuredBuffer<FaceAttributes> faceAttributes : register(t3);
-StructuredBuffer<Material> materials : register(t4);
-Texture2D gTextures[]: register(t6);
+#include "Scene.hlsli"
 
 struct ConstBuff {
 	float3 u, v, w;
@@ -36,19 +7,34 @@ struct ConstBuff {
 	float3 plane;
 };
 
-cbuffer CB1 : register(b0)
-{
-	ConstBuff cBuffer;
-}
-
 struct RayPayload
 {
 	float3 color;
 };
 
-uint getFaceIndex()
+// UAVs
+
+// Output texture
+RWTexture2D<float4> gOutput : register(u0);
+
+// SRVs
+RaytracingAccelerationStructure gRtScene : register(t0);
+StructuredBuffer<float3> verts : register(t1);
+StructuredBuffer<float2> texVerts : register(t2);
+StructuredBuffer<float3> normals : register(t3);
+StructuredBuffer<uint> indices : register(t4);
+StructuredBuffer<float4x3> matrices : register(t5);
+StructuredBuffer<FaceAttributes> faceAttributes : register(t6);
+StructuredBuffer<Material> materials : register(t7);
+Texture2D gTextures[]: register(t8);
+
+// Sampler
+SamplerState gSampler : register(s0);
+
+// CBVs
+cbuffer CB1 : register(b0)
 {
-	return InstanceID() / 3 + PrimitiveIndex();
+	ConstBuff cBuffer;
 }
 
 [shader("raygeneration")]
@@ -81,7 +67,6 @@ void rayGen()
 		ray,
 		payload);
 
-	//gOutput[launchIndex] = float4((float)launchIndex.x / launchDim.x, 0.f, 0.f, 1.f);
 	gOutput[launchIndex] = float4(payload.color, 1.f);
 }
 

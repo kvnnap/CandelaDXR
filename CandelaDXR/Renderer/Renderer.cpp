@@ -79,6 +79,7 @@ Renderer::Renderer(Scene *scene, Camera *camera, const UVector2 &windowDimension
 		.materialBuffer = materialBuffer,
 		.faceAttributeBuffer = faceAttributeBuffer,
 		.lightBuffer = lightBuffer,
+		.matrices = matrices,
 		.textures = textures,
 		.pRTVDescriptorHeap = pRTVDescriptorHeap,
 		.pRTVBackBuffers = backBuffers,
@@ -135,10 +136,8 @@ void Renderer::renderFrame()
 
 void Renderer::initSceneResources()
 {
-	auto totalSize = scene->getVertices().size() * sizeof(Vector3)
-		+ scene->getTextureCoords().size() * sizeof(Vector2)
-		+ scene->getNormals().size() * sizeof(Vector3)
-		+ scene->getIndices().size() * sizeof(int);
+	auto totalSize = scene->getVerticesSizeBytes() + scene->getTextureCoordsSizeBytes()
+				   + scene->getNormalsSizeBytes() + scene->getIndicesSizeBytes();
 
 	wrl::ComPtr<ID3D12Resource> tempVB;
 	sceneBuffer = DXUtil::createCommittedResource(pDevice, D3D12_HEAP_TYPE_DEFAULT, totalSize, D3D12_RESOURCE_STATE_COPY_DEST);
@@ -146,13 +145,10 @@ void Renderer::initSceneResources()
 	std::uint8_t* data;
 	auto readRange = D3D12_RANGE(0, 0);
 	tempResource->Map(0, &readRange, reinterpret_cast<void**>(&data));
-	size_t offset = scene->getVertices().size() * sizeof(Vector3);
-	memcpy(data, scene->getVertices().data(), offset);
-	memcpy(data + offset, scene->getTextureCoords().data(), scene->getTextureCoords().size() * sizeof(Vector2));
-	offset += scene->getTextureCoords().size() * sizeof(Vector2);
-	memcpy(data + offset, scene->getNormals().data(), scene->getNormals().size() * sizeof(Vector3));
-	offset += scene->getNormals().size() * sizeof(Vector3);
-	memcpy(data + offset, scene->getIndices().data(), scene->getIndices().size() * sizeof(int));
+	memcpy(data + scene->getVerticesOffset(), scene->getVertices().data(), scene->getVerticesSizeBytes());
+	memcpy(data + scene->getTextureCoordsOffset(), scene->getTextureCoords().data(), scene->getTextureCoordsSizeBytes());
+	memcpy(data + scene->getNormalsOffset(), scene->getNormals().data(), scene->getNormalsSizeBytes());
+	memcpy(data + scene->getIndicesOffset(), scene->getIndices().data(), scene->getIndicesSizeBytes());
 	tempResource->Unmap(0, nullptr);
 	pCurrentCommandList = commandQueue->getCommandList();
 	pCurrentCommandList->CopyResource(sceneBuffer.Get(), tempResource.Get());
@@ -171,6 +167,16 @@ void Renderer::initSceneResources()
 	wrl::ComPtr<ID3D12Resource> tempLight;
 	lightBuffer = DXUtil::uploadDataToDefaultHeap(pDevice, pCurrentCommandList, tempLight,
 		scene->getLights().data(), sizeof(AreaLight) * scene->getLights().size(),
+		D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+
+	// Copy Matrices
+	wrl::ComPtr<ID3D12Resource> tempMatrices;
+	vector<DirectX::XMFLOAT3X4> localMatrices (scene->getSceneGraph().Children.size());
+	auto ptMat = localMatrices.begin();
+	for (auto child : scene->getSceneGraph().Children)
+		DirectX::XMStoreFloat3x4(&*ptMat++, child.Transform);
+	matrices = DXUtil::uploadDataToDefaultHeap(pDevice, pCurrentCommandList, tempMatrices,
+		localMatrices.data(), sizeof(DirectX::XMFLOAT3X4) * localMatrices.size(),
 		D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
 	// Upload textures

@@ -27,6 +27,7 @@ namespace candela::renderer
 		wrl::ComPtr<ID3D12Resource> materialBuffer;
 		wrl::ComPtr<ID3D12Resource> faceAttributeBuffer;
 		wrl::ComPtr<ID3D12Resource> lightBuffer;
+		wrl::ComPtr<ID3D12Resource> matrices;
 		std::vector<wrl::ComPtr<ID3D12Resource>> textures;
 		wrl::ComPtr<ID3D12DescriptorHeap> pRTVDescriptorHeap;
 		std::vector<wrl::ComPtr<ID3D12Resource>> pRTVBackBuffers;

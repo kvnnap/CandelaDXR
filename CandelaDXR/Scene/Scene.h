@@ -91,6 +91,16 @@ namespace candela::scene
 
 		const SceneNode& getSceneGraph() const;
 
+		// Utility functions - Offsets in bytes
+		const std::size_t getVerticesOffset() const;
+		const std::size_t getVerticesSizeBytes() const;
+		const std::size_t getTextureCoordsOffset() const;
+		const std::size_t getTextureCoordsSizeBytes() const;
+		const std::size_t getNormalsOffset() const;
+		const std::size_t getNormalsSizeBytes() const;
+		const std::size_t getIndicesOffset() const;
+		const std::size_t getIndicesSizeBytes() const;
+
 	private:
 		// Data
 		std::vector<Texture> textures;

@@ -174,3 +174,43 @@ const std::unordered_map<std::string, IndexedSpan>& Scene::getMeshIndexedSpanDat
 }
 
 const SceneNode& Scene::getSceneGraph() const { return sceneGraph; }
+
+const size_t Scene::getVerticesOffset() const
+{
+	return 0;
+}
+
+const size_t Scene::getVerticesSizeBytes() const
+{
+	return vertices.size() * sizeof(Vector3);
+}
+
+const size_t Scene::getTextureCoordsOffset() const
+{
+	return getVerticesOffset() + getVerticesSizeBytes();
+}
+
+const size_t Scene::getTextureCoordsSizeBytes() const
+{
+	return textureCoords.size() * sizeof(Vector2);
+}
+
+const size_t Scene::getNormalsOffset() const
+{
+	return getTextureCoordsOffset() + getTextureCoordsSizeBytes();
+}
+
+const size_t Scene::getNormalsSizeBytes() const
+{
+	return normals.size() * sizeof(Vector3);
+}
+
+const size_t Scene::getIndicesOffset() const
+{
+	return getNormalsOffset() + getNormalsSizeBytes();
+}
+
+const size_t Scene::getIndicesSizeBytes() const
+{
+	return indexData.size() * sizeof(int);
+}

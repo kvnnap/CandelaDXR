@@ -47,10 +47,7 @@ void LightTracingShading::init(RendererResources* rRes)
 	const DXUtil::BottomLevelAccelerationData blasReferenceData
 	{
 		.vertexBuffer = rRes->sceneBuffer->GetGPUVirtualAddress(),
-		.indexBuffer = rRes->sceneBuffer->GetGPUVirtualAddress()
-					 + scene.getVertices().size() * sizeof(Vector3)
-					 + scene.getTextureCoords().size() * sizeof(Vector2)
-					 + scene.getNormals().size() * sizeof(Vector3),
+		.indexBuffer = rRes->sceneBuffer->GetGPUVirtualAddress() + scene.getIndicesOffset(),
 		.vertexCount = static_cast<UINT>(scene.getVertices().size()),
 		.indexCount = static_cast<UINT>(scene.getIndices().size()),
 	};
@@ -176,7 +173,7 @@ void LightTracingShading::buildPipeline()
 	rootSignatureManager->addDescriptorRange("BVH", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_NONE)); //gOutput
 	rootSignatureManager->addDescriptorRange("BVH", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_NONE)); //gRtScene
 	if (!rendererResources->textures.empty())
-		rootSignatureManager->addDescriptorRange("BVH", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, static_cast<UINT>(rendererResources->textures.size()), 6, 0, D3D12_DESCRIPTOR_RANGE_FLAG_NONE));
+		rootSignatureManager->addDescriptorRange("BVH", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, static_cast<UINT>(rendererResources->textures.size()), 8, 0, D3D12_DESCRIPTOR_RANGE_FLAG_NONE));
 	
 	rootSignatureManager->setDescriptorTableParameter("BVHDescTable", "BVH");
 	CD3DX12_ROOT_PARAMETER1 param;
@@ -191,11 +188,28 @@ void LightTracingShading::buildPipeline()
 	rootSignatureManager->addRootSignature("EmptyRootSignature");
 	rootSignatureManager->generateRootSignature("EmptyRootSignature", rendererResources->pDevice);
 
+	// Hit Group Signature
 	param.InitAsShaderResourceView(1); rootSignatureManager->setParameter("verts", param);
 	param.InitAsShaderResourceView(2); rootSignatureManager->setParameter("texVerts", param);
-	param.InitAsShaderResourceView(3); rootSignatureManager->setParameter("faceAttributes", param);
-	param.InitAsShaderResourceView(4); rootSignatureManager->setParameter("materials", param);
-	rootSignatureManager->addParametersToRootSignature("HitGroupSignature", { "BVHDescTable", "ConstBuff", "verts", "faceAttributes", "materials", "texVerts" });
+	param.InitAsShaderResourceView(3); rootSignatureManager->setParameter("normals", param);
+	param.InitAsShaderResourceView(4); rootSignatureManager->setParameter("indices", param);
+	param.InitAsShaderResourceView(5); rootSignatureManager->setParameter("matrices", param);
+	param.InitAsShaderResourceView(6); rootSignatureManager->setParameter("faceAttributes", param);
+	param.InitAsShaderResourceView(7); rootSignatureManager->setParameter("materials", param);
+	rootSignatureManager->addParametersToRootSignature("HitGroupSignature", { "BVHDescTable", "ConstBuff", "verts", "texVerts", "normals", "indices", "matrices", "faceAttributes", "materials" });
+	D3D12_STATIC_SAMPLER_DESC sampler = {};
+	sampler.Filter = D3D12_FILTER_MIN_MAG_MIP_POINT;
+	sampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+	sampler.AddressV = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+	sampler.AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+	sampler.ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER;
+	sampler.BorderColor = D3D12_STATIC_BORDER_COLOR_TRANSPARENT_BLACK;
+	sampler.MinLOD = 0.0f;
+	sampler.MaxLOD = D3D12_FLOAT32_MAX;
+	sampler.ShaderRegister = 0;
+	sampler.RegisterSpace = 0;
+	sampler.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+	rootSignatureManager->setSamplerForRootSignature("HitGroupSignature", sampler);
 	rootSignatureManager->generateRootSignature("HitGroupSignature", rendererResources->pDevice);
 
 	// Sixth - Associate the empty local root signature with the miss programs
@@ -268,15 +282,21 @@ void LightTracingShading::createShaderResources()
 
 void LightTracingShading::createShaderTable(wrl::ComPtr<ID3D12GraphicsCommandList6> &commandList, wrl::ComPtr<ID3D12Resource> &tempResource)
 {
-	// Link elements
+	// Link rayGen
 	shadingTable->setInputForDescriptorTableParameter(L"rayGen", "BVHDescTable", "BVH1");
 	shadingTable->setInputForViewParameter(L"rayGen", "ConstBuff", constantBuffer);
 
-	shadingTable->setInputForViewParameter(L"HitGroup", "ConstBuff", constantBuffer);
-	shadingTable->setInputForViewParameter(L"HitGroup", "verts", rendererResources->sceneBuffer);
+	// Link HitGroup - Bindings for 'chs'
 	shadingTable->setInputForDescriptorTableParameter(L"HitGroup", "BVHDescTable", "BVH1");
+	shadingTable->setInputForViewParameter(L"HitGroup", "ConstBuff", constantBuffer);
+	shadingTable->setInputForViewParameter(L"HitGroup", "verts", rendererResources->sceneBuffer, rendererResources->scene->getVerticesOffset());
+	shadingTable->setInputForViewParameter(L"HitGroup", "texVerts", rendererResources->sceneBuffer, rendererResources->scene->getTextureCoordsOffset());
+	shadingTable->setInputForViewParameter(L"HitGroup", "normals", rendererResources->sceneBuffer, rendererResources->scene->getNormalsOffset());
+	shadingTable->setInputForViewParameter(L"HitGroup", "indices", rendererResources->sceneBuffer, rendererResources->scene->getIndicesOffset());
+	shadingTable->setInputForViewParameter(L"HitGroup", "matrices", rendererResources->matrices);
 	shadingTable->setInputForViewParameter(L"HitGroup", "faceAttributes", rendererResources->faceAttributeBuffer);
 	shadingTable->setInputForViewParameter(L"HitGroup", "materials", rendererResources->materialBuffer);
-	shadingTable->setInputForViewParameter(L"HitGroup", "texVerts", rendererResources->sceneBuffer, rendererResources->scene->getVertices().size() * sizeof(Vector3));
+
+	// Generate
 	shadingTable->generateShadingTable(rendererResources->pDevice, commandList, stateObject, tempResource);
 }

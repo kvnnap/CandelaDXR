@@ -208,5 +208,6 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Shader\Utils.hlsli" />
+    <None Include="Shader\Scene.hlsli" />
   </ItemGroup>
 </Project>
