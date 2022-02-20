@@ -111,8 +111,9 @@ void candela::scene::Scene::addFace(
 
 	// Add face attributes
 	faceAttributes.emplace_back(FaceAttributes{
-		materialId,
-		materials[materialId].isEmissive() ? static_cast<uint32_t>(lights.size() - 1) : 0
+		.MaterialId = materialId,
+		.AreaLightId = materials[materialId].isEmissive() ? static_cast<uint32_t>(lights.size() - 1) : 0,
+		.InstanceIndex = static_cast<uint32_t>(spanDataMap.size() - 1)
 	});
 }
 
@@ -174,6 +175,7 @@ const std::unordered_map<std::string, IndexedSpan>& Scene::getMeshIndexedSpanDat
 }
 
 const SceneNode& Scene::getSceneGraph() const { return sceneGraph; }
+SceneNode& Scene::getSceneGraph() { return sceneGraph; }
 
 const size_t Scene::getVerticesOffset() const
 {

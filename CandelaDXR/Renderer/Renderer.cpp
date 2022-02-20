@@ -7,9 +7,9 @@
 #include "DirectX/d3dx12.h"
 #include <DirectXMath.h>
 
-#include "imgui/imconfig.h"
-#include "ImGui/imgui_impl_win32.h"
-#include "ImGui/imgui_impl_dx12.h"
+#include "imgui/imgui.h"
+#include "ImGui/Backend/imgui_impl_win32.h"
+#include "ImGui/Backend/imgui_impl_dx12.h"
 
 using std::make_unique;
 using std::to_string;
@@ -33,6 +33,7 @@ using candela::scene::AreaLight;
 using candela::renderer::Renderer;
 using candela::renderer::Camera;
 using candela::renderer::IDrawable;
+using candela::renderer::imgui::ImGuiSceneNode;
 
 using DirectX::XMVectorSet;
 
@@ -86,6 +87,8 @@ Renderer::Renderer(Scene *scene, Camera *camera, const UVector2 &windowDimension
 		pImGuiDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
 	ImGui::StyleColorsDark();
 	window->addWndProcCallback(ImGui_ImplWin32_WndProcHandler);
+	for (auto &child : scene->getSceneGraph().Children)
+		imguiSceneNodes.emplace_back(child, *scene);
 
 	// Prepare struct to share with drawables
 	rendererResources = RendererResources
@@ -129,20 +132,46 @@ void Renderer::renderFrame()
 	FLOAT color[] = { 0.f, 0.f, 0.f, 1.0f };
 	pCurrentCommandList->ClearRenderTargetView(rtvDescriptorHandle, color, 0, nullptr);
 
-	// Draw
-	updateCamera();
-	for (IDrawable* drawable : drawables)
-		drawable->draw(pCurrentCommandList, currentBackBufferIndex);
-
 	// ImGui
 	ImGui_ImplDX12_NewFrame();
 	ImGui_ImplWin32_NewFrame();
 	ImGui::NewFrame();
 
-	ImGui::Begin("Test");
+	ImGui::Begin("Transforms");
+	bool transformChanged = false;
+	for (auto& imguiSceneNode : imguiSceneNodes)
+	{
+		imguiSceneNode.drawUi();
+		transformChanged |= imguiSceneNode.hasChanged();
+	}
 	ImGui::End();
+
 	ImGui::Render();
 
+	// Update Transforms
+	if (transformChanged) {
+		auto gMatrices = getMatrices();
+		DXUtil::updateDataInDefaultHeap(
+			pDevice,
+			pCurrentCommandList,
+			matrices,
+			pMatricesTempBackBuffers[currentBackBufferIndex],
+			getMatrices().data(),
+			sizeof(decltype(gMatrices)::value_type) * gMatrices.size(),
+			D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, 
+			D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+	}
+
+	// Draw
+	updateCamera();
+	for (IDrawable* drawable : drawables)
+	{
+		if (transformChanged)
+			drawable->onChange(pCurrentCommandList, currentBackBufferIndex);
+		drawable->draw(pCurrentCommandList, currentBackBufferIndex);
+	}
+
+	// ImGui Render
 	pCurrentCommandList->OMSetRenderTargets(1u, &rtvDescriptorHandle, FALSE, nullptr);
 	pCurrentCommandList->SetDescriptorHeaps(1u, pImGuiDescriptorHeap.GetAddressOf());
 	ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), pCurrentCommandList.Get());
@@ -200,10 +229,7 @@ void Renderer::initSceneResources()
 
 	// Copy Matrices
 	wrl::ComPtr<ID3D12Resource> tempMatrices;
-	vector<DirectX::XMFLOAT3X4> localMatrices (scene->getSceneGraph().Children.size());
-	auto ptMat = localMatrices.begin();
-	for (auto child : scene->getSceneGraph().Children)
-		DirectX::XMStoreFloat3x4(&*ptMat++, child.Transform);
+	vector<DirectX::XMFLOAT3X4> localMatrices = getMatrices();
 	matrices = DXUtil::uploadDataToDefaultHeap(pDevice, pCurrentCommandList, tempMatrices,
 		localMatrices.data(), sizeof(DirectX::XMFLOAT3X4) * localMatrices.size(),
 		D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
@@ -244,4 +270,13 @@ void Renderer::updateCamera()
 	deltaUnits = fpsCounter.getLastFrameTime() / 1000.f;
 	camera->incrementDirection(getValueIfPressed('L', -deltaUnits), getValueIfPressed('I', -deltaUnits));
 	camera->incrementDirection(getValueIfPressed('J', deltaUnits), getValueIfPressed('K', deltaUnits));
+}
+
+vector<DirectX::XMFLOAT3X4> Renderer::getMatrices()
+{
+	vector<DirectX::XMFLOAT3X4> localMatrices(scene->getSceneGraph().Children.size());
+	auto ptMat = localMatrices.begin();
+	for (auto child : scene->getSceneGraph().Children)
+		DirectX::XMStoreFloat3x4(&*ptMat++, child.Transform);
+	return localMatrices;
 }

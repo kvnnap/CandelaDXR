@@ -1,6 +1,17 @@
+#include "Scene.hlsli"
+
+StructuredBuffer<FaceAttributes> faceAttributes : register(t1); 
+StructuredBuffer<float4x3> matrices : register(t7);
+
 cbuffer CB1 : register(b0)
 {
 	matrix MVP;
+}
+
+cbuffer CB2 : register(b1)
+{
+	uint groupId;
+	uint instanceId;
 }
 
 struct MyInput
@@ -18,9 +29,11 @@ struct MyOutput
 
 MyOutput main(MyInput myInput)
 {
+	float4x3 lToW = matrices[groupId];
+	float3 tPos = mul(myInput.pos, lToW);
 	MyOutput myOutput;
-	myOutput.Pos = myInput.pos;
-	myOutput.Position = mul(MVP, myInput.pos);
+	myOutput.Pos = float4(tPos, 1.f);
+	myOutput.Position = mul(MVP, float4(tPos, 1.f));
 	myOutput.Normal = myInput.normal;
 	return myOutput;
 }

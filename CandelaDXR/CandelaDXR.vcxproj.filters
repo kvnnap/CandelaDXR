@@ -96,10 +96,13 @@
     <ClCompile Include="DirectX\ShadingTable.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="ImGui\imgui_impl_dx12.cpp">
+    <ClCompile Include="ImGui\Backend\imgui_impl_dx12.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="ImGui\imgui_impl_win32.cpp">
+    <ClCompile Include="ImGui\Backend\imgui_impl_win32.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ImGui\ImGuiSceneNode.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -206,10 +209,13 @@
     <ClInclude Include="DirectX\ShadingTable.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="ImGui\imgui_impl_dx12.h">
+    <ClInclude Include="ImGui\Backend\imgui_impl_dx12.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="ImGui\imgui_impl_win32.h">
+    <ClInclude Include="ImGui\Backend\imgui_impl_win32.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ImGui\ImGuiSceneNode.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

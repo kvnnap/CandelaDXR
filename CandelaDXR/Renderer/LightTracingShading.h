@@ -32,11 +32,13 @@ namespace candela::renderer
 
 		void init(RendererResources* rendererResources) override;
 		void draw(wrl::ComPtr<ID3D12GraphicsCommandList6> pCurrentCommandList, std::uint32_t currentBackBufferIndex) override;
+		void onChange(wrl::ComPtr<ID3D12GraphicsCommandList6> pCurrentCommandList, std::uint32_t currentBackBufferIndex) override;
 
 	private:
 		void buildPipeline();
 		void createShaderResources();
 		void createShaderTable(wrl::ComPtr<ID3D12GraphicsCommandList6> &commandList, wrl::ComPtr<ID3D12Resource> &tempResource);
+		void buildTlas(wrl::ComPtr<ID3D12GraphicsCommandList6>& commandList, wrl::ComPtr<ID3D12Resource>& tempResource);
 
 		RendererResources* rendererResources;
 
@@ -58,6 +60,8 @@ namespace candela::renderer
 		wrl::ComPtr<ID3D12DescriptorHeap> descriptorHeap;
 		std::vector<directx::DXUtil::AccelerationStructureBuffers> blasBuffers;
 		directx::DXUtil::AccelerationStructureBuffers tlasBuffers;
+		std::vector<directx::DXUtil::TopLevelAccelerationData> tlasInstanceData;
+		std::vector<wrl::ComPtr<ID3D12Resource>> tlasTempBuffer;
 
 		// My helpers
 		std::shared_ptr<directx::RootSignatureManager> rootSignatureManager;

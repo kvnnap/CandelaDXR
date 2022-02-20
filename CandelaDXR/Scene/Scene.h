@@ -38,6 +38,7 @@ namespace candela::scene
 	{
 		std::uint32_t MaterialId;
 		std::uint32_t AreaLightId;
+		std::uint32_t InstanceIndex;
 	};
 
 	struct alignas(16) AreaLight {
@@ -90,6 +91,7 @@ namespace candela::scene
 		const std::unordered_map<std::string, IndexedSpan>& getMeshIndexedSpanDataMap() const;
 
 		const SceneNode& getSceneGraph() const;
+		SceneNode& getSceneGraph();
 
 		// Utility functions - Offsets in bytes
 		const std::size_t getVerticesOffset() const;

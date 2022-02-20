@@ -89,7 +89,7 @@ void candela::renderer::RasterShading::init(RendererResources* rRes)
 		;
 
 	// A single 32-bit constant root parameter that is used by the vertex shader. (CAMERA)
-	CD3DX12_ROOT_PARAMETER1 rootParameters[8] = {};
+	CD3DX12_ROOT_PARAMETER1 rootParameters[10] = {};
 	//rootParameters[0].InitAsConstants(sizeof(XMMATRIX) / 4, 0, 0, D3D12_SHADER_VISIBILITY_VERTEX);
 	rootParameters[0].InitAsConstantBufferView(0);
 	rootParameters[1].InitAsShaderResourceView(0);
@@ -99,6 +99,8 @@ void candela::renderer::RasterShading::init(RendererResources* rRes)
 	rootParameters[5].InitAsShaderResourceView(4);
 	rootParameters[6].InitAsShaderResourceView(5);
 	rootParameters[7].InitAsShaderResourceView(6);
+	rootParameters[8].InitAsShaderResourceView(7);
+	rootParameters[9].InitAsConstants(2, 1);
 
 	CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC rootSignatureDescription;
 	rootSignatureDescription.Init_1_1(_countof(rootParameters), rootParameters, 0, nullptr, rootSignatureFlags);
@@ -196,14 +198,26 @@ void RasterShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList6> pCurrentCommand
 	pCurrentCommandList->SetGraphicsRootConstantBufferView(0u, constantBuffer->GetGPUVirtualAddress()); // Const buff (includes Cam)
 	pCurrentCommandList->SetGraphicsRootShaderResourceView(1u, rendererResources->materialBuffer->GetGPUVirtualAddress());  // Material
 	pCurrentCommandList->SetGraphicsRootShaderResourceView(2u, rendererResources->faceAttributeBuffer->GetGPUVirtualAddress());  // Face
-	pCurrentCommandList->SetGraphicsRootShaderResourceView(3u, rendererResources->lightBuffer->GetGPUVirtualAddress());  // Face
+	pCurrentCommandList->SetGraphicsRootShaderResourceView(3u, rendererResources->lightBuffer->GetGPUVirtualAddress());  // Light
 	pCurrentCommandList->SetGraphicsRootShaderResourceView(4u, bufferViews[0].BufferLocation);  // Vertices
 	pCurrentCommandList->SetGraphicsRootShaderResourceView(5u, bufferViews[1].BufferLocation);  // Tex
 	pCurrentCommandList->SetGraphicsRootShaderResourceView(6u, bufferViews[2].BufferLocation);  // Normals
 	pCurrentCommandList->SetGraphicsRootShaderResourceView(7u, indexView.BufferLocation);  // Indices
+	pCurrentCommandList->SetGraphicsRootShaderResourceView(8u, rendererResources->matrices->GetGPUVirtualAddress());  // Matrices
 
-	//pCurrentCommandList->DrawInstanced(3u, 1u, 0u, 0u);
-	pCurrentCommandList->DrawIndexedInstanced(static_cast<UINT>(rendererResources->scene->getIndices().size()), 1u, 0u, 0u, 0u);
+	std::uint32_t i = 0;
+	std::array<std::uint32_t, 2> constants;
+	for (const auto &child : rendererResources->scene->getSceneGraph().Children)
+	{
+		auto& indexedSpan = rendererResources->scene->getMeshIndexedSpan(child.GroupName);
+		constants = { i++, static_cast<UINT>(indexedSpan.Start) };
+		pCurrentCommandList->SetGraphicsRoot32BitConstants(9u, 2u, constants.data(), 0u);
+		pCurrentCommandList->DrawIndexedInstanced(static_cast<UINT>(indexedSpan.Size), 1u, static_cast<UINT>(indexedSpan.Start), 0u, 0u);
+	}
+}
+
+void RasterShading::onChange(wrl::ComPtr<ID3D12GraphicsCommandList6> pCurrentCommandList, uint32_t currentBackBufferIndex)
+{
 }
 
 

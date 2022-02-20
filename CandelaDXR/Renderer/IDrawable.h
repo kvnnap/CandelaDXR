@@ -44,5 +44,6 @@ namespace candela::renderer
 		virtual ~IDrawable() = default;
 		virtual void init(RendererResources *rendererResources) = 0;
 		virtual void draw(wrl::ComPtr<ID3D12GraphicsCommandList6> pCurrentCommandList, std::uint32_t currentBackBufferIndex) = 0;
+		virtual void onChange(wrl::ComPtr<ID3D12GraphicsCommandList6> pCurrentCommandList, std::uint32_t currentBackBufferIndex) = 0;
 	};
 }

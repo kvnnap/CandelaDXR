@@ -17,6 +17,8 @@
 #include "IDrawable.h"
 #include "Camera.h"
 
+#include "ImGui/ImGuiSceneNode.h"
+
 namespace candela::renderer
 {
 	namespace wrl = Microsoft::WRL;
@@ -33,6 +35,7 @@ namespace candela::renderer
 	private:
 		void initSceneResources();
 		void updateCamera();
+		std::vector<DirectX::XMFLOAT3X4> getMatrices();
 
 		// Basic I/O and Window
 		feanor::io::Keyboard keyboard;
@@ -48,9 +51,11 @@ namespace candela::renderer
 		wrl::ComPtr<IDXGISwapChain4> pSwapChain;
 		wrl::ComPtr<ID3D12DescriptorHeap> pRTVDescriptorHeap;
 		wrl::ComPtr<ID3D12Resource> pRTVBackBuffers[NumBackBuffers];
+		wrl::ComPtr<ID3D12Resource> pMatricesTempBackBuffers[NumBackBuffers];
 
 		// ImGui
 		wrl::ComPtr<ID3D12DescriptorHeap> pImGuiDescriptorHeap;
+		std::vector<imgui::ImGuiSceneNode> imguiSceneNodes;
 
 		// Constants and integral values
 		UINT rtvDescriptorSize;

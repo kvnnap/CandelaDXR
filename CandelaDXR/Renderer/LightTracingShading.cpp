@@ -40,6 +40,7 @@ void LightTracingShading::init(RendererResources* rRes)
 	rendererResources = rRes;
 
 	constantTempBuffer.resize(rRes->numBackBuffers);
+	tlasTempBuffer.resize(rRes->numBackBuffers);
 
 	auto commandList = rRes->commandQueue->getCommandList();
 	auto& scene = *rRes->scene;
@@ -66,11 +67,10 @@ void LightTracingShading::init(RendererResources* rRes)
 		blasBuffers.push_back(DXUtil::createBottomLevelAS(rRes->pDevice, commandList, { blasData }, 3 * sizeof(float)));
 	}
 
-	vector<DXUtil::TopLevelAccelerationData> instanceData;
 	for (auto child : scene.getSceneGraph().Children)
 	{
 		auto &indexedSpan = scene.getMeshIndexedSpan(child.GroupName);
-		auto &ref = instanceData.emplace_back(DXUtil::TopLevelAccelerationData {
+		auto &ref = tlasInstanceData.emplace_back(DXUtil::TopLevelAccelerationData {
 			.instanceId = indexedSpan.Start,
 			.blasBuffer = blasBuffers[bufferMap.at(child.GroupName)]
 		});
@@ -79,7 +79,7 @@ void LightTracingShading::init(RendererResources* rRes)
 
 	// Build Top-Layer
 	wrl::ComPtr<ID3D12Resource> tlasTempBuffer;
-	DXUtil::buildTopLevelAS(rRes->pDevice, commandList, instanceData, tlasTempBuffer, false, tlasBuffers);
+	DXUtil::buildTopLevelAS(rRes->pDevice, commandList, tlasInstanceData, tlasTempBuffer, false, tlasBuffers);
 
 	// Build Pipeline
 	buildPipeline();
@@ -299,4 +299,19 @@ void LightTracingShading::createShaderTable(wrl::ComPtr<ID3D12GraphicsCommandLis
 
 	// Generate
 	shadingTable->generateShadingTable(rendererResources->pDevice, commandList, stateObject, tempResource);
+}
+
+void LightTracingShading::buildTlas(wrl::ComPtr<ID3D12GraphicsCommandList6> &commandList, wrl::ComPtr<ID3D12Resource>& tempResource)
+{
+	// Warning, we are assuming order - will not be the case when instancing in the future
+	auto tlas = tlasInstanceData.begin();
+	for (const auto &child : rendererResources->scene->getSceneGraph().Children)
+		XMStoreFloat3x4(&(tlas++)->transform, child.Transform);
+
+	DXUtil::buildTopLevelAS(rendererResources->pDevice, commandList, tlasInstanceData, tempResource, true, tlasBuffers);
+}
+
+void LightTracingShading::onChange(wrl::ComPtr<ID3D12GraphicsCommandList6> pCurrentCommandList, uint32_t currentBackBufferIndex)
+{
+	buildTlas(pCurrentCommandList, tlasTempBuffer[currentBackBufferIndex]);
 }

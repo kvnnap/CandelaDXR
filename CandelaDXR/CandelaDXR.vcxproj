@@ -189,8 +189,9 @@
     <ClCompile Include="Factory\RasterDrawableFactory.cpp" />
     <ClCompile Include="Factory\RendererFactory.cpp" />
     <ClCompile Include="Factory\VectorFactory.cpp" />
-    <ClCompile Include="ImGui\imgui_impl_dx12.cpp" />
-    <ClCompile Include="ImGui\imgui_impl_win32.cpp" />
+    <ClCompile Include="ImGui\ImGuiSceneNode.cpp" />
+    <ClCompile Include="ImGui\Backend\imgui_impl_dx12.cpp" />
+    <ClCompile Include="ImGui\Backend\imgui_impl_win32.cpp" />
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="DirectX\DxgiInfoManager.cpp" />
     <ClCompile Include="Exception\DxgiInfoException.cpp" />
@@ -226,8 +227,9 @@
     <ClInclude Include="Factory\RasterDrawableFactory.h" />
     <ClInclude Include="Factory\VectorFactory.h" />
     <ClInclude Include="Factory\RendererFactory.h" />
-    <ClInclude Include="ImGui\imgui_impl_dx12.h" />
-    <ClInclude Include="ImGui\imgui_impl_win32.h" />
+    <ClInclude Include="ImGui\ImGuiSceneNode.h" />
+    <ClInclude Include="ImGui\Backend\imgui_impl_dx12.h" />
+    <ClInclude Include="ImGui\Backend\imgui_impl_win32.h" />
     <ClInclude Include="Mathematics\Constants.h" />
     <ClInclude Include="Mathematics\Types.h" />
     <ClInclude Include="Renderer\Camera.h" />

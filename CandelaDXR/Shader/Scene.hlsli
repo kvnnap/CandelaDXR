@@ -2,7 +2,8 @@ struct FaceAttributes
 {
 	uint MaterialId;
 	uint AreaLightId;
-	uint2 padding;
+	uint InstanceIndex;
+	uint padding;
 };
 
 struct AreaLight {
