@@ -49,6 +49,9 @@ namespace candela::renderer
 		wrl::ComPtr<ID3D12DescriptorHeap> pRTVDescriptorHeap;
 		wrl::ComPtr<ID3D12Resource> pRTVBackBuffers[NumBackBuffers];
 
+		// ImGui
+		wrl::ComPtr<ID3D12DescriptorHeap> pImGuiDescriptorHeap;
+
 		// Constants and integral values
 		UINT rtvDescriptorSize;
 		UINT currentBackBufferIndex;

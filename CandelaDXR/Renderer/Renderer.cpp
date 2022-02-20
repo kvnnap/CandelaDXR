@@ -7,6 +7,10 @@
 #include "DirectX/d3dx12.h"
 #include <DirectXMath.h>
 
+#include "imgui/imconfig.h"
+#include "ImGui/imgui_impl_win32.h"
+#include "ImGui/imgui_impl_dx12.h"
+
 using std::make_unique;
 using std::to_string;
 using std::vector;
@@ -31,6 +35,8 @@ using candela::renderer::Camera;
 using candela::renderer::IDrawable;
 
 using DirectX::XMVectorSet;
+
+extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 Renderer::Renderer(Scene *scene, Camera *camera, const UVector2 &windowDimensions, vector<IDrawable*> p_drawables)
 	: rtvDescriptorSize(),
@@ -70,6 +76,16 @@ Renderer::Renderer(Scene *scene, Camera *camera, const UVector2 &windowDimension
 
 	// Upload scene resources
 	initSceneResources();
+
+	// ImGui
+	pImGuiDescriptorHeap = DXUtil::createDescriptorHeap(pDevice, 1u, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, true);
+	ImGui::CreateContext();
+	ImGui_ImplWin32_Init(window->getHandle());
+	ImGui_ImplDX12_Init(pDevice.Get(), NumBackBuffers, DXGI_FORMAT_R8G8B8A8_UNORM, pImGuiDescriptorHeap.Get(),
+		pImGuiDescriptorHeap->GetCPUDescriptorHandleForHeapStart(),
+		pImGuiDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
+	ImGui::StyleColorsDark();
+	window->addWndProcCallback(ImGui_ImplWin32_WndProcHandler);
 
 	// Prepare struct to share with drawables
 	rendererResources = RendererResources
@@ -117,6 +133,19 @@ void Renderer::renderFrame()
 	updateCamera();
 	for (IDrawable* drawable : drawables)
 		drawable->draw(pCurrentCommandList, currentBackBufferIndex);
+
+	// ImGui
+	ImGui_ImplDX12_NewFrame();
+	ImGui_ImplWin32_NewFrame();
+	ImGui::NewFrame();
+
+	ImGui::Begin("Test");
+	ImGui::End();
+	ImGui::Render();
+
+	pCurrentCommandList->OMSetRenderTargets(1u, &rtvDescriptorHandle, FALSE, nullptr);
+	pCurrentCommandList->SetDescriptorHeaps(1u, pImGuiDescriptorHeap.GetAddressOf());
+	ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), pCurrentCommandList.Get());
 
 	// End frame
 	barrier = CD3DX12_RESOURCE_BARRIER::Transition(rtvBackBuffer.Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
