@@ -44,6 +44,7 @@ void LightTracingShading::init(RendererResources* rRes)
 
 	constantTempBuffer.resize(rRes->numBackBuffers);
 	tlasTempBuffer.resize(rRes->numBackBuffers);
+	constBuffer.numLights = static_cast<uint32_t>(rRes->scene->getLights().size());
 
 	auto commandList = rRes->commandQueue->getCommandList();
 	auto& scene = *rRes->scene;

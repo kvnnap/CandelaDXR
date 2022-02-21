@@ -54,6 +54,7 @@ namespace candela::renderer
 			DirectX::XMVECTOR direction;
 			DirectX::XMVECTOR plane; // x, y and z (distance from point to plane)
 			std::uint32_t seeds[2];
+			std::uint32_t numLights;
 			std::uint32_t clear;
 		} constBuffer;
 

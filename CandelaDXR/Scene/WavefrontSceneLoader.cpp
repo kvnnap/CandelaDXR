@@ -54,15 +54,22 @@ void WavefrontSceneLoader::loadScene()
     for (const auto& tinyMat : materials)
     {
         int32_t currentDiffTexId = -1;
+        int32_t currentSpecTexId = -1;
         if (!tinyMat.diffuse_texname.empty())
             currentDiffTexId = static_cast<int>(scene->addTexture(tinyMat.diffuse_texname));
+        if (!tinyMat.specular_texname.empty())
+            currentSpecTexId = static_cast<int>(scene->addTexture(tinyMat.specular_texname));
         
         // Materials point to textures using the identifier
         scene->addMaterial(Material{
-            Vector3(tinyMat.diffuse[0], tinyMat.diffuse[1], tinyMat.diffuse[2]),
-            currentDiffTexId,
-            Vector3(tinyMat.emission[0], tinyMat.emission[1], tinyMat.emission[2]),
-            -1
+            .Diffuse = Vector3(tinyMat.diffuse[0], tinyMat.diffuse[1], tinyMat.diffuse[2]),
+            .DiffuseTextureId = currentDiffTexId,
+            .Emissive = Vector3(tinyMat.emission[0], tinyMat.emission[1], tinyMat.emission[2]),
+            .EmissiveTextureId = -1,
+            .Specular = Vector3(tinyMat.specular[0], tinyMat.specular[1], tinyMat.specular[2]),
+            .SpecularTextureId = currentSpecTexId,
+            .TransmissiveFilter = Vector3(tinyMat.transmittance[0], tinyMat.transmittance[1], tinyMat.transmittance[2]),
+            .RefractiveIndex = tinyMat.ior
         });
     }
 

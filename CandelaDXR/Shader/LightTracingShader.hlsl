@@ -7,6 +7,7 @@ struct ConstBuff {
 	float3 direction;
 	float3 plane;
 	uint2 seeds;
+	uint numLights;
 	uint clear;
 };
 

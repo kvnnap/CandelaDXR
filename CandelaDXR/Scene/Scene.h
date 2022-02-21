@@ -54,7 +54,11 @@ namespace candela::scene
 		std::int32_t DiffuseTextureId;
 		mathematics::Vector3 Emissive;
 		std::int32_t EmissiveTextureId;
-
+		mathematics::Vector3 Specular;
+		std::int32_t SpecularTextureId;
+		mathematics::Vector3 TransmissiveFilter;
+		float RefractiveIndex;
+		
 		bool isEmissive();
 	};
 

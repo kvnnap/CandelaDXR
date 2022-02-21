@@ -20,6 +20,10 @@ struct Material
 	int DiffuseTextureId;
 	float3 Emissive;
 	int EmissiveTextureId;
+	float3 Specular;
+	int SpecularTextureId;
+	float3 TransmissiveFilter;
+	float RefractiveIndex;
 };
 
 // RT Specific
