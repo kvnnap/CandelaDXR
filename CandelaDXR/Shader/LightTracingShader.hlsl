@@ -45,6 +45,14 @@ cbuffer CB1 : register(b0)
 	ConstBuff cBuffer;
 }
 
+// Functions
+uint getFaceIndex()
+{
+	return InstanceID() / 3 + PrimitiveIndex();
+}
+
+// Kernels
+
 [shader("raygeneration")]
 void rayGen()
 {
@@ -53,6 +61,18 @@ void rayGen()
 
 	// Dimensions - the previous x,y point is contained within these dimensions
 	const uint2 launchDim = DispatchRaysDimensions().xy;
+
+	// Early-exit checks
+	if (cBuffer.numLights == 0)
+	{
+		gOutput[launchIndex] = float4(0.f, 0.f, 0.f, 0.f);
+		return;
+	}
+
+	// Clear buffer if stuff changed
+	if (cBuffer.clear)
+		gIrradiance[launchIndex] = float4(0.f, 0.f, 0.f, 0.f);
+	
 
 	// Setup Ray
 	RayDesc ray;

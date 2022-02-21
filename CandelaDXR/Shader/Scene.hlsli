@@ -25,9 +25,3 @@ struct Material
 	float3 TransmissiveFilter;
 	float RefractiveIndex;
 };
-
-// RT Specific
-uint getFaceIndex()
-{
-	return InstanceID() / 3 + PrimitiveIndex();
-}

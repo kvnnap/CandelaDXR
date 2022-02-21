@@ -264,12 +264,16 @@ void Renderer::updateCamera()
 	constexpr float unitsPerSec = 3.f;
 
 	float deltaUnits = fpsCounter.getLastFrameTime() / 1000.f * unitsPerSec;
-	camera->incrementPositionAlongDirection(getValueIfPressed('D', -deltaUnits), getValueIfPressed('W', deltaUnits));
-	camera->incrementPositionAlongDirection(getValueIfPressed('A', deltaUnits), getValueIfPressed('S', -deltaUnits));
+	if (keyboard.isKeyPressed('D') || keyboard.isKeyPressed('W'))
+		camera->incrementPositionAlongDirection(getValueIfPressed('D', -deltaUnits), getValueIfPressed('W', deltaUnits));
+	if (keyboard.isKeyPressed('A') || keyboard.isKeyPressed('S'))
+		camera->incrementPositionAlongDirection(getValueIfPressed('A', deltaUnits), getValueIfPressed('S', -deltaUnits));
 
 	deltaUnits = fpsCounter.getLastFrameTime() / 1000.f;
-	camera->incrementDirection(getValueIfPressed('L', -deltaUnits), getValueIfPressed('I', -deltaUnits));
-	camera->incrementDirection(getValueIfPressed('J', deltaUnits), getValueIfPressed('K', deltaUnits));
+	if (keyboard.isKeyPressed('L') || keyboard.isKeyPressed('I'))
+		camera->incrementDirection(getValueIfPressed('L', -deltaUnits), getValueIfPressed('I', -deltaUnits));
+	if (keyboard.isKeyPressed('J') || keyboard.isKeyPressed('K'))
+		camera->incrementDirection(getValueIfPressed('J', deltaUnits), getValueIfPressed('K', deltaUnits));
 }
 
 vector<DirectX::XMFLOAT3X4> Renderer::getMatrices()

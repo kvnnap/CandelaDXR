@@ -15,7 +15,7 @@ using DirectX::operator+;
 using DirectX::operator*;
 
 Camera::Camera(const XMVECTOR& position, const XMVECTOR& direction, float nearWidth, float nearHeight, float nearZ, float farZ)
-	: position(position), direction(XMVector3Normalize(direction)), up(), nearWidth(nearWidth), nearHeight(nearHeight), nearZ(nearZ), farZ(farZ), viewMatrix()
+	: position(position), direction(XMVector3Normalize(direction)), up(), nearWidth(nearWidth), nearHeight(nearHeight), nearZ(nearZ), farZ(farZ), viewMatrix(), changed()
 {
 	lookTo(direction);
 	perspectiveMatrix = DirectX::XMMatrixPerspectiveLH(nearWidth, nearHeight, nearZ, farZ);
@@ -24,6 +24,7 @@ Camera::Camera(const XMVECTOR& position, const XMVECTOR& direction, float nearWi
 void Camera::recalculateViewMatrix()
 {
 	viewMatrix = XMMatrixLookToLH(position, direction, XMVectorSet(0.f, 1.f, 0.f, 0.f));
+	changed = true;
 }
 
 XMVECTOR Camera::getCrossVector() const
@@ -104,4 +105,11 @@ const XMMATRIX& Camera::getPerspectiveMatrix() const
 XMMATRIX Camera::getViewPerspectiveMatrix() const
 {
 	return viewMatrix * perspectiveMatrix;
+}
+
+bool Camera::hasChanged()
+{
+	auto localChanged = changed;
+	changed = false; // reset
+	return localChanged;
 }

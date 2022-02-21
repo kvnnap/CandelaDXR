@@ -126,7 +126,7 @@ void LightTracingShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList6> currentCo
 	currentCommandList->ResourceBarrier(1u, &t1);
 
 	// Copy and update camera
-	auto &cam = rendererResources->camera;
+	auto cam = rendererResources->camera;
 	constBuffer.w = DirectX::XMVector3Normalize(cam->getDirection());
 	constBuffer.u = DirectX::XMVectorNegate(DirectX::XMVector3Normalize(DirectX::XMVector3Cross(cam->getUp(), cam->getDirection())));
 	constBuffer.v = DirectX::XMVectorNegate(DirectX::XMVector3Normalize(DirectX::XMVector3Cross(constBuffer.w, constBuffer.u)));
@@ -135,6 +135,7 @@ void LightTracingShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList6> currentCo
 	constBuffer.plane = cam->getNearPlaneDimensions();
 	constBuffer.seeds[0] = sampler->nextUInt32();
 	constBuffer.seeds[1] = sampler->nextUInt32();
+	clear |= cam->hasChanged();
 	constBuffer.clear = clear ? 1 : 0;
 	clear = false;
 	DXUtil::updateDataInDefaultHeap(rendererResources->pDevice, currentCommandList, constantBuffer, constantTempBuffer[currentBackBufferIndex],

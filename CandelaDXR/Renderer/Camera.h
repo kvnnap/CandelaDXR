@@ -24,6 +24,8 @@ namespace candela::renderer
 		DirectX::XMVECTOR getNearPlaneDimensions() const;
 		DirectX::XMMATRIX getViewPerspectiveMatrix() const;
 
+		bool hasChanged();
+
 	private:
 		void recalculateViewMatrix();
 		DirectX::XMVECTOR getCrossVector() const;
@@ -39,5 +41,7 @@ namespace candela::renderer
 
 		DirectX::XMMATRIX viewMatrix;
 		DirectX::XMMATRIX perspectiveMatrix;
+
+		bool changed;
 	};
 }
