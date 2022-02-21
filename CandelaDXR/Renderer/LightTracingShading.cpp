@@ -9,11 +9,11 @@
 
 #include "Exception/WindowException.h"
 
-
 using std::uint32_t;
 using std::vector;
 using std::string;
 using std::unordered_map;
+using std::unique_ptr;
 using std::make_unique;
 using std::make_shared;
 
@@ -27,11 +27,14 @@ using candela::directx::ShadingRecordType;
 using candela::renderer::LightTracingShading;
 using candela::renderer::RendererResources;
 
+using candela::mathematics::UVector2;
 using candela::mathematics::Vector2;
 using candela::mathematics::Vector3;
 
-LightTracingShading::LightTracingShading()
-	: rendererResources(), constBuffer()
+using candela::sampler::ISampler;
+
+LightTracingShading::LightTracingShading(unique_ptr<ISampler> sampler)
+	: rendererResources(), constBuffer(), sampler(std::move(sampler)), clear()
 {
 }
 
@@ -67,7 +70,7 @@ void LightTracingShading::init(RendererResources* rRes)
 		blasBuffers.push_back(DXUtil::createBottomLevelAS(rRes->pDevice, commandList, { blasData }, 3 * sizeof(float)));
 	}
 
-	for (auto child : scene.getSceneGraph().Children)
+	for (const auto &child : scene.getSceneGraph().Children)
 	{
 		auto &indexedSpan = scene.getMeshIndexedSpan(child.GroupName);
 		auto &ref = tlasInstanceData.emplace_back(DXUtil::TopLevelAccelerationData {
@@ -86,6 +89,16 @@ void LightTracingShading::init(RendererResources* rRes)
 
 	// Create Shader resources
 	createShaderResources();
+
+	// Compute irradianceToRadianceConstants
+	wrl::ComPtr<ID3D12Resource> irrToRadTempBuffer;
+	vector<float> irradianceToRadianceConstants;
+	irradianceToRadianceConstants.reserve(rRes->winDimensions.x * rRes->winDimensions.y);
+	for (uint32_t y = 0; y < rRes->winDimensions.y; ++y)
+		for (uint32_t x = 0; x < rRes->winDimensions.x; ++x)
+			irradianceToRadianceConstants.push_back(cosIntegral(x, y));
+	irrToRad = DXUtil::uploadTextureDataToDefaultHeap(rendererResources->pDevice, commandList, irrToRadTempBuffer, irradianceToRadianceConstants.data(),
+		rRes->winDimensions.x, rRes->winDimensions.y, sizeof(float), DXGI_FORMAT_R32_FLOAT, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
 	// Constant buffer
 	wrl::ComPtr<ID3D12Resource> cBuffIntBuffer;
@@ -119,6 +132,10 @@ void LightTracingShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList6> currentCo
 	constBuffer.position = cam->getPosition();
 	constBuffer.direction = cam->getDirection();
 	constBuffer.plane = cam->getNearPlaneDimensions();
+	constBuffer.seeds[0] = sampler->nextUInt32();
+	constBuffer.seeds[1] = sampler->nextUInt32();
+	constBuffer.clear = clear ? 1 : 0;
+	clear = false;
 	DXUtil::updateDataInDefaultHeap(rendererResources->pDevice, currentCommandList, constantBuffer, constantTempBuffer[currentBackBufferIndex],
 		&constBuffer, sizeof(constBuffer), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
@@ -170,16 +187,16 @@ void LightTracingShading::buildPipeline()
 	shadowHitSubObject.SetHitGroupExport(L"ShadowHitGroup");
 
 	// Third - Local Root Signature for Ray Gen shader
-	rootSignatureManager->addDescriptorRange("BVH", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_NONE)); //gOutput
-	rootSignatureManager->addDescriptorRange("BVH", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_NONE)); //gRtScene
+	rootSignatureManager->addDescriptorRange("BVH", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 2, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_NONE)); //gOutput, gIrradiance
+	rootSignatureManager->addDescriptorRange("BVH", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 2, 7, 0, D3D12_DESCRIPTOR_RANGE_FLAG_NONE)); //gRtScene, gIrrToRad
 	if (!rendererResources->textures.empty())
-		rootSignatureManager->addDescriptorRange("BVH", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, static_cast<UINT>(rendererResources->textures.size()), 8, 0, D3D12_DESCRIPTOR_RANGE_FLAG_NONE));
+		rootSignatureManager->addDescriptorRange("BVH", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, static_cast<UINT>(rendererResources->textures.size()), 9, 0, D3D12_DESCRIPTOR_RANGE_FLAG_NONE));
 	
 	rootSignatureManager->setDescriptorTableParameter("BVHDescTable", "BVH");
 	CD3DX12_ROOT_PARAMETER1 param;
 	param.InitAsConstantBufferView(0);
 	rootSignatureManager->setParameter("ConstBuff", param);
-	rootSignatureManager->addParametersToRootSignature("RayGenRootSignature", { "BVHDescTable", "ConstBuff"});
+	rootSignatureManager->addParametersToRootSignature("RayGenRootSignature", { "BVHDescTable", "ConstBuff" });
 	rootSignatureManager->generateRootSignature("RayGenRootSignature", rendererResources->pDevice);
 
 	shadingTable->addProgram(L"rayGen", ShadingRecordType::RayGeneration, "RayGenRootSignature");
@@ -189,13 +206,13 @@ void LightTracingShading::buildPipeline()
 	rootSignatureManager->generateRootSignature("EmptyRootSignature", rendererResources->pDevice);
 
 	// Hit Group Signature
-	param.InitAsShaderResourceView(1); rootSignatureManager->setParameter("verts", param);
-	param.InitAsShaderResourceView(2); rootSignatureManager->setParameter("texVerts", param);
-	param.InitAsShaderResourceView(3); rootSignatureManager->setParameter("normals", param);
-	param.InitAsShaderResourceView(4); rootSignatureManager->setParameter("indices", param);
-	param.InitAsShaderResourceView(5); rootSignatureManager->setParameter("matrices", param);
-	param.InitAsShaderResourceView(6); rootSignatureManager->setParameter("faceAttributes", param);
-	param.InitAsShaderResourceView(7); rootSignatureManager->setParameter("materials", param);
+	param.InitAsShaderResourceView(0); rootSignatureManager->setParameter("verts", param);
+	param.InitAsShaderResourceView(1); rootSignatureManager->setParameter("texVerts", param);
+	param.InitAsShaderResourceView(2); rootSignatureManager->setParameter("normals", param);
+	param.InitAsShaderResourceView(3); rootSignatureManager->setParameter("indices", param);
+	param.InitAsShaderResourceView(4); rootSignatureManager->setParameter("matrices", param);
+	param.InitAsShaderResourceView(5); rootSignatureManager->setParameter("faceAttributes", param);
+	param.InitAsShaderResourceView(6); rootSignatureManager->setParameter("materials", param);
 	rootSignatureManager->addParametersToRootSignature("HitGroupSignature", { "BVHDescTable", "ConstBuff", "verts", "texVerts", "normals", "indices", "matrices", "faceAttributes", "materials" });
 	D3D12_STATIC_SAMPLER_DESC sampler = {};
 	sampler.Filter = D3D12_FILTER_MIN_MAG_MIP_POINT;
@@ -255,10 +272,12 @@ void LightTracingShading::createShaderResources()
 	const auto &dim = rendererResources->winDimensions;
 	// The output resource
 	outputTexture = DXUtil::createTextureCommittedResource(rendererResources->pDevice, D3D12_HEAP_TYPE_DEFAULT, dim.x, dim.y, D3D12_RESOURCE_STATE_COPY_SOURCE);
+	irradianceTexture = DXUtil::createTextureCommittedResource(rendererResources->pDevice, D3D12_HEAP_TYPE_DEFAULT, dim.x, dim.y, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_FLAG_NONE, DXGI_FORMAT_R32G32B32A32_FLOAT);
 
 	D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
 	uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
 	descHeapManager.setUAV(entryNumber++, uavDesc, rendererResources->pDevice, outputTexture);
+	descHeapManager.setUAV(entryNumber++, uavDesc, rendererResources->pDevice, irradianceTexture);
 
 	// Create the SRV descriptor in second place (following same order as in root signature)
 	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
@@ -267,8 +286,13 @@ void LightTracingShading::createShaderResources()
 	srvDesc.RaytracingAccelerationStructure.Location = tlasBuffers.pResult->GetGPUVirtualAddress();
 	descHeapManager.setSRV(entryNumber++, srvDesc, rendererResources->pDevice);
 
-	// Set other resources
-
+	// Irr to Rad?
+	srvDesc = {};
+	srvDesc.Format = DXGI_FORMAT_R32_FLOAT;
+	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+	srvDesc.Texture2D.MipLevels = 1;
+	descHeapManager.setSRV(entryNumber++, srvDesc, rendererResources->pDevice);
 
 	// Textures
 	srvDesc = {};
@@ -314,4 +338,56 @@ void LightTracingShading::buildTlas(wrl::ComPtr<ID3D12GraphicsCommandList6> &com
 void LightTracingShading::onChange(wrl::ComPtr<ID3D12GraphicsCommandList6> pCurrentCommandList, uint32_t currentBackBufferIndex)
 {
 	buildTlas(pCurrentCommandList, tlasTempBuffer[currentBackBufferIndex]);
+	clear = true;
+}
+
+// Compute constants
+static float f1(float x, float y, float z, float a, float b, float c)
+{
+	float xMinA = x - a;
+	float yMinB = y - b;
+	float zMinC = z - c;
+
+	float xMinASq = xMinA * xMinA;
+	float yMinBSq = yMinB * yMinB;
+	float zMinCSq = zMinC * zMinC;
+
+	float r1 = 1.f / sqrt(yMinBSq + zMinCSq);
+	float r2 = 1.f / sqrt(xMinASq + zMinCSq);
+
+	return 0.5f * (
+		yMinB * atan(xMinA * r1) * r1 +
+		xMinA * atan(yMinB * r2) * r2);
+}
+
+static float f(float x0, float x1, float y0, float y1, float z, float a, float b, float c)
+{
+	return f1(x1, y1, z, a, b, c)
+		 + f1(x0, y0, z, a, b, c)
+		 - f1(x1, y0, z, a, b, c)
+		 - f1(x0, y1, z, a, b, c);
+}
+
+Vector2 LightTracingShading::toSensorSpace(uint32_t x, uint32_t y) const
+{
+	UVector2 &screenDimensions = rendererResources->winDimensions;
+	auto nd = rendererResources->camera->getNearPlaneDimensions();
+	Vector2 sensorDimensions = Vector2(nd.m128_f32[0], nd.m128_f32[1]);
+	const auto temp = Vector2(static_cast<float>(x), static_cast<float>(screenDimensions.y - y));
+	using namespace DirectX;
+	auto point = XMLoadFloat2(&temp);
+	point = XMVectorDivide(point, XMLoadUInt2(&screenDimensions)); // Ratio
+	point = XMVectorSubtract(point, XMVectorSet(0.5f, 0.5f, 0.f, 0.f)); // Center it
+	point = XMVectorMultiply(point, XMLoadFloat2(&sensorDimensions)); // This point now lies in sensor space
+	Vector2 result;
+	XMStoreFloat2(&result, point);
+	return result;
+}
+
+float LightTracingShading::cosIntegral(uint32_t x, uint32_t y) const
+{
+	auto pt0 = toSensorSpace(x, y + 1); // Min
+	auto pt1 = toSensorSpace(x + 1, y); // Max
+
+	return f(pt0.x, pt1.x, pt0.y, pt1.y, rendererResources->camera->getNearPlaneDimensions().m128_f32[2], 0.f, 0.f, 0.f);
 }

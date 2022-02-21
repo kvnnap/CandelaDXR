@@ -188,6 +188,7 @@
     <ClCompile Include="Factory\LightTracingDrawableFactory.cpp" />
     <ClCompile Include="Factory\RasterDrawableFactory.cpp" />
     <ClCompile Include="Factory\RendererFactory.cpp" />
+    <ClCompile Include="Factory\UniformSamplerFactory.cpp" />
     <ClCompile Include="Factory\VectorFactory.cpp" />
     <ClCompile Include="ImGui\ImGuiSceneNode.cpp" />
     <ClCompile Include="ImGui\Backend\imgui_impl_dx12.cpp" />
@@ -202,6 +203,7 @@
     <ClCompile Include="Renderer\LightTracingShading.cpp" />
     <ClCompile Include="Renderer\RasterShading.cpp" />
     <ClCompile Include="Renderer\Renderer.cpp" />
+    <ClCompile Include="Sampler\UniformSampler.cpp" />
     <ClCompile Include="Scene\Scene.cpp" />
     <ClCompile Include="Factory\SceneFactory.cpp" />
     <ClCompile Include="Scene\Texture.cpp" />
@@ -225,6 +227,7 @@
     <ClInclude Include="Factory\CameraFactory.h" />
     <ClInclude Include="Factory\LightTracingDrawableFactory.h" />
     <ClInclude Include="Factory\RasterDrawableFactory.h" />
+    <ClInclude Include="Factory\UniformSamplerFactory.h" />
     <ClInclude Include="Factory\VectorFactory.h" />
     <ClInclude Include="Factory\RendererFactory.h" />
     <ClInclude Include="ImGui\ImGuiSceneNode.h" />
@@ -239,6 +242,9 @@
     <ClInclude Include="Renderer\LightTracingShading.h" />
     <ClInclude Include="Renderer\RasterShading.h" />
     <ClInclude Include="Renderer\Renderer.h" />
+    <ClInclude Include="Sampler\ISampler.h" />
+    <ClInclude Include="Sampler\UniformRealDistribution.h" />
+    <ClInclude Include="Sampler\UniformSampler.h" />
     <ClInclude Include="Scene\ISceneLoader.h" />
     <ClInclude Include="Scene\Scene.h" />
     <ClInclude Include="Factory\SceneFactory.h" />

@@ -6,6 +6,7 @@
 
 #include <vector>
 #include <memory>
+#include <cstdint>
 
 #include "DirectX/DXUtil.h"
 
@@ -13,6 +14,7 @@
 #include "DirectX/RootSignatureManager.h"
 #include "DirectX/ShadingTable.h"
 #include "Scene/Scene.h"
+#include "Sampler/UniformSampler.h"
 
 #include "Mathematics/Types.h"
 
@@ -28,7 +30,7 @@ namespace candela::renderer
 		: public IDrawable
 	{
 	public:
-		LightTracingShading();
+		LightTracingShading(std::unique_ptr<sampler::ISampler> sampler);
 
 		void init(RendererResources* rendererResources) override;
 		void draw(wrl::ComPtr<ID3D12GraphicsCommandList6> pCurrentCommandList, std::uint32_t currentBackBufferIndex) override;
@@ -40,6 +42,9 @@ namespace candela::renderer
 		void createShaderTable(wrl::ComPtr<ID3D12GraphicsCommandList6> &commandList, wrl::ComPtr<ID3D12Resource> &tempResource);
 		void buildTlas(wrl::ComPtr<ID3D12GraphicsCommandList6>& commandList, wrl::ComPtr<ID3D12Resource>& tempResource);
 
+		mathematics::Vector2 toSensorSpace(std::uint32_t x, std::uint32_t y) const;
+		float cosIntegral(std::uint32_t x, std::uint32_t y) const;
+
 		RendererResources* rendererResources;
 
 		struct alignas(16) ConstBuff
@@ -48,6 +53,8 @@ namespace candela::renderer
 			DirectX::XMVECTOR position;
 			DirectX::XMVECTOR direction;
 			DirectX::XMVECTOR plane; // x, y and z (distance from point to plane)
+			std::uint32_t seeds[2];
+			std::uint32_t clear;
 		} constBuffer;
 
 		wrl::ComPtr<ID3D12DescriptorHeap> pDepthDescriptorHeap;
@@ -66,5 +73,11 @@ namespace candela::renderer
 		// My helpers
 		std::shared_ptr<directx::RootSignatureManager> rootSignatureManager;
 		std::unique_ptr<directx::ShadingTable> shadingTable;
+
+		// Light tracing
+		wrl::ComPtr<ID3D12Resource> irrToRad;
+		wrl::ComPtr<ID3D12Resource> irradianceTexture;
+		std::unique_ptr<sampler::ISampler> sampler;
+		bool clear;
 	};
 }

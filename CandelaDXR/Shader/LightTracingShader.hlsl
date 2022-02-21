@@ -1,3 +1,4 @@
+#include "Utils.hlsli"
 #include "Scene.hlsli"
 
 struct ConstBuff {
@@ -5,6 +6,8 @@ struct ConstBuff {
 	float3 position;
 	float3 direction;
 	float3 plane;
+	uint2 seeds;
+	uint clear;
 };
 
 struct RayPayload
@@ -16,17 +19,21 @@ struct RayPayload
 
 // Output texture
 RWTexture2D<float4> gOutput : register(u0);
+RWTexture2D<float4> gIrradiance : register(u1);
 
 // SRVs
-RaytracingAccelerationStructure gRtScene : register(t0);
-StructuredBuffer<float3> verts : register(t1);
-StructuredBuffer<float2> texVerts : register(t2);
-StructuredBuffer<float3> normals : register(t3);
-StructuredBuffer<uint> indices : register(t4);
-StructuredBuffer<float4x3> matrices : register(t5);
-StructuredBuffer<FaceAttributes> faceAttributes : register(t6);
-StructuredBuffer<Material> materials : register(t7);
-Texture2D gTextures[]: register(t8);
+StructuredBuffer<float3> verts : register(t0);
+StructuredBuffer<float2> texVerts : register(t1);
+StructuredBuffer<float3> normals : register(t2);
+StructuredBuffer<uint> indices : register(t3);
+StructuredBuffer<float4x3> matrices : register(t4);
+StructuredBuffer<FaceAttributes> faceAttributes : register(t5);
+StructuredBuffer<Material> materials : register(t6);
+
+RaytracingAccelerationStructure gRtScene : register(t7);
+
+Texture2D gIrrToRad : register(t8);
+Texture2D gTextures[]: register(t9);
 
 // Sampler
 SamplerState gSampler : register(s0);
@@ -67,7 +74,10 @@ void rayGen()
 		ray,
 		payload);
 
-	gOutput[launchIndex] = float4(payload.color, 1.f);
+	gIrradiance[launchIndex] = float4(payload.color, 1.f);
+	gOutput[launchIndex] = float4(linearToSrgb(toneMap(gIrradiance[launchIndex].xyz)), 1.f);
+	//if (cBuffer.clear)
+	//	gOutput[launchIndex] = float4(1.0f, 0.f, 0.f, 0.f);
 }
 
 [shader("closesthit")]
