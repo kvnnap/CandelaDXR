@@ -107,9 +107,13 @@ XMMATRIX Camera::getViewPerspectiveMatrix() const
 	return viewMatrix * perspectiveMatrix;
 }
 
-bool Camera::hasChanged()
+bool Camera::hasChanged() const
 {
 	auto localChanged = changed;
-	changed = false; // reset
 	return localChanged;
+}
+
+void Camera::resetChanged()
+{
+	changed = false;
 }

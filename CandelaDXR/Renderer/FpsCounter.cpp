@@ -31,6 +31,11 @@ bool FpsCounter::hitFrame()
 	return expired;
 }
 
+void FpsCounter::resetFrameCount()
+{
+	frames = framesPrev = 0;
+}
+
 uint64_t FpsCounter::getTotalFrames() const
 {
 	return frames;

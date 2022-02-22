@@ -5,7 +5,7 @@ struct ConstBuff {
 	float3 u, v, w;
 	float3 position;
 	float3 direction;
-	float3 plane;
+	float3 plane; // sensor dimensions (z contains distance to sensor plane)
 	uint2 seeds;
 	uint numLights;
 	uint clear;
@@ -30,11 +30,12 @@ StructuredBuffer<uint> indices : register(t3);
 StructuredBuffer<float4x3> matrices : register(t4);
 StructuredBuffer<FaceAttributes> faceAttributes : register(t5);
 StructuredBuffer<Material> materials : register(t6);
+StructuredBuffer<AreaLight> lights : register(t7);
 
-RaytracingAccelerationStructure gRtScene : register(t7);
+RaytracingAccelerationStructure gRtScene : register(t8);
 
-Texture2D gIrrToRad : register(t8);
-Texture2D gTextures[]: register(t9);
+Texture2D gIrrToRad : register(t9);
+Texture2D gTextures[]: register(t10);
 
 // Sampler
 SamplerState gSampler : register(s0);
@@ -51,6 +52,33 @@ uint getFaceIndex()
 	return InstanceID() / 3 + PrimitiveIndex();
 }
 
+bool getPixel(RayDesc ray, uint2 screenDimensions, inout uint2 pixel)
+{
+	//compute denominator
+	const float den = dot(cBuffer.w, ray.Direction);
+
+	// make this check or else risk of division by zero..
+	if (den == 0.f)
+		return false;
+
+	const float3 posPlane = cBuffer.position + cBuffer.w * cBuffer.plane.z;
+	const float t = -dot(cBuffer.w, (ray.Origin - posPlane)) / den;
+	if (t < ray.TMin || t > ray.TMax)
+		return false;
+
+	const float3 R = ray.Origin + ray.Direction * t - posPlane;
+	float2 pt = float2(dot(R, cBuffer.u), dot(R, cBuffer.v));
+	pt /= cBuffer.plane.xy;
+	pt += float2(0.5f, 0.5f);
+	pt *= float2(screenDimensions);
+	pt.y = float(screenDimensions.y) - pt.y;
+	if (pt.x < 0.f || pt.y < 0.f || pt.x >= float(screenDimensions.x) || pt.y >= float(screenDimensions.y))
+		return false;
+
+	pixel = uint2(pt);
+	return true;
+}
+
 // Kernels
 
 [shader("raygeneration")]
@@ -62,6 +90,9 @@ void rayGen()
 	// Dimensions - the previous x,y point is contained within these dimensions
 	const uint2 launchDim = DispatchRaysDimensions().xy;
 
+	//uint2 r = uint2(800, 500);
+	//gOutput[r] = float4(1.f, 1.f, 1.f, 1.f);
+
 	// Early-exit checks
 	if (cBuffer.numLights == 0)
 	{
@@ -71,32 +102,57 @@ void rayGen()
 
 	// Clear buffer if stuff changed
 	if (cBuffer.clear)
+	{
 		gIrradiance[launchIndex] = float4(0.f, 0.f, 0.f, 0.f);
+		gOutput[launchIndex] = float4(0.f, 0.f, 0.f, 0.f);
+	}
 	
+	// Initialise seed
+	uint seed = rand_init(
+		cBuffer.seeds.x + launchDim.x * ((uint)gIrradiance[launchIndex].w + 0) + launchIndex.x,
+		cBuffer.seeds.y + launchDim.y * ((uint)gIrradiance[launchIndex].w + 0) + launchIndex.y);
+
+	// Choose light source
+	const uint lightIndex = chooseInRange(seed, 0, cBuffer.numLights - 1);
+	const uint lightIndexId = lights[lightIndex].PrimitiveId * 3;
+	float3 l[3];
+	l[0] = mul(float4(verts[indices[lightIndexId + 0]], 1.f), matrices[lights[lightIndex].InstanceIndex]);
+	l[1] = mul(float4(verts[indices[lightIndexId + 1]], 1.f), matrices[lights[lightIndex].InstanceIndex]);
+	l[2] = mul(float4(verts[indices[lightIndexId + 2]], 1.f), matrices[lights[lightIndex].InstanceIndex]);
+	const float3 pointOnLightSource = samplePointOnTriangle(seed, l);
 
 	// Setup Ray
 	RayDesc ray;
 	ray.TMin = 0.f;
 	ray.TMax = 3.402823e+38;
-	ray.Origin = cBuffer.position;
-	const float2 ratio = (launchIndex + float2(0.5f, 0.5f)) / launchDim;
-	const float2 filmPlanePosition = float2(cBuffer.plane.x * (ratio.x - 0.5f), cBuffer.plane.y * (0.5f - ratio.y));
-	const float3 pointOnObjectPlane = ray.Origin + cBuffer.w * cBuffer.plane.z + cBuffer.u * filmPlanePosition.x + cBuffer.v * filmPlanePosition.y;
-	ray.Direction = normalize(pointOnObjectPlane - ray.Origin);
-	RayPayload payload;
+	ray.Origin = pointOnLightSource;
+	ray.Direction = cBuffer.position - pointOnLightSource;
+	uint2 pixel;
+	if (!getPixel(ray, launchDim, pixel))
+		return;
+	
+	gIrradiance[pixel] = float4(1.f, 1.f, 1.f, 0.f);
+	gOutput[launchIndex] = gIrradiance[launchIndex];
+	return;
 
-	TraceRay(
-		gRtScene,	// Acceleration Structure
-		0,			// Ray flags
-		0xFF,		// Instance inclusion Mask (0xFF includes everything)
-		0,			// RayContributionToHitGroupIndex (calls chs)
-		2,			// MultiplierForGeometryContributionToShaderIndex
-		0,			// Miss shader index (within the shader table) (calls miss)
-		ray,
-		payload);
+	//const float2 ratio = (launchIndex + float2(0.5f, 0.5f)) / launchDim;
+	//const float2 filmPlanePosition = float2(cBuffer.plane.x * (ratio.x - 0.5f), cBuffer.plane.y * (0.5f - ratio.y));
+	//const float3 pointOnObjectPlane = ray.Origin + cBuffer.w * cBuffer.plane.z + cBuffer.u * filmPlanePosition.x + cBuffer.v * filmPlanePosition.y;
+	//ray.Direction = normalize(pointOnObjectPlane - ray.Origin);
+	//RayPayload payload;
 
-	gIrradiance[launchIndex] = float4(payload.color, 1.f);
-	gOutput[launchIndex] = float4(linearToSrgb(toneMap(gIrradiance[launchIndex].xyz)), 1.f);
+	//TraceRay(
+	//	gRtScene,	// Acceleration Structure
+	//	0,			// Ray flags
+	//	0xFF,		// Instance inclusion Mask (0xFF includes everything)
+	//	0,			// RayContributionToHitGroupIndex (calls chs)
+	//	2,			// MultiplierForGeometryContributionToShaderIndex
+	//	0,			// Miss shader index (within the shader table) (calls miss)
+	//	ray,
+	//	payload);
+
+	//gIrradiance[launchIndex] = float4(payload.color, 1.f);
+	//gOutput[launchIndex] = float4(linearToSrgb(toneMap(gIrradiance[launchIndex].xyz)), 1.f);
 	//if (cBuffer.clear)
 	//	gOutput[launchIndex] = float4(1.0f, 0.f, 0.f, 0.f);
 }

@@ -11,6 +11,8 @@ namespace candela::renderer
 		FpsCounter();
 
 		bool hitFrame();
+		void resetFrameCount();
+
 		std::uint64_t getTotalFrames() const;
 		float getFramesPerSecond() const;
 		std::uint64_t getLastFrameTime() const;

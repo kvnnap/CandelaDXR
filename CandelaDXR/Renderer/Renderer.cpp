@@ -188,8 +188,13 @@ void Renderer::renderFrame()
 	commandQueue->waitForFenceValue(frameFenceValues[currentBackBufferIndex]);
 
 	// Stats
+	if (transformChanged || camera->hasChanged())
+		fpsCounter.resetFrameCount();
 	if (fpsCounter.hitFrame())
 		window->setWindowName("CandelaDXR - Frames: " + to_string(fpsCounter.getTotalFrames()) + " FPS: " + to_string(fpsCounter.getFramesPerSecond()));
+
+	// Reset camera
+	camera->resetChanged();
 }
 
 void Renderer::initSceneResources()
