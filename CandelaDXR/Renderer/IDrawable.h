@@ -22,7 +22,7 @@ namespace candela::renderer
 
 	struct RendererResources
 	{
-		wrl::ComPtr<ID3D12Device9> pDevice;
+		wrl::ComPtr<ID3D12Device> pDevice;
 		wrl::ComPtr<ID3D12Resource> sceneBuffer;
 		wrl::ComPtr<ID3D12Resource> materialBuffer;
 		wrl::ComPtr<ID3D12Resource> faceAttributeBuffer;
@@ -43,7 +43,7 @@ namespace candela::renderer
 	public:
 		virtual ~IDrawable() = default;
 		virtual void init(RendererResources *rendererResources) = 0;
-		virtual void draw(wrl::ComPtr<ID3D12GraphicsCommandList6> pCurrentCommandList, std::uint32_t currentBackBufferIndex) = 0;
-		virtual void onChange(wrl::ComPtr<ID3D12GraphicsCommandList6> pCurrentCommandList, std::uint32_t currentBackBufferIndex) = 0;
+		virtual void draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, std::uint32_t currentBackBufferIndex) = 0;
+		virtual void onChange(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, std::uint32_t currentBackBufferIndex) = 0;
 	};
 }

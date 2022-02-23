@@ -24,16 +24,16 @@ namespace candela::directx
 
 	class DescriptorHeap {
 	public:
-		DescriptorHeap(std::shared_ptr<RootSignatureManager> rootSignatureManager, const std::string& parameterName, const std::string& instanceName, Microsoft::WRL::ComPtr<ID3D12Device9> pDevice);
+		DescriptorHeap(std::shared_ptr<RootSignatureManager> rootSignatureManager, const std::string& parameterName, const std::string& instanceName, Microsoft::WRL::ComPtr<ID3D12Device> pDevice);
 
-		void setCBV(size_t entryNumber, const D3D12_CONSTANT_BUFFER_VIEW_DESC& cbvDescriptor, Microsoft::WRL::ComPtr<ID3D12Device9> pDevice);
-		void setUAV(size_t entryNumber, const D3D12_UNORDERED_ACCESS_VIEW_DESC& uavDescriptor, Microsoft::WRL::ComPtr<ID3D12Device9> pDevice, Microsoft::WRL::ComPtr<ID3D12Resource> resource = {});
-		void setSRV(size_t entryNumber, const D3D12_SHADER_RESOURCE_VIEW_DESC& srvDescriptor, Microsoft::WRL::ComPtr<ID3D12Device9> pDevice, Microsoft::WRL::ComPtr<ID3D12Resource> resource = {});
+		void setCBV(size_t entryNumber, const D3D12_CONSTANT_BUFFER_VIEW_DESC& cbvDescriptor, Microsoft::WRL::ComPtr<ID3D12Device> pDevice);
+		void setUAV(size_t entryNumber, const D3D12_UNORDERED_ACCESS_VIEW_DESC& uavDescriptor, Microsoft::WRL::ComPtr<ID3D12Device> pDevice, Microsoft::WRL::ComPtr<ID3D12Resource> resource = {});
+		void setSRV(size_t entryNumber, const D3D12_SHADER_RESOURCE_VIEW_DESC& srvDescriptor, Microsoft::WRL::ComPtr<ID3D12Device> pDevice, Microsoft::WRL::ComPtr<ID3D12Resource> resource = {});
 
 		void validate() const;
 		Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> getDescriptorHeap() const;
 	private:
-		D3D12_CPU_DESCRIPTOR_HANDLE getCpuDescHandle(size_t entryNumber, Microsoft::WRL::ComPtr<ID3D12Device9> pDevice) const;
+		D3D12_CPU_DESCRIPTOR_HANDLE getCpuDescHandle(size_t entryNumber, Microsoft::WRL::ComPtr<ID3D12Device> pDevice) const;
 		void setResource(size_t entryNumber, Microsoft::WRL::ComPtr<ID3D12Resource> resource = {});
 
 		std::shared_ptr<RootSignatureManager> rootSignatureManager;
@@ -79,7 +79,7 @@ namespace candela::directx
 		// 
 		void addProgram(const std::wstring& programName, ShadingRecordType shadingRecordType, const std::string& rootSignatureName);
 
-		DescriptorHeap& generateDescriptorHeap(const std::string& parameterName, const std::string& instanceName, Microsoft::WRL::ComPtr<ID3D12Device9> pDevice);
+		DescriptorHeap& generateDescriptorHeap(const std::string& parameterName, const std::string& instanceName, Microsoft::WRL::ComPtr<ID3D12Device> pDevice);
 
 		//void setInputForDescriptorTableParameter(const std::wstring& programName, const std::string& parameterName, Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> descriptorHeap);
 		void setInputForDescriptorTableParameter(const std::wstring& programName, const std::string& parameterName, const std::string& instanceName);
@@ -87,8 +87,8 @@ namespace candela::directx
 		void setInputForConstantParameter(const std::wstring& programName, const std::string& parameterName, UINT32 constant);
 
 		Microsoft::WRL::ComPtr<ID3D12Resource> generateShadingTable(
-			Microsoft::WRL::ComPtr<ID3D12Device9> pDevice,
-			Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> pCurrentCommandList,
+			Microsoft::WRL::ComPtr<ID3D12Device> pDevice,
+			Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList,
 			Microsoft::WRL::ComPtr<ID3D12StateObject> pStateObject,
 			Microsoft::WRL::ComPtr<ID3D12Resource>& shadingTableTempResource);
 

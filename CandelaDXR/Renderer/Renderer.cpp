@@ -15,6 +15,8 @@ using std::make_unique;
 using std::to_string;
 using std::vector;
 
+using Microsoft::WRL::ComPtr;
+
 using feanor::io::Keyboard;
 using feanor::io::Mouse;
 
@@ -184,7 +186,9 @@ void Renderer::renderFrame()
 
 	HRESULT hr;
 	GFXTHROWIFFAILED(pSwapChain->Present(1u, 0u));
-	currentBackBufferIndex = pSwapChain->GetCurrentBackBufferIndex();
+	ComPtr<IDXGISwapChain3> pSwapChain3;
+	GFXTHROWIFFAILED(pSwapChain.As(&pSwapChain3));
+	currentBackBufferIndex = pSwapChain3->GetCurrentBackBufferIndex();
 	commandQueue->waitForFenceValue(frameFenceValues[currentBackBufferIndex]);
 
 	// Stats

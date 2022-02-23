@@ -16,6 +16,7 @@ using candela::renderer::Camera;
 using candela::directx::DXUtil;
 using DirectX::XMMATRIX;
 using std::uint32_t;
+using Microsoft::WRL::ComPtr;
 
 RasterShading::RasterShading()
 	: constBuffer{}, scissorRect(CD3DX12_RECT(0, 0, LONG_MAX, LONG_MAX))
@@ -146,7 +147,9 @@ void candela::renderer::RasterShading::init(RendererResources* rRes)
 	D3D12_PIPELINE_STATE_STREAM_DESC pipelineStateStreamDesc = {
 		sizeof(PipelineStateStream), &pipelineStateStream
 	};
-	GFXTHROWIFFAILED(rRes->pDevice->CreatePipelineState(&pipelineStateStreamDesc, IID_PPV_ARGS(&pipelineState)));
+	ComPtr<ID3D12Device2> pDevice2;
+	GFXTHROWIFFAILED(rRes->pDevice.As(&pDevice2));
+	GFXTHROWIFFAILED(pDevice2->CreatePipelineState(&pipelineStateStreamDesc, IID_PPV_ARGS(&pipelineState)));
 
 	auto commandList = rRes->commandQueue->getCommandList();
 
@@ -164,7 +167,7 @@ void candela::renderer::RasterShading::init(RendererResources* rRes)
 	rRes->commandQueue->waitForFenceValue(fV);
 }
 
-void RasterShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList6> pCurrentCommandList, uint32_t currentBackBufferIndex)
+void RasterShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, uint32_t currentBackBufferIndex)
 {
 	// Clear Depth
 	CD3DX12_CPU_DESCRIPTOR_HANDLE dsvDescriptorHandle(pDepthDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), currentBackBufferIndex, dsvDescriptorSize);
@@ -216,7 +219,7 @@ void RasterShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList6> pCurrentCommand
 	}
 }
 
-void RasterShading::onChange(wrl::ComPtr<ID3D12GraphicsCommandList6> pCurrentCommandList, uint32_t currentBackBufferIndex)
+void RasterShading::onChange(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, uint32_t currentBackBufferIndex)
 {
 }
 

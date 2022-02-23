@@ -19,6 +19,8 @@ using std::make_shared;
 
 using DirectX::XMFLOAT3X4;
 
+using Microsoft::WRL::ComPtr;
+
 using candela::directx::DXUtil;
 using candela::directx::RootSignatureManager;
 using candela::directx::ShadingTable;
@@ -114,7 +116,7 @@ void LightTracingShading::init(RendererResources* rRes)
 	rRes->commandQueue->waitForFenceValue(fV);
 }
 
-void LightTracingShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList6> currentCommandList, uint32_t currentBackBufferIndex)
+void LightTracingShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> currentCommandList, uint32_t currentBackBufferIndex)
 {
 	// Pre-stuff
 	auto &backBuff = rendererResources->pRTVBackBuffers[currentBackBufferIndex];
@@ -142,13 +144,15 @@ void LightTracingShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList6> currentCo
 		&constBuffer, sizeof(constBuffer), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
 	currentCommandList->SetComputeRootSignature(globalEmptyRootSignature.Get());
-	currentCommandList->SetPipelineState1(stateObject.Get());
+	HRESULT hr;
+	ComPtr<ID3D12GraphicsCommandList4> commandList4;
+	GFXTHROWIFFAILED(currentCommandList.As(&commandList4));
+	commandList4->SetPipelineState1(stateObject.Get());
 
 	// Launch rays
 	auto& dim = rendererResources->winDimensions;
 	D3D12_DISPATCH_RAYS_DESC dispatchRaysDesc = shadingTable->getDispatchRaysDescriptor(dim.x, dim.y);
-
-	currentCommandList->DispatchRays(&dispatchRaysDesc);
+	commandList4->DispatchRays(&dispatchRaysDesc);
 
 	// After
 	auto t2 = CD3DX12_RESOURCE_BARRIER::Transition(outputTexture.Get(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_SOURCE);
@@ -262,7 +266,9 @@ void LightTracingShading::buildPipeline()
 	globalRootSignature.SetRootSignature(globalEmptyRootSignature.Get());
 
 	// Finally - Create the state
-	GFXTHROWIFFAILED(rendererResources->pDevice->CreateStateObject(stateObjectDesc, IID_PPV_ARGS(&stateObject)));
+	ComPtr<ID3D12Device5> pDevice5;
+	GFXTHROWIFFAILED(rendererResources->pDevice.As(&pDevice5));
+	GFXTHROWIFFAILED(pDevice5->CreateStateObject(stateObjectDesc, IID_PPV_ARGS(&stateObject)));
 }
 
 void LightTracingShading::createShaderResources()
@@ -307,7 +313,7 @@ void LightTracingShading::createShaderResources()
 		descHeapManager.setSRV(entryNumber++, srvDesc, rendererResources->pDevice, texture);
 }
 
-void LightTracingShading::createShaderTable(wrl::ComPtr<ID3D12GraphicsCommandList6> &commandList, wrl::ComPtr<ID3D12Resource> &tempResource)
+void LightTracingShading::createShaderTable(wrl::ComPtr<ID3D12GraphicsCommandList> &commandList, wrl::ComPtr<ID3D12Resource> &tempResource)
 {
 	// Link rayGen
 	shadingTable->setInputForDescriptorTableParameter(L"rayGen", "BVHDescTable", "BVH1");
@@ -339,7 +345,7 @@ void LightTracingShading::createShaderTable(wrl::ComPtr<ID3D12GraphicsCommandLis
 	shadingTable->generateShadingTable(rendererResources->pDevice, commandList, stateObject, tempResource);
 }
 
-void LightTracingShading::buildTlas(wrl::ComPtr<ID3D12GraphicsCommandList6> &commandList, wrl::ComPtr<ID3D12Resource>& tempResource)
+void LightTracingShading::buildTlas(wrl::ComPtr<ID3D12GraphicsCommandList> &commandList, wrl::ComPtr<ID3D12Resource>& tempResource)
 {
 	// Warning, we are assuming order - will not be the case when instancing in the future
 	auto tlas = tlasInstanceData.begin();
@@ -349,7 +355,7 @@ void LightTracingShading::buildTlas(wrl::ComPtr<ID3D12GraphicsCommandList6> &com
 	DXUtil::buildTopLevelAS(rendererResources->pDevice, commandList, tlasInstanceData, tempResource, true, tlasBuffers);
 }
 
-void LightTracingShading::onChange(wrl::ComPtr<ID3D12GraphicsCommandList6> pCurrentCommandList, uint32_t currentBackBufferIndex)
+void LightTracingShading::onChange(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, uint32_t currentBackBufferIndex)
 {
 	buildTlas(pCurrentCommandList, tlasTempBuffer[currentBackBufferIndex]);
 	clear = true;

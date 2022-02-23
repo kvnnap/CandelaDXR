@@ -61,7 +61,7 @@ void RootSignatureManager::addParametersToRootSignature(const std::string& destS
 	v.insert(v.end(), parameterNames.begin(), parameterNames.end());
 }
 
-Microsoft::WRL::ComPtr<ID3D12RootSignature> RootSignatureManager::generateRootSignature(const string& rootSigatureName, Microsoft::WRL::ComPtr<ID3D12Device9> pDevice)
+Microsoft::WRL::ComPtr<ID3D12RootSignature> RootSignatureManager::generateRootSignature(const string& rootSigatureName, Microsoft::WRL::ComPtr<ID3D12Device> pDevice)
 {
 	auto& customRootDesc = rootSignatures.at(rootSigatureName);
 
@@ -96,7 +96,7 @@ UINT32 RootSignatureManager::getDescriptorHeapTotalEntrySize(const std::string& 
 	return numDescriptors;
 }
 
-Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> RootSignatureManager::generateDescriptorHeapForRangeParameter(const std::string& parameterName, Microsoft::WRL::ComPtr<ID3D12Device9> pDevice) const
+Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> RootSignatureManager::generateDescriptorHeapForRangeParameter(const std::string& parameterName, Microsoft::WRL::ComPtr<ID3D12Device> pDevice) const
 {
 	return DXUtil::createDescriptorHeap(pDevice, getDescriptorHeapTotalEntrySize(parameterName), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, true);
 }

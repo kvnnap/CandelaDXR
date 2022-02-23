@@ -43,12 +43,12 @@ namespace candela::renderer
 		std::unique_ptr<ui::Window> window;
 
 		// DirectX
-		wrl::ComPtr<ID3D12Device9> pDevice;
+		wrl::ComPtr<ID3D12Device> pDevice;
 		std::unique_ptr<directx::CommandQueue> commandQueue;
-		wrl::ComPtr<ID3D12GraphicsCommandList6> pCurrentCommandList;
+		wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList;
 
 		static constexpr UINT NumBackBuffers = 2;
-		wrl::ComPtr<IDXGISwapChain4> pSwapChain;
+		wrl::ComPtr<IDXGISwapChain> pSwapChain;
 		wrl::ComPtr<ID3D12DescriptorHeap> pRTVDescriptorHeap;
 		wrl::ComPtr<ID3D12Resource> pRTVBackBuffers[NumBackBuffers];
 		wrl::ComPtr<ID3D12Resource> pMatricesTempBackBuffers[NumBackBuffers];

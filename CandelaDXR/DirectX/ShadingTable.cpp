@@ -34,7 +34,7 @@ void ShadingTable::addProgram(const wstring& programName, ShadingRecordType shad
 	shadingRecords.push_back({ programName, rootSignatureName, shadingRecordType });
 }
 
-DescriptorHeap& ShadingTable::generateDescriptorHeap(const std::string& parameterName, const std::string& instanceName, Microsoft::WRL::ComPtr<ID3D12Device9> pDevice)
+DescriptorHeap& ShadingTable::generateDescriptorHeap(const std::string& parameterName, const std::string& instanceName, Microsoft::WRL::ComPtr<ID3D12Device> pDevice)
 {
 	descriptorHeaps.emplace(instanceName, DescriptorHeap(rootSignatureManager, parameterName, instanceName, pDevice));
 	return descriptorHeaps.at(instanceName);
@@ -83,8 +83,8 @@ void ShadingTable::setInputForConstantParameter(const wstring& programName, cons
 }
 
 Microsoft::WRL::ComPtr<ID3D12Resource> ShadingTable::generateShadingTable(
-	Microsoft::WRL::ComPtr<ID3D12Device9> pDevice,
-	Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> pCurrentCommandList,
+	Microsoft::WRL::ComPtr<ID3D12Device> pDevice,
+	Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList,
 	Microsoft::WRL::ComPtr<ID3D12StateObject> pStateObject,
 	Microsoft::WRL::ComPtr<ID3D12Resource>& shadingTableTempResource)
 {
@@ -313,7 +313,7 @@ size_t ShadingTable::getLargestRecordTypeSize(ShadingRecordType shadingRecordTyp
 	return recordSize;
 }
 
-DescriptorHeap::DescriptorHeap(std::shared_ptr<RootSignatureManager> rootSignatureManager, const std::string& parameterName, const std::string& instanceName, Microsoft::WRL::ComPtr<ID3D12Device9> pDevice)
+DescriptorHeap::DescriptorHeap(std::shared_ptr<RootSignatureManager> rootSignatureManager, const std::string& parameterName, const std::string& instanceName, Microsoft::WRL::ComPtr<ID3D12Device> pDevice)
 	: rootSignatureManager(rootSignatureManager), parameterName(parameterName), instanceName(instanceName)
 {
 	UINT32 descriptorHeapSize = rootSignatureManager->getDescriptorHeapTotalEntrySize(parameterName);
@@ -321,7 +321,7 @@ DescriptorHeap::DescriptorHeap(std::shared_ptr<RootSignatureManager> rootSignatu
 	resources.resize(descriptorHeapSize);
 }
 
-void DescriptorHeap::setCBV(size_t entryNumber, const D3D12_CONSTANT_BUFFER_VIEW_DESC& cbvDescriptor, Microsoft::WRL::ComPtr<ID3D12Device9> pDevice)
+void DescriptorHeap::setCBV(size_t entryNumber, const D3D12_CONSTANT_BUFFER_VIEW_DESC& cbvDescriptor, Microsoft::WRL::ComPtr<ID3D12Device> pDevice)
 {
 	if (rootSignatureManager->getDescriptorHeapRangeType(parameterName, entryNumber) != D3D12_DESCRIPTOR_RANGE_TYPE_CBV)
 		throw runtime_error("Entry " + to_string(entryNumber) + " in not of type CBV");
@@ -329,7 +329,7 @@ void DescriptorHeap::setCBV(size_t entryNumber, const D3D12_CONSTANT_BUFFER_VIEW
 	setResource(entryNumber);
 }
 
-void DescriptorHeap::setUAV(size_t entryNumber, const D3D12_UNORDERED_ACCESS_VIEW_DESC& uavDescriptor, Microsoft::WRL::ComPtr<ID3D12Device9> pDevice, Microsoft::WRL::ComPtr<ID3D12Resource> resource)
+void DescriptorHeap::setUAV(size_t entryNumber, const D3D12_UNORDERED_ACCESS_VIEW_DESC& uavDescriptor, Microsoft::WRL::ComPtr<ID3D12Device> pDevice, Microsoft::WRL::ComPtr<ID3D12Resource> resource)
 {
 	if (rootSignatureManager->getDescriptorHeapRangeType(parameterName, entryNumber) != D3D12_DESCRIPTOR_RANGE_TYPE_UAV)
 		throw runtime_error("Entry " + to_string(entryNumber) + " in not of type UAV");
@@ -337,7 +337,7 @@ void DescriptorHeap::setUAV(size_t entryNumber, const D3D12_UNORDERED_ACCESS_VIE
 	setResource(entryNumber, resource);
 }
 
-void DescriptorHeap::setSRV(size_t entryNumber, const D3D12_SHADER_RESOURCE_VIEW_DESC& srvDescriptor, Microsoft::WRL::ComPtr<ID3D12Device9> pDevice, Microsoft::WRL::ComPtr<ID3D12Resource> resource)
+void DescriptorHeap::setSRV(size_t entryNumber, const D3D12_SHADER_RESOURCE_VIEW_DESC& srvDescriptor, Microsoft::WRL::ComPtr<ID3D12Device> pDevice, Microsoft::WRL::ComPtr<ID3D12Resource> resource)
 {
 	if (rootSignatureManager->getDescriptorHeapRangeType(parameterName, entryNumber) != D3D12_DESCRIPTOR_RANGE_TYPE_SRV)
 		throw runtime_error("Entry " + to_string(entryNumber) + " in not of type SRV");
@@ -358,7 +358,7 @@ Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> DescriptorHeap::getDescriptorHeap()
 	return descriptorHeap;
 }
 
-D3D12_CPU_DESCRIPTOR_HANDLE DescriptorHeap::getCpuDescHandle(size_t entryNumber, Microsoft::WRL::ComPtr<ID3D12Device9> pDevice) const
+D3D12_CPU_DESCRIPTOR_HANDLE DescriptorHeap::getCpuDescHandle(size_t entryNumber, Microsoft::WRL::ComPtr<ID3D12Device> pDevice) const
 {
 	D3D12_CPU_DESCRIPTOR_HANDLE cpuDescHandle = descriptorHeap->GetCPUDescriptorHandleForHeapStart();
 	cpuDescHandle.ptr += entryNumber * pDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);

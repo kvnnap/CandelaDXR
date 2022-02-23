@@ -14,8 +14,9 @@ using std::vector;
 using std::string;
 using std::cout;
 using std::endl;
+using std::uint32_t;
 
-namespace wrl = Microsoft::WRL;
+using Microsoft::WRL::ComPtr;
 
 using candela::directx::DXUtil;
 
@@ -23,17 +24,17 @@ void DXUtil::enableDebugLayer()
 {
 #ifdef _DEBUG
 	HRESULT hr;
-	wrl::ComPtr<ID3D12Debug> debugInterface;
+	ComPtr<ID3D12Debug> debugInterface;
 	GFXTHROWIFFAILED(D3D12GetDebugInterface(IID_PPV_ARGS(&debugInterface)));
 	debugInterface->EnableDebugLayer();
 #endif
 }
 
-void DXUtil::setupDebugLayer(wrl::ComPtr<ID3D12Device9> pDevice)
+void DXUtil::setupDebugLayer(ComPtr<ID3D12Device> pDevice)
 {
 #ifdef _DEBUG
 	HRESULT hr;
-	wrl::ComPtr<ID3D12InfoQueue> infoQueue;
+	ComPtr<ID3D12InfoQueue> infoQueue;
 	GFXTHROWIFFAILED(pDevice.As(&infoQueue));
 	infoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_CORRUPTION, TRUE);
 	infoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_ERROR, TRUE);
@@ -67,12 +68,14 @@ bool DXUtil::checkTearingSupport()
 
 	HRESULT hr;
 
-	GFXTHROWIFFAILED(dxgiFactory->CheckFeatureSupport(DXGI_FEATURE_PRESENT_ALLOW_TEARING, &allowTearing, sizeof(allowTearing)));
+	ComPtr<IDXGIFactory5> dxgiFactory5;
+	GFXTHROWIFFAILED(dxgiFactory.As(&dxgiFactory5));
+	GFXTHROWIFFAILED(dxgiFactory5->CheckFeatureSupport(DXGI_FEATURE_PRESENT_ALLOW_TEARING, &allowTearing, sizeof(allowTearing)));
 
 	return allowTearing == TRUE;
 }
 
-wrl::ComPtr<IDXGIAdapter4> DXUtil::getAdapterLatestFeatureLevel(D3D_FEATURE_LEVEL* fl, bool useWarp, std::uint32_t adapterIndex)
+ComPtr<IDXGIAdapter> DXUtil::getAdapterLatestFeatureLevel(D3D_FEATURE_LEVEL* fl, bool useWarp, std::uint32_t adapterIndex)
 {
 	// Get DX12 compatible hardware device - Adapter contains info about the actual device
 	struct FeatureLevelItem
@@ -89,7 +92,7 @@ wrl::ComPtr<IDXGIAdapter4> DXUtil::getAdapterLatestFeatureLevel(D3D_FEATURE_LEVE
 		FeatureLevelItem { D3D_FEATURE_LEVEL_11_0, "D3D_FEATURE_LEVEL_11_0"}
 	};
 
-	vector<wrl::ComPtr<IDXGIAdapter4>> adapters;
+	vector<ComPtr<IDXGIAdapter>> adapters;
 	for (auto featureLevel : featureLevels)
 	{
 		cout << "Trying " << featureLevel.Name << " ... ";
@@ -113,9 +116,9 @@ wrl::ComPtr<IDXGIAdapter4> DXUtil::getAdapterLatestFeatureLevel(D3D_FEATURE_LEVE
 	std::uint32_t i{};
 	for (auto adapter : adapters)
 	{
-		DXGI_ADAPTER_DESC1 desc1;
-		adapter->GetDesc1(&desc1);
-		wprintf(L"[%d] - %s\n", i++, desc1.Description);
+		DXGI_ADAPTER_DESC desc;
+		adapter->GetDesc(&desc);
+		wprintf(L"[%d] - %s\n", i++, desc.Description);
 	}
 
 	cout << "Using adapter: " << adapterIndex << endl;
@@ -126,21 +129,26 @@ wrl::ComPtr<IDXGIAdapter4> DXUtil::getAdapterLatestFeatureLevel(D3D_FEATURE_LEVE
 	return adapters.at(adapterIndex);
 }
 
-vector<wrl::ComPtr<IDXGIAdapter4>> DXUtil::getAdapters(D3D_FEATURE_LEVEL featureLevel, bool useWarp)
+vector<ComPtr<IDXGIAdapter>> DXUtil::getAdapters(D3D_FEATURE_LEVEL featureLevel, bool useWarp)
 {
 	auto dxgiFactory = createDXGIFactory();
 
-	vector<wrl::ComPtr<IDXGIAdapter4>> adapters;
-	wrl::ComPtr<IDXGIAdapter1> dxgiAdapter1;
-	wrl::ComPtr<IDXGIAdapter4> dxgiAdapter4;
+	vector<ComPtr<IDXGIAdapter>> adapters;
+	ComPtr<IDXGIAdapter1> dxgiAdapter1;
+	ComPtr<IDXGIAdapter4> dxgiAdapter4;
 	HRESULT hr;
 	if (useWarp)
 	{
-		GFXTHROWIFFAILED(dxgiFactory->EnumWarpAdapter(IID_PPV_ARGS(&dxgiAdapter4)));
+		ComPtr<IDXGIFactory4> dxgiFactory4;
+		GFXTHROWIFFAILED(dxgiFactory.As(&dxgiFactory4));
+		GFXTHROWIFFAILED(dxgiFactory4->EnumWarpAdapter(IID_PPV_ARGS(&dxgiAdapter4)));
 		adapters.push_back(dxgiAdapter4);
 	}
 	else {
-		for (UINT adapterIndex = 0; dxgiFactory->EnumAdapters1(adapterIndex, &dxgiAdapter1) != DXGI_ERROR_NOT_FOUND; ++adapterIndex)
+		ComPtr<IDXGIFactory1> dxgiFactory1;
+		GFXTHROWIFFAILED(dxgiFactory.As(&dxgiFactory1));
+
+		for (UINT adapterIndex = 0; dxgiFactory1->EnumAdapters1(adapterIndex, &dxgiAdapter1) != DXGI_ERROR_NOT_FOUND; ++adapterIndex)
 		{
 			DXGI_ADAPTER_DESC1 dxgiAdapterDesc1;
 			dxgiAdapter1->GetDesc1(&dxgiAdapterDesc1);
@@ -157,20 +165,20 @@ vector<wrl::ComPtr<IDXGIAdapter4>> DXUtil::getAdapters(D3D_FEATURE_LEVEL feature
 	return adapters;
 }
 
-wrl::ComPtr<ID3D12Device9> DXUtil::createDeviceFromAdapter(wrl::ComPtr<IDXGIAdapter4> adapter, D3D_FEATURE_LEVEL featureLevel)
+ComPtr<ID3D12Device> DXUtil::createDeviceFromAdapter(ComPtr<IDXGIAdapter> adapter, D3D_FEATURE_LEVEL featureLevel)
 {
 	HRESULT hr;
-	wrl::ComPtr<ID3D12Device9> pDevice;
+	ComPtr<ID3D12Device> pDevice;
 
 	GFXTHROWIFFAILED(D3D12CreateDevice(adapter.Get(), featureLevel, IID_PPV_ARGS(&pDevice)));
 
 	return pDevice;
 }
 
-wrl::ComPtr<IDXGIFactory7> DXUtil::createDXGIFactory()
+ComPtr<IDXGIFactory> DXUtil::createDXGIFactory()
 {
 	HRESULT hr;
-	wrl::ComPtr<IDXGIFactory7> dxgiFactory;
+	ComPtr<IDXGIFactory> dxgiFactory;
 	//dxgiFactory->
 	UINT createFactoryFlags = 0;
 #ifdef _DEBUG
@@ -180,10 +188,10 @@ wrl::ComPtr<IDXGIFactory7> DXUtil::createDXGIFactory()
 	return dxgiFactory;
 }
 
-wrl::ComPtr<ID3D12DescriptorHeap> DXUtil::createDescriptorHeap(wrl::ComPtr<ID3D12Device9> device, UINT count, D3D12_DESCRIPTOR_HEAP_TYPE type, bool shaderVisible)
+ComPtr<ID3D12DescriptorHeap> DXUtil::createDescriptorHeap(ComPtr<ID3D12Device> device, UINT count, D3D12_DESCRIPTOR_HEAP_TYPE type, bool shaderVisible)
 {
 	HRESULT hr;
-	wrl::ComPtr<ID3D12DescriptorHeap> descriptorHeap;
+	ComPtr<ID3D12DescriptorHeap> descriptorHeap;
 
 	D3D12_DESCRIPTOR_HEAP_DESC desc = {};
 	desc.NumDescriptors = count;
@@ -195,7 +203,7 @@ wrl::ComPtr<ID3D12DescriptorHeap> DXUtil::createDescriptorHeap(wrl::ComPtr<ID3D1
 	return descriptorHeap;
 }
 
-wrl::ComPtr<IDXGISwapChain4> DXUtil::createSwapChain(wrl::ComPtr<ID3D12CommandQueue> commandQueue, HWND hWnd, UINT numBuffers)
+ComPtr<IDXGISwapChain> DXUtil::createSwapChain(ComPtr<ID3D12CommandQueue> commandQueue, HWND hWnd, UINT numBuffers)
 {
 	DXGI_SWAP_CHAIN_DESC1 sd = {};
 	// Use the window (hWnd) dimensions
@@ -214,25 +222,26 @@ wrl::ComPtr<IDXGISwapChain4> DXUtil::createSwapChain(wrl::ComPtr<ID3D12CommandQu
 	sd.AlphaMode = DXGI_ALPHA_MODE_UNSPECIFIED;
 	sd.Flags = checkTearingSupport() ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING : 0;
 
-	wrl::ComPtr<IDXGISwapChain4> swapChain;
-	wrl::ComPtr<IDXGISwapChain1> swapChain1;
+	ComPtr<IDXGISwapChain4> swapChain;
+	ComPtr<IDXGISwapChain1> swapChain1;
 
 	HRESULT hr;
-	auto factory = createDXGIFactory();
-	GFXTHROWIFFAILED(factory->CreateSwapChainForHwnd(commandQueue.Get(), hWnd, &sd, nullptr, nullptr, &swapChain1));
+	ComPtr<IDXGIFactory2> dxgiFactory2;
+	GFXTHROWIFFAILED(createDXGIFactory().As(&dxgiFactory2));
+	GFXTHROWIFFAILED(dxgiFactory2->CreateSwapChainForHwnd(commandQueue.Get(), hWnd, &sd, nullptr, nullptr, &swapChain1));
 	GFXTHROWIFFAILED(swapChain1.As(&swapChain));
 	// TODO: pCurrentBackBufferIndex = swapChain->GetCurrentBackBufferIndex();
 
 	return swapChain;
 }
 
-std::vector<wrl::ComPtr<ID3D12Resource>> DXUtil::createRenderTargetViews(
-	wrl::ComPtr<ID3D12Device9> device,
-	wrl::ComPtr<ID3D12DescriptorHeap> descriptorHeap,
-	wrl::ComPtr<IDXGISwapChain4> swapChain,
+std::vector<ComPtr<ID3D12Resource>> DXUtil::createRenderTargetViews(
+	ComPtr<ID3D12Device> device,
+	ComPtr<ID3D12DescriptorHeap> descriptorHeap,
+	ComPtr<IDXGISwapChain> swapChain,
 	UINT numRTV)
 {
-	std::vector<wrl::ComPtr<ID3D12Resource>> backBuffers(numRTV);
+	std::vector<ComPtr<ID3D12Resource>> backBuffers(numRTV);
 
 	auto pRTVDescriptorSize = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(descriptorHeap->GetCPUDescriptorHandleForHeapStart());
@@ -249,13 +258,13 @@ std::vector<wrl::ComPtr<ID3D12Resource>> DXUtil::createRenderTargetViews(
 	return backBuffers;
 }
 
-std::vector<wrl::ComPtr<ID3D12Resource>> DXUtil::createDepthStencilView(
-	wrl::ComPtr<ID3D12Device9> device,
-	wrl::ComPtr<ID3D12DescriptorHeap> depthDescriptorHeap,
+std::vector<ComPtr<ID3D12Resource>> DXUtil::createDepthStencilView(
+	ComPtr<ID3D12Device> device,
+	ComPtr<ID3D12DescriptorHeap> depthDescriptorHeap,
 	UINT winWidth, UINT winHeight,
 	UINT numDSV)
 {
-	std::vector<wrl::ComPtr<ID3D12Resource>> depthBuffers(numDSV);
+	std::vector<ComPtr<ID3D12Resource>> depthBuffers(numDSV);
 
 	auto pDSVDescriptorSize = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
 	CD3DX12_CPU_DESCRIPTOR_HANDLE dsvHandle(depthDescriptorHeap->GetCPUDescriptorHandleForHeapStart());
@@ -293,9 +302,9 @@ std::vector<wrl::ComPtr<ID3D12Resource>> DXUtil::createDepthStencilView(
 	return depthBuffers;
 }
 
-wrl::ComPtr<ID3D12Resource> DXUtil::createCommittedResource(wrl::ComPtr<ID3D12Device9> device, D3D12_HEAP_TYPE heapType, UINT64 size, D3D12_RESOURCE_STATES resourceState, D3D12_RESOURCE_FLAGS resourceFlags)
+ComPtr<ID3D12Resource> DXUtil::createCommittedResource(ComPtr<ID3D12Device> device, D3D12_HEAP_TYPE heapType, UINT64 size, D3D12_RESOURCE_STATES resourceState, D3D12_RESOURCE_FLAGS resourceFlags)
 {
-	wrl::ComPtr<ID3D12Resource> buffer;
+	ComPtr<ID3D12Resource> buffer;
 
 	HRESULT hr;
 	auto heapPropDesc = CD3DX12_HEAP_PROPERTIES(heapType);
@@ -312,9 +321,9 @@ wrl::ComPtr<ID3D12Resource> DXUtil::createCommittedResource(wrl::ComPtr<ID3D12De
 	return buffer;
 }
 
-Microsoft::WRL::ComPtr<ID3D12Resource> DXUtil::createTextureCommittedResource(Microsoft::WRL::ComPtr<ID3D12Device9> device, D3D12_HEAP_TYPE heapType, UINT64 width, UINT height, D3D12_RESOURCE_STATES resourceState, D3D12_RESOURCE_FLAGS resourceFlags, DXGI_FORMAT format)
+ComPtr<ID3D12Resource> DXUtil::createTextureCommittedResource(ComPtr<ID3D12Device> device, D3D12_HEAP_TYPE heapType, UINT64 width, UINT height, D3D12_RESOURCE_STATES resourceState, D3D12_RESOURCE_FLAGS resourceFlags, DXGI_FORMAT format)
 {
-	wrl::ComPtr<ID3D12Resource> buffer;
+	ComPtr<ID3D12Resource> buffer;
 
 	// TODO: Check - Do we need mip level 1 for Ray Tracing?
 	HRESULT hr;
@@ -332,20 +341,20 @@ Microsoft::WRL::ComPtr<ID3D12Resource> DXUtil::createTextureCommittedResource(Mi
 	return buffer;
 }
 
-wrl::ComPtr<ID3D12Resource> DXUtil::uploadDataToDefaultHeap(wrl::ComPtr<ID3D12Device9> pDevice, wrl::ComPtr<ID3D12GraphicsCommandList4> pCommandList, wrl::ComPtr<ID3D12Resource>& tempResource, const void* ptData, std::size_t dataSize, D3D12_RESOURCE_STATES finalState)
+ComPtr<ID3D12Resource> DXUtil::uploadDataToDefaultHeap(ComPtr<ID3D12Device> pDevice, ComPtr<ID3D12GraphicsCommandList> pCommandList, ComPtr<ID3D12Resource>& tempResource, const void* ptData, std::size_t dataSize, D3D12_RESOURCE_STATES finalState)
 {
 	// Upload buffer to gpu
-	wrl::ComPtr<ID3D12Resource> defaultResource = DXUtil::createCommittedResource(pDevice, D3D12_HEAP_TYPE_DEFAULT, dataSize, D3D12_RESOURCE_STATE_COPY_DEST);
+	ComPtr<ID3D12Resource> defaultResource = DXUtil::createCommittedResource(pDevice, D3D12_HEAP_TYPE_DEFAULT, dataSize, D3D12_RESOURCE_STATE_COPY_DEST);
 
 	updateDataInDefaultHeap(pDevice, pCommandList, defaultResource, tempResource, ptData, dataSize, D3D12_RESOURCE_STATE_COPY_DEST, finalState);
 
 	return defaultResource;
 }
 
-Microsoft::WRL::ComPtr<ID3D12Resource> DXUtil::uploadTextureDataToDefaultHeap(Microsoft::WRL::ComPtr<ID3D12Device9> device, Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> pCommandList, Microsoft::WRL::ComPtr<ID3D12Resource>& tempResource, const void* ptData, std::size_t width, std::size_t height, std::size_t sizePerPixel, DXGI_FORMAT format, D3D12_RESOURCE_STATES finalState)
+ComPtr<ID3D12Resource> DXUtil::uploadTextureDataToDefaultHeap(ComPtr<ID3D12Device> device, ComPtr<ID3D12GraphicsCommandList> pCommandList, ComPtr<ID3D12Resource>& tempResource, const void* ptData, std::size_t width, std::size_t height, std::size_t sizePerPixel, DXGI_FORMAT format, D3D12_RESOURCE_STATES finalState)
 {
 	// create texture
-	wrl::ComPtr<ID3D12Resource> texResource = createTextureCommittedResource(device, D3D12_HEAP_TYPE_DEFAULT, width, static_cast<UINT>(height), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_FLAG_NONE, format);
+	ComPtr<ID3D12Resource> texResource = createTextureCommittedResource(device, D3D12_HEAP_TYPE_DEFAULT, width, static_cast<UINT>(height), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_FLAG_NONE, format);
 
 	const UINT64 uploadBufferSize = GetRequiredIntermediateSize(texResource.Get(), 0, 1);
 	//const UINT64 uploadBufferSize = width * height * 4;
@@ -365,7 +374,7 @@ Microsoft::WRL::ComPtr<ID3D12Resource> DXUtil::uploadTextureDataToDefaultHeap(Mi
 	return texResource;
 }
 
-void DXUtil::updateDataInDefaultHeap(Microsoft::WRL::ComPtr<ID3D12Device9> pDevice, Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> pCommandList, Microsoft::WRL::ComPtr<ID3D12Resource>& resource, Microsoft::WRL::ComPtr<ID3D12Resource>& tempResource, const void* ptData, std::size_t dataSize, D3D12_RESOURCE_STATES previousState, D3D12_RESOURCE_STATES finalState)
+void DXUtil::updateDataInDefaultHeap(ComPtr<ID3D12Device> pDevice, ComPtr<ID3D12GraphicsCommandList> pCommandList, ComPtr<ID3D12Resource>& resource, ComPtr<ID3D12Resource>& tempResource, const void* ptData, std::size_t dataSize, D3D12_RESOURCE_STATES previousState, D3D12_RESOURCE_STATES finalState)
 {
 	// Transition to correct state
 	if (previousState != D3D12_RESOURCE_STATE_COPY_DEST) {
@@ -387,7 +396,7 @@ void DXUtil::updateDataInDefaultHeap(Microsoft::WRL::ComPtr<ID3D12Device9> pDevi
 }
 
 
-wrl::ComPtr<ID3D12RootSignature> DXUtil::createRootSignature(wrl::ComPtr<ID3D12Device9> pDevice, const D3D12_VERSIONED_ROOT_SIGNATURE_DESC& rootSignatureDesc)
+ComPtr<ID3D12RootSignature> DXUtil::createRootSignature(ComPtr<ID3D12Device> pDevice, const D3D12_VERSIONED_ROOT_SIGNATURE_DESC& rootSignatureDesc)
 {
 	// Check which root signature version we support - 1.1 is better than 1.0...
 	// Root signature - https://docs.microsoft.com/en-us/windows/desktop/direct3d12/root-signatures-overview
@@ -401,21 +410,21 @@ wrl::ComPtr<ID3D12RootSignature> DXUtil::createRootSignature(wrl::ComPtr<ID3D12D
 	}
 
 	// Serialise the signature
-	wrl::ComPtr<ID3DBlob> rootSignatureBlob;
-	wrl::ComPtr<ID3DBlob> errorBlob;
+	ComPtr<ID3DBlob> rootSignatureBlob;
+	ComPtr<ID3DBlob> errorBlob;
 	GFXTHROWIFFAILED(D3DX12SerializeVersionedRootSignature(&rootSignatureDesc, featureData.HighestVersion, &rootSignatureBlob, &errorBlob));
 
 	// Create the root signature.
-	wrl::ComPtr<ID3D12RootSignature> rootSignature;
+	ComPtr<ID3D12RootSignature> rootSignature;
 	GFXTHROWIFFAILED(pDevice->CreateRootSignature(0, rootSignatureBlob->GetBufferPointer(), rootSignatureBlob->GetBufferSize(), IID_PPV_ARGS(&rootSignature)));
 
 	return rootSignature;
 }
 
-wrl::ComPtr<ID3D12Device9> DXUtil::createRTDeviceFromAdapter(wrl::ComPtr<IDXGIAdapter4> adapter, D3D_FEATURE_LEVEL featureLevel)
+ComPtr<ID3D12Device> DXUtil::createRTDeviceFromAdapter(ComPtr<IDXGIAdapter> adapter, D3D_FEATURE_LEVEL featureLevel)
 {
 	HRESULT hr;
-	wrl::ComPtr<ID3D12Device9> pDevice = createDeviceFromAdapter(adapter, featureLevel);
+	ComPtr<ID3D12Device> pDevice = createDeviceFromAdapter(adapter, featureLevel);
 
 	D3D12_FEATURE_DATA_D3D12_OPTIONS5 features5 = {};
 	GFXTHROWIFFAILED(pDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS5, &features5, sizeof(D3D12_FEATURE_DATA_D3D12_OPTIONS5)));
@@ -426,8 +435,8 @@ wrl::ComPtr<ID3D12Device9> DXUtil::createRTDeviceFromAdapter(wrl::ComPtr<IDXGIAd
 }
 
 DXUtil::AccelerationStructureBuffers DXUtil::createBottomLevelAS(
-	Microsoft::WRL::ComPtr<ID3D12Device9> pDevice,
-	Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> pCommandList,
+	ComPtr<ID3D12Device> pDevice,
+	ComPtr<ID3D12GraphicsCommandList> pCommandList,
 	const std::vector<BottomLevelAccelerationData>& blasData,
 	UINT vertexSize)
 {
@@ -462,7 +471,11 @@ DXUtil::AccelerationStructureBuffers DXUtil::createBottomLevelAS(
 
 	// Query the buffer sizes that we need to allocate
 	D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO prebuildInfo = {};
-	pDevice->GetRaytracingAccelerationStructurePrebuildInfo(&rtStructureDescriptor, &prebuildInfo);
+	HRESULT hr;
+	ComPtr<ID3D12Device5> pDevice5;
+	GFXTHROWIFFAILED(pDevice.As(&pDevice5));
+
+	pDevice5->GetRaytracingAccelerationStructurePrebuildInfo(&rtStructureDescriptor, &prebuildInfo);
 
 	// Create the buffers..
 	blasBuffers.pScratch = createCommittedResource(pDevice, D3D12_HEAP_TYPE_DEFAULT, prebuildInfo.ScratchDataSizeInBytes, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS);
@@ -472,16 +485,18 @@ DXUtil::AccelerationStructureBuffers DXUtil::createBottomLevelAS(
 	blasDesc.Inputs = rtStructureDescriptor;
 	blasDesc.DestAccelerationStructureData = blasBuffers.pResult->GetGPUVirtualAddress();
 	blasDesc.ScratchAccelerationStructureData = blasBuffers.pScratch->GetGPUVirtualAddress();
-	pCommandList->BuildRaytracingAccelerationStructure(&blasDesc, 0, nullptr);
+	ComPtr<ID3D12GraphicsCommandList4> pCommandList4;
+	GFXTHROWIFFAILED(pCommandList.As(&pCommandList4));
+	pCommandList4->BuildRaytracingAccelerationStructure(&blasDesc, 0, nullptr);
 
 	return blasBuffers;
 }
 
 void DXUtil::buildTopLevelAS(
-	Microsoft::WRL::ComPtr<ID3D12Device9> pDevice,
-	Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> pCommandList,
+	ComPtr<ID3D12Device> pDevice,
+	ComPtr<ID3D12GraphicsCommandList> pCommandList,
 	const std::vector<TopLevelAccelerationData>& instanceData,
-	Microsoft::WRL::ComPtr<ID3D12Resource>& tlasTempBuffer,
+	ComPtr<ID3D12Resource>& tlasTempBuffer,
 	bool update,
 	DXUtil::AccelerationStructureBuffers& tlasBuffers)
 {
@@ -493,8 +508,11 @@ void DXUtil::buildTopLevelAS(
 	rtStructureDescriptor.Flags = D3D12_RAYTRACING_ACCELERATION_STRUCTURE_BUILD_FLAG_ALLOW_UPDATE;
 
 	// Query the buffer sizes that we need to allocate
+	HRESULT hr;
+	ComPtr<ID3D12Device5> pDevice5;
+	GFXTHROWIFFAILED(pDevice.As(&pDevice5));
 	D3D12_RAYTRACING_ACCELERATION_STRUCTURE_PREBUILD_INFO prebuildInfo = {};
-	pDevice->GetRaytracingAccelerationStructurePrebuildInfo(&rtStructureDescriptor, &prebuildInfo);
+	pDevice5->GetRaytracingAccelerationStructurePrebuildInfo(&rtStructureDescriptor, &prebuildInfo);
 
 	if (update)
 	{
@@ -541,7 +559,9 @@ void DXUtil::buildTopLevelAS(
 		tlasDesc.SourceAccelerationStructureData = tlasBuffers.pResult->GetGPUVirtualAddress();
 	}
 
-	pCommandList->BuildRaytracingAccelerationStructure(&tlasDesc, 0, nullptr);
+	ComPtr<ID3D12GraphicsCommandList4> pCommandList4;
+	GFXTHROWIFFAILED(pCommandList.As(&pCommandList4));
+	pCommandList4->BuildRaytracingAccelerationStructure(&tlasDesc, 0, nullptr);
 
 	// Insert barrier for uav access..
 	auto resBarrierDesc = CD3DX12_RESOURCE_BARRIER::UAV(tlasBuffers.pResult.Get());

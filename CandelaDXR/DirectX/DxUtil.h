@@ -17,40 +17,40 @@ namespace candela::directx
 
 		// Helper methods
 		static void enableDebugLayer();
-		static void setupDebugLayer(Microsoft::WRL::ComPtr<ID3D12Device9> pDevice);
+		static void setupDebugLayer(Microsoft::WRL::ComPtr<ID3D12Device> pDevice);
 		static bool checkTearingSupport();
 
-		static Microsoft::WRL::ComPtr<IDXGIAdapter4> getAdapterLatestFeatureLevel(D3D_FEATURE_LEVEL* featureLevel, bool useWarp = false, std::uint32_t adapterIndex = 0);
-		static std::vector<Microsoft::WRL::ComPtr<IDXGIAdapter4>> getAdapters(D3D_FEATURE_LEVEL featureLevel, bool useWarp = false);
-		static Microsoft::WRL::ComPtr<ID3D12Device9> createDeviceFromAdapter(Microsoft::WRL::ComPtr<IDXGIAdapter4> adapter, D3D_FEATURE_LEVEL featureLevel);
-		static Microsoft::WRL::ComPtr<IDXGIFactory7> createDXGIFactory();
-		static Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> createDescriptorHeap(Microsoft::WRL::ComPtr<ID3D12Device9> device, UINT count, D3D12_DESCRIPTOR_HEAP_TYPE type, bool shaderVisible = false);
-		static Microsoft::WRL::ComPtr<IDXGISwapChain4> createSwapChain(Microsoft::WRL::ComPtr<ID3D12CommandQueue> commandQueue, HWND hWnd, UINT numBuffers);
+		static Microsoft::WRL::ComPtr<IDXGIAdapter> getAdapterLatestFeatureLevel(D3D_FEATURE_LEVEL* featureLevel, bool useWarp = false, std::uint32_t adapterIndex = 0);
+		static std::vector<Microsoft::WRL::ComPtr<IDXGIAdapter>> getAdapters(D3D_FEATURE_LEVEL featureLevel, bool useWarp = false);
+		static Microsoft::WRL::ComPtr<ID3D12Device> createDeviceFromAdapter(Microsoft::WRL::ComPtr<IDXGIAdapter> adapter, D3D_FEATURE_LEVEL featureLevel);
+		static Microsoft::WRL::ComPtr<IDXGIFactory> createDXGIFactory();
+		static Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> createDescriptorHeap(Microsoft::WRL::ComPtr<ID3D12Device> device, UINT count, D3D12_DESCRIPTOR_HEAP_TYPE type, bool shaderVisible = false);
+		static Microsoft::WRL::ComPtr<IDXGISwapChain> createSwapChain(Microsoft::WRL::ComPtr<ID3D12CommandQueue> commandQueue, HWND hWnd, UINT numBuffers);
 
 		static std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>> createRenderTargetViews(
-			Microsoft::WRL::ComPtr<ID3D12Device9> device,
+			Microsoft::WRL::ComPtr<ID3D12Device> device,
 			Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> descriptorHeap,
-			Microsoft::WRL::ComPtr<IDXGISwapChain4> swapChain,
+			Microsoft::WRL::ComPtr<IDXGISwapChain> swapChain,
 			UINT numRTV);
 
 		static std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>> createDepthStencilView(
-			Microsoft::WRL::ComPtr<ID3D12Device9> device,
+			Microsoft::WRL::ComPtr<ID3D12Device> device,
 			Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> depthDescriptorHeap,
 			UINT winWidth, UINT winHeight,
 			UINT numDSV);
 
-		static Microsoft::WRL::ComPtr<ID3D12Resource> createCommittedResource(Microsoft::WRL::ComPtr<ID3D12Device9> device, D3D12_HEAP_TYPE heapType, UINT64 size, D3D12_RESOURCE_STATES resourceState, D3D12_RESOURCE_FLAGS resourceFlags = D3D12_RESOURCE_FLAG_NONE);
-		static Microsoft::WRL::ComPtr<ID3D12Resource> createTextureCommittedResource(Microsoft::WRL::ComPtr<ID3D12Device9> device, D3D12_HEAP_TYPE heapType, UINT64 width, UINT height, D3D12_RESOURCE_STATES resourceState, D3D12_RESOURCE_FLAGS resourceFlags = D3D12_RESOURCE_FLAG_NONE, DXGI_FORMAT format = DXGI_FORMAT_R8G8B8A8_UNORM);
+		static Microsoft::WRL::ComPtr<ID3D12Resource> createCommittedResource(Microsoft::WRL::ComPtr<ID3D12Device> device, D3D12_HEAP_TYPE heapType, UINT64 size, D3D12_RESOURCE_STATES resourceState, D3D12_RESOURCE_FLAGS resourceFlags = D3D12_RESOURCE_FLAG_NONE);
+		static Microsoft::WRL::ComPtr<ID3D12Resource> createTextureCommittedResource(Microsoft::WRL::ComPtr<ID3D12Device> device, D3D12_HEAP_TYPE heapType, UINT64 width, UINT height, D3D12_RESOURCE_STATES resourceState, D3D12_RESOURCE_FLAGS resourceFlags = D3D12_RESOURCE_FLAG_NONE, DXGI_FORMAT format = DXGI_FORMAT_R8G8B8A8_UNORM);
 
-		static Microsoft::WRL::ComPtr<ID3D12Resource> uploadDataToDefaultHeap(Microsoft::WRL::ComPtr<ID3D12Device9> device, Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> pCommandList, Microsoft::WRL::ComPtr<ID3D12Resource>& tempResource, const void* ptData, std::size_t dataSize, D3D12_RESOURCE_STATES finalState);
-		static Microsoft::WRL::ComPtr<ID3D12Resource> uploadTextureDataToDefaultHeap(Microsoft::WRL::ComPtr<ID3D12Device9> device, Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> pCommandList, Microsoft::WRL::ComPtr<ID3D12Resource>& tempResource, const void* ptData, std::size_t width, std::size_t height, std::size_t sizePerPixel, DXGI_FORMAT format, D3D12_RESOURCE_STATES finalState);
+		static Microsoft::WRL::ComPtr<ID3D12Resource> uploadDataToDefaultHeap(Microsoft::WRL::ComPtr<ID3D12Device> device, Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> pCommandList, Microsoft::WRL::ComPtr<ID3D12Resource>& tempResource, const void* ptData, std::size_t dataSize, D3D12_RESOURCE_STATES finalState);
+		static Microsoft::WRL::ComPtr<ID3D12Resource> uploadTextureDataToDefaultHeap(Microsoft::WRL::ComPtr<ID3D12Device> device, Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> pCommandList, Microsoft::WRL::ComPtr<ID3D12Resource>& tempResource, const void* ptData, std::size_t width, std::size_t height, std::size_t sizePerPixel, DXGI_FORMAT format, D3D12_RESOURCE_STATES finalState);
 
-		static void updateDataInDefaultHeap(Microsoft::WRL::ComPtr<ID3D12Device9> device, Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> pCommandList, Microsoft::WRL::ComPtr<ID3D12Resource>& resource, Microsoft::WRL::ComPtr<ID3D12Resource>& tempResource, const void* ptData, std::size_t dataSize, D3D12_RESOURCE_STATES previousState, D3D12_RESOURCE_STATES finalState);
+		static void updateDataInDefaultHeap(Microsoft::WRL::ComPtr<ID3D12Device> device, Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> pCommandList, Microsoft::WRL::ComPtr<ID3D12Resource>& resource, Microsoft::WRL::ComPtr<ID3D12Resource>& tempResource, const void* ptData, std::size_t dataSize, D3D12_RESOURCE_STATES previousState, D3D12_RESOURCE_STATES finalState);
 
-		static Microsoft::WRL::ComPtr<ID3D12RootSignature> createRootSignature(Microsoft::WRL::ComPtr<ID3D12Device9> device, const D3D12_VERSIONED_ROOT_SIGNATURE_DESC& rootSignatureDesc);
+		static Microsoft::WRL::ComPtr<ID3D12RootSignature> createRootSignature(Microsoft::WRL::ComPtr<ID3D12Device> device, const D3D12_VERSIONED_ROOT_SIGNATURE_DESC& rootSignatureDesc);
 
 		// RT Stuff
-		static Microsoft::WRL::ComPtr<ID3D12Device9> createRTDeviceFromAdapter(Microsoft::WRL::ComPtr<IDXGIAdapter4> adapter, D3D_FEATURE_LEVEL featureLevel);
+		static Microsoft::WRL::ComPtr<ID3D12Device> createRTDeviceFromAdapter(Microsoft::WRL::ComPtr<IDXGIAdapter> adapter, D3D_FEATURE_LEVEL featureLevel);
 
 		struct AccelerationStructureBuffers
 		{
@@ -77,14 +77,14 @@ namespace candela::directx
 		// Vertex buffer must be in a readable state
 		// The bottom level AS deals with objects at the local level
 		static AccelerationStructureBuffers createBottomLevelAS(
-			Microsoft::WRL::ComPtr<ID3D12Device9> pDevice,
-			Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> pCommandList,
+			Microsoft::WRL::ComPtr<ID3D12Device> pDevice,
+			Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> pCommandList,
 			const std::vector<BottomLevelAccelerationData>& blasData,
 			UINT vertexSize);
 
 		static void buildTopLevelAS(
-			Microsoft::WRL::ComPtr<ID3D12Device9> pDevice,
-			Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> pCommandList,
+			Microsoft::WRL::ComPtr<ID3D12Device> pDevice,
+			Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> pCommandList,
 			const std::vector<TopLevelAccelerationData>& instanceData,
 			Microsoft::WRL::ComPtr<ID3D12Resource>& tlasTempBuffer,
 			bool update,

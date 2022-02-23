@@ -5,7 +5,7 @@
 using candela::directx::CommandQueue;
 namespace wrl = Microsoft::WRL;
 
-CommandQueue::CommandQueue(wrl::ComPtr<ID3D12Device9> pDevice, D3D12_COMMAND_LIST_TYPE listType)
+CommandQueue::CommandQueue(wrl::ComPtr<ID3D12Device> pDevice, D3D12_COMMAND_LIST_TYPE listType)
 	: listType(listType), pDevice(pDevice), fenceValue(), fenceEvent(NULL)
 {
 	HRESULT hr;
@@ -32,12 +32,12 @@ wrl::ComPtr<ID3D12CommandQueue> CommandQueue::getCommandQueue() const
 	return pCommandQueue;
 }
 
-wrl::ComPtr<ID3D12GraphicsCommandList6> CommandQueue::getCommandList()
+wrl::ComPtr<ID3D12GraphicsCommandList> CommandQueue::getCommandList()
 {
 	HRESULT hr;
 
 	wrl::ComPtr<ID3D12CommandAllocator> commandAllocator;
-	wrl::ComPtr<ID3D12GraphicsCommandList6> commandList;
+	wrl::ComPtr<ID3D12GraphicsCommandList> commandList;
 
 	// Grab a command allocator
 	if (!commandAllocatorQueue.empty() && isFenceComplete(commandAllocatorQueue.front().fenceValue))
@@ -67,7 +67,7 @@ wrl::ComPtr<ID3D12GraphicsCommandList6> CommandQueue::getCommandList()
 	return commandList;
 }
 
-std::uint64_t CommandQueue::executeCommandList(wrl::ComPtr<ID3D12GraphicsCommandList6> commandList)
+std::uint64_t CommandQueue::executeCommandList(wrl::ComPtr<ID3D12GraphicsCommandList> commandList)
 {
 	HRESULT hr;
 	GFXTHROWIFFAILED(commandList->Close());
@@ -133,11 +133,11 @@ wrl::ComPtr<ID3D12CommandAllocator> CommandQueue::createCommandAllocator()
 	return commandAllocator;
 }
 
-wrl::ComPtr<ID3D12GraphicsCommandList6> CommandQueue::createCommandList(wrl::ComPtr<ID3D12CommandAllocator> commandAllocator)
+wrl::ComPtr<ID3D12GraphicsCommandList> CommandQueue::createCommandList(wrl::ComPtr<ID3D12CommandAllocator> commandAllocator)
 {
 	HRESULT hr;
 
-	wrl::ComPtr<ID3D12GraphicsCommandList6> commandList;
+	wrl::ComPtr<ID3D12GraphicsCommandList> commandList;
 	GFXTHROWIFFAILED(pDevice->CreateCommandList(0, listType, commandAllocator.Get(), nullptr, IID_PPV_ARGS(&commandList)));
 	return commandList;
 }
