@@ -19,7 +19,7 @@ struct RayPayload
 
 struct ShadowPayload
 {
-	bool hit;
+	bool occluded;
 };
 
 struct IndirectPayload
@@ -170,11 +170,15 @@ void rayGen()
 	uint2 pixel = uint2(0, 0);
 	if (dot(ray.Direction, lightNormal) > 0.f && getPixel(ray, launchDim, pixel))
 	{
-		RayPayload payload;
+		ShadowPayload payload;
+		payload.occluded = true;
+
 		// Add direct contribution
 		TraceRay(
 			gRtScene,	// Acceleration Structure
-			0,			// Ray flags
+			RAY_FLAG_FORCE_OPAQUE
+		  | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER
+		  | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH,			// Ray flags
 			0xFF,		// Instance inclusion Mask (0xFF includes everything)
 			1,			// RayContributionToHitGroupIndex (calls shadowAnyHit)
 			3,			// MultiplierForGeometryContributionToShaderIndex
@@ -182,11 +186,8 @@ void rayGen()
 			ray,
 			payload);
 		
-		/*if (payload.hit)
+		if (!payload.occluded)
 			gIrradiance[pixel].xyz = localContribution;
-		else
-			gIrradiance[pixel].xyz = float3(1.f, 0.f, 0.f);*/
-		gIrradiance[pixel].xyz = payload.color;
 	}
 
 	//DeviceMemoryBarrier();
@@ -209,31 +210,8 @@ void miss(inout RayPayload payload)
 }
 
 // Shadow
-[shader("anyhit")]
-void shadowAnyHit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attribs)
-{
-	payload.color = float3(1.f, 0.f, 0.f);
-
-	//payload.hit = false;
-	AcceptHitAndEndSearch();
-}
-
 [shader("miss")]
-void shadowMiss(inout RayPayload payload)
+void shadowMiss(inout ShadowPayload payload)
 {
-	payload.color = float3(1.f, 1.f, 0.f);
-	//payload.hit = false;
-}
-
-// Indirect
-[shader("closesthit")]
-void indirectChs(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attribs)
-{
-	payload.color = float3(1.f, 1.f, 1.f);
-}
-
-[shader("miss")]
-void indirectMiss(inout RayPayload payload)
-{
-	payload.color = float3(0.f, 1.f, 0.f);
+	payload.occluded = false;
 }

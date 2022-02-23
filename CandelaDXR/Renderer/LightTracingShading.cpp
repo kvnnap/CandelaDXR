@@ -176,21 +176,13 @@ void LightTracingShading::buildPipeline()
 	CD3DX12_DXIL_LIBRARY_SUBOBJECT dxilSubObject(stateObjectDesc);
 	auto shaderByteCodeDesc = CD3DX12_SHADER_BYTECODE(pBlob.Get());
 	dxilSubObject.SetDXILLibrary(&shaderByteCodeDesc);
-	const WCHAR* entryPoints[] = { L"rayGen", L"miss", L"chs", L"shadowAnyHit", L"indirectChs", L"indirectMiss", L"shadowMiss" };
+	const WCHAR* entryPoints[] = { L"rayGen", L"miss", L"chs", L"shadowMiss" };
 	dxilSubObject.DefineExports(entryPoints);
 
 	// Second - Hit Program - link to entry point names
 	CD3DX12_HIT_GROUP_SUBOBJECT hitSubObject(stateObjectDesc);
 	hitSubObject.SetClosestHitShaderImport(L"chs");
 	hitSubObject.SetHitGroupExport(L"HitGroup");
-
-	CD3DX12_HIT_GROUP_SUBOBJECT shadowHitSubObject(stateObjectDesc);
-	shadowHitSubObject.SetAnyHitShaderImport(L"shadowAnyHit");
-	shadowHitSubObject.SetHitGroupExport(L"ShadowHitGroup");
-
-	CD3DX12_HIT_GROUP_SUBOBJECT indirectHitSubObject(stateObjectDesc);
-	indirectHitSubObject.SetClosestHitShaderImport(L"indirectChs");
-	indirectHitSubObject.SetHitGroupExport(L"IndirectHitGroup");
 
 	// Third - Local Root Signature for Ray Gen shader
 	rootSignatureManager->addDescriptorRange("BVH", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 2, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_NONE)); //gOutput, gIrradiance
@@ -243,10 +235,7 @@ void LightTracingShading::buildPipeline()
 	// Sixth - Associate the empty local root signature with the miss programs
 	shadingTable->addProgram(L"miss", ShadingRecordType::Miss, "EmptyRootSignature");
 	shadingTable->addProgram(L"shadowMiss", ShadingRecordType::Miss, "EmptyRootSignature");
-	shadingTable->addProgram(L"indirectMiss", ShadingRecordType::Miss, "EmptyRootSignature");
 	shadingTable->addProgram(L"HitGroup", ShadingRecordType::HitGroup, "HitGroupSignature");
-	shadingTable->addProgram(L"ShadowHitGroup", ShadingRecordType::HitGroup, "EmptyRootSignature");
-	shadingTable->addProgram(L"IndirectHitGroup", ShadingRecordType::HitGroup, "EmptyRootSignature");
 
 	// Generate/add subobjects
 	rootSignatureManager->addRootSignaturesToSubObject(stateObjectDesc);
@@ -258,7 +247,7 @@ void LightTracingShading::buildPipeline()
 
 	// Eighth - Associate the shader configuration with all shader programs
 	CD3DX12_SUBOBJECT_TO_EXPORTS_ASSOCIATION_SUBOBJECT shaderConfigAssociation(stateObjectDesc);
-	LPCWSTR exports[] = { L"rayGen", L"miss", L"HitGroup", L"ShadowHitGroup", L"indirectMiss", L"IndirectHitGroup", L"shadowMiss" };
+	LPCWSTR exports[] = { L"rayGen", L"miss", L"HitGroup", L"shadowMiss" };
 	shaderConfigAssociation.AddExports(exports);
 	shaderConfigAssociation.SetSubobjectToAssociate(shaderConfig);
 
