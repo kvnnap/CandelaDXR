@@ -42,6 +42,9 @@ LightTracingShading::LightTracingShading(unique_ptr<ISampler> sampler)
 
 void LightTracingShading::init(RendererResources* rRes)
 {
+	if (!DXUtil::checkDeviceRTSupport(rRes->pDevice))
+		ThrowException("Ray tracing is not supported on this device");
+	
 	rendererResources = rRes;
 
 	constantTempBuffer.resize(rRes->numBackBuffers);

@@ -51,6 +51,8 @@ namespace candela::directx
 
 		// RT Stuff
 		static Microsoft::WRL::ComPtr<ID3D12Device> createRTDeviceFromAdapter(Microsoft::WRL::ComPtr<IDXGIAdapter> adapter, D3D_FEATURE_LEVEL featureLevel);
+		static bool checkDeviceRTSupport(Microsoft::WRL::ComPtr<ID3D12Device> device);
+		static bool checkDeviceRTSupport(Microsoft::WRL::ComPtr<IDXGIAdapter> adapter, D3D_FEATURE_LEVEL featureLevel);
 
 		struct AccelerationStructureBuffers
 		{

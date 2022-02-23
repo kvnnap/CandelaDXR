@@ -119,6 +119,7 @@ ComPtr<IDXGIAdapter> DXUtil::getAdapterLatestFeatureLevel(D3D_FEATURE_LEVEL* fl,
 		DXGI_ADAPTER_DESC desc;
 		adapter->GetDesc(&desc);
 		wprintf(L"[%d] - %s\n", i++, desc.Description);
+		//wprintf(L"[%d] - %s - RT [%c]\n", i++, desc.Description, checkDeviceRTSupport(adapter, *fl) ? 'Y' : 'N');
 	}
 
 	cout << "Using adapter: " << adapterIndex << endl;
@@ -153,7 +154,7 @@ vector<ComPtr<IDXGIAdapter>> DXUtil::getAdapters(D3D_FEATURE_LEVEL featureLevel,
 			DXGI_ADAPTER_DESC1 dxgiAdapterDesc1;
 			dxgiAdapter1->GetDesc1(&dxgiAdapterDesc1);
 			const bool isHardware = (dxgiAdapterDesc1.Flags & DXGI_ADAPTER_FLAG_SOFTWARE) == 0;
-			const bool d3d12DeviceCreationSuccess = SUCCEEDED(D3D12CreateDevice(dxgiAdapter1.Get(), featureLevel, __uuidof(ID3D12Device9), nullptr));
+			const bool d3d12DeviceCreationSuccess = SUCCEEDED(D3D12CreateDevice(dxgiAdapter1.Get(), featureLevel, __uuidof(ID3D12Device), nullptr));
 			if (isHardware && d3d12DeviceCreationSuccess)
 			{
 				GFXTHROWIFFAILED(dxgiAdapter1.As(&dxgiAdapter4));
@@ -165,13 +166,27 @@ vector<ComPtr<IDXGIAdapter>> DXUtil::getAdapters(D3D_FEATURE_LEVEL featureLevel,
 	return adapters;
 }
 
+bool DXUtil::checkDeviceRTSupport(ComPtr<ID3D12Device> device)
+{
+	HRESULT hr;
+	D3D12_FEATURE_DATA_D3D12_OPTIONS5 features5 = {};
+	GFXTHROWIFFAILED(device->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS5, &features5, sizeof(D3D12_FEATURE_DATA_D3D12_OPTIONS5)));
+	return features5.RaytracingTier != D3D12_RAYTRACING_TIER_NOT_SUPPORTED;
+}
+
+bool DXUtil::checkDeviceRTSupport(ComPtr<IDXGIAdapter> adapter, D3D_FEATURE_LEVEL featureLevel)
+{
+	HRESULT hr;
+	D3D12_FEATURE_DATA_D3D12_OPTIONS5 features5 = {};
+	GFXTHROWIFFAILED(createDeviceFromAdapter(adapter, featureLevel)->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS5, &features5, sizeof(D3D12_FEATURE_DATA_D3D12_OPTIONS5)));
+	return features5.RaytracingTier != D3D12_RAYTRACING_TIER_NOT_SUPPORTED;
+}
+
 ComPtr<ID3D12Device> DXUtil::createDeviceFromAdapter(ComPtr<IDXGIAdapter> adapter, D3D_FEATURE_LEVEL featureLevel)
 {
 	HRESULT hr;
 	ComPtr<ID3D12Device> pDevice;
-
 	GFXTHROWIFFAILED(D3D12CreateDevice(adapter.Get(), featureLevel, IID_PPV_ARGS(&pDevice)));
-
 	return pDevice;
 }
 
@@ -423,14 +438,9 @@ ComPtr<ID3D12RootSignature> DXUtil::createRootSignature(ComPtr<ID3D12Device> pDe
 
 ComPtr<ID3D12Device> DXUtil::createRTDeviceFromAdapter(ComPtr<IDXGIAdapter> adapter, D3D_FEATURE_LEVEL featureLevel)
 {
-	HRESULT hr;
 	ComPtr<ID3D12Device> pDevice = createDeviceFromAdapter(adapter, featureLevel);
-
-	D3D12_FEATURE_DATA_D3D12_OPTIONS5 features5 = {};
-	GFXTHROWIFFAILED(pDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS5, &features5, sizeof(D3D12_FEATURE_DATA_D3D12_OPTIONS5)));
-	if (features5.RaytracingTier == D3D12_RAYTRACING_TIER_NOT_SUPPORTED)
+	if (!checkDeviceRTSupport(pDevice))
 		ThrowException("Ray tracing is not supported on this device");
-
 	return pDevice;
 }
 
