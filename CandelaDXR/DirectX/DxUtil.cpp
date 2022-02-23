@@ -110,7 +110,7 @@ wrl::ComPtr<IDXGIAdapter4> DXUtil::getAdapter(D3D_FEATURE_LEVEL featureLevel, bo
 		for (UINT adapterIndex = 0; dxgiFactory->EnumAdapters1(adapterIndex, &dxgiAdapter1) != DXGI_ERROR_NOT_FOUND; ++adapterIndex) {
 			DXGI_ADAPTER_DESC1 dxgiAdapterDesc1;
 			dxgiAdapter1->GetDesc1(&dxgiAdapterDesc1);
-
+			wprintf(L"\tTrying Device: %s\n", dxgiAdapterDesc1.Description);
 			const bool isHardware = (dxgiAdapterDesc1.Flags & DXGI_ADAPTER_FLAG_SOFTWARE) == 0;
 			const bool d3d12DeviceCreationSuccess = SUCCEEDED(D3D12CreateDevice(dxgiAdapter1.Get(), featureLevel, __uuidof(ID3D12Device9), nullptr));
 			if (isHardware && d3d12DeviceCreationSuccess) {
