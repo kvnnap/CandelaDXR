@@ -130,18 +130,18 @@ void rayGen()
 	Material lightMat = materials[areaLight.MaterialId];
 
 	// Compute light vertices
-	float3 l[3];
-	l[0] = mul(float4(verts[indices[lightIndexId + 0]], 1.f), matrices[areaLight.InstanceIndex]);
-	l[1] = mul(float4(verts[indices[lightIndexId + 1]], 1.f), matrices[areaLight.InstanceIndex]);
-	l[2] = mul(float4(verts[indices[lightIndexId + 2]], 1.f), matrices[areaLight.InstanceIndex]);
+	float3 lv[3];
+	lv[0] = mul(float4(verts[indices[lightIndexId + 0]], 1.f), matrices[areaLight.InstanceIndex]);
+	lv[1] = mul(float4(verts[indices[lightIndexId + 1]], 1.f), matrices[areaLight.InstanceIndex]);
+	lv[2] = mul(float4(verts[indices[lightIndexId + 2]], 1.f), matrices[areaLight.InstanceIndex]);
 
 	// Generate a point on the light
 	float2 lightBary;
-	const float3 pointOnLightSource = samplePointOnTriangle(seed, l, lightBary);
+	const float3 pointOnLightSource = samplePointOnTriangle(seed, lv, lightBary);
 
 	// Compute MC Coefficients
 	float3 localContribution = lightMat.Emissive;
-	localContribution *= getTriangleArea(l) * cBuffer.numLights;
+	localContribution *= getTriangleArea(lv) * cBuffer.numLights;
 
 	if (lightMat.EmissiveTextureId >= 0)
 	{
@@ -168,7 +168,8 @@ void rayGen()
 	
 
 	uint2 pixel = uint2(0, 0);
-	if (dot(ray.Direction, lightNormal) > 0.f && getPixel(ray, launchDim, pixel))
+	float lightDot = dot(ray.Direction, lightNormal);
+	if (lightDot > 0.f && getPixel(ray, launchDim, pixel))
 	{
 		ShadowPayload payload;
 		payload.occluded = true;
@@ -186,14 +187,19 @@ void rayGen()
 			ray,
 			payload);
 		
-		if (!payload.occluded)
-			gIrradiance[pixel].xyz = localContribution;
+		float cameraDot = -dot(ray.Direction, cBuffer.w);
+		if (!payload.occluded && cameraDot > 0)
+		{
+			float invDistance = 1.f / length(ray.Direction);
+			gIrradiance[pixel].xyz += localContribution * lightDot * invDistance * invDistance * cameraDot;
+		}
 	}
 
 	//DeviceMemoryBarrier();
 
-	//++gIrradiance[launchIndex].w;
-	gOutput[launchIndex] = float4(gIrradiance[launchIndex].xyz, 1.f);
+	gIrradiance[launchIndex].w += 1.f;
+	const float sampleRatio = 1.f / (launchDim.x * launchDim.y * gIrradiance[launchIndex].w);
+	gOutput[launchIndex] = float4(gIrradiance[launchIndex].xyz * gIrrToRad[launchIndex] * sampleRatio, 1.f);
 }
 
 // Ray

@@ -85,12 +85,6 @@ void LightTracingShading::init(RendererResources* rRes)
 	wrl::ComPtr<ID3D12Resource> tlasTempBuffer;
 	DXUtil::buildTopLevelAS(rRes->pDevice, commandList, tlasInstanceData, tlasTempBuffer, false, tlasBuffers);
 
-	// Build Pipeline
-	buildPipeline();
-
-	// Create Shader resources
-	createShaderResources();
-
 	// Compute irradianceToRadianceConstants
 	wrl::ComPtr<ID3D12Resource> irrToRadTempBuffer;
 	vector<float> irradianceToRadianceConstants;
@@ -100,6 +94,12 @@ void LightTracingShading::init(RendererResources* rRes)
 			irradianceToRadianceConstants.push_back(1.f / cosIntegral(x, y));
 	irrToRad = DXUtil::uploadTextureDataToDefaultHeap(rendererResources->pDevice, commandList, irrToRadTempBuffer, irradianceToRadianceConstants.data(),
 		rRes->winDimensions.x, rRes->winDimensions.y, sizeof(float), DXGI_FORMAT_R32_FLOAT, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+
+	// Build Pipeline
+	buildPipeline();
+
+	// Create Shader resources
+	createShaderResources();
 
 	// Constant buffer
 	wrl::ComPtr<ID3D12Resource> cBuffIntBuffer;
@@ -185,10 +185,10 @@ void LightTracingShading::buildPipeline()
 	hitSubObject.SetHitGroupExport(L"HitGroup");
 
 	// Third - Local Root Signature for Ray Gen shader
-	rootSignatureManager->addDescriptorRange("BVH", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 2, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_NONE)); //gOutput, gIrradiance
-	rootSignatureManager->addDescriptorRange("BVH", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 2, 8, 0, D3D12_DESCRIPTOR_RANGE_FLAG_NONE)); //gRtScene, gIrrToRad
+	rootSignatureManager->addDescriptorRange("BVH", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 2, 0)); //gOutput, gIrradiance
+	rootSignatureManager->addDescriptorRange("BVH", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 2, 8)); //gRtScene, gIrrToRad
 	if (!rendererResources->textures.empty())
-		rootSignatureManager->addDescriptorRange("BVH", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, static_cast<UINT>(rendererResources->textures.size()), 10, 0, D3D12_DESCRIPTOR_RANGE_FLAG_NONE));
+		rootSignatureManager->addDescriptorRange("BVH", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, static_cast<UINT>(rendererResources->textures.size()), 10));
 	
 	rootSignatureManager->setDescriptorTableParameter("BVHDescTable", "BVH");
 	CD3DX12_ROOT_PARAMETER1 param;
@@ -295,7 +295,7 @@ void LightTracingShading::createShaderResources()
 	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
 	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 	srvDesc.Texture2D.MipLevels = 1;
-	descHeapManager.setSRV(entryNumber++, srvDesc, rendererResources->pDevice);
+	descHeapManager.setSRV(entryNumber++, srvDesc, rendererResources->pDevice, irrToRad);
 
 	// Textures
 	srvDesc = {};
