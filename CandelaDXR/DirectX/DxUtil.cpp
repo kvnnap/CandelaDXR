@@ -1,5 +1,6 @@
 #include "DXUtil.h"
 
+#include <array>
 #include <iostream>
 #include <DirectXMath.h>
 
@@ -7,6 +8,12 @@
 
 #include "Exception/WindowException.h"
 #include "Exception/DxgiInfoException.h"
+
+using std::array;
+using std::vector;
+using std::string;
+using std::cout;
+using std::endl;
 
 namespace wrl = Microsoft::WRL;
 
@@ -65,56 +72,82 @@ bool DXUtil::checkTearingSupport()
 	return allowTearing == TRUE;
 }
 
-wrl::ComPtr<IDXGIAdapter4> DXUtil::getAdapterLatestFeatureLevel(D3D_FEATURE_LEVEL* fl, bool useWarp, std::uint32_t useIndex)
+wrl::ComPtr<IDXGIAdapter4> DXUtil::getAdapterLatestFeatureLevel(D3D_FEATURE_LEVEL* fl, bool useWarp, std::uint32_t adapterIndex)
 {
 	// Get DX12 compatible hardware device - Adapter contains info about the actual device
-	D3D_FEATURE_LEVEL featureLevels[] = {
-		D3D_FEATURE_LEVEL_12_2,
-		D3D_FEATURE_LEVEL_12_1,
-		D3D_FEATURE_LEVEL_12_0,
-		D3D_FEATURE_LEVEL_11_1,
-		D3D_FEATURE_LEVEL_11_0
+	struct FeatureLevelItem
+	{
+		D3D_FEATURE_LEVEL FeatureLevel;
+		string Name;
 	};
 
-	std::vector<wrl::ComPtr<IDXGIAdapter4>> adapters;
-	for (auto featureLevel : featureLevels) {
-		std::cout << "Trying Feature Level: " << featureLevel << "... ";
-		adapters = getAdapters(featureLevel);
-		if (!adapters.empty()) {
-			*fl = featureLevel;
-			std::cout << "OK" << std::endl;
-			break;
+	array<FeatureLevelItem, 5> featureLevels = {
+		FeatureLevelItem { D3D_FEATURE_LEVEL_12_2, "D3D_FEATURE_LEVEL_12_2"},
+		FeatureLevelItem { D3D_FEATURE_LEVEL_12_1, "D3D_FEATURE_LEVEL_12_1"},
+		FeatureLevelItem { D3D_FEATURE_LEVEL_12_0, "D3D_FEATURE_LEVEL_12_0"},
+		FeatureLevelItem { D3D_FEATURE_LEVEL_11_1, "D3D_FEATURE_LEVEL_11_1"},
+		FeatureLevelItem { D3D_FEATURE_LEVEL_11_0, "D3D_FEATURE_LEVEL_11_0"}
+	};
+
+	vector<wrl::ComPtr<IDXGIAdapter4>> adapters;
+	for (auto featureLevel : featureLevels)
+	{
+		cout << "Trying " << featureLevel.Name << " ... ";
+		adapters = getAdapters(featureLevel.FeatureLevel);
+		if (adapters.empty()) 
+		{
+			cout << "FAILED" << endl;
 		}
 		else {
-			std::cout << "FAILED" << std::endl;
+			*fl = featureLevel.FeatureLevel;
+			cout << "OK" << endl;
+			break;
 		}
 	}
-
-	if (useIndex >= adapters.size())
+	
+	if (adapters.empty())
 		ThrowException("Cannot find a compatible DX12 hardware device");
 
-	return adapters.at(useIndex);
+	cout << "Compatible adapters: " << endl;
+
+	std::uint32_t i{};
+	for (auto adapter : adapters)
+	{
+		DXGI_ADAPTER_DESC1 desc1;
+		adapter->GetDesc1(&desc1);
+		wprintf(L"[%d] - %s\n", i++, desc1.Description);
+	}
+
+	cout << "Using adapter: " << adapterIndex << endl;
+
+	if (adapterIndex >= adapters.size())
+		ThrowException("Adapter index out of range");
+
+	return adapters.at(adapterIndex);
 }
 
-std::vector<wrl::ComPtr<IDXGIAdapter4>> DXUtil::getAdapters(D3D_FEATURE_LEVEL featureLevel, bool useWarp)
+vector<wrl::ComPtr<IDXGIAdapter4>> DXUtil::getAdapters(D3D_FEATURE_LEVEL featureLevel, bool useWarp)
 {
 	auto dxgiFactory = createDXGIFactory();
 
-	std::vector<wrl::ComPtr<IDXGIAdapter4>> adapters;
+	vector<wrl::ComPtr<IDXGIAdapter4>> adapters;
 	wrl::ComPtr<IDXGIAdapter1> dxgiAdapter1;
 	wrl::ComPtr<IDXGIAdapter4> dxgiAdapter4;
 	HRESULT hr;
-	if (useWarp) {
+	if (useWarp)
+	{
 		GFXTHROWIFFAILED(dxgiFactory->EnumWarpAdapter(IID_PPV_ARGS(&dxgiAdapter4)));
+		adapters.push_back(dxgiAdapter4);
 	}
 	else {
-		for (UINT adapterIndex = 0; dxgiFactory->EnumAdapters1(adapterIndex, &dxgiAdapter1) != DXGI_ERROR_NOT_FOUND; ++adapterIndex) {
+		for (UINT adapterIndex = 0; dxgiFactory->EnumAdapters1(adapterIndex, &dxgiAdapter1) != DXGI_ERROR_NOT_FOUND; ++adapterIndex)
+		{
 			DXGI_ADAPTER_DESC1 dxgiAdapterDesc1;
 			dxgiAdapter1->GetDesc1(&dxgiAdapterDesc1);
-			wprintf(L"\tTrying Device: %s\n", dxgiAdapterDesc1.Description);
 			const bool isHardware = (dxgiAdapterDesc1.Flags & DXGI_ADAPTER_FLAG_SOFTWARE) == 0;
 			const bool d3d12DeviceCreationSuccess = SUCCEEDED(D3D12CreateDevice(dxgiAdapter1.Get(), featureLevel, __uuidof(ID3D12Device9), nullptr));
-			if (isHardware && d3d12DeviceCreationSuccess) {
+			if (isHardware && d3d12DeviceCreationSuccess)
+			{
 				GFXTHROWIFFAILED(dxgiAdapter1.As(&dxgiAdapter4));
 				adapters.push_back(dxgiAdapter4);
 			}
@@ -386,9 +419,8 @@ wrl::ComPtr<ID3D12Device9> DXUtil::createRTDeviceFromAdapter(wrl::ComPtr<IDXGIAd
 
 	D3D12_FEATURE_DATA_D3D12_OPTIONS5 features5 = {};
 	GFXTHROWIFFAILED(pDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS5, &features5, sizeof(D3D12_FEATURE_DATA_D3D12_OPTIONS5)));
-	if (features5.RaytracingTier == D3D12_RAYTRACING_TIER_NOT_SUPPORTED) {
+	if (features5.RaytracingTier == D3D12_RAYTRACING_TIER_NOT_SUPPORTED)
 		ThrowException("Ray tracing is not supported on this device");
-	}
 
 	return pDevice;
 }

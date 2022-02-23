@@ -35,7 +35,7 @@ unique_ptr<IRenderer> RendererFactory::create(const ConfigurationNode& config) c
 	auto scene = &env.getSceneManager().getInstanceManager().get(config["Scene"]);
 	auto camera = &env.getCameraManager().getInstanceManager().get(config["Camera"]);
 	auto dim = *UVector2Factory().create(config["WindowDimensions"]);
-	auto &drawablesConfig = config["Drawables"].asList();
+	auto& drawablesConfig = config["Drawables"].asList();
 	std::uint32_t adapterIndex = 0;
 	if (config.asObject().keyExists("AdapterIndex"))
 		adapterIndex = config["AdapterIndex"].read<std::uint32_t>();
