@@ -176,7 +176,7 @@ void LightTracingShading::buildPipeline()
 	CD3DX12_DXIL_LIBRARY_SUBOBJECT dxilSubObject(stateObjectDesc);
 	auto shaderByteCodeDesc = CD3DX12_SHADER_BYTECODE(pBlob.Get());
 	dxilSubObject.SetDXILLibrary(&shaderByteCodeDesc);
-	const WCHAR* entryPoints[] = { L"rayGen", L"miss", L"chs", L"shadowChs" };
+	const WCHAR* entryPoints[] = { L"rayGen", L"miss", L"chs", L"shadowAnyHit", L"indirectChs", L"indirectMiss", L"shadowMiss" };
 	dxilSubObject.DefineExports(entryPoints);
 
 	// Second - Hit Program - link to entry point names
@@ -185,8 +185,12 @@ void LightTracingShading::buildPipeline()
 	hitSubObject.SetHitGroupExport(L"HitGroup");
 
 	CD3DX12_HIT_GROUP_SUBOBJECT shadowHitSubObject(stateObjectDesc);
-	shadowHitSubObject.SetClosestHitShaderImport(L"shadowChs");
+	shadowHitSubObject.SetAnyHitShaderImport(L"shadowAnyHit");
 	shadowHitSubObject.SetHitGroupExport(L"ShadowHitGroup");
+
+	CD3DX12_HIT_GROUP_SUBOBJECT indirectHitSubObject(stateObjectDesc);
+	indirectHitSubObject.SetClosestHitShaderImport(L"indirectChs");
+	indirectHitSubObject.SetHitGroupExport(L"IndirectHitGroup");
 
 	// Third - Local Root Signature for Ray Gen shader
 	rootSignatureManager->addDescriptorRange("BVH", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 2, 0, 0, D3D12_DESCRIPTOR_RANGE_FLAG_NONE)); //gOutput, gIrradiance
@@ -208,17 +212,6 @@ void LightTracingShading::buildPipeline()
 	param.InitAsShaderResourceView(6); rootSignatureManager->setParameter("materials", param);
 	param.InitAsShaderResourceView(7); rootSignatureManager->setParameter("lights", param);
 
-	rootSignatureManager->addParametersToRootSignature("RayGenRootSignature", { "BVHDescTable", "ConstBuff", "verts", "texVerts", "normals", "indices", "matrices", "faceAttributes", "materials", "lights" });
-	rootSignatureManager->generateRootSignature("RayGenRootSignature", rendererResources->pDevice);
-
-	shadingTable->addProgram(L"rayGen", ShadingRecordType::RayGeneration, "RayGenRootSignature");
-
-	// Fifth - create empty lrs for miss program
-	rootSignatureManager->addRootSignature("EmptyRootSignature");
-	rootSignatureManager->generateRootSignature("EmptyRootSignature", rendererResources->pDevice);
-
-	// Hit Group Signature
-	rootSignatureManager->addParametersToRootSignature("HitGroupSignature", { "BVHDescTable", "ConstBuff", "verts", "texVerts", "normals", "indices", "matrices", "faceAttributes", "materials", "lights"});
 	D3D12_STATIC_SAMPLER_DESC sampler = {};
 	sampler.Filter = D3D12_FILTER_MIN_MAG_MIP_POINT;
 	sampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
@@ -231,13 +224,29 @@ void LightTracingShading::buildPipeline()
 	sampler.ShaderRegister = 0;
 	sampler.RegisterSpace = 0;
 	sampler.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+
+	rootSignatureManager->addParametersToRootSignature("RayGenRootSignature", { "BVHDescTable", "ConstBuff", "verts", "texVerts", "normals", "indices", "matrices", "faceAttributes", "materials", "lights" });
+	rootSignatureManager->setSamplerForRootSignature("RayGenRootSignature", sampler);
+	rootSignatureManager->generateRootSignature("RayGenRootSignature", rendererResources->pDevice);
+
+	shadingTable->addProgram(L"rayGen", ShadingRecordType::RayGeneration, "RayGenRootSignature");
+
+	// Fifth - create empty lrs for miss program
+	rootSignatureManager->addRootSignature("EmptyRootSignature");
+	rootSignatureManager->generateRootSignature("EmptyRootSignature", rendererResources->pDevice);
+
+	// Hit Group Signature
+	rootSignatureManager->addParametersToRootSignature("HitGroupSignature", { "BVHDescTable", "ConstBuff", "verts", "texVerts", "normals", "indices", "matrices", "faceAttributes", "materials", "lights"});
 	rootSignatureManager->setSamplerForRootSignature("HitGroupSignature", sampler);
 	rootSignatureManager->generateRootSignature("HitGroupSignature", rendererResources->pDevice);
 
 	// Sixth - Associate the empty local root signature with the miss programs
 	shadingTable->addProgram(L"miss", ShadingRecordType::Miss, "EmptyRootSignature");
+	shadingTable->addProgram(L"shadowMiss", ShadingRecordType::Miss, "EmptyRootSignature");
+	shadingTable->addProgram(L"indirectMiss", ShadingRecordType::Miss, "EmptyRootSignature");
 	shadingTable->addProgram(L"HitGroup", ShadingRecordType::HitGroup, "HitGroupSignature");
 	shadingTable->addProgram(L"ShadowHitGroup", ShadingRecordType::HitGroup, "EmptyRootSignature");
+	shadingTable->addProgram(L"IndirectHitGroup", ShadingRecordType::HitGroup, "EmptyRootSignature");
 
 	// Generate/add subobjects
 	rootSignatureManager->addRootSignaturesToSubObject(stateObjectDesc);
@@ -249,7 +258,7 @@ void LightTracingShading::buildPipeline()
 
 	// Eighth - Associate the shader configuration with all shader programs
 	CD3DX12_SUBOBJECT_TO_EXPORTS_ASSOCIATION_SUBOBJECT shaderConfigAssociation(stateObjectDesc);
-	LPCWSTR exports[] = { L"rayGen", L"miss", L"HitGroup", L"ShadowHitGroup"};
+	LPCWSTR exports[] = { L"rayGen", L"miss", L"HitGroup", L"ShadowHitGroup", L"indirectMiss", L"IndirectHitGroup", L"shadowMiss" };
 	shaderConfigAssociation.AddExports(exports);
 	shaderConfigAssociation.SetSubobjectToAssociate(shaderConfig);
 

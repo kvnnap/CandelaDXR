@@ -1,7 +1,8 @@
 #include "Utils.hlsli"
 #include "Scene.hlsli"
 
-struct ConstBuff {
+struct ConstBuff 
+{
 	float3 u, v, w;
 	float3 position;
 	float3 direction;
@@ -16,11 +17,21 @@ struct RayPayload
 	float3 color;
 };
 
+struct ShadowPayload
+{
+	bool hit;
+};
+
+struct IndirectPayload
+{
+	float3 test;
+};
+
 // UAVs
 
 // Output texture
 RWTexture2D<float4> gOutput : register(u0);
-RWTexture2D<float4> gIrradiance : register(u1);
+globallycoherent RWTexture2D<float4> gIrradiance : register(u1);
 
 // SRVs
 StructuredBuffer<float3> verts : register(t0);
@@ -34,8 +45,8 @@ StructuredBuffer<AreaLight> lights : register(t7);
 
 RaytracingAccelerationStructure gRtScene : register(t8);
 
-Texture2D gIrrToRad : register(t9);
-Texture2D gTextures[]: register(t10);
+Texture2D<float> gIrrToRad : register(t9);
+Texture2D<float3> gTextures[]: register(t10);
 
 // Sampler
 SamplerState gSampler : register(s0);
@@ -115,62 +126,114 @@ void rayGen()
 	// Choose light source
 	const uint lightIndex = chooseInRange(seed, 0, cBuffer.numLights - 1);
 	const uint lightIndexId = lights[lightIndex].PrimitiveId * 3;
-	float3 l[3];
-	l[0] = mul(float4(verts[indices[lightIndexId + 0]], 1.f), matrices[lights[lightIndex].InstanceIndex]);
-	l[1] = mul(float4(verts[indices[lightIndexId + 1]], 1.f), matrices[lights[lightIndex].InstanceIndex]);
-	l[2] = mul(float4(verts[indices[lightIndexId + 2]], 1.f), matrices[lights[lightIndex].InstanceIndex]);
-	const float3 pointOnLightSource = samplePointOnTriangle(seed, l);
+	AreaLight areaLight = lights[lightIndex];
+	Material lightMat = materials[areaLight.MaterialId];
 
-	// Setup Ray
+	// Compute light vertices
+	float3 l[3];
+	l[0] = mul(float4(verts[indices[lightIndexId + 0]], 1.f), matrices[areaLight.InstanceIndex]);
+	l[1] = mul(float4(verts[indices[lightIndexId + 1]], 1.f), matrices[areaLight.InstanceIndex]);
+	l[2] = mul(float4(verts[indices[lightIndexId + 2]], 1.f), matrices[areaLight.InstanceIndex]);
+
+	// Generate a point on the light
+	float2 lightBary;
+	const float3 pointOnLightSource = samplePointOnTriangle(seed, l, lightBary);
+
+	// Compute MC Coefficients
+	float3 localContribution = lightMat.Emissive;
+	localContribution *= getTriangleArea(l) * cBuffer.numLights;
+
+	if (lightMat.EmissiveTextureId >= 0)
+	{
+		float2 lt[3];
+		lt[0] = texVerts[indices[lightIndexId + 0]];
+		lt[1] = texVerts[indices[lightIndexId + 1]];
+		lt[2] = texVerts[indices[lightIndexId + 2]];
+		localContribution *= gTextures[lightMat.EmissiveTextureId].SampleLevel(gSampler, pointOnTriangle(lightBary, lt), 0);
+	}
+
+	// Construct ray from light source to camera origin
 	RayDesc ray;
-	ray.TMin = 0.f;
-	ray.TMax = 3.402823e+38;
+	ray.TMin = 0.001f;
+	ray.TMax = 1.f;
 	ray.Origin = pointOnLightSource;
 	ray.Direction = cBuffer.position - pointOnLightSource;
-	uint2 pixel;
-	if (!getPixel(ray, launchDim, pixel))
-		return;
+
+	// First check if light normal is the right way round wrt camera
+	float3 ln[3];
+	ln[0] = mul(float4(normals[indices[lightIndexId + 0]], 0.f), matrices[areaLight.InstanceIndex]);
+	ln[1] = mul(float4(normals[indices[lightIndexId + 1]], 0.f), matrices[areaLight.InstanceIndex]);
+	ln[2] = mul(float4(normals[indices[lightIndexId + 2]], 0.f), matrices[areaLight.InstanceIndex]);
+	float3 lightNormal = interpolateVertices(lightBary, ln);
 	
-	gIrradiance[pixel] = float4(1.f, 1.f, 1.f, 0.f);
-	gOutput[launchIndex] = gIrradiance[launchIndex];
-	return;
 
-	//const float2 ratio = (launchIndex + float2(0.5f, 0.5f)) / launchDim;
-	//const float2 filmPlanePosition = float2(cBuffer.plane.x * (ratio.x - 0.5f), cBuffer.plane.y * (0.5f - ratio.y));
-	//const float3 pointOnObjectPlane = ray.Origin + cBuffer.w * cBuffer.plane.z + cBuffer.u * filmPlanePosition.x + cBuffer.v * filmPlanePosition.y;
-	//ray.Direction = normalize(pointOnObjectPlane - ray.Origin);
-	//RayPayload payload;
+	uint2 pixel = uint2(0, 0);
+	if (dot(ray.Direction, lightNormal) > 0.f && getPixel(ray, launchDim, pixel))
+	{
+		RayPayload payload;
+		// Add direct contribution
+		TraceRay(
+			gRtScene,	// Acceleration Structure
+			0,			// Ray flags
+			0xFF,		// Instance inclusion Mask (0xFF includes everything)
+			1,			// RayContributionToHitGroupIndex (calls shadowAnyHit)
+			3,			// MultiplierForGeometryContributionToShaderIndex
+			1,			// Miss shader index (within the shader table) (calls shadowMiss)
+			ray,
+			payload);
+		
+		/*if (payload.hit)
+			gIrradiance[pixel].xyz = localContribution;
+		else
+			gIrradiance[pixel].xyz = float3(1.f, 0.f, 0.f);*/
+		gIrradiance[pixel].xyz = payload.color;
+	}
 
-	//TraceRay(
-	//	gRtScene,	// Acceleration Structure
-	//	0,			// Ray flags
-	//	0xFF,		// Instance inclusion Mask (0xFF includes everything)
-	//	0,			// RayContributionToHitGroupIndex (calls chs)
-	//	2,			// MultiplierForGeometryContributionToShaderIndex
-	//	0,			// Miss shader index (within the shader table) (calls miss)
-	//	ray,
-	//	payload);
+	//DeviceMemoryBarrier();
 
-	//gIrradiance[launchIndex] = float4(payload.color, 1.f);
-	//gOutput[launchIndex] = float4(linearToSrgb(toneMap(gIrradiance[launchIndex].xyz)), 1.f);
-	//if (cBuffer.clear)
-	//	gOutput[launchIndex] = float4(1.0f, 0.f, 0.f, 0.f);
+	//++gIrradiance[launchIndex].w;
+	gOutput[launchIndex] = float4(gIrradiance[launchIndex].xyz, 1.f);
 }
 
+// Ray
 [shader("closesthit")]
 void chs(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attribs)
 {
-	payload.color = materials.Load(faceAttributes.Load(getFaceIndex()).MaterialId).Diffuse;
-}
-
-[shader("closesthit")]
-void shadowChs(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attribs)
-{
-	payload.color = float3(1.f, RayTCurrent(), 1.f);
+	payload.color = float3(0.f, 1.f, 0.f);
 }
 
 [shader("miss")]
 void miss(inout RayPayload payload)
 {
-	payload.color = float3(0.f, 0.f, 0.f);
+	payload.color = float3(0.f, 1.f, 1.f);
+}
+
+// Shadow
+[shader("anyhit")]
+void shadowAnyHit(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attribs)
+{
+	payload.color = float3(1.f, 0.f, 0.f);
+
+	//payload.hit = false;
+	AcceptHitAndEndSearch();
+}
+
+[shader("miss")]
+void shadowMiss(inout RayPayload payload)
+{
+	payload.color = float3(1.f, 1.f, 0.f);
+	//payload.hit = false;
+}
+
+// Indirect
+[shader("closesthit")]
+void indirectChs(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attribs)
+{
+	payload.color = float3(1.f, 1.f, 1.f);
+}
+
+[shader("miss")]
+void indirectMiss(inout RayPayload payload)
+{
+	payload.color = float3(0.f, 1.f, 0.f);
 }

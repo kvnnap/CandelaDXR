@@ -256,6 +256,10 @@ void Renderer::initSceneResources()
 			D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE));
 	}
 
+	if (textures.empty())
+		textures.push_back(DXUtil::createTextureCommittedResource(
+			pDevice, D3D12_HEAP_TYPE_DEFAULT, 1, 1, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_FLAG_NONE, DXGI_FORMAT_R8G8B8A8_UNORM));
+
 	auto fenceValue = commandQueue->executeCommandList(pCurrentCommandList);
 	commandQueue->waitForFenceValue(fenceValue);
 }

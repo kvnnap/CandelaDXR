@@ -34,7 +34,21 @@ uint chooseInRange(inout uint s, uint a, uint b) {
 static const float PI = 3.14159265f;
 static const float OneOverPI = 1.f / PI;
 
-float3 samplePointOnTriangle(inout uint s, float3 verts[3]) {
+float2 pointOnTriangle(float2 uv, float2 verts[3])
+{
+	const float2 Q1 = verts[1] - verts[0];
+	const float2 Q2 = verts[2] - verts[0];
+	return verts[0] + uv.x * Q1 + uv.y * Q2;
+}
+
+float3 interpolateVertices(float2 uv, float3 verts[3])
+{
+	const float3 Q1 = verts[1] - verts[0];
+	const float3 Q2 = verts[2] - verts[0];
+	return verts[0] + uv.x * Q1 + uv.y * Q2;
+}
+
+float3 samplePointOnTriangle(inout uint s, float3 verts[3], out float2 uv) {
 	float r1 = rand_next(s);
 	float r2 = rand_next(s);
 
@@ -47,10 +61,14 @@ float3 samplePointOnTriangle(inout uint s, float3 verts[3]) {
 	r1 += condVal * (1.f - 2.f * r1);
 	r2 += condVal * (1.f - 2.f * r2);*/
 
-	if (r1 + r2 > 1.f) {
+	if (r1 + r2 > 1.f)
+	{
 		r1 = 1.f - r1;
 		r2 = 1.f - r2;
 	}
+	
+	uv.x = r1;
+	uv.y = r2;
 
 	const float3 Q1 = verts[1] - verts[0];
 	const float3 Q2 = verts[2] - verts[0];
