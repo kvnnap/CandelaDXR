@@ -6,6 +6,7 @@
 #include <DirectXMath.h>
 
 #include <vector>
+#include <cstdint>
 
 namespace candela::directx
 {
@@ -19,8 +20,8 @@ namespace candela::directx
 		static void setupDebugLayer(Microsoft::WRL::ComPtr<ID3D12Device9> pDevice);
 		static bool checkTearingSupport();
 
-		static Microsoft::WRL::ComPtr<IDXGIAdapter4> getAdapterLatestFeatureLevel(D3D_FEATURE_LEVEL* featureLevel, bool useWarp = false);
-		static Microsoft::WRL::ComPtr<IDXGIAdapter4> getAdapter(D3D_FEATURE_LEVEL featureLevel, bool useWarp = false);
+		static Microsoft::WRL::ComPtr<IDXGIAdapter4> getAdapterLatestFeatureLevel(D3D_FEATURE_LEVEL* featureLevel, bool useWarp = false, std::uint32_t useIndex = 0);
+		static std::vector<Microsoft::WRL::ComPtr<IDXGIAdapter4>> getAdapters(D3D_FEATURE_LEVEL featureLevel, bool useWarp = false);
 		static Microsoft::WRL::ComPtr<ID3D12Device9> createDeviceFromAdapter(Microsoft::WRL::ComPtr<IDXGIAdapter4> adapter, D3D_FEATURE_LEVEL featureLevel);
 		static Microsoft::WRL::ComPtr<IDXGIFactory7> createDXGIFactory();
 		static Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> createDescriptorHeap(Microsoft::WRL::ComPtr<ID3D12Device9> device, UINT count, D3D12_DESCRIPTOR_HEAP_TYPE type, bool shaderVisible = false);

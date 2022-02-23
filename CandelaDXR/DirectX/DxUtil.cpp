@@ -65,7 +65,7 @@ bool DXUtil::checkTearingSupport()
 	return allowTearing == TRUE;
 }
 
-wrl::ComPtr<IDXGIAdapter4> DXUtil::getAdapterLatestFeatureLevel(D3D_FEATURE_LEVEL* fl, bool useWarp)
+wrl::ComPtr<IDXGIAdapter4> DXUtil::getAdapterLatestFeatureLevel(D3D_FEATURE_LEVEL* fl, bool useWarp, std::uint32_t useIndex)
 {
 	// Get DX12 compatible hardware device - Adapter contains info about the actual device
 	D3D_FEATURE_LEVEL featureLevels[] = {
@@ -76,11 +76,11 @@ wrl::ComPtr<IDXGIAdapter4> DXUtil::getAdapterLatestFeatureLevel(D3D_FEATURE_LEVE
 		D3D_FEATURE_LEVEL_11_0
 	};
 
-	wrl::ComPtr<IDXGIAdapter4> adapter;
+	std::vector<wrl::ComPtr<IDXGIAdapter4>> adapters;
 	for (auto featureLevel : featureLevels) {
 		std::cout << "Trying Feature Level: " << featureLevel << "... ";
-		adapter = getAdapter(featureLevel);
-		if (adapter) {
+		adapters = getAdapters(featureLevel);
+		if (!adapters.empty()) {
 			*fl = featureLevel;
 			std::cout << "OK" << std::endl;
 			break;
@@ -90,16 +90,17 @@ wrl::ComPtr<IDXGIAdapter4> DXUtil::getAdapterLatestFeatureLevel(D3D_FEATURE_LEVE
 		}
 	}
 
-	if (!adapter)
+	if (useIndex >= adapters.size())
 		ThrowException("Cannot find a compatible DX12 hardware device");
 
-	return adapter;
+	return adapters.at(useIndex);
 }
 
-wrl::ComPtr<IDXGIAdapter4> DXUtil::getAdapter(D3D_FEATURE_LEVEL featureLevel, bool useWarp)
+std::vector<wrl::ComPtr<IDXGIAdapter4>> DXUtil::getAdapters(D3D_FEATURE_LEVEL featureLevel, bool useWarp)
 {
 	auto dxgiFactory = createDXGIFactory();
 
+	std::vector<wrl::ComPtr<IDXGIAdapter4>> adapters;
 	wrl::ComPtr<IDXGIAdapter1> dxgiAdapter1;
 	wrl::ComPtr<IDXGIAdapter4> dxgiAdapter4;
 	HRESULT hr;
@@ -115,12 +116,12 @@ wrl::ComPtr<IDXGIAdapter4> DXUtil::getAdapter(D3D_FEATURE_LEVEL featureLevel, bo
 			const bool d3d12DeviceCreationSuccess = SUCCEEDED(D3D12CreateDevice(dxgiAdapter1.Get(), featureLevel, __uuidof(ID3D12Device9), nullptr));
 			if (isHardware && d3d12DeviceCreationSuccess) {
 				GFXTHROWIFFAILED(dxgiAdapter1.As(&dxgiAdapter4));
-				break;
+				adapters.push_back(dxgiAdapter4);
 			}
 		}
 	}
 
-	return dxgiAdapter4;
+	return adapters;
 }
 
 wrl::ComPtr<ID3D12Device9> DXUtil::createDeviceFromAdapter(wrl::ComPtr<IDXGIAdapter4> adapter, D3D_FEATURE_LEVEL featureLevel)

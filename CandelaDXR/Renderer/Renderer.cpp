@@ -39,7 +39,7 @@ using DirectX::XMVectorSet;
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
-Renderer::Renderer(Scene *scene, Camera *camera, const UVector2 &windowDimensions, vector<IDrawable*> p_drawables)
+Renderer::Renderer(Scene *scene, Camera *camera, const UVector2 &windowDimensions, vector<IDrawable*> p_drawables, uint32_t adapterIndex)
 	: rtvDescriptorSize(),
 	  currentBackBufferIndex(),
 	  frameFenceValues(),
@@ -54,7 +54,7 @@ Renderer::Renderer(Scene *scene, Camera *camera, const UVector2 &windowDimension
 
 	// Get DX12 compatible hardware device - Adapter contains info about the actual device
 	D3D_FEATURE_LEVEL featureLevel;
-	auto adapter = DXUtil::getAdapterLatestFeatureLevel(&featureLevel);
+	auto adapter = DXUtil::getAdapterLatestFeatureLevel(&featureLevel, false, adapterIndex);
 	pDevice = DXUtil::createDeviceFromAdapter(adapter, featureLevel);
 
 	// Enable debug messages in debug mode for this device

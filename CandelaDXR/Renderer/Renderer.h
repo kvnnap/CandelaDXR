@@ -27,7 +27,7 @@ namespace candela::renderer
 		: public IRenderer
 	{
 	public:
-		Renderer(scene::Scene *scene, Camera *camera, const mathematics::UVector2& windowDimensions, std::vector<IDrawable*> drawables);
+		Renderer(scene::Scene *scene, Camera *camera, const mathematics::UVector2& windowDimensions, std::vector<IDrawable*> drawables, std::uint32_t adapterIndex = 0);
 		~Renderer();
 
 		void renderFrame() override;
