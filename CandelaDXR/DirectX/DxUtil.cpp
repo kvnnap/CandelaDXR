@@ -1,6 +1,7 @@
 #include "DXUtil.h"
 
 #include <array>
+#include <cstdio>
 #include <iostream>
 #include <DirectXMath.h>
 
@@ -14,6 +15,8 @@ using std::vector;
 using std::string;
 using std::cout;
 using std::endl;
+using std::printf;
+using std::wprintf;
 using std::uint32_t;
 
 using Microsoft::WRL::ComPtr;
@@ -97,7 +100,7 @@ ComPtr<IDXGIAdapter> DXUtil::getAdapterLatestFeatureLevel(D3D_FEATURE_LEVEL* fl,
 	vector<ComPtr<IDXGIAdapter>> adapters;
 	for (auto featureLevel : featureLevels)
 	{
-		cout << "Trying " << featureLevel.Name << " ... ";
+		printf("Trying %s (0x%x) ... ", featureLevel.Name.c_str(), featureLevel.FeatureLevel);
 		adapters = getAdapters(featureLevel.FeatureLevel);
 		if (adapters.empty()) 
 		{
@@ -115,7 +118,7 @@ ComPtr<IDXGIAdapter> DXUtil::getAdapterLatestFeatureLevel(D3D_FEATURE_LEVEL* fl,
 
 	cout << "Compatible adapters: " << endl;
 
-	std::uint32_t i{};
+	uint32_t i{};
 	for (auto adapter : adapters)
 	{
 		DXGI_ADAPTER_DESC desc;
