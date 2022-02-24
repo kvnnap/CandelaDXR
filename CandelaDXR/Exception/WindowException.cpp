@@ -1,6 +1,10 @@
-#include "WindowException.h"
 #include <sstream>
 #include <DXGIMessages.h>
+
+#include "WindowException.h"
+
+#include "Window/WindowsDef.h"
+
 
 using std::string;
 using std::ostringstream;

@@ -1,7 +1,7 @@
 #pragma once
 
-#include <wrl/client.h>
 #include <dxgidebug.h>
+#include <wrl/client.h>
 #include <vector>
 #include <string>
 

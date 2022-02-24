@@ -7,6 +7,10 @@
 #include <d3d12.h>
 #include <wrl/client.h>
 
+#ifdef _DEBUG
+#include "DirectX/DxgiInfoManager.h"
+#endif
+
 #include "feanor/core/io/keyboard.h"
 #include "feanor/core/io/mouse.h"
 #include "Window/Window.h"
@@ -30,7 +34,13 @@ namespace candela::renderer
 		Renderer(scene::Scene *scene, Camera *camera, const mathematics::UVector2& windowDimensions, std::vector<IDrawable*> drawables, std::uint32_t adapterIndex = 0);
 		~Renderer();
 
+		void init() override;
 		void renderFrame() override;
+
+	protected:
+	#ifdef _DEBUG
+		directx::DxgiInfoManager dxgiInfoManager;
+	#endif
 
 	private:
 		void initSceneResources();
@@ -41,8 +51,10 @@ namespace candela::renderer
 		feanor::io::Keyboard keyboard;
 		feanor::io::Mouse mouse;
 		std::unique_ptr<ui::Window> window;
+		const mathematics::UVector2 windowDimensions;
 
 		// DirectX
+		const std::uint32_t adapterIndex;
 		wrl::ComPtr<ID3D12Device> pDevice;
 		std::unique_ptr<directx::CommandQueue> commandQueue;
 		wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList;

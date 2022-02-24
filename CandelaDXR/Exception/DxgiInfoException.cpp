@@ -17,10 +17,8 @@ DxgiInfoException::DxgiInfoException(const std::string& fileName, int lineNumber
 	ss << whatBuffer;
 
 	auto messages = infoManager.getMessages();
-
-	for (string message : messages) {
+	for (const auto& message : messages)
 		ss << message << endl;
-	}
 
 	whatBuffer = ss.str();
 }

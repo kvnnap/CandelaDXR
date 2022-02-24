@@ -1,24 +1,25 @@
-#include "Window/WindowsDef.h"
 #include <memory>
 
 #include "DxgiInfoManager.h"
 #include "Exception/WindowException.h"
 
-using namespace candela::directx;
+using std::string;
+using std::vector;
+using std::make_unique;
+
+using candela::directx::DxgiInfoManager;
 
 // Static stuff
 const char* DxgiInfoManager::hModuleName = "dxgidebug.dll";
 
-using namespace std;
-
 DxgiInfoManager::DxgiInfoManager()
-	: next(0u)
+	: next()
 {
 	using DxgiGetDebugInterface = decltype(DXGIGetDebugInterface);
 
 	HMODULE moduleHandle = LoadLibrary(hModuleName);
 	if (moduleHandle == NULL)
-		ThrowException("Cannot load module");
+		ThrowException("Cannot load module: " + string(hModuleName));
 
 	try {
 		DxgiGetDebugInterface* fn = reinterpret_cast<DxgiGetDebugInterface*>(GetProcAddress(moduleHandle, "DXGIGetDebugInterface"));
@@ -26,7 +27,7 @@ DxgiInfoManager::DxgiInfoManager()
 			ThrowException("Cannot find function DXGIGetDebugInterface");
 
 		HRESULT hr;
-		WinThrowIfFailed(fn(__uuidof(IDXGIInfoQueue), &pDxgiInfoQueue));
+		WinThrowIfFailed(fn(IID_PPV_ARGS(&pDxgiInfoQueue)));
 	} 
 	catch (...) {
 		FreeLibrary(moduleHandle);
@@ -34,7 +35,8 @@ DxgiInfoManager::DxgiInfoManager()
 	}
 }
 
-DxgiInfoManager::~DxgiInfoManager() {
+DxgiInfoManager::~DxgiInfoManager()
+{
 	pDxgiInfoQueue.Reset();
 	HMODULE moduleHandle = GetModuleHandle(hModuleName);
 	if (moduleHandle != NULL)

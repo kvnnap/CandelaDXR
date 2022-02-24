@@ -35,6 +35,8 @@ int main(int argc, char** argv)
         env.bootstrap(configFileName);
 
         IRenderer& renderer = env.getRendererManager().getInstanceManager().get(0);
+        renderer.init();
+
         while (!Window::ProcessMessages())
         {
             renderer.renderFrame();

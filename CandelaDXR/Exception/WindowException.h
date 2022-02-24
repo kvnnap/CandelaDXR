@@ -1,8 +1,8 @@
 #pragma once
 
-#include "Window/WindowsDef.h"
-
 #include "Exception.h"
+
+#include "Window/WindowsDef.h"
 
 namespace candela::exception 
 {

@@ -36,9 +36,11 @@ void DXUtil::setupDebugLayer(ComPtr<ID3D12Device> pDevice)
 	HRESULT hr;
 	ComPtr<ID3D12InfoQueue> infoQueue;
 	GFXTHROWIFFAILED(pDevice.As(&infoQueue));
-	infoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_CORRUPTION, TRUE);
-	infoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_ERROR, TRUE);
-	infoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_WARNING, TRUE);
+	// Uncomment these to break at the exact location (requires attache debugger)
+	// With no debugger, the app exits immediately on the spot.
+	//infoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_CORRUPTION, TRUE);
+	//infoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_ERROR, TRUE);
+	//infoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_WARNING, TRUE);
 
 	D3D12_INFO_QUEUE_FILTER queueFilter = {};
 	D3D12_MESSAGE_SEVERITY severities[] = {
