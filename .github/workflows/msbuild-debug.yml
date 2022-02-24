@@ -1,0 +1,110 @@
+name: MSBuild Debug
+
+on: [workflow_dispatch]
+
+env:
+  # Path to the solution file relative to the root of the project.
+  SOLUTION_FILE_PATH: .
+
+  # Configuration type to build.
+  # You can convert this to a build matrix if you need coverage of multiple configuration types.
+  # https://docs.github.com/actions/learn-github-actions/managing-complex-workflows#using-a-build-matrix
+  BUILD_CONFIGURATION: Debug
+  
+  OUT_DIR: dist
+  GITLAB_TOKEN: ${{ secrets.GITLAB_TOKEN }}
+  FEANOR_CORE_ID: 11660029
+  FEANOR_EXTERNAL_ID: 13987704
+  
+jobs:
+  build:
+    runs-on: windows-2022
+    steps:
+    - uses: actions/checkout@v2
+    
+    - name: Get Feanor Core and External Commit SHA
+      run: |
+        curl --location --output feanor.core.sha --header "PRIVATE-TOKEN: ${{env.GITLAB_TOKEN}}" "https://gitlab.com/api/v4/projects/${{env.FEANOR_CORE_ID}}/repository/commits/master"
+        curl --location --output feanor.external.sha --header "PRIVATE-TOKEN: ${{env.GITLAB_TOKEN}}" "https://gitlab.com/api/v4/projects/${{env.FEANOR_EXTERNAL_ID}}/repository/commits/master"
+    
+    - name: Read Feanor Core Commit SHA to Variable
+      id: read-core-sha
+      uses: juliangruber/read-file-action@v1
+      with:
+        path: feanor.core.sha
+        
+    - name: Read Feanor External Commit SHA to Variable
+      id: read-external-sha
+      uses: juliangruber/read-file-action@v1
+      with:
+        path: feanor.external.sha
+    
+    # Feanor Core
+    - name: Cache Feanor Core
+      id: cache-core
+      uses: actions/cache@v2
+      with:
+        path: installed-core
+        key: feanor-debug-core-${{ fromJson(steps.read-core-sha.outputs.content).id }}
+    
+    # Changed to use git clone
+    - name: Get Feanor Core Repo
+      if: steps.cache-core.outputs.cache-hit != 'true'
+      run: |
+        git clone https://oauth2:${{env.GITLAB_TOKEN}}@gitlab.com/cgvg/feanor/core feanor-core
+    
+    - name: Build and install Feanor Core
+      if: steps.cache-core.outputs.cache-hit != 'true'
+      run: |
+        cmake -S feanor-core -B feanor-core/build -DCMAKE_INSTALL_PREFIX:PATH="${{github.workspace}}\installed-core" -DBUILD_SHARED_LIBS:BOOL=OFF
+        cmake --build feanor-core/build --config ${{env.BUILD_CONFIGURATION}} --parallel --target install
+
+    # Feanor External
+    - name: Cache Feanor External
+      id: cache-external
+      uses: actions/cache@v2
+      with:
+        path: installed-external
+        key: feanor-external-${{ fromJson(steps.read-external-sha.outputs.content).id }}
+        
+    - name: Get Feanor External Repo
+      if: steps.cache-external.outputs.cache-hit != 'true'
+      run: |
+        git clone https://oauth2:${{env.GITLAB_TOKEN}}@gitlab.com/cgvg/feanor/external feanor-external
+        cd feanor-external
+        git submodule update --init --recursive
+        cd ..
+        
+    - name: Build and install Feanor External
+      if: steps.cache-external.outputs.cache-hit != 'true'
+      working-directory: ${{github.workspace}}\feanor-external
+      run: |
+        .\install.ps1 "${{github.workspace}}\installed-external" OFF
+        
+    # Merge dirs
+    - name: Merge dependency directories into installed directory
+      run: |
+        New-Item installed -ItemType Directory
+        Copy-Item -Path installed-core\* -Destination installed -Recurse -Force
+        Copy-Item -Path installed-external\* -Destination installed -Recurse -Force
+    
+    - name: Add FEANOR_ROOT Environment Variable
+      run: echo "FEANOR_ROOT=${{github.workspace}}\installed" | Out-File -FilePath $Env:GITHUB_ENV -Encoding utf-8 -Append
+      
+    - name: Add MSBuild to PATH
+      uses: microsoft/setup-msbuild@v1.1
+
+#   - name: Restore NuGet packages
+#     working-directory: ${{github.workspace}}
+#      run: nuget restore ${{env.SOLUTION_FILE_PATH}}
+
+    - name: Build
+      working-directory: ${{github.workspace}}
+      # Add additional options to the MSBuild command line here (like platform or verbosity level).
+      # See https://docs.microsoft.com/visualstudio/msbuild/msbuild-command-line-reference
+      run: msbuild /m /p:Configuration=${{env.BUILD_CONFIGURATION}} /p:OutDir=${{github.workspace}}\${{env.OUT_DIR}}\ ${{env.SOLUTION_FILE_PATH}}
+      
+    - uses: actions/upload-artifact@v2
+      with:
+        name: CandelaDXR
+        path: ${{github.workspace}}\${{env.OUT_DIR}}\
