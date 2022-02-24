@@ -48,6 +48,8 @@
     {
       "Type": "Renderer",
       "AdapterIndex": 0,
+      "Debug": false,
+      "Break": false,
       "Scene": "Scene",
       "Camera": "Camera",
       "Drawables": [

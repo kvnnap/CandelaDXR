@@ -17,15 +17,15 @@ namespace candela::directx
 
 		// Helper methods
 		static void enableDebugLayer();
-		static void setupDebugLayer(Microsoft::WRL::ComPtr<ID3D12Device> pDevice);
-		static bool checkTearingSupport();
+		static void setupDebugLayer(Microsoft::WRL::ComPtr<ID3D12Device> pDevice, bool breakEnabled);
+		static bool checkTearingSupport(Microsoft::WRL::ComPtr<IDXGIFactory> dxgiFactory);
 
-		static Microsoft::WRL::ComPtr<IDXGIAdapter> getAdapterLatestFeatureLevel(D3D_FEATURE_LEVEL* featureLevel, bool useWarp = false, std::uint32_t adapterIndex = 0);
-		static std::vector<Microsoft::WRL::ComPtr<IDXGIAdapter>> getAdapters(D3D_FEATURE_LEVEL featureLevel, bool useWarp = false);
+		static Microsoft::WRL::ComPtr<IDXGIAdapter> getAdapterLatestFeatureLevel(Microsoft::WRL::ComPtr<IDXGIFactory> dxgiFactory, D3D_FEATURE_LEVEL* featureLevel, bool useWarp = false, std::uint32_t adapterIndex = 0);
+		static std::vector<Microsoft::WRL::ComPtr<IDXGIAdapter>> getAdapters(Microsoft::WRL::ComPtr<IDXGIFactory> dxgiFactory, D3D_FEATURE_LEVEL featureLevel, bool useWarp = false);
 		static Microsoft::WRL::ComPtr<ID3D12Device> createDeviceFromAdapter(Microsoft::WRL::ComPtr<IDXGIAdapter> adapter, D3D_FEATURE_LEVEL featureLevel);
-		static Microsoft::WRL::ComPtr<IDXGIFactory> createDXGIFactory();
+		static Microsoft::WRL::ComPtr<IDXGIFactory> createDXGIFactory(bool debugEnabled);
 		static Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> createDescriptorHeap(Microsoft::WRL::ComPtr<ID3D12Device> device, UINT count, D3D12_DESCRIPTOR_HEAP_TYPE type, bool shaderVisible = false);
-		static Microsoft::WRL::ComPtr<IDXGISwapChain> createSwapChain(Microsoft::WRL::ComPtr<ID3D12CommandQueue> commandQueue, HWND hWnd, UINT numBuffers);
+		static Microsoft::WRL::ComPtr<IDXGISwapChain> createSwapChain(Microsoft::WRL::ComPtr<IDXGIFactory> dxgiFactory, Microsoft::WRL::ComPtr<ID3D12CommandQueue> commandQueue, HWND hWnd, UINT numBuffers);
 
 		static std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>> createRenderTargetViews(
 			Microsoft::WRL::ComPtr<ID3D12Device> device,

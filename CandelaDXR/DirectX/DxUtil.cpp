@@ -25,25 +25,24 @@ using candela::directx::DXUtil;
 
 void DXUtil::enableDebugLayer()
 {
-#ifdef _DEBUG
 	HRESULT hr;
 	ComPtr<ID3D12Debug> debugInterface;
 	GFXTHROWIFFAILED(D3D12GetDebugInterface(IID_PPV_ARGS(&debugInterface)));
 	debugInterface->EnableDebugLayer();
-#endif
 }
 
-void DXUtil::setupDebugLayer(ComPtr<ID3D12Device> pDevice)
+void DXUtil::setupDebugLayer(ComPtr<ID3D12Device> pDevice, bool breakEnabled)
 {
-#ifdef _DEBUG
 	HRESULT hr;
 	ComPtr<ID3D12InfoQueue> infoQueue;
 	GFXTHROWIFFAILED(pDevice.As(&infoQueue));
-	// Uncomment these to break at the exact location (requires attache debugger)
-	// With no debugger, the app exits immediately on the spot.
-	//infoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_CORRUPTION, TRUE);
-	//infoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_ERROR, TRUE);
-	//infoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_WARNING, TRUE);
+
+	if (breakEnabled)
+	{
+		infoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_CORRUPTION, TRUE);
+		infoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_ERROR, TRUE);
+		infoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_WARNING, TRUE);
+	}
 
 	D3D12_INFO_QUEUE_FILTER queueFilter = {};
 	D3D12_MESSAGE_SEVERITY severities[] = {
@@ -60,16 +59,12 @@ void DXUtil::setupDebugLayer(ComPtr<ID3D12Device> pDevice)
 	queueFilter.DenyList.NumIDs = static_cast<UINT>(std::size(denyIds));
 
 	GFXTHROWIFFAILED(infoQueue->PushStorageFilter(&queueFilter));
-
-#endif
 }
 
-bool DXUtil::checkTearingSupport()
+bool DXUtil::checkTearingSupport(ComPtr<IDXGIFactory> dxgiFactory)
 {
 	BOOL allowTearing = false;
 	UINT createFactoryFlags = 0;
-
-	auto dxgiFactory = createDXGIFactory();
 
 	HRESULT hr;
 
@@ -80,7 +75,7 @@ bool DXUtil::checkTearingSupport()
 	return allowTearing == TRUE;
 }
 
-ComPtr<IDXGIAdapter> DXUtil::getAdapterLatestFeatureLevel(D3D_FEATURE_LEVEL* fl, bool useWarp, std::uint32_t adapterIndex)
+ComPtr<IDXGIAdapter> DXUtil::getAdapterLatestFeatureLevel(ComPtr<IDXGIFactory> dxgiFactory, D3D_FEATURE_LEVEL* fl, bool useWarp, std::uint32_t adapterIndex)
 {
 	// Get DX12 compatible hardware device - Adapter contains info about the actual device
 	struct FeatureLevelItem
@@ -101,7 +96,7 @@ ComPtr<IDXGIAdapter> DXUtil::getAdapterLatestFeatureLevel(D3D_FEATURE_LEVEL* fl,
 	for (auto featureLevel : featureLevels)
 	{
 		printf("Trying %s (0x%x) ... ", featureLevel.Name.c_str(), featureLevel.FeatureLevel);
-		adapters = getAdapters(featureLevel.FeatureLevel);
+		adapters = getAdapters(dxgiFactory, featureLevel.FeatureLevel);
 		if (adapters.empty()) 
 		{
 			cout << "FAILED" << endl;
@@ -135,10 +130,8 @@ ComPtr<IDXGIAdapter> DXUtil::getAdapterLatestFeatureLevel(D3D_FEATURE_LEVEL* fl,
 	return adapters.at(adapterIndex);
 }
 
-vector<ComPtr<IDXGIAdapter>> DXUtil::getAdapters(D3D_FEATURE_LEVEL featureLevel, bool useWarp)
+vector<ComPtr<IDXGIAdapter>> DXUtil::getAdapters(ComPtr<IDXGIFactory> dxgiFactory, D3D_FEATURE_LEVEL featureLevel, bool useWarp)
 {
-	auto dxgiFactory = createDXGIFactory();
-
 	vector<ComPtr<IDXGIAdapter>> adapters;
 	ComPtr<IDXGIAdapter1> dxgiAdapter1;
 	ComPtr<IDXGIAdapter4> dxgiAdapter4;
@@ -195,15 +188,16 @@ ComPtr<ID3D12Device> DXUtil::createDeviceFromAdapter(ComPtr<IDXGIAdapter> adapte
 	return pDevice;
 }
 
-ComPtr<IDXGIFactory> DXUtil::createDXGIFactory()
+ComPtr<IDXGIFactory> DXUtil::createDXGIFactory(bool debugEnabled)
 {
 	HRESULT hr;
 	ComPtr<IDXGIFactory> dxgiFactory;
 	//dxgiFactory->
 	UINT createFactoryFlags = 0;
-#ifdef _DEBUG
-	createFactoryFlags |= DXGI_CREATE_FACTORY_DEBUG;
-#endif
+
+	if (debugEnabled)
+		createFactoryFlags |= DXGI_CREATE_FACTORY_DEBUG;
+
 	GFXTHROWIFFAILED(CreateDXGIFactory2(createFactoryFlags, IID_PPV_ARGS(&dxgiFactory)));
 	return dxgiFactory;
 }
@@ -223,7 +217,7 @@ ComPtr<ID3D12DescriptorHeap> DXUtil::createDescriptorHeap(ComPtr<ID3D12Device> d
 	return descriptorHeap;
 }
 
-ComPtr<IDXGISwapChain> DXUtil::createSwapChain(ComPtr<ID3D12CommandQueue> commandQueue, HWND hWnd, UINT numBuffers)
+ComPtr<IDXGISwapChain> DXUtil::createSwapChain(ComPtr<IDXGIFactory> dxgiFactory, ComPtr<ID3D12CommandQueue> commandQueue, HWND hWnd, UINT numBuffers)
 {
 	DXGI_SWAP_CHAIN_DESC1 sd = {};
 	// Use the window (hWnd) dimensions
@@ -240,14 +234,14 @@ ComPtr<IDXGISwapChain> DXUtil::createSwapChain(ComPtr<ID3D12CommandQueue> comman
 	sd.Scaling = DXGI_SCALING_NONE;
 	sd.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
 	sd.AlphaMode = DXGI_ALPHA_MODE_UNSPECIFIED;
-	sd.Flags = checkTearingSupport() ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING : 0;
+	sd.Flags = checkTearingSupport(dxgiFactory) ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING : 0;
 
 	ComPtr<IDXGISwapChain4> swapChain;
 	ComPtr<IDXGISwapChain1> swapChain1;
 
 	HRESULT hr;
 	ComPtr<IDXGIFactory2> dxgiFactory2;
-	GFXTHROWIFFAILED(createDXGIFactory().As(&dxgiFactory2));
+	GFXTHROWIFFAILED(dxgiFactory.As(&dxgiFactory2));
 	GFXTHROWIFFAILED(dxgiFactory2->CreateSwapChainForHwnd(commandQueue.Get(), hWnd, &sd, nullptr, nullptr, &swapChain1));
 	GFXTHROWIFFAILED(swapChain1.As(&swapChain));
 	// TODO: pCurrentBackBufferIndex = swapChain->GetCurrentBackBufferIndex();

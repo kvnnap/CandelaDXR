@@ -7,13 +7,10 @@
 #include <d3d12.h>
 #include <wrl/client.h>
 
-#ifdef _DEBUG
-#include "DirectX/DxgiInfoManager.h"
-#endif
-
 #include "feanor/core/io/keyboard.h"
 #include "feanor/core/io/mouse.h"
 #include "Window/Window.h"
+#include "DirectX/DxgiInfoManager.h"
 #include "DirectX/CommandQueue.h"
 #include "FpsCounter.h"
 #include "Scene/Scene.h"
@@ -31,16 +28,11 @@ namespace candela::renderer
 		: public IRenderer
 	{
 	public:
-		Renderer(scene::Scene *scene, Camera *camera, const mathematics::UVector2& windowDimensions, std::vector<IDrawable*> drawables, std::uint32_t adapterIndex = 0);
+		Renderer(scene::Scene *scene, Camera *camera, const mathematics::UVector2& windowDimensions, std::vector<IDrawable*> drawables, std::uint32_t adapterIndex, bool debugEnabled, bool breakEnabled);
 		~Renderer();
 
 		void init() override;
 		void renderFrame() override;
-
-	protected:
-	#ifdef _DEBUG
-		directx::DxgiInfoManager dxgiInfoManager;
-	#endif
 
 	private:
 		void initSceneResources();
@@ -92,5 +84,12 @@ namespace candela::renderer
 
 		// To pass
 		RendererResources rendererResources;
+
+		// Debug
+		std::unique_ptr<directx::DxgiInfoManager> dxgiInfoManager;
+		const bool debugEnabled;
+		// Only enable this when a debugger is attached
+		// otherwise on DX error, program calls abort/exit
+		const bool breakEnabled; 
 	};
 }

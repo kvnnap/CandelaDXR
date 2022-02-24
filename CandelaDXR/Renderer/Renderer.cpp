@@ -11,9 +11,7 @@
 #include "ImGui/Backend/imgui_impl_win32.h"
 #include "ImGui/Backend/imgui_impl_dx12.h"
 
-#ifdef _DEBUG
 #include <iostream>
-#endif
 
 using std::make_unique;
 using std::to_string;
@@ -45,7 +43,7 @@ using DirectX::XMVectorSet;
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
-Renderer::Renderer(Scene *scene, Camera *camera, const UVector2 &windowDimensions, vector<IDrawable*> p_drawables, uint32_t adapterIndex)
+Renderer::Renderer(Scene *scene, Camera *camera, const UVector2 &windowDimensions, vector<IDrawable*> p_drawables, uint32_t adapterIndex, bool debugEnabled, bool breakEnabled)
 	: windowDimensions(windowDimensions),
 	  adapterIndex(adapterIndex),
 	  rtvDescriptorSize(),
@@ -53,7 +51,9 @@ Renderer::Renderer(Scene *scene, Camera *camera, const UVector2 &windowDimension
 	  frameFenceValues(),
 	  scene(scene),
 	  camera(camera),
-	  drawables(std::move(p_drawables))
+	  drawables(std::move(p_drawables)),
+	  debugEnabled(debugEnabled),
+	  breakEnabled(breakEnabled)
 {
 }
 
@@ -61,14 +61,12 @@ Renderer::~Renderer()
 {
 	if (commandQueue)
 		commandQueue->flush();
-#ifdef _DEBUG
-	if (dxgiInfoManager.hasMessages())
+	if (dxgiInfoManager && dxgiInfoManager->hasMessages())
 	{
 		std::cout << "Printing messages from IDXGIInfoQueue:" << std::endl;
-		for (const auto& msg : dxgiInfoManager.getMessages())
+		for (const auto& msg : dxgiInfoManager->getMessages())
 			std::cout << msg << std::endl;
 	}
-#endif
 }
 
 void Renderer::init()
@@ -76,21 +74,28 @@ void Renderer::init()
 	window = make_unique<Window>("CandelaDXR", windowDimensions.x, windowDimensions.y, &keyboard, &mouse);
 
 	// Init DirectX Debugging
-	DXUtil::enableDebugLayer();
+	if (debugEnabled)
+	{
+		dxgiInfoManager = make_unique<directx::DxgiInfoManager>();
+		DXUtil::enableDebugLayer(); // Not sure what happens if called twice
+	}
+
+	auto dxgiFactory = DXUtil::createDXGIFactory(debugEnabled);
 
 	// Get DX12 compatible hardware device - Adapter contains info about the actual device
 	D3D_FEATURE_LEVEL featureLevel;
-	auto adapter = DXUtil::getAdapterLatestFeatureLevel(&featureLevel, false, adapterIndex);
+	auto adapter = DXUtil::getAdapterLatestFeatureLevel(dxgiFactory, &featureLevel, false, adapterIndex);
 	pDevice = DXUtil::createDeviceFromAdapter(adapter, featureLevel);
 
 	// Enable debug messages in debug mode for this device
-	DXUtil::setupDebugLayer(pDevice);
+	if (debugEnabled)
+		DXUtil::setupDebugLayer(pDevice, breakEnabled);
 
 	// Create command queue, with command list and command allocators
 	commandQueue = make_unique<CommandQueue>(pDevice, D3D12_COMMAND_LIST_TYPE_DIRECT);
 
 	// Create swap chain
-	pSwapChain = DXUtil::createSwapChain(commandQueue->getCommandQueue(), window->getHandle(), NumBackBuffers);
+	pSwapChain = DXUtil::createSwapChain(dxgiFactory, commandQueue->getCommandQueue(), window->getHandle(), NumBackBuffers);
 
 	// Create descriptor heap for render target view
 	pRTVDescriptorHeap = DXUtil::createDescriptorHeap(pDevice, NumBackBuffers, D3D12_DESCRIPTOR_HEAP_TYPE_RTV);

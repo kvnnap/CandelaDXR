@@ -36,12 +36,18 @@ unique_ptr<IRenderer> RendererFactory::create(const ConfigurationNode& config) c
 	auto camera = &env.getCameraManager().getInstanceManager().get(config["Camera"]);
 	auto dim = *UVector2Factory().create(config["WindowDimensions"]);
 	auto& drawablesConfig = config["Drawables"].asList();
+	bool debugEnabled = false;
+	bool breakEnabled = false;
 	std::uint32_t adapterIndex = 0;
 	if (config.asObject().keyExists("AdapterIndex"))
 		adapterIndex = config["AdapterIndex"].read<std::uint32_t>();
+	if (config.asObject().keyExists("Debug"))
+		debugEnabled = config["Debug"].read<bool>();
+	if (config.asObject().keyExists("Break"))
+		breakEnabled = config["Break"].read<bool>();
 	std::vector<IDrawable*> drawables;
 	for (auto& drawableConfig : drawablesConfig)
 		drawables.push_back(&env.getDrawableManager().getInstanceManager().get(drawableConfig));
-	auto renderer = make_unique<Renderer>(scene, camera, dim, std::move(drawables), adapterIndex);
+	auto renderer = make_unique<Renderer>(scene, camera, dim, std::move(drawables), adapterIndex, debugEnabled, breakEnabled);
 	return renderer;
 }
