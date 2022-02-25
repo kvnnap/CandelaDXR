@@ -47,7 +47,7 @@ namespace candela::environment
         CameraManager cameraManager;
         SceneManager sceneManager;
         SceneLoaderManager sceneLoaderManager;
-        RendererManager rendererManager;
         DrawableManager drawableManager;
+        RendererManager rendererManager;
     };
 }
