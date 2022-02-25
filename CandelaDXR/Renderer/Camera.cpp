@@ -8,7 +8,8 @@ using DirectX::XMVector4Transform;
 using DirectX::XMVector3Normalize;
 using DirectX::XMVector3Cross;
 using DirectX::XMMatrixRotationAxis;
-using DirectX::XMMatrixLookToLH;
+using DirectX::XMMatrixLookToRH;
+using DirectX::XMMatrixTranspose;
 using DirectX::XMVectorSet;
 using DirectX::operator+=;
 using DirectX::operator+;
@@ -18,12 +19,12 @@ Camera::Camera(const XMVECTOR& position, const XMVECTOR& direction, float nearWi
 	: position(position), direction(XMVector3Normalize(direction)), up(), nearWidth(nearWidth), nearHeight(nearHeight), nearZ(nearZ), farZ(farZ), viewMatrix(), changed()
 {
 	lookTo(direction);
-	perspectiveMatrix = DirectX::XMMatrixPerspectiveLH(nearWidth, nearHeight, nearZ, farZ);
+	perspectiveMatrix = DirectX::XMMatrixPerspectiveRH(nearWidth, nearHeight, nearZ, farZ);
 }
 
 void Camera::recalculateViewMatrix()
 {
-	viewMatrix = XMMatrixLookToLH(position, direction, XMVectorSet(0.f, 1.f, 0.f, 0.f));
+	viewMatrix = XMMatrixLookToRH(position, direction, XMVectorSet(0.f, 1.f, 0.f, 0.f));
 	changed = true;
 }
 
@@ -105,6 +106,11 @@ const XMMATRIX& Camera::getPerspectiveMatrix() const
 XMMATRIX Camera::getViewPerspectiveMatrix() const
 {
 	return viewMatrix * perspectiveMatrix;
+}
+
+XMMATRIX Camera::getViewPerspectiveMatrixColMajor() const
+{
+	return XMMatrixTranspose(getViewPerspectiveMatrix());
 }
 
 bool Camera::hasChanged() const

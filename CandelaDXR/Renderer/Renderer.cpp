@@ -262,7 +262,7 @@ void Renderer::initSceneResources()
 
 	// Copy Matrices
 	wrl::ComPtr<ID3D12Resource> tempMatrices;
-	vector<DirectX::XMFLOAT3X4> localMatrices = getMatrices();
+	auto localMatrices = getMatrices();
 	matrices = DXUtil::uploadDataToDefaultHeap(pDevice, pCurrentCommandList, tempMatrices,
 		localMatrices.data(), sizeof(DirectX::XMFLOAT3X4) * localMatrices.size(),
 		D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);

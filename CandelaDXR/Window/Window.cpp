@@ -74,6 +74,8 @@ LRESULT Window::wndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) noexc
 	case WM_SYSKEYUP:
 		if (keyboardWriter)
 			keyboardWriter->depressKey(static_cast<uint8_t>(wParam));
+		if (wParam == VK_ESCAPE)
+			PostMessage(hwnd, WM_CLOSE, 0, 0);
 		return 0;
 	case WM_LBUTTONDOWN:
 	case WM_LBUTTONUP:

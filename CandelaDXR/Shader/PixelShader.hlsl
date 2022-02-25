@@ -8,6 +8,7 @@ struct Camera {
 struct ConstBuff {
 	matrix MVP;
 	Camera camera;
+	uint numLights;
 };
 
 cbuffer CB1 : register(b0)
@@ -48,7 +49,7 @@ float4 main(MyInput myInput) : SV_TARGET
 	float3 total = float3(0.f, 0.f, 0.f);
 
 	// Calculate lights
-	for (uint i = 0; i < 2; ++i)
+	for (uint i = 0; i < cBuffer.numLights; ++i)
 	{
 		AreaLight light = lights[i];
 		// Get area light primitive

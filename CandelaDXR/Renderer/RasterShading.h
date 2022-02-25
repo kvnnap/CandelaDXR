@@ -31,10 +31,11 @@ namespace candela::renderer
 	private:
 		RendererResources* rendererResources;
 
-		struct ConstBuff
+		struct alignas(16) ConstBuff
 		{
-			DirectX::XMMATRIX MVP;
+			DirectX::XMMATRIX MVP; // Column-Major
 			DirectX::XMVECTOR CameraPosition;
+			std::uint32_t numLights;
 		} constBuffer;
 
 		D3D12_VERTEX_BUFFER_VIEW bufferViews[3];

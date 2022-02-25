@@ -37,7 +37,7 @@ namespace candela::renderer
 	private:
 		void initSceneResources();
 		void updateCamera();
-		std::vector<DirectX::XMFLOAT3X4> getMatrices();
+		std::vector<DirectX::XMFLOAT3X4> getMatrices(); 
 
 		// Basic I/O and Window
 		feanor::io::Keyboard keyboard;

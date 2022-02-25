@@ -33,7 +33,7 @@ MyOutput main(MyInput myInput)
 	float3 tPos = mul(myInput.pos, lToW);
 	MyOutput myOutput;
 	myOutput.Pos = float4(tPos, 1.f);
-	myOutput.Position = mul(MVP, float4(tPos, 1.f));
+	myOutput.Position = mul(myOutput.Pos, MVP);
 	myOutput.Normal = myInput.normal;
 	return myOutput;
 }

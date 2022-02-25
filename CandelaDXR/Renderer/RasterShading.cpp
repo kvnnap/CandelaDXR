@@ -154,6 +154,7 @@ void candela::renderer::RasterShading::init(RendererResources* rRes)
 	auto commandList = rRes->commandQueue->getCommandList();
 
 	// Init const buffer
+	constBuffer.numLights = static_cast<uint32_t>(rendererResources->scene->getLights().size());
 	wrl::ComPtr<ID3D12Resource> cBuffIntBuffer;
 	constantBuffer = DXUtil::uploadDataToDefaultHeap(
 		rRes->pDevice,
@@ -187,7 +188,7 @@ void RasterShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandL
 	pCurrentCommandList->OMSetRenderTargets(1u, &rtvDescriptorHandle, FALSE, &dsvDescriptorHandle);
 
 	// Update the MVP matrix
-	constBuffer.MVP = rendererResources->camera->getViewPerspectiveMatrix();
+	constBuffer.MVP = rendererResources->camera->getViewPerspectiveMatrixColMajor();
 	constBuffer.CameraPosition = rendererResources->camera->getPosition();
 	DXUtil::updateDataInDefaultHeap(
 		rendererResources->pDevice,
