@@ -219,7 +219,7 @@ void Renderer::renderFrame()
 	if (transformChanged || camera->hasChanged())
 		fpsCounter.resetFrameCount();
 	if (fpsCounter.hitFrame())
-		window->setWindowName("CandelaDXR - Frames: " + to_string(fpsCounter.getTotalFrames()) + " FPS: " + to_string(fpsCounter.getFramesPerSecond()));
+		window->setWindowName("CandelaDXR - Frames: " + to_string(fpsCounter.getFrameCount()) + " FPS: " + to_string(fpsCounter.getFramesPerSecond()));
 
 	// Reset camera
 	camera->resetChanged();

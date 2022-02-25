@@ -7,13 +7,14 @@ using std::chrono::system_clock;
 using candela::renderer::FpsCounter;
 
 FpsCounter::FpsCounter()
-	: frames{}, framesPrev{}, fps{}, ms{}, prevMs{}, currentMs{}
+	: frames{}, framesPrev{}, viewFrames{}, fps{}, ms{}, prevMs{}, currentMs{}
 {
 }
 
 bool FpsCounter::hitFrame()
 {
 	++frames;
+	++viewFrames;
 	prevMs = currentMs;
 	currentMs = duration_cast<milliseconds>(system_clock::now().time_since_epoch());
 	if (prevMs == milliseconds::zero())
@@ -33,12 +34,12 @@ bool FpsCounter::hitFrame()
 
 void FpsCounter::resetFrameCount()
 {
-	frames = framesPrev = 0;
+	viewFrames = 0;
 }
 
-uint64_t FpsCounter::getTotalFrames() const
+uint64_t FpsCounter::getFrameCount() const
 {
-	return frames;
+	return viewFrames;
 }
 
 float FpsCounter::getFramesPerSecond() const
