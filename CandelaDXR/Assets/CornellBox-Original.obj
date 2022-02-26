@@ -62,7 +62,7 @@ usemtl leftWall
 f -4 -3 -2 -1
 
 ## Object shortBox
-g other
+g shortBox
 usemtl shortBox
 
 # Top Face 
@@ -105,12 +105,10 @@ v	0.53  0.00   0.75
 v	0.70  0.00   0.17  
 v	0.13  0.00   0.00
 v  -0.05  0.00   0.57
-f -12 -11 -10 -9
-
-g shortBox
-usemtl shortBox
+f -1 -2 -3 -4
 
 ## Object tallBox 
+g tallBox
 usemtl tallBox
 
 # Top Face
@@ -149,14 +147,11 @@ v	-0.53  0.00   0.09
 f -4 -3 -2 -1
 
 # Bottom Face
-# v	-0.53  0.00   0.09
-# v	 0.04  0.00  -0.09
-# v	-0.14  0.00  -0.67
-# v	-0.71  0.00  -0.49
-# f -8 -7 -6 -5
-
-g tallBox
-usemtl tallBox
+v	-0.53  0.00   0.09
+v	 0.04  0.00  -0.09
+v	-0.14  0.00  -0.67
+v	-0.71  0.00  -0.49
+f -1 -2 -3 -4
 
 ## Object light 
 v	-0.24  1.98   0.16

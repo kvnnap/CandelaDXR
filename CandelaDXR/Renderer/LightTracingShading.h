@@ -45,8 +45,16 @@ namespace candela::renderer
 		mathematics::Vector2 toSensorSpace(std::uint32_t x, std::uint32_t y) const;
 		float cosIntegral(std::uint32_t x, std::uint32_t y) const;
 
+		// Common renderer resources
 		RendererResources* rendererResources;
+		
+		// Light tracer descriptor stuff
+		wrl::ComPtr<ID3D12DescriptorHeap> descriptorHeap;
+		wrl::ComPtr<ID3D12RootSignature> rootSignature;
+		wrl::ComPtr<ID3D12RootSignature> globalEmptyRootSignature;
+		wrl::ComPtr<ID3D12StateObject> stateObject;
 
+		// Light tracing shader resources
 		struct alignas(16) ConstBuff
 		{
 			DirectX::XMVECTOR u, v, w;
@@ -57,15 +65,15 @@ namespace candela::renderer
 			std::uint32_t numLights;
 			std::uint32_t clear;
 		} constBuffer;
-
-		wrl::ComPtr<ID3D12DescriptorHeap> pDepthDescriptorHeap;
+		std::vector<wrl::ComPtr<ID3D12Resource>> constantTempBuffer;
 		wrl::ComPtr<ID3D12Resource> outputTexture;
 		wrl::ComPtr<ID3D12Resource> constantBuffer;
-		std::vector<wrl::ComPtr<ID3D12Resource>> constantTempBuffer;
-		wrl::ComPtr<ID3D12RootSignature> rootSignature;
-		wrl::ComPtr<ID3D12RootSignature> globalEmptyRootSignature;
-		wrl::ComPtr<ID3D12StateObject> stateObject;;
-		wrl::ComPtr<ID3D12DescriptorHeap> descriptorHeap;
+		wrl::ComPtr<ID3D12Resource> irrToRad;
+		wrl::ComPtr<ID3D12Resource> irradianceTexture;
+		std::unique_ptr<sampler::ISampler> sampler;
+		bool clear;
+
+		// Acceleration structure
 		std::vector<directx::DXUtil::AccelerationStructureBuffers> blasBuffers;
 		directx::DXUtil::AccelerationStructureBuffers tlasBuffers;
 		std::vector<directx::DXUtil::TopLevelAccelerationData> tlasInstanceData;
@@ -74,11 +82,5 @@ namespace candela::renderer
 		// My helpers
 		std::shared_ptr<directx::RootSignatureManager> rootSignatureManager;
 		std::unique_ptr<directx::ShadingTable> shadingTable;
-
-		// Light tracing
-		wrl::ComPtr<ID3D12Resource> irrToRad;
-		wrl::ComPtr<ID3D12Resource> irradianceTexture;
-		std::unique_ptr<sampler::ISampler> sampler;
-		bool clear;
 	};
 }

@@ -33,7 +33,7 @@ namespace candela::renderer
 
 		struct alignas(16) ConstBuff
 		{
-			DirectX::XMMATRIX MVP; // Column-Major
+			DirectX::XMMATRIX ViewPerspective; // Column-Major
 			DirectX::XMVECTOR CameraPosition;
 			std::uint32_t numLights;
 		} constBuffer;

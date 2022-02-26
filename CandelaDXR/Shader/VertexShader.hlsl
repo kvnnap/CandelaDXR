@@ -5,7 +5,7 @@ StructuredBuffer<float4x3> matrices : register(t7);
 
 cbuffer CB1 : register(b0)
 {
-	matrix MVP;
+	matrix ViewPerspective;
 }
 
 cbuffer CB2 : register(b1)
@@ -16,24 +16,24 @@ cbuffer CB2 : register(b1)
 
 struct MyInput
 {
-	float4 pos : POSITION;
-	float4 normal : NORMAL;
+	float3 pos : POSITION;
+	float3 normal : NORMAL;
 };
 
 struct MyOutput
 {
 	float4 Position : SV_POSITION;
-	float4 Pos : VS_POSITION;
-	float4 Normal : VS_NORMAL;
+	float3 Pos : VS_POSITION;
+	float3 Normal : VS_NORMAL;
 };
 
 MyOutput main(MyInput myInput)
 {
 	float4x3 lToW = matrices[groupId];
-	float3 tPos = mul(myInput.pos, lToW);
+	float3 worldPos = mul(float4(myInput.pos, 1.f), lToW);
 	MyOutput myOutput;
-	myOutput.Pos = float4(tPos, 1.f);
-	myOutput.Position = mul(myOutput.Pos, MVP);
-	myOutput.Normal = myInput.normal;
+	myOutput.Position = mul(float4(worldPos, 1.f), ViewPerspective);
+	myOutput.Pos = worldPos;
+	myOutput.Normal = mul(float4(myInput.normal, 0.f), lToW);
 	return myOutput;
 }

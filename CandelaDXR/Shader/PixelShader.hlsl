@@ -6,7 +6,7 @@ struct Camera {
 };
 
 struct ConstBuff {
-	matrix MVP;
+	matrix ViewPerspective;
 	Camera camera;
 	uint numLights;
 };
@@ -35,13 +35,13 @@ StructuredBuffer<float4x3> matrices : register(t7);
 struct MyInput
 {
 	uint id : SV_PrimitiveID;
-	float4 position : VS_POSITION;
-	float4 normal : VS_NORMAL;
+	float3 position : VS_POSITION;
+	float3 normal : VS_NORMAL;
 };
 
 float4 main(MyInput myInput) : SV_TARGET
 {
-	if (dot(cBuffer.camera.position - myInput.position, normalize(myInput.normal)) < 0.f)
+	if (dot(cBuffer.camera.position.xyz - myInput.position, normalize(myInput.normal)) < 0.f)
 		return float4(0.f, 0.f, 0.f, 1.f);
 	uint matId = faceAttributes[instanceId / 3 + myInput.id].MaterialId;
 	Material mat = materials[matId];
@@ -69,7 +69,7 @@ float4 main(MyInput myInput) : SV_TARGET
 			continue;
 
 		float len = length(shadowRay);
-		total += lightMat.Emissive * mat.Diffuse * primDot * lightDot / (len * len * 3.141f);
+		total += lightMat.Emissive * mat.Diffuse * primDot * lightDot / (len * len * PI);
 	}
 
 	return float4(linearToSrgb(toneMap(mat.Emissive + total)), 1.0f);

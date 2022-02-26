@@ -188,7 +188,7 @@ void RasterShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandL
 	pCurrentCommandList->OMSetRenderTargets(1u, &rtvDescriptorHandle, FALSE, &dsvDescriptorHandle);
 
 	// Update the MVP matrix
-	constBuffer.MVP = rendererResources->camera->getViewPerspectiveMatrixColMajor();
+	constBuffer.ViewPerspective = rendererResources->camera->getViewPerspectiveMatrixColMajor();
 	constBuffer.CameraPosition = rendererResources->camera->getPosition();
 	DXUtil::updateDataInDefaultHeap(
 		rendererResources->pDevice,
