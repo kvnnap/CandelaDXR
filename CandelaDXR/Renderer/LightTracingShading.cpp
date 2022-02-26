@@ -24,6 +24,7 @@ using Microsoft::WRL::ComPtr;
 using candela::directx::DXUtil;
 using candela::directx::RootSignatureManager;
 using candela::directx::ShadingTable;
+using candela::directx::DescriptorHeap;
 using candela::directx::ShadingRecordType;
 
 using candela::renderer::LightTracingShading;
@@ -113,7 +114,7 @@ void LightTracingShading::init(RendererResources* rRes)
 	// Build shading table
 	wrl::ComPtr<ID3D12Resource> stTempBuffer;
 	createShaderTable(commandList, stTempBuffer);
-
+	
 	// Wait
 	auto fV = rRes->commandQueue->executeCommandList(commandList);
 	rRes->commandQueue->waitForFenceValue(fV);
@@ -123,12 +124,12 @@ void LightTracingShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> currentCom
 {
 	// Pre-stuff
 	auto &backBuff = rendererResources->pRTVBackBuffers[currentBackBufferIndex];
-	auto b1 = CD3DX12_RESOURCE_BARRIER::Transition(backBuff.Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_COPY_DEST);
-	currentCommandList->ResourceBarrier(1u, &b1);
+	auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(backBuff.Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_COPY_DEST);
+	currentCommandList->ResourceBarrier(1u, &barrier);
 
 	currentCommandList->SetDescriptorHeaps(1u, descriptorHeap.GetAddressOf());
-	auto t1 = CD3DX12_RESOURCE_BARRIER::Transition(outputTexture.Get(), D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-	currentCommandList->ResourceBarrier(1u, &t1);
+	barrier = CD3DX12_RESOURCE_BARRIER::Transition(outputTexture.Get(), D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+	currentCommandList->ResourceBarrier(1u, &barrier);
 
 	// Copy and update camera
 	auto cam = rendererResources->camera;
@@ -157,17 +158,29 @@ void LightTracingShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> currentCom
 	D3D12_DISPATCH_RAYS_DESC dispatchRaysDesc = shadingTable->getDispatchRaysDescriptor(dim.x, dim.y);
 	commandList4->DispatchRays(&dispatchRaysDesc);
 
+	// Launch compute shader
+
+	// Make sure all writes to this UAV have completed from DispatchRays
+	auto uavBarrier = CD3DX12_RESOURCE_BARRIER::UAV(outputTexture.Get());
+	currentCommandList->ResourceBarrier(1u, &uavBarrier);
+
+	currentCommandList->SetPipelineState(computePipelineState.Get());
+	currentCommandList->SetComputeRootSignature(computeRootSignature.Get());
+	currentCommandList->SetDescriptorHeaps(1u, computeDescriptorHeap.GetAddressOf());
+	currentCommandList->SetComputeRootDescriptorTable(0, computeDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
+	//currentCommandList->Dispatch(1, 1, 1);
+
 	// After
-	auto t2 = CD3DX12_RESOURCE_BARRIER::Transition(outputTexture.Get(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_SOURCE);
-	currentCommandList->ResourceBarrier(1u, &t2);
+	barrier = CD3DX12_RESOURCE_BARRIER::Transition(outputTexture.Get(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_SOURCE);
+	currentCommandList->ResourceBarrier(1u, &barrier);
 	currentCommandList->CopyResource(backBuff.Get(), outputTexture.Get());
-	auto b2 = CD3DX12_RESOURCE_BARRIER::Transition(backBuff.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_RENDER_TARGET);
-	currentCommandList->ResourceBarrier(1u, &b2);
+	barrier = CD3DX12_RESOURCE_BARRIER::Transition(backBuff.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_RENDER_TARGET);
+	currentCommandList->ResourceBarrier(1u, &barrier);
 }
 
 void LightTracingShading::buildPipeline()
 {
-	rootSignatureManager = make_shared<RootSignatureManager>();
+	auto rootSignatureManager = make_shared<RootSignatureManager>();
 	shadingTable = make_unique<ShadingTable>(rootSignatureManager);
 
 	HRESULT hr;
@@ -272,6 +285,32 @@ void LightTracingShading::buildPipeline()
 	ComPtr<ID3D12Device5> pDevice5;
 	GFXTHROWIFFAILED(rendererResources->pDevice.As(&pDevice5));
 	GFXTHROWIFFAILED(pDevice5->CreateStateObject(stateObjectDesc, IID_PPV_ARGS(&stateObject)));
+
+	// Compute shader
+	computeRSM = make_shared<RootSignatureManager>();
+	computeRSM->addDescriptorRange("ComputeData", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 2, 0)); // gInput, gOutput
+	computeRSM->setDescriptorTableParameter("ComputeDataDescTable", "ComputeData");
+	computeRSM->addParameterToRootSignature("ComputeRootSignature", "ComputeDataDescTable");
+	computeRootSignature = computeRSM->generateRootSignature("ComputeRootSignature", rendererResources->pDevice);
+
+	// Get shader
+	wrl::ComPtr<ID3DBlob> pComputeBlob;
+	GFXTHROWIFFAILED(D3DReadFileToBlob(L"./Shaders/RadianceComputeShader.cso", &pComputeBlob));
+
+	struct PipelineStateStream
+	{
+		CD3DX12_PIPELINE_STATE_STREAM_ROOT_SIGNATURE pRootSignature;
+		CD3DX12_PIPELINE_STATE_STREAM_CS CS;
+	} pipelineStateStream;
+
+	pipelineStateStream.pRootSignature = computeRootSignature.Get();
+	pipelineStateStream.CS = CD3DX12_SHADER_BYTECODE(pComputeBlob.Get());
+
+	D3D12_PIPELINE_STATE_STREAM_DESC pipelineStateStreamDesc =
+	{
+		sizeof(PipelineStateStream), &pipelineStateStream
+	};
+	GFXTHROWIFFAILED(pDevice5->CreatePipelineState(&pipelineStateStreamDesc, IID_PPV_ARGS(&computePipelineState)));
 }
 
 void LightTracingShading::createShaderResources()
@@ -314,6 +353,12 @@ void LightTracingShading::createShaderResources()
 	srvDesc.Texture2D.MipLevels = 1;
 	for (const auto& texture : rendererResources->textures)
 		descHeapManager.setSRV(entryNumber++, srvDesc, rendererResources->pDevice, texture);
+
+	// Compute shader
+	auto cmpDescHeapManager = DescriptorHeap(computeRSM, "ComputeDataDescTable", "ComputeData1", rendererResources->pDevice);
+	cmpDescHeapManager.setUAV(0, uavDesc, rendererResources->pDevice, outputTexture);
+	cmpDescHeapManager.setUAV(1, uavDesc, rendererResources->pDevice, irradianceTexture);
+	computeDescriptorHeap = descHeapManager.getDescriptorHeap();
 }
 
 void LightTracingShading::createShaderTable(wrl::ComPtr<ID3D12GraphicsCommandList> &commandList, wrl::ComPtr<ID3D12Resource> &tempResource)

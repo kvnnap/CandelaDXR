@@ -50,7 +50,6 @@ namespace candela::renderer
 		
 		// Light tracer descriptor stuff
 		wrl::ComPtr<ID3D12DescriptorHeap> descriptorHeap;
-		wrl::ComPtr<ID3D12RootSignature> rootSignature;
 		wrl::ComPtr<ID3D12RootSignature> globalEmptyRootSignature;
 		wrl::ComPtr<ID3D12StateObject> stateObject;
 
@@ -79,8 +78,13 @@ namespace candela::renderer
 		std::vector<directx::DXUtil::TopLevelAccelerationData> tlasInstanceData;
 		std::vector<wrl::ComPtr<ID3D12Resource>> tlasTempBuffer;
 
+		// Compute shader
+		wrl::ComPtr<ID3D12DescriptorHeap> computeDescriptorHeap;
+		wrl::ComPtr<ID3D12RootSignature> computeRootSignature;
+		wrl::ComPtr<ID3D12PipelineState> computePipelineState;
+
 		// My helpers
-		std::shared_ptr<directx::RootSignatureManager> rootSignatureManager;
 		std::unique_ptr<directx::ShadingTable> shadingTable;
+		std::shared_ptr<directx::RootSignatureManager> computeRSM;
 	};
 }

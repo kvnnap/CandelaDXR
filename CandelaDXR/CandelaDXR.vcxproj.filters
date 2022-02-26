@@ -241,6 +241,7 @@
     <FxCompile Include="Shader\PixelShader.hlsl" />
     <FxCompile Include="Shader\VertexShader.hlsl" />
     <FxCompile Include="Shader\LightTracingShader.hlsl" />
+    <FxCompile Include="Shader\RadianceComputeShader.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Shader\Utils.hlsli" />
