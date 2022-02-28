@@ -1,3 +1,9 @@
+cbuffer CB1 : register(b0)
+{
+	uint ScreenWidth;
+	uint ScreenHeight;
+}
+
 RWTexture2D<float4> gOutput : register(u0);
 
 // 64 threads per group should be optimal on both NVIDIA and AMD
@@ -7,8 +13,9 @@ RWTexture2D<float4> gOutput : register(u0);
 [numthreads(8, 8, 1)]
 void main( uint3 DTid : SV_DispatchThreadID )
 {
-	if (DTid.x >= 900 || DTid.y >= 600)
+	if (DTid.x >= ScreenWidth || DTid.y >= ScreenHeight)
 		return;
+
 	const uint resY = (DTid.y / 8) % 3;
 	const uint result = ((DTid.x / 8) + resY) % 3;
 	float redValue		= result == 0 ? 1.f : 0.f;

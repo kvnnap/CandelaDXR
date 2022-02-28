@@ -165,7 +165,8 @@ void LightTracingShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> currentCom
 	currentCommandList->SetPipelineState(computePipelineState.Get());
 	currentCommandList->SetComputeRootSignature(computeRootSignature.Get());
 	currentCommandList->SetDescriptorHeaps(1u, computeDescriptorHeap.GetAddressOf());
-	currentCommandList->SetComputeRootDescriptorTable(0, computeDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
+	currentCommandList->SetComputeRootDescriptorTable(0u, computeDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
+	currentCommandList->SetComputeRoot32BitConstants(1u, 2u, &dim.x, 0);
 	currentCommandList->Dispatch(dim.x / 8 + (dim.x % 8 == 0 ? 0 : 1), dim.y / 8 + (dim.y % 8 == 0 ? 0 : 1), 1);
 
 	// After
@@ -288,7 +289,8 @@ void LightTracingShading::buildPipeline()
 	computeRSM = make_shared<RootSignatureManager>();
 	computeRSM->addDescriptorRange("ComputeData", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 2, 0)); // gInput, gOutput
 	computeRSM->setDescriptorTableParameter("ComputeDataDescTable", "ComputeData");
-	computeRSM->addParameterToRootSignature("ComputeRootSignature", "ComputeDataDescTable");
+	param.InitAsConstants(2u, 0u); computeRSM->setParameter("ComputeConstants", param); // winDimensions (x,y)
+	computeRSM->addParametersToRootSignature("ComputeRootSignature", { "ComputeDataDescTable", "ComputeConstants" });
 	computeRootSignature = computeRSM->generateRootSignature("ComputeRootSignature", rendererResources->pDevice);
 
 	// Get shader
