@@ -7,6 +7,12 @@ RWTexture2D<float4> gOutput : register(u0);
 [numthreads(8, 8, 1)]
 void main( uint3 DTid : SV_DispatchThreadID )
 {
-	uint2 launchIndex = uint2(0, 0);
-	gOutput[launchIndex] = float4(1.f, 0.f, 0.f, 1.f);
+	if (DTid.x >= 900 || DTid.y >= 600)
+		return;
+	const uint resY = (DTid.y / 8) % 3;
+	const uint result = ((DTid.x / 8) + resY) % 3;
+	float redValue		= result == 0 ? 1.f : 0.f;
+	float blueValue		= result == 1 ? 1.f : 0.f;
+	float greenValue	= result == 2 ? 1.f : 0.f;
+	gOutput[DTid.xy] = float4(redValue, blueValue, greenValue, 1.f);
 }

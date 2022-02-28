@@ -158,9 +158,7 @@ void LightTracingShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> currentCom
 	D3D12_DISPATCH_RAYS_DESC dispatchRaysDesc = shadingTable->getDispatchRaysDescriptor(dim.x, dim.y);
 	commandList4->DispatchRays(&dispatchRaysDesc);
 
-	// Launch compute shader
-
-	// Make sure all writes to this UAV have completed from DispatchRays
+	// Launch compute shader -  Make sure all writes to this UAV have completed from DispatchRays
 	auto uavBarrier = CD3DX12_RESOURCE_BARRIER::UAV(outputTexture.Get());
 	currentCommandList->ResourceBarrier(1u, &uavBarrier);
 
@@ -168,7 +166,7 @@ void LightTracingShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> currentCom
 	currentCommandList->SetComputeRootSignature(computeRootSignature.Get());
 	currentCommandList->SetDescriptorHeaps(1u, computeDescriptorHeap.GetAddressOf());
 	currentCommandList->SetComputeRootDescriptorTable(0, computeDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
-	//currentCommandList->Dispatch(1, 1, 1);
+	currentCommandList->Dispatch(dim.x / 8 + (dim.x % 8 == 0 ? 0 : 1), dim.y / 8 + (dim.y % 8 == 0 ? 0 : 1), 1);
 
 	// After
 	barrier = CD3DX12_RESOURCE_BARRIER::Transition(outputTexture.Get(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_SOURCE);
