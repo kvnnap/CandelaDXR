@@ -28,7 +28,7 @@ namespace candela::renderer
 		: public IRenderer
 	{
 	public:
-		Renderer(scene::Scene *scene, Camera *camera, const mathematics::UVector2& windowDimensions, std::vector<IDrawable*> drawables, std::uint32_t adapterIndex, bool debugEnabled, bool breakEnabled);
+		Renderer(scene::Scene *scene, Camera *camera, const mathematics::UVector2& windowDimensions, std::vector<IDrawable*> drawables, std::uint32_t adapterIndex, bool debugEnabled, bool breakEnabled, bool vsync);
 		~Renderer();
 
 		void init() override;
@@ -90,6 +90,7 @@ namespace candela::renderer
 		const bool debugEnabled;
 		// Only enable this when a debugger is attached
 		// otherwise on DX error, program calls abort/exit
-		const bool breakEnabled; 
+		const bool breakEnabled;
+		const bool vsync;
 	};
 }

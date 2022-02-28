@@ -38,6 +38,7 @@ unique_ptr<IRenderer> RendererFactory::create(const ConfigurationNode& config) c
 	auto& drawablesConfig = config["Drawables"].asList();
 	bool debugEnabled = false;
 	bool breakEnabled = false;
+	bool vsync = false;
 	std::uint32_t adapterIndex = 0;
 	if (config.asObject().keyExists("AdapterIndex"))
 		adapterIndex = config["AdapterIndex"].read<std::uint32_t>();
@@ -45,9 +46,11 @@ unique_ptr<IRenderer> RendererFactory::create(const ConfigurationNode& config) c
 		debugEnabled = config["Debug"].read<bool>();
 	if (config.asObject().keyExists("Break"))
 		breakEnabled = config["Break"].read<bool>();
+	if (config.asObject().keyExists("VSync"))
+		vsync = config["VSync"].read<bool>();
 	std::vector<IDrawable*> drawables;
 	for (auto& drawableConfig : drawablesConfig)
 		drawables.push_back(&env.getDrawableManager().getInstanceManager().get(drawableConfig));
-	auto renderer = make_unique<Renderer>(scene, camera, dim, std::move(drawables), adapterIndex, debugEnabled, breakEnabled);
+	auto renderer = make_unique<Renderer>(scene, camera, dim, std::move(drawables), adapterIndex, debugEnabled, breakEnabled, vsync);
 	return renderer;
 }

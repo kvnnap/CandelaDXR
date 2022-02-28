@@ -43,7 +43,7 @@ using DirectX::XMVectorSet;
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
-Renderer::Renderer(Scene *scene, Camera *camera, const UVector2 &windowDimensions, vector<IDrawable*> p_drawables, uint32_t adapterIndex, bool debugEnabled, bool breakEnabled)
+Renderer::Renderer(Scene *scene, Camera *camera, const UVector2 &windowDimensions, vector<IDrawable*> p_drawables, uint32_t adapterIndex, bool debugEnabled, bool breakEnabled, bool vsync)
 	: windowDimensions(windowDimensions),
 	  adapterIndex(adapterIndex),
 	  rtvDescriptorSize(),
@@ -53,7 +53,8 @@ Renderer::Renderer(Scene *scene, Camera *camera, const UVector2 &windowDimension
 	  camera(camera),
 	  drawables(std::move(p_drawables)),
 	  debugEnabled(debugEnabled),
-	  breakEnabled(breakEnabled)
+	  breakEnabled(breakEnabled),
+	  vsync(vsync)
 {
 }
 
@@ -209,7 +210,7 @@ void Renderer::renderFrame()
 	pCurrentCommandList.Reset();
 
 	HRESULT hr;
-	GFXTHROWIFFAILED(pSwapChain->Present(1u, 0u));
+	GFXTHROWIFFAILED(pSwapChain->Present(vsync ? 1u : 0u, 0u));
 	ComPtr<IDXGISwapChain3> pSwapChain3;
 	GFXTHROWIFFAILED(pSwapChain.As(&pSwapChain3));
 	currentBackBufferIndex = pSwapChain3->GetCurrentBackBufferIndex();
