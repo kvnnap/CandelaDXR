@@ -28,20 +28,10 @@ void main( uint3 DTid : SV_DispatchThreadID )
 	if (Clear)
 		gIrradiance[DTid.xy] = float4(0.f, 0.f, 0.f, 0.f);
 
-	//const uint resY = (DTid.y / 8) % 3;
-	//const uint result = ((DTid.x / 8) + resY) % 3;
-	//float redValue		= result == 0 ? 1.f : 0.f;
-	//float blueValue		= result == 1 ? 1.f : 0.f;
-	//float greenValue	= result == 2 ? 1.f : 0.f;
-	//gOutput[DTid.xy] = float4(redValue, blueValue, greenValue, 1.f);
 	const uint flatLaunchIndex = DTid.y * ScreenWidth + DTid.x;
-	uint size = min(gIrradianceDS[flatLaunchIndex].counter, 16);
-	for (uint i = 0; i < size; ++i)
-		gIrradiance[DTid.xy] += gIrradianceDS[flatLaunchIndex].irradiance[i];
-	
-	
+	gIrradiance[DTid.xy] += float4(fixedToFloat(gIrradianceDS[flatLaunchIndex].value, ConvRangeBits), 0.f);
+	gIrradianceDS[flatLaunchIndex].value = 0;
+
 	const float sampleRatio = 1.f / (ScreenWidth * ScreenHeight * FrameNumber);
 	gOutput[DTid.xy] = float4(linearToSrgb(toneMap(gIrradiance[DTid.xy].xyz * gIrrToRad[DTid.xy] * sampleRatio)), 1.f);
-	//gOutput[DTid.xy] = float4((float)gIrradianceDS[flatLaunchIndex].counter / 256, 0.f, 0.f, 0.f);
-	gIrradianceDS[flatLaunchIndex].counter = 0;
 }

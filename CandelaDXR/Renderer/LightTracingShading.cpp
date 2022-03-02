@@ -331,7 +331,7 @@ void LightTracingShading::createShaderResources()
 	// The output resource
 	outputTexture = DXUtil::createTextureCommittedResource(rendererResources->pDevice, D3D12_HEAP_TYPE_DEFAULT, dim.x, dim.y, D3D12_RESOURCE_STATE_COPY_SOURCE);
 	irradianceTexture = DXUtil::createTextureCommittedResource(rendererResources->pDevice, D3D12_HEAP_TYPE_DEFAULT, dim.x, dim.y, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_FLAG_NONE, DXGI_FORMAT_R32G32B32A32_FLOAT);
-	irradianceDataStructure = DXUtil::createCommittedResource(rendererResources->pDevice, D3D12_HEAP_TYPE_DEFAULT, dim.x * dim.y * sizeof(float) * 4 * 17, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS);
+	irradianceDataStructure = DXUtil::createCommittedResource(rendererResources->pDevice, D3D12_HEAP_TYPE_DEFAULT, dim.x * dim.y * sizeof(uint32_t) * 4, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS);
 
 	D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
 	uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
@@ -339,7 +339,7 @@ void LightTracingShading::createShaderResources()
 	D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc2 = {};
 	uavDesc2.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
 	uavDesc2.Buffer.NumElements = dim.x * dim.y;
-	uavDesc2.Buffer.StructureByteStride = sizeof(float) * 4 * 17;
+	uavDesc2.Buffer.StructureByteStride = sizeof(uint32_t) * 4;
 	descHeapManager.setUAV(entryNumber++, uavDesc2, rendererResources->pDevice, irradianceDataStructure);
 
 	// Create the SRV descriptor in second place (following same order as in root signature)

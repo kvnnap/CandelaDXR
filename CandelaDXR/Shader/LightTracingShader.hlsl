@@ -92,6 +92,14 @@ bool getPixel(RayDesc ray, uint2 screenDimensions, inout uint2 pixel)
 	return true;
 }
 
+void AddContribution(uint pixLaunchIndex, float3 contrib)
+{
+	uint3 uContrib = floatToFixed(contrib, ConvRangeBits);
+	InterlockedAdd(gIrradianceDS[pixLaunchIndex].value.x, uContrib.x);
+	InterlockedAdd(gIrradianceDS[pixLaunchIndex].value.y, uContrib.y);
+	InterlockedAdd(gIrradianceDS[pixLaunchIndex].value.z, uContrib.z);
+}
+
 // Kernels
 
 [shader("raygeneration")]
@@ -103,17 +111,10 @@ void rayGen()
 	// Dimensions - the previous x,y point is contained within these dimensions
 	const uint2 launchDim = DispatchRaysDimensions().xy;
 
-	//const uint flatLaunchIndex = launchIndex.y * launchDim.x + launchIndex.x;
 
 	// Early-exit checks
 	if (cBuffer.numLights == 0)
 		return;
-
-	// Clear buffer if stuff changed
-	//if (cBuffer.clear)
-	//{
-	//	gIrradianceDS[flatLaunchIndex].counter = 0;
-	//}
 	
 	// Initialise seed
 	uint seed = rand_init(
@@ -189,14 +190,10 @@ void rayGen()
 		{
 			float invDistance = 1.f / length(ray.Direction);
 			const uint pixLaunchIndex = pixel.y * launchDim.x + pixel.x;
-			uint orig;
-			InterlockedAdd(gIrradianceDS[pixLaunchIndex].counter, 1, orig);
-			if (orig < 16)
-				gIrradianceDS[pixLaunchIndex].irradiance[orig] = float4(localContribution * lightDot * invDistance * invDistance * cameraDot, 0.f);
+			float3 contrib = localContribution * lightDot * invDistance * invDistance * cameraDot;
+			AddContribution(pixLaunchIndex, contrib);
 		}
 	}
-
-	//DeviceMemoryBarrier();
 }
 
 // Ray
