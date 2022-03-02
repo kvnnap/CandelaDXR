@@ -51,6 +51,7 @@ void LightTracingShading::init(RendererResources* rRes)
 	constantTempBuffer.resize(rRes->numBackBuffers);
 	tlasTempBuffer.resize(rRes->numBackBuffers);
 	constBuffer.numLights = static_cast<uint32_t>(rRes->scene->getLights().size());
+	constBuffer.frameNumber = 0;
 
 	auto commandList = rRes->commandQueue->getCommandList();
 	auto& scene = *rRes->scene;
@@ -143,6 +144,10 @@ void LightTracingShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> currentCom
 	constBuffer.seeds[1] = sampler->nextUInt32();
 	clear |= cam->hasChanged();
 	constBuffer.clear = clear ? 1 : 0;
+	if (clear)
+		constBuffer.frameNumber = constBuffer.clear = 1;
+	else
+		++constBuffer.frameNumber;
 	clear = false;
 	DXUtil::updateDataInDefaultHeap(rendererResources->pDevice, currentCommandList, constantBuffer, constantTempBuffer[currentBackBufferIndex],
 		&constBuffer, sizeof(constBuffer), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
@@ -159,14 +164,15 @@ void LightTracingShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> currentCom
 	commandList4->DispatchRays(&dispatchRaysDesc);
 
 	// Launch compute shader -  Make sure all writes to this UAV have completed from DispatchRays
-	auto uavBarrier = CD3DX12_RESOURCE_BARRIER::UAV(outputTexture.Get());
+	auto uavBarrier = CD3DX12_RESOURCE_BARRIER::UAV(irradianceDataStructure.Get());
 	currentCommandList->ResourceBarrier(1u, &uavBarrier);
 
 	currentCommandList->SetPipelineState(computePipelineState.Get());
 	currentCommandList->SetComputeRootSignature(computeRootSignature.Get());
 	currentCommandList->SetDescriptorHeaps(1u, computeDescriptorHeap.GetAddressOf());
 	currentCommandList->SetComputeRootDescriptorTable(0u, computeDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
-	currentCommandList->SetComputeRoot32BitConstants(1u, 2u, &dim.x, 0);
+	uint32_t c32data[4] = { dim.x, dim.y, constBuffer.frameNumber, constBuffer.clear };
+	currentCommandList->SetComputeRoot32BitConstants(1u, 4u, &c32data[0], 0);
 	currentCommandList->Dispatch(dim.x / 8 + (dim.x % 8 == 0 ? 0 : 1), dim.y / 8 + (dim.y % 8 == 0 ? 0 : 1), 1);
 
 	// After
@@ -287,9 +293,10 @@ void LightTracingShading::buildPipeline()
 
 	// Compute shader
 	computeRSM = make_shared<RootSignatureManager>();
-	computeRSM->addDescriptorRange("ComputeData", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 2, 0)); // gInput, gOutput
+	computeRSM->addDescriptorRange("ComputeData", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 3, 0)); // gOutput, gIrradianceDataStructure, gIrradiance
+	computeRSM->addDescriptorRange("ComputeData", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0)); // gIrrToRad
 	computeRSM->setDescriptorTableParameter("ComputeDataDescTable", "ComputeData");
-	param.InitAsConstants(2u, 0u); computeRSM->setParameter("ComputeConstants", param); // winDimensions (x,y)
+	param.InitAsConstants(4u, 0u); computeRSM->setParameter("ComputeConstants", param); // winDimensions (x,y), numFrames, clear
 	computeRSM->addParametersToRootSignature("ComputeRootSignature", { "ComputeDataDescTable", "ComputeConstants" });
 	computeRootSignature = computeRSM->generateRootSignature("ComputeRootSignature", rendererResources->pDevice);
 
@@ -324,11 +331,16 @@ void LightTracingShading::createShaderResources()
 	// The output resource
 	outputTexture = DXUtil::createTextureCommittedResource(rendererResources->pDevice, D3D12_HEAP_TYPE_DEFAULT, dim.x, dim.y, D3D12_RESOURCE_STATE_COPY_SOURCE);
 	irradianceTexture = DXUtil::createTextureCommittedResource(rendererResources->pDevice, D3D12_HEAP_TYPE_DEFAULT, dim.x, dim.y, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_FLAG_NONE, DXGI_FORMAT_R32G32B32A32_FLOAT);
+	irradianceDataStructure = DXUtil::createCommittedResource(rendererResources->pDevice, D3D12_HEAP_TYPE_DEFAULT, dim.x * dim.y * sizeof(float) * 4 * 17, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS);
 
 	D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
 	uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
 	descHeapManager.setUAV(entryNumber++, uavDesc, rendererResources->pDevice, outputTexture);
-	descHeapManager.setUAV(entryNumber++, uavDesc, rendererResources->pDevice, irradianceTexture);
+	D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc2 = {};
+	uavDesc2.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
+	uavDesc2.Buffer.NumElements = dim.x * dim.y;
+	uavDesc2.Buffer.StructureByteStride = sizeof(float) * 4 * 17;
+	descHeapManager.setUAV(entryNumber++, uavDesc2, rendererResources->pDevice, irradianceDataStructure);
 
 	// Create the SRV descriptor in second place (following same order as in root signature)
 	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
@@ -338,12 +350,12 @@ void LightTracingShading::createShaderResources()
 	descHeapManager.setSRV(entryNumber++, srvDesc, rendererResources->pDevice);
 
 	// Irr to Rad?
-	srvDesc = {};
-	srvDesc.Format = DXGI_FORMAT_R32_FLOAT;
-	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-	srvDesc.Texture2D.MipLevels = 1;
-	descHeapManager.setSRV(entryNumber++, srvDesc, rendererResources->pDevice, irrToRad);
+	D3D12_SHADER_RESOURCE_VIEW_DESC irrToRadSrvDesc = {};
+	irrToRadSrvDesc.Format = DXGI_FORMAT_R32_FLOAT;
+	irrToRadSrvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+	irrToRadSrvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+	irrToRadSrvDesc.Texture2D.MipLevels = 1;
+	descHeapManager.setSRV(entryNumber++, irrToRadSrvDesc, rendererResources->pDevice, irrToRad);
 
 	// Textures
 	srvDesc = {};
@@ -357,8 +369,10 @@ void LightTracingShading::createShaderResources()
 	// Compute shader
 	auto cmpDescHeapManager = DescriptorHeap(computeRSM, "ComputeDataDescTable", "ComputeData1", rendererResources->pDevice);
 	cmpDescHeapManager.setUAV(0, uavDesc, rendererResources->pDevice, outputTexture);
-	cmpDescHeapManager.setUAV(1, uavDesc, rendererResources->pDevice, irradianceTexture);
-	computeDescriptorHeap = descHeapManager.getDescriptorHeap();
+	cmpDescHeapManager.setUAV(1, uavDesc2, rendererResources->pDevice, irradianceDataStructure);
+	cmpDescHeapManager.setUAV(2, uavDesc, rendererResources->pDevice, irradianceTexture);
+	cmpDescHeapManager.setSRV(3, irrToRadSrvDesc, rendererResources->pDevice, irrToRad);
+	computeDescriptorHeap = cmpDescHeapManager.getDescriptorHeap();
 }
 
 void LightTracingShading::createShaderTable(wrl::ComPtr<ID3D12GraphicsCommandList> &commandList, wrl::ComPtr<ID3D12Resource> &tempResource)

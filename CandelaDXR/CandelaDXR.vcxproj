@@ -322,6 +322,7 @@
     </FxCompile>
   </ItemGroup>
   <ItemGroup>
+    <None Include="Shader\IrradianceItem.hlsli" />
     <None Include="Shader\Scene.hlsli" />
     <None Include="Shader\Utils.hlsli" />
   </ItemGroup>

@@ -1,5 +1,6 @@
 #include "Utils.hlsli"
 #include "Scene.hlsli"
+#include "IrradianceItem.hlsli"
 
 struct ConstBuff 
 {
@@ -10,6 +11,7 @@ struct ConstBuff
 	uint2 seeds;
 	uint numLights;
 	uint clear;
+	uint frameNumber;
 };
 
 struct RayPayload
@@ -31,7 +33,7 @@ struct IndirectPayload
 
 // Output texture
 RWTexture2D<float4> gOutput : register(u0);
-globallycoherent RWTexture2D<float4> gIrradiance : register(u1);
+RWStructuredBuffer<IrradianceItem> gIrradianceDS : register(u1);
 
 // SRVs
 StructuredBuffer<float3> verts : register(t0);
@@ -101,27 +103,22 @@ void rayGen()
 	// Dimensions - the previous x,y point is contained within these dimensions
 	const uint2 launchDim = DispatchRaysDimensions().xy;
 
-	//uint2 r = uint2(800, 500);
-	//gOutput[r] = float4(1.f, 1.f, 1.f, 1.f);
+	//const uint flatLaunchIndex = launchIndex.y * launchDim.x + launchIndex.x;
 
 	// Early-exit checks
 	if (cBuffer.numLights == 0)
-	{
-		gOutput[launchIndex] = float4(0.f, 0.f, 0.f, 0.f);
 		return;
-	}
 
 	// Clear buffer if stuff changed
-	if (cBuffer.clear)
-	{
-		gIrradiance[launchIndex] = float4(0.f, 0.f, 0.f, 0.f);
-		gOutput[launchIndex] = float4(0.f, 0.f, 0.f, 0.f);
-	}
+	//if (cBuffer.clear)
+	//{
+	//	gIrradianceDS[flatLaunchIndex].counter = 0;
+	//}
 	
 	// Initialise seed
 	uint seed = rand_init(
-		cBuffer.seeds.x + launchDim.x * ((uint)gIrradiance[launchIndex].w + 0) + launchIndex.x,
-		cBuffer.seeds.y + launchDim.y * ((uint)gIrradiance[launchIndex].w + 0) + launchIndex.y);
+		cBuffer.seeds.x + launchDim.x * (cBuffer.frameNumber + 0) + launchIndex.x,
+		cBuffer.seeds.y + launchDim.y * (cBuffer.frameNumber + 0) + launchIndex.y);
 
 	// Choose light source
 	const uint lightIndex = chooseInRange(seed, 0, cBuffer.numLights - 1);
@@ -191,15 +188,15 @@ void rayGen()
 		if (!payload.occluded && cameraDot > 0)
 		{
 			float invDistance = 1.f / length(ray.Direction);
-			gIrradiance[pixel].xyz += localContribution * lightDot * invDistance * invDistance * cameraDot;
+			const uint pixLaunchIndex = pixel.y * launchDim.x + pixel.x;
+			uint orig;
+			InterlockedAdd(gIrradianceDS[pixLaunchIndex].counter, 1, orig);
+			if (orig < 16)
+				gIrradianceDS[pixLaunchIndex].irradiance[orig] = float4(localContribution * lightDot * invDistance * invDistance * cameraDot, 0.f);
 		}
 	}
 
 	//DeviceMemoryBarrier();
-
-	gIrradiance[launchIndex].w += 1.f;
-	const float sampleRatio = 1.f / (launchDim.x * launchDim.y * gIrradiance[launchIndex].w);
-	gOutput[launchIndex] = float4(gIrradiance[launchIndex].xyz * gIrrToRad[launchIndex] * sampleRatio, 1.f);
 }
 
 // Ray

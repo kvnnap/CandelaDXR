@@ -246,5 +246,6 @@
   <ItemGroup>
     <None Include="Shader\Utils.hlsli" />
     <None Include="Shader\Scene.hlsli" />
+    <None Include="Shader\IrradianceItem.hlsli" />
   </ItemGroup>
 </Project>

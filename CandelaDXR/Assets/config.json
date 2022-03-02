@@ -50,6 +50,7 @@
       "AdapterIndex": 0,
       "Debug": false,
       "Break": false,
+      "VSync": false,
       "Scene": "Scene",
       "Camera": "Camera",
       "Drawables": [

@@ -63,12 +63,14 @@ namespace candela::renderer
 			std::uint32_t seeds[2];
 			std::uint32_t numLights;
 			std::uint32_t clear;
+			std::uint32_t frameNumber;
 		} constBuffer;
 		std::vector<wrl::ComPtr<ID3D12Resource>> constantTempBuffer;
 		wrl::ComPtr<ID3D12Resource> outputTexture;
 		wrl::ComPtr<ID3D12Resource> constantBuffer;
 		wrl::ComPtr<ID3D12Resource> irrToRad;
 		wrl::ComPtr<ID3D12Resource> irradianceTexture;
+		wrl::ComPtr<ID3D12Resource> irradianceDataStructure;
 		std::unique_ptr<sampler::ISampler> sampler;
 		bool clear;
 
