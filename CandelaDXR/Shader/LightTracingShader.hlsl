@@ -194,6 +194,13 @@ void rayGen()
 			AddContribution(pixLaunchIndex, contrib);
 		}
 	}
+
+	// Construct ray from light source to camera origin
+	float pdf;
+	ray.TMin = 0.f;
+	ray.TMax = 3.402823e+38;
+	ray.Direction = randomRayLobe(seed, lightNormal, 1, pdf);
+	localContribution *= dot(lightNormal, ray.Direction) / pdf;
 }
 
 // Ray

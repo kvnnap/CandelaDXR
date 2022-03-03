@@ -130,12 +130,12 @@ float3 transformPointToBasis(float3 unitNormal, float3 pt) {
 	return pt.x * u + pt.y * v + pt.z * w;
 }
 
-float3 randomRayLobe(inout uint s, float3 unitNormal, float n) {
+float3 randomRayLobe(inout uint s, float3 unitNormal, float n, inout float p) {
 	// The pdf is (n + 1) cos^n(phi) / (2*pi)
 	const float nPlusOne = n + 1.f;
 	const float cosPhiToTheNPlusOne = rand_next(s);
 	// TODO: uncomment if used
-	//probability = nPlusOne / (2.f * Mathematics::Constants::Pi) * Functions::pow(cosPhiToTheNPlusOne, n / nPlusOne);
+	p = nPlusOne / (2.f * PI) * pow(cosPhiToTheNPlusOne, n / nPlusOne);
 	const float cosPhi = pow(cosPhiToTheNPlusOne, 1.f / nPlusOne);
 	const float sinPhi = sqrt(1.f - cosPhi * cosPhi);
 	const float theta = 2.f * PI * rand_next(s);
@@ -148,7 +148,8 @@ float3 randomRayLobe(inout uint s, float3 unitNormal, float n) {
 }
 
 float3 randomRayHemisphere(inout uint s, float3 unitNormal) {
-	return randomRayLobe(s, unitNormal, 0);
+	float p;
+	return randomRayLobe(s, unitNormal, 0, p);
 }
 
 static const uint ConvRangeBits = 24;
