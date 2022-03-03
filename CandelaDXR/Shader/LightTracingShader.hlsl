@@ -89,6 +89,31 @@ bool getPixel(RayDesc ray, uint2 screenDimensions, inout uint2 pixel)
 	return true;
 }
 
+float3 getUnitNormal(float2 bary, uint vertBaseId, uint matrixId)
+{
+	float3 ln[3];
+	ln[0] = mul(float4(normals[indices[vertBaseId + 0]], 0.f), matrices[matrixId]);
+	ln[1] = mul(float4(normals[indices[vertBaseId + 1]], 0.f), matrices[matrixId]);
+	ln[2] = mul(float4(normals[indices[vertBaseId + 2]], 0.f), matrices[matrixId]);
+	return normalize(interpolateVertices(bary, ln));
+}
+
+float2 getTextureLocation(float2 bary, uint vertBaseId)
+{
+	float2 lt[3];
+	lt[0] = texVerts[indices[vertBaseId + 0]];
+	lt[1] = texVerts[indices[vertBaseId + 1]];
+	lt[2] = texVerts[indices[vertBaseId + 2]];
+	return pointOnTriangle(bary, lt);
+}
+
+void getVertexWorldCoordinates(inout float3 lv[3], uint vertBaseId, uint matrixId)
+{
+	lv[0] = mul(float4(verts[indices[vertBaseId + 0]], 1.f), matrices[matrixId]);
+	lv[1] = mul(float4(verts[indices[vertBaseId + 1]], 1.f), matrices[matrixId]);
+	lv[2] = mul(float4(verts[indices[vertBaseId + 2]], 1.f), matrices[matrixId]);
+}
+
 void AddContribution(uint pixLaunchIndex, float3 contrib)
 {
 	uint3 uContrib = floatToFixed(contrib, ConvRangeBits);
@@ -126,9 +151,7 @@ void rayGen()
 
 	// Compute light vertices
 	float3 lv[3];
-	lv[0] = mul(float4(verts[indices[lightIndexId + 0]], 1.f), matrices[areaLight.InstanceIndex]);
-	lv[1] = mul(float4(verts[indices[lightIndexId + 1]], 1.f), matrices[areaLight.InstanceIndex]);
-	lv[2] = mul(float4(verts[indices[lightIndexId + 2]], 1.f), matrices[areaLight.InstanceIndex]);
+	getVertexWorldCoordinates(lv, lightIndexId, areaLight.InstanceIndex);
 
 	// Generate a point on the light
 	float2 lightBary;
@@ -139,13 +162,7 @@ void rayGen()
 	localContribution *= getTriangleArea(lv) * cBuffer.numLights;
 
 	if (lightMat.EmissiveTextureId >= 0)
-	{
-		float2 lt[3];
-		lt[0] = texVerts[indices[lightIndexId + 0]];
-		lt[1] = texVerts[indices[lightIndexId + 1]];
-		lt[2] = texVerts[indices[lightIndexId + 2]];
-		localContribution *= gTextures[lightMat.EmissiveTextureId].SampleLevel(gSampler, pointOnTriangle(lightBary, lt), 0);
-	}
+		localContribution *= gTextures[lightMat.EmissiveTextureId].SampleLevel(gSampler, getTextureLocation(lightBary, lightIndexId), 0);
 
 	// Construct ray from light source to camera origin
 	RayDesc shadowRay;
@@ -157,11 +174,7 @@ void rayGen()
 	float3 unitShadowRayDirection = shadowRay.Direction * invShadowDistance;
 
 	// First check if light normal is the right way round wrt camera
-	float3 ln[3];
-	ln[0] = mul(float4(normals[indices[lightIndexId + 0]], 0.f), matrices[areaLight.InstanceIndex]);
-	ln[1] = mul(float4(normals[indices[lightIndexId + 1]], 0.f), matrices[areaLight.InstanceIndex]);
-	ln[2] = mul(float4(normals[indices[lightIndexId + 2]], 0.f), matrices[areaLight.InstanceIndex]);
-	float3 unitLightNormal = normalize(interpolateVertices(lightBary, ln));
+	float3 unitLightNormal = getUnitNormal(lightBary, lightIndexId, areaLight.InstanceIndex);
 	
 
 	uint2 pixel = uint2(0, 0);
@@ -224,11 +237,7 @@ void rayGen()
 		const uint vertIndex = rayPayload.faceIndex * 3;
 
 		// Get face unit normal
-		float3 fn[3];
-		fn[0] = mul(float4(normals[indices[vertIndex + 0]], 0.f), matrices[fAttr.InstanceIndex]);
-		fn[1] = mul(float4(normals[indices[vertIndex + 1]], 0.f), matrices[fAttr.InstanceIndex]);
-		fn[2] = mul(float4(normals[indices[vertIndex + 2]], 0.f), matrices[fAttr.InstanceIndex]);
-		float3 unitFaceNormal = normalize(interpolateVertices(rayPayload.bary, fn));
+		float3 unitFaceNormal = getUnitNormal(rayPayload.bary, vertIndex, fAttr.InstanceIndex);
 		float wiDot = dot(ray.Direction, unitFaceNormal);
 
 		const bool isInternal = wiDot > 0.f;
@@ -266,13 +275,7 @@ void rayGen()
 				const uint pixLaunchIndex = pixel.y * launchDim.x + pixel.x;
 				float3 brdfDiff = mat.Diffuse * OneOverPI;
 				if (mat.DiffuseTextureId >= 0)
-				{
-					float2 vt[3];
-					vt[0] = texVerts[indices[vertIndex + 0]];
-					vt[1] = texVerts[indices[vertIndex + 1]];
-					vt[2] = texVerts[indices[vertIndex + 2]];
-					brdfDiff *= gTextures[mat.DiffuseTextureId].SampleLevel(gSampler, pointOnTriangle(rayPayload.bary, vt), 0);
-				}
+					brdfDiff *= gTextures[mat.DiffuseTextureId].SampleLevel(gSampler, getTextureLocation(rayPayload.bary, vertIndex), 0);
 				float3 contrib = (localContribution * brdfDiff) * surfaceDot * invShadowDistance * invShadowDistance * cameraDot;
 				AddContribution(pixLaunchIndex, contrib);
 			}
@@ -292,13 +295,7 @@ void rayGen()
 		ray.Direction = randomRayLobe(seed, unitFaceNormal, 1, pdf);
 		float3 brdfDiff = mat.Diffuse * OneOverPI;
 		if (mat.DiffuseTextureId >= 0)
-		{
-			float2 vt[3];
-			vt[0] = texVerts[indices[vertIndex + 0]];
-			vt[1] = texVerts[indices[vertIndex + 1]];
-			vt[2] = texVerts[indices[vertIndex + 2]];
-			brdfDiff *= gTextures[mat.DiffuseTextureId].SampleLevel(gSampler, pointOnTriangle(rayPayload.bary, vt), 0);
-		}
+			brdfDiff *= gTextures[mat.DiffuseTextureId].SampleLevel(gSampler, getTextureLocation(rayPayload.bary, vertIndex), 0);
 		localContribution *= brdfDiff * dot(unitFaceNormal, ray.Direction) / pdf;
 	}
 }
