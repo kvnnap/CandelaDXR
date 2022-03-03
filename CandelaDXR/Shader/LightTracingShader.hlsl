@@ -16,17 +16,14 @@ struct ConstBuff
 
 struct RayPayload
 {
-	float3 color;
+	float2 bary;
+	float t;
+	uint faceIndex;
 };
 
 struct ShadowPayload
 {
 	bool occluded;
-};
-
-struct IndirectPayload
-{
-	float3 test;
 };
 
 // UAVs
@@ -151,28 +148,32 @@ void rayGen()
 	}
 
 	// Construct ray from light source to camera origin
-	RayDesc ray;
-	ray.TMin = 0.001f;
-	ray.TMax = 1.f;
-	ray.Origin = pointOnLightSource;
-	ray.Direction = cBuffer.position - pointOnLightSource;
+	RayDesc shadowRay;
+	shadowRay.TMin = 0.001f;
+	shadowRay.TMax = 1.f;
+	shadowRay.Origin = pointOnLightSource;
+	shadowRay.Direction = cBuffer.position - pointOnLightSource;
+	float invShadowDistance = 1.f / length(shadowRay.Direction);
+	float3 unitShadowRayDirection = shadowRay.Direction * invShadowDistance;
 
 	// First check if light normal is the right way round wrt camera
 	float3 ln[3];
 	ln[0] = mul(float4(normals[indices[lightIndexId + 0]], 0.f), matrices[areaLight.InstanceIndex]);
 	ln[1] = mul(float4(normals[indices[lightIndexId + 1]], 0.f), matrices[areaLight.InstanceIndex]);
 	ln[2] = mul(float4(normals[indices[lightIndexId + 2]], 0.f), matrices[areaLight.InstanceIndex]);
-	float3 lightNormal = interpolateVertices(lightBary, ln);
+	float3 unitLightNormal = normalize(interpolateVertices(lightBary, ln));
 	
 
 	uint2 pixel = uint2(0, 0);
-	float lightDot = dot(ray.Direction, lightNormal);
-	if (lightDot > 0.f && getPixel(ray, launchDim, pixel))
-	{
-		ShadowPayload payload;
-		payload.occluded = true;
+	float lightDot = dot(unitShadowRayDirection, unitLightNormal);
+	float cameraDot = -dot(unitShadowRayDirection, cBuffer.w);
 
-		// Add direct contribution
+	ShadowPayload shadowPayload;
+
+	if (lightDot > 0.f && cameraDot > 0.f && getPixel(shadowRay, launchDim, pixel))
+	{
+		// Add direct light contribution
+		shadowPayload.occluded = true;
 		TraceRay(
 			gRtScene,	// Acceleration Structure
 			RAY_FLAG_FORCE_OPAQUE
@@ -180,40 +181,141 @@ void rayGen()
 		  | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH,			// Ray flags
 			0xFF,		// Instance inclusion Mask (0xFF includes everything)
 			1,			// RayContributionToHitGroupIndex (calls shadowAnyHit)
-			3,			// MultiplierForGeometryContributionToShaderIndex
+			1,			// MultiplierForGeometryContributionToShaderIndex (We only have 1 hit group)
 			1,			// Miss shader index (within the shader table) (calls shadowMiss)
-			ray,
-			payload);
+			shadowRay,
+			shadowPayload);
 		
-		float cameraDot = -dot(ray.Direction, cBuffer.w);
-		if (!payload.occluded && cameraDot > 0)
+		if (!shadowPayload.occluded)
 		{
-			float invDistance = 1.f / length(ray.Direction);
 			const uint pixLaunchIndex = pixel.y * launchDim.x + pixel.x;
-			float3 contrib = localContribution * lightDot * invDistance * invDistance * cameraDot;
+			float3 contrib = localContribution * lightDot * invShadowDistance * invShadowDistance * cameraDot;
 			AddContribution(pixLaunchIndex, contrib);
 		}
 	}
 
-	// Construct ray from light source to camera origin
+	// Construct ray from light source to random scene point
 	float pdf;
-	ray.TMin = 0.f;
+	RayDesc ray;
+	ray.TMin = 0.001f;
 	ray.TMax = 3.402823e+38;
-	ray.Direction = randomRayLobe(seed, lightNormal, 1, pdf);
-	localContribution *= dot(lightNormal, ray.Direction) / pdf;
+	ray.Origin = shadowRay.Origin;
+	ray.Direction = randomRayLobe(seed, unitLightNormal, 1, pdf);
+	localContribution *= dot(unitLightNormal, ray.Direction) / pdf;
+	
+	// Traverse scene to another surface
+	uint i = 0;
+	RayPayload rayPayload;
+	while (TraceRay(
+		gRtScene,	// Acceleration Structure
+		0,			// Ray flags
+		0xFF,		// Instance inclusion Mask (0xFF includes everything)
+		0,			// RayContributionToHitGroupIndex (calls chs)
+		1,			// MultiplierForGeometryContributionToShaderIndex
+		0,			// Miss shader index (within the shader table) (calls miss)
+		ray,
+		rayPayload), rayPayload.t != 0.f)
+	{ 
+		float3 intersectionPoint = ray.Origin + rayPayload.t * ray.Direction;
+
+		// Get Face attributes
+		FaceAttributes fAttr = faceAttributes[rayPayload.faceIndex];
+
+		const uint vertIndex = rayPayload.faceIndex * 3;
+
+		// Get face unit normal
+		float3 fn[3];
+		fn[0] = mul(float4(normals[indices[vertIndex + 0]], 0.f), matrices[fAttr.InstanceIndex]);
+		fn[1] = mul(float4(normals[indices[vertIndex + 1]], 0.f), matrices[fAttr.InstanceIndex]);
+		fn[2] = mul(float4(normals[indices[vertIndex + 2]], 0.f), matrices[fAttr.InstanceIndex]);
+		float3 unitFaceNormal = normalize(interpolateVertices(rayPayload.bary, fn));
+		float wiDot = dot(ray.Direction, unitFaceNormal);
+
+		const bool isInternal = wiDot > 0.f;
+		if (isInternal) // Only for Diffuse - remove otherwise
+			break;
+
+		// Check contribution to eye
+		shadowRay.Origin = intersectionPoint;
+		shadowRay.Direction = cBuffer.position - intersectionPoint;
+		invShadowDistance = 1.f / length(shadowRay.Direction);
+		unitShadowRayDirection = shadowRay.Direction * invShadowDistance;
+		float surfaceDot = dot(unitShadowRayDirection, unitFaceNormal);
+		cameraDot = -dot(unitShadowRayDirection, cBuffer.w);
+
+		// Get appropriate BRDF - assuming Diffuse (Will handle Reflective and Transmissive later)
+		Material mat = materials[fAttr.MaterialId];
+
+		if (surfaceDot > 0.f && cameraDot > 0.f && getPixel(shadowRay, launchDim, pixel))
+		{
+			shadowPayload.occluded = true;
+			TraceRay(
+				gRtScene,	// Acceleration Structure
+				RAY_FLAG_FORCE_OPAQUE
+				| RAY_FLAG_SKIP_CLOSEST_HIT_SHADER
+				| RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH,			// Ray flags
+				0xFF,		// Instance inclusion Mask (0xFF includes everything)
+				1,			// RayContributionToHitGroupIndex (calls shadowAnyHit)
+				1,			// MultiplierForGeometryContributionToShaderIndex (We only have 1 hit group)
+				1,			// Miss shader index (within the shader table) (calls shadowMiss)
+				shadowRay,
+				shadowPayload);
+
+			if (!shadowPayload.occluded)
+			{
+				const uint pixLaunchIndex = pixel.y * launchDim.x + pixel.x;
+				float3 brdfDiff = mat.Diffuse * OneOverPI;
+				if (mat.DiffuseTextureId >= 0)
+				{
+					float2 vt[3];
+					vt[0] = texVerts[indices[vertIndex + 0]];
+					vt[1] = texVerts[indices[vertIndex + 1]];
+					vt[2] = texVerts[indices[vertIndex + 2]];
+					brdfDiff *= gTextures[mat.DiffuseTextureId].SampleLevel(gSampler, pointOnTriangle(rayPayload.bary, vt), 0);
+				}
+				float3 contrib = (localContribution * brdfDiff) * surfaceDot * invShadowDistance * invShadowDistance * cameraDot;
+				AddContribution(pixLaunchIndex, contrib);
+			}
+		}
+		
+		// Russian roulette
+		if (++i >= 3)
+		{
+			const float probabilityOfContinuing = 0.5f;
+			if (rand_next(seed) > probabilityOfContinuing)
+				break;
+			localContribution *= 1.f / probabilityOfContinuing;
+		}
+
+		// Sample the brdf and generate a new ray
+		ray.Origin = intersectionPoint;
+		ray.Direction = randomRayLobe(seed, unitFaceNormal, 1, pdf);
+		float3 brdfDiff = mat.Diffuse * OneOverPI;
+		if (mat.DiffuseTextureId >= 0)
+		{
+			float2 vt[3];
+			vt[0] = texVerts[indices[vertIndex + 0]];
+			vt[1] = texVerts[indices[vertIndex + 1]];
+			vt[2] = texVerts[indices[vertIndex + 2]];
+			brdfDiff *= gTextures[mat.DiffuseTextureId].SampleLevel(gSampler, pointOnTriangle(rayPayload.bary, vt), 0);
+		}
+		localContribution *= brdfDiff * dot(unitFaceNormal, ray.Direction) / pdf;
+	}
 }
 
 // Ray
 [shader("closesthit")]
 void chs(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attribs)
 {
-	payload.color = float3(0.f, 1.f, 0.f);
+	payload.bary = attribs.barycentrics;
+	payload.t = RayTCurrent();
+	payload.faceIndex = getFaceIndex();
 }
 
 [shader("miss")]
 void miss(inout RayPayload payload)
 {
-	payload.color = float3(0.f, 1.f, 1.f);
+	payload.t = 0.f;
 }
 
 // Shadow

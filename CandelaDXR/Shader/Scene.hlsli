@@ -6,7 +6,8 @@ struct FaceAttributes
 	uint padding;
 };
 
-struct AreaLight {
+struct AreaLight
+{
 	float4 Intensity;
 	uint InstanceIndex;
 	uint PrimitiveId;

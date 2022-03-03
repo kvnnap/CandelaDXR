@@ -278,7 +278,7 @@ void LightTracingShading::buildPipeline()
 
 	// Ninth - Configure the RAY TRACING PIPELINE
 	CD3DX12_RAYTRACING_PIPELINE_CONFIG_SUBOBJECT rtPipelineConfig(stateObjectDesc);
-	rtPipelineConfig.Config(2);
+	rtPipelineConfig.Config(1);
 
 	// Tenth - Global Root Signature
 	CD3DX12_GLOBAL_ROOT_SIGNATURE_SUBOBJECT globalRootSignature(stateObjectDesc);
