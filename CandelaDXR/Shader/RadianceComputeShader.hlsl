@@ -32,6 +32,6 @@ void main( uint3 DTid : SV_DispatchThreadID )
 	gIrradiance[DTid.xy] += float4(fixedToFloat(gIrradianceDS[flatLaunchIndex].value, ConvRangeBits), 0.f);
 	gIrradianceDS[flatLaunchIndex].value = 0;
 
-	const float sampleRatio = 1.f / (ScreenWidth * ScreenHeight * FrameNumber);
+	const float sampleRatio = 1.f / (ScreenWidth * ScreenHeight * (float)FrameNumber);
 	gOutput[DTid.xy] = float4(linearToSrgb(toneMap(gIrradiance[DTid.xy].xyz * gIrrToRad[DTid.xy] * sampleRatio)), 1.f);
 }

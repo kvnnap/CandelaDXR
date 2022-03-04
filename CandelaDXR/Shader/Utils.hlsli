@@ -19,10 +19,17 @@ uint rand_init(uint val0, uint val1, uint backoff = 16)
 
 float rand_next(inout uint s)
 {
-	uint LCG_A = 1664525u;
-	uint LCG_C = 1013904223u;
-	s = (LCG_A * s + LCG_C);
-	return float(s & 0x00FFFFFF) / float(0x01000000);
+	//uint LCG_A = 1664525u;
+	//uint LCG_C = 1013904223u;
+	//s = (LCG_A * s + LCG_C);
+	//return float(s & 0x00FFFFFF) / float(0x01000000);
+	//return s / 4294967295.f;
+	uint state = s;
+	s = s * 747796405u + 2891336453u;
+	uint word = ((state >> ((state >> 28u) + 4u)) ^ state) * 277803737u;
+	uint r = (word >> 22u) ^ word;
+	return r / 4294967295.f;
+	//return float(r & 0x00FFFFFF) / float(0x01000000); // <-- This works too but only 16Mil states?
 }
 
 // Range is [a-b] (inclusive), a <= b
