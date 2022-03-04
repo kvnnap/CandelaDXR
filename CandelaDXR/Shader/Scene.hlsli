@@ -25,4 +25,6 @@ struct Material
 	int SpecularTextureId;
 	float3 TransmissiveFilter;
 	float RefractiveIndex;
+	float Dissolve;
+	uint3 padding;
 };

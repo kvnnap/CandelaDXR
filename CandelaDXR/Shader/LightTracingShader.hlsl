@@ -133,7 +133,6 @@ void rayGen()
 	// Dimensions - the previous x,y point is contained within these dimensions
 	const uint2 launchDim = DispatchRaysDimensions().xy;
 
-
 	// Early-exit checks
 	if (cBuffer.numLights == 0)
 		return;
@@ -240,44 +239,50 @@ void rayGen()
 		float3 unitFaceNormal = getUnitNormal(rayPayload.bary, vertIndex, fAttr.InstanceIndex);
 		float wiDot = dot(ray.Direction, unitFaceNormal);
 
-		const bool isInternal = wiDot > 0.f;
-		if (isInternal) // Only for Diffuse - remove otherwise
-			break;
-
-		// Check contribution to eye
-		shadowRay.Origin = intersectionPoint;
-		shadowRay.Direction = cBuffer.position - intersectionPoint;
-		invShadowDistance = 1.f / length(shadowRay.Direction);
-		unitShadowRayDirection = shadowRay.Direction * invShadowDistance;
-		float surfaceDot = dot(unitShadowRayDirection, unitFaceNormal);
-		cameraDot = -dot(unitShadowRayDirection, cBuffer.w);
-
 		// Get appropriate BRDF - assuming Diffuse (Will handle Reflective and Transmissive later)
 		Material mat = materials[fAttr.MaterialId];
 
-		if (surfaceDot > 0.f && cameraDot > 0.f && getPixel(shadowRay, launchDim, pixel))
-		{
-			shadowPayload.occluded = true;
-			TraceRay(
-				gRtScene,	// Acceleration Structure
-				RAY_FLAG_FORCE_OPAQUE
-				| RAY_FLAG_SKIP_CLOSEST_HIT_SHADER
-				| RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH,			// Ray flags
-				0xFF,		// Instance inclusion Mask (0xFF includes everything)
-				1,			// RayContributionToHitGroupIndex (calls shadowAnyHit)
-				1,			// MultiplierForGeometryContributionToShaderIndex (We only have 1 hit group)
-				1,			// Miss shader index (within the shader table) (calls shadowMiss)
-				shadowRay,
-				shadowPayload);
+		const bool isInternal = wiDot > 0.f;
 
-			if (!shadowPayload.occluded)
+		// Beer's law
+		if (isInternal)
+		{
+			localContribution *= exp((-rayPayload.t) * mat.TransmissiveFilter);
+		}
+		else
+		{
+			// Check contribution to eye
+			shadowRay.Origin = intersectionPoint;
+			shadowRay.Direction = cBuffer.position - intersectionPoint;
+			invShadowDistance = 1.f / length(shadowRay.Direction);
+			unitShadowRayDirection = shadowRay.Direction * invShadowDistance;
+			float surfaceDot = dot(unitShadowRayDirection, unitFaceNormal);
+			cameraDot = -dot(unitShadowRayDirection, cBuffer.w);
+
+			if (surfaceDot > 0.f && cameraDot > 0.f && getPixel(shadowRay, launchDim, pixel))
 			{
-				const uint pixLaunchIndex = pixel.y * launchDim.x + pixel.x;
-				float3 brdfDiff = mat.Diffuse * OneOverPI;
-				if (mat.DiffuseTextureId >= 0)
-					brdfDiff *= gTextures[mat.DiffuseTextureId].SampleLevel(gSampler, getTextureLocation(rayPayload.bary, vertIndex), 0);
-				float3 contrib = (localContribution * brdfDiff) * surfaceDot * invShadowDistance * invShadowDistance * cameraDot;
-				AddContribution(pixLaunchIndex, contrib);
+				shadowPayload.occluded = true;
+				TraceRay(
+					gRtScene,	// Acceleration Structure
+					RAY_FLAG_FORCE_OPAQUE
+					| RAY_FLAG_SKIP_CLOSEST_HIT_SHADER
+					| RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH,			// Ray flags
+					0xFF,		// Instance inclusion Mask (0xFF includes everything)
+					1,			// RayContributionToHitGroupIndex (calls shadowAnyHit)
+					1,			// MultiplierForGeometryContributionToShaderIndex (We only have 1 hit group)
+					1,			// Miss shader index (within the shader table) (calls shadowMiss)
+					shadowRay,
+					shadowPayload);
+
+				if (!shadowPayload.occluded)
+				{
+					const uint pixLaunchIndex = pixel.y * launchDim.x + pixel.x;
+					float3 brdfDiff = mat.Diffuse * OneOverPI;
+					if (mat.DiffuseTextureId >= 0)
+						brdfDiff *= gTextures[mat.DiffuseTextureId].SampleLevel(gSampler, getTextureLocation(rayPayload.bary, vertIndex), 0);
+					float3 contrib = (localContribution * brdfDiff) * mat.Dissolve * surfaceDot * invShadowDistance * invShadowDistance * cameraDot;
+					AddContribution(pixLaunchIndex, contrib);
+				}
 			}
 		}
 		
@@ -290,13 +295,52 @@ void rayGen()
 			localContribution *= 1.f / probabilityOfContinuing;
 		}
 
-		// Sample the brdf and generate a new ray
+		// Setup Fresnel coeff
+		float n1, n2, dissolve, coeff;
+		if (isInternal)
+		{
+			n1 = mat.RefractiveIndex;
+			n2 = 1.f;
+			dissolve = 0.f;
+			coeff = -1.f;
+		}
+		else
+		{
+			n1 = 1.f;
+			n2 = mat.RefractiveIndex;
+			dissolve = mat.Dissolve;
+			coeff = 1.f;
+		}
+
 		ray.Origin = intersectionPoint;
-		ray.Direction = randomRayLobe(seed, unitFaceNormal, 1, pdf);
-		float3 brdfDiff = mat.Diffuse * OneOverPI;
-		if (mat.DiffuseTextureId >= 0)
-			brdfDiff *= gTextures[mat.DiffuseTextureId].SampleLevel(gSampler, getTextureLocation(rayPayload.bary, vertIndex), 0);
-		localContribution *= brdfDiff * dot(unitFaceNormal, ray.Direction) / pdf;
+
+		// Compute Fresnel
+		float fr = fresnel(-coeff * wiDot, n1, n2); // Reflection 
+		if (rand_next(seed) < fr)
+		{
+			ray.Direction = reflect(ray.Direction, coeff * unitFaceNormal);
+			continue;
+		}
+
+		// Diffuse?
+		if (rand_next(seed) < dissolve)
+		{
+			// Sample the brdf and generate a new ray
+			ray.Direction = randomRayLobe(seed, unitFaceNormal, 1, pdf);
+			float3 brdfDiff = mat.Diffuse * OneOverPI;
+			if (mat.DiffuseTextureId >= 0)
+				brdfDiff *= gTextures[mat.DiffuseTextureId].SampleLevel(gSampler, getTextureLocation(rayPayload.bary, vertIndex), 0);
+			localContribution *= brdfDiff * dot(unitFaceNormal, ray.Direction) / pdf;
+		}
+		else
+		{
+			// Transmission
+			float3 dir = refract(ray.Direction, coeff * unitFaceNormal, n1 / n2);
+			if (any(dir))
+				ray.Direction = dir;
+			else
+				ray.Direction = reflect(ray.Direction, coeff * unitFaceNormal);
+		}
 	}
 }
 

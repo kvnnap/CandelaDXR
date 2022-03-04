@@ -17,6 +17,7 @@ uint rand_init(uint val0, uint val1, uint backoff = 16)
 	return v0;
 }
 
+// PRNG PCG - https://www.reedbeta.com/blog/hash-functions-for-gpu-rendering/
 float rand_next(inout uint s)
 {
 	//uint LCG_A = 1664525u;
@@ -169,4 +170,20 @@ uint3 floatToFixed(float3 value, uint rangeBits)
 float3 fixedToFloat(uint3 value, uint rangeBits)
 {
 	return value * pow(2.f, -(float)rangeBits);
+}
+
+float fresnel(const float cosx, const float n1, const float n2)
+{
+	const float ior = n1 / n2;
+	const float t = 1.f - ior * ior * (1.f - cosx * cosx);
+	if (t < 0.f)
+		return 1.f;
+	const float s = sqrt(t);
+	const float n1Cosx = n1 * cosx;
+	const float n2S = n2 * s;
+	const float ra = (n1Cosx - n2S) / (n1Cosx + n2S);
+	const float n2Cosx = n2 * cosx;
+	const float n1S = n1 * s;
+	const float rb = (n1S - n2Cosx) / (n1S + n2Cosx);
+	return 0.5f * (ra * ra + rb * rb);
 }

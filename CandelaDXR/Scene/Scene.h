@@ -58,7 +58,8 @@ namespace candela::scene
 		std::int32_t SpecularTextureId;
 		mathematics::Vector3 TransmissiveFilter;
 		float RefractiveIndex;
-		
+		float Dissolve;
+
 		bool isEmissive();
 	};
 
