@@ -214,7 +214,8 @@ void rayGen()
 	ray.Origin = shadowRay.Origin;
 	ray.Direction = randomRayLobe(seed, unitLightNormal, 1, pdf);
 	localContribution *= dot(unitLightNormal, ray.Direction) / pdf;
-	
+	int numEntries = 0;
+
 	// Traverse scene to another surface
 	uint i = 0;
 	RayPayload rayPayload;
@@ -247,6 +248,8 @@ void rayGen()
 		// Beer's law
 		if (isInternal)
 		{
+			if (numEntries <= 0)
+				return;
 			localContribution *= exp((-rayPayload.t) * mat.TransmissiveFilter);
 		}
 		else
@@ -285,7 +288,7 @@ void rayGen()
 				}
 			}
 		}
-		
+
 		// Russian roulette
 		if (++i >= 3)
 		{
@@ -337,9 +340,14 @@ void rayGen()
 			// Transmission
 			float3 dir = refract(ray.Direction, coeff * unitFaceNormal, n1 / n2);
 			if (any(dir))
+			{
 				ray.Direction = dir;
+				numEntries += isInternal ? -1 : 1;
+			}
 			else
+			{
 				ray.Direction = reflect(ray.Direction, coeff * unitFaceNormal);
+			}
 		}
 	}
 }
