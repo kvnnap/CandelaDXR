@@ -19,6 +19,7 @@
 #include "Camera.h"
 
 #include "ImGui/ImGuiSceneNode.h"
+#include "ImGui/ImGuiMaterial.h"
 
 namespace candela::renderer
 {
@@ -56,10 +57,12 @@ namespace candela::renderer
 		wrl::ComPtr<ID3D12DescriptorHeap> pRTVDescriptorHeap;
 		wrl::ComPtr<ID3D12Resource> pRTVBackBuffers[NumBackBuffers];
 		wrl::ComPtr<ID3D12Resource> pMatricesTempBackBuffers[NumBackBuffers];
+		wrl::ComPtr<ID3D12Resource> pMaterialsTempBackBuffers[NumBackBuffers];
 
 		// ImGui
 		wrl::ComPtr<ID3D12DescriptorHeap> pImGuiDescriptorHeap;
 		std::vector<imgui::ImGuiSceneNode> imguiSceneNodes;
+		std::vector<imgui::ImGuiMaterial> imguiMaterials;
 
 		// Constants and integral values
 		UINT rtvDescriptorSize;

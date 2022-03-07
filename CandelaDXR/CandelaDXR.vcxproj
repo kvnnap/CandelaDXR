@@ -190,6 +190,7 @@
     <ClCompile Include="Factory\RendererFactory.cpp" />
     <ClCompile Include="Factory\UniformSamplerFactory.cpp" />
     <ClCompile Include="Factory\VectorFactory.cpp" />
+    <ClCompile Include="ImGui\ImGuiMaterial.cpp" />
     <ClCompile Include="ImGui\ImGuiSceneNode.cpp" />
     <ClCompile Include="ImGui\Backend\imgui_impl_dx12.cpp" />
     <ClCompile Include="ImGui\Backend\imgui_impl_win32.cpp" />
@@ -230,6 +231,7 @@
     <ClInclude Include="Factory\UniformSamplerFactory.h" />
     <ClInclude Include="Factory\VectorFactory.h" />
     <ClInclude Include="Factory\RendererFactory.h" />
+    <ClInclude Include="ImGui\ImGuiMaterial.h" />
     <ClInclude Include="ImGui\ImGuiSceneNode.h" />
     <ClInclude Include="ImGui\Backend\imgui_impl_dx12.h" />
     <ClInclude Include="ImGui\Backend\imgui_impl_win32.h" />
@@ -277,6 +279,8 @@
       <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(OutDir)Shaders/%(Filename).cso</ObjectFileOutput>
       <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)Shaders/%(Filename).cso</ObjectFileOutput>
       <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(OutDir)Shaders/%(Filename).cso</ObjectFileOutput>
+      <EnableDebuggingInformation Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</EnableDebuggingInformation>
+      <EnableDebuggingInformation Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</EnableDebuggingInformation>
     </FxCompile>
     <FxCompile Include="Shader\PixelShader.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>

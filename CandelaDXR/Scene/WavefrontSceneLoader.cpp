@@ -115,7 +115,7 @@ void WavefrontSceneLoader::loadScene()
                 if (!computingNormals)
                 {
                     auto nL = 3 * static_cast<size_t>(normIndex); // Normal Loc
-                    norm[v] = Vector3(attr.vertices[nL], attr.vertices[nL + 1], attr.vertices[nL + 2]);
+                    norm[v] = Vector3(attr.normals[nL], attr.normals[nL + 1], attr.normals[nL + 2]);
                 }
             }
 

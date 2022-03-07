@@ -117,6 +117,26 @@ void candela::scene::Scene::addFace(
 	});
 }
 
+void Scene::recalculateLightsAndFaceAttributes()
+{
+	lights.clear();
+	for (uint32_t i = 0; i < faceAttributes.size(); ++i)
+	{
+		auto& fAttr = faceAttributes[i];
+		const auto& mat = materials[fAttr.MaterialId];
+		if (mat.isEmissive())
+		{
+			fAttr.AreaLightId = lights.size();
+			lights.emplace_back(AreaLight{
+				.Intensity = DirectX::XMVectorSet(1.f, 1.f, 1.f, 1.f),
+				.InstanceIndex = fAttr.InstanceIndex,
+				.PrimitiveId = i,
+				.MaterialId = fAttr.MaterialId
+			});
+		}
+	}
+}
+
 void Scene::addSceneNodeToGroupMapping(const string& sceneNodeName, const string& groupName)
 {
 	if (spanDataMap.find(groupName) == spanDataMap.end())
@@ -124,9 +144,9 @@ void Scene::addSceneNodeToGroupMapping(const string& sceneNodeName, const string
 	sceneGraph.addChild(sceneNodeName, groupName);
 }
 
-bool candela::scene::Material::isEmissive()
+bool candela::scene::Material::isEmissive() const
 {
-	return Emissive.x != 0.f && Emissive.y != 0.f && Emissive.z != 0.f;
+	return Emissive.x != 0.f || Emissive.y != 0.f || Emissive.z != 0.f;
 }
 
 void candela::scene::SceneNode::addChild(const string& nodeName, const string& groupName)
@@ -153,6 +173,7 @@ const vector<int>& Scene::getIndices() const { return indexData; }
 
 const vector<Texture>& Scene::getTextures() const { return textures; }
 const vector<Material>& Scene::getMaterials() const { return materials; }
+vector<Material>& Scene::getMaterials() { return materials; }
 const vector<AreaLight>& Scene::getLights() const { return lights; }
 const vector<FaceAttributes>& Scene::getFaceAttributes() const { return faceAttributes; }
 

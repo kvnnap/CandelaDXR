@@ -60,7 +60,7 @@ namespace candela::scene
 		float RefractiveIndex;
 		float Dissolve;
 
-		bool isEmissive();
+		bool isEmissive() const;
 	};
 
 	class Scene
@@ -77,6 +77,7 @@ namespace candela::scene
 					 const std::array<mathematics::Vector2, 3> &tex, 
 					 const std::array<mathematics::Vector3, 3> &norm, 
 					 std::uint32_t materialId);
+		void recalculateLightsAndFaceAttributes();
 
 		// Scene graph
 		void addSceneNodeToGroupMapping(const std::string& sceneNodeName, const std::string& groupName);
@@ -89,6 +90,7 @@ namespace candela::scene
 
 		const std::vector<Texture>& getTextures() const;
 		const std::vector<Material>& getMaterials() const;
+		std::vector<Material>& getMaterials();
 		const std::vector<AreaLight>& getLights() const;
 		const std::vector<FaceAttributes>& getFaceAttributes() const;
 

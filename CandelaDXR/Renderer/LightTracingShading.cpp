@@ -252,15 +252,10 @@ void LightTracingShading::buildPipeline()
 	rootSignatureManager->addRootSignature("EmptyRootSignature");
 	rootSignatureManager->generateRootSignature("EmptyRootSignature", rendererResources->pDevice);
 
-	// Hit Group Signature
-	rootSignatureManager->addParametersToRootSignature("HitGroupSignature", { "BVHDescTable", "ConstBuff", "verts", "texVerts", "normals", "indices", "matrices", "faceAttributes", "materials", "lights"});
-	rootSignatureManager->setSamplerForRootSignature("HitGroupSignature", sampler);
-	rootSignatureManager->generateRootSignature("HitGroupSignature", rendererResources->pDevice);
-
 	// Sixth - Associate the empty local root signature with the miss programs
 	shadingTable->addProgram(L"miss", ShadingRecordType::Miss, "EmptyRootSignature");
 	shadingTable->addProgram(L"shadowMiss", ShadingRecordType::Miss, "EmptyRootSignature");
-	shadingTable->addProgram(L"HitGroup", ShadingRecordType::HitGroup, "HitGroupSignature");
+	shadingTable->addProgram(L"HitGroup", ShadingRecordType::HitGroup, "EmptyRootSignature");
 
 	// Generate/add subobjects
 	rootSignatureManager->addRootSignaturesToSubObject(stateObjectDesc);
@@ -390,19 +385,7 @@ void LightTracingShading::createShaderTable(wrl::ComPtr<ID3D12GraphicsCommandLis
 	shadingTable->setInputForViewParameter(L"rayGen", "faceAttributes", rendererResources->faceAttributeBuffer);
 	shadingTable->setInputForViewParameter(L"rayGen", "materials", rendererResources->materialBuffer);
 	shadingTable->setInputForViewParameter(L"rayGen", "lights", rendererResources->lightBuffer);
-
-	// Link HitGroup - Bindings for 'chs'
-	shadingTable->setInputForDescriptorTableParameter(L"HitGroup", "BVHDescTable", "BVH1");
-	shadingTable->setInputForViewParameter(L"HitGroup", "ConstBuff", constantBuffer);
-	shadingTable->setInputForViewParameter(L"HitGroup", "verts", rendererResources->sceneBuffer, rendererResources->scene->getVerticesOffset());
-	shadingTable->setInputForViewParameter(L"HitGroup", "texVerts", rendererResources->sceneBuffer, rendererResources->scene->getTextureCoordsOffset());
-	shadingTable->setInputForViewParameter(L"HitGroup", "normals", rendererResources->sceneBuffer, rendererResources->scene->getNormalsOffset());
-	shadingTable->setInputForViewParameter(L"HitGroup", "indices", rendererResources->sceneBuffer, rendererResources->scene->getIndicesOffset());
-	shadingTable->setInputForViewParameter(L"HitGroup", "matrices", rendererResources->matrices);
-	shadingTable->setInputForViewParameter(L"HitGroup", "faceAttributes", rendererResources->faceAttributeBuffer);
-	shadingTable->setInputForViewParameter(L"HitGroup", "materials", rendererResources->materialBuffer);
-	shadingTable->setInputForViewParameter(L"HitGroup", "lights", rendererResources->lightBuffer);
-
+	
 	// Generate
 	shadingTable->generateShadingTable(rendererResources->pDevice, commandList, stateObject, tempResource);
 }

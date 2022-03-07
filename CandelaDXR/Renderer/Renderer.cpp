@@ -121,6 +121,11 @@ void Renderer::init()
 	window->addWndProcCallback(ImGui_ImplWin32_WndProcHandler);
 	for (auto& child : scene->getSceneGraph().Children)
 		imguiSceneNodes.emplace_back(child, *scene);
+	for (size_t i = 0; i < scene->getMaterials().size(); ++i)
+	{
+		auto& mat = scene->getMaterials()[i];
+		imguiMaterials.emplace_back(mat, i);
+	}
 
 	// Prepare struct to share with drawables
 	rendererResources = RendererResources
@@ -173,10 +178,22 @@ void Renderer::renderFrame()
 	}
 	ImGui::End();
 
+	ImGui::Begin("Materials");
+	bool materialChanged = false;
+	for (auto& imguiMaterial : imguiMaterials)
+	{
+		imguiMaterial.drawUi();
+		materialChanged |= imguiMaterial.hasChanged();
+	}
+	ImGui::End();
+
 	ImGui::Render();
 
+	constexpr auto flags = D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+
 	// Update Transforms
-	if (transformChanged) {
+	if (transformChanged)
+	{
 		auto gMatrices = getMatrices();
 		DXUtil::updateDataInDefaultHeap(
 			pDevice,
@@ -185,15 +202,23 @@ void Renderer::renderFrame()
 			pMatricesTempBackBuffers[currentBackBufferIndex],
 			getMatrices().data(),
 			sizeof(decltype(gMatrices)::value_type) * gMatrices.size(),
-			D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, 
-			D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+			flags,
+			flags);
+	}
+
+	// Update material, face attributes and lights
+	if (materialChanged)
+	{
+		DXUtil::updateDataInDefaultHeap(pDevice, pCurrentCommandList, materialBuffer,
+			pMaterialsTempBackBuffers[currentBackBufferIndex], scene->getMaterials().data(), 
+			sizeof(Material) * scene->getMaterials().size(), flags, flags);
 	}
 
 	// Draw
 	updateCamera();
 	for (IDrawable* drawable : drawables)
 	{
-		if (transformChanged)
+		if (transformChanged || materialChanged)
 			drawable->onChange(pCurrentCommandList, currentBackBufferIndex);
 		drawable->draw(pCurrentCommandList, currentBackBufferIndex);
 	}
