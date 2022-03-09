@@ -1,6 +1,7 @@
 #include <vector>
 #include <stdexcept>
 #include <cstdint>
+#include <filesystem>
 
 #include "tiny_obj_loader.h"
 
@@ -11,8 +12,10 @@ using std::string;
 using std::vector;
 using std::runtime_error;
 using std::int32_t;
+using std::uint32_t;
 using std::size_t;
 using std::array;
+using std::filesystem::path;
 
 using tinyobj::attrib_t;
 using tinyobj::material_t;
@@ -30,6 +33,12 @@ WavefrontSceneLoader::WavefrontSceneLoader(Scene* scene)
 {
 }
 
+static path getConcatPath(path base, path other)
+{
+    base /= other;
+    return base;
+}
+
 void WavefrontSceneLoader::loadScene()
 {
     const string noMaterialKey = "__nomat__";
@@ -40,11 +49,9 @@ void WavefrontSceneLoader::loadScene()
     vector<material_t> materials;
     string warn;
     string err;
-    string baseDir;
-    if (filePath.find_last_of("/\\") != std::string::npos)
-        baseDir = filePath.substr(0, filePath.find_last_of("/\\"));
-
-    LoadObj(&attr, &shapes, &materials, &warn, &err, filePath.c_str(), baseDir.c_str());
+    uint32_t baseMaterialId = static_cast<uint32_t>(scene->getMaterials().size());
+    path basePath = path(filePath).parent_path();
+    LoadObj(&attr, &shapes, &materials, &warn, &err, filePath.c_str(), basePath.string().c_str());
 
     // If tinyobj fails, throw.
     if (!err.empty())
@@ -56,9 +63,9 @@ void WavefrontSceneLoader::loadScene()
         int32_t currentDiffTexId = -1;
         int32_t currentSpecTexId = -1;
         if (!tinyMat.diffuse_texname.empty())
-            currentDiffTexId = static_cast<int>(scene->addTexture(tinyMat.diffuse_texname));
+            currentDiffTexId = static_cast<int>(scene->addTexture(getConcatPath(basePath, tinyMat.diffuse_texname).string()));
         if (!tinyMat.specular_texname.empty())
-            currentSpecTexId = static_cast<int>(scene->addTexture(tinyMat.specular_texname));
+            currentSpecTexId = static_cast<int>(scene->addTexture(getConcatPath(basePath, tinyMat.specular_texname).string()));
         
         // Materials point to textures using the identifier
         scene->addMaterial(Material{
@@ -106,7 +113,7 @@ void WavefrontSceneLoader::loadScene()
                 if (texIndex != -1)
                 {
                     auto tL = 2 * static_cast<size_t>(texIndex);
-                    tex[v] = Vector2(attr.texcoords[tL], attr.texcoords[tL + 1]);
+                    tex[v] = Vector2(attr.texcoords[tL], 1.f - attr.texcoords[tL + 1]);
                 }
 
                 // Norm Coord
@@ -130,7 +137,7 @@ void WavefrontSceneLoader::loadScene()
 
             // Add face to the scene. Every face is made up of a material
             const auto materialId = shape.mesh.material_ids[faceNum];
-            scene->addFace(pos, tex, norm, static_cast<uint32_t>(materialId));
+            scene->addFace(pos, tex, norm, baseMaterialId + static_cast<uint32_t>(materialId));
             index += vertexCountForFace;
             ++faceNum;
         }

@@ -2,6 +2,8 @@
 
 #include "Scene.h"
 
+#include "Exception/Exception.h"
+
 using std::array;
 using std::vector;
 using std::string;
@@ -42,7 +44,7 @@ void Scene::startGroup(const string& name)
 	if (!currentGroupName.empty())
 		endGroup();
 	if (spanDataMap.find(name) != spanDataMap.end())
-		throw runtime_error("Scene group " + string(name) + " already exists");
+		ThrowException("Scene group " + string(name) + " already exists");
 	currentGroupName = name;
 	spanDataMap.insert({ name, { name, indexData.size(), 0 } });
 }
@@ -126,7 +128,7 @@ void Scene::recalculateLightsAndFaceAttributes()
 		const auto& mat = materials[fAttr.MaterialId];
 		if (mat.isEmissive())
 		{
-			fAttr.AreaLightId = lights.size();
+			fAttr.AreaLightId = static_cast<uint32_t>(lights.size());
 			lights.emplace_back(AreaLight{
 				.Intensity = DirectX::XMVectorSet(1.f, 1.f, 1.f, 1.f),
 				.InstanceIndex = fAttr.InstanceIndex,
