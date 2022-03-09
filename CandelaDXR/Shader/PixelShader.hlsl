@@ -25,18 +25,22 @@ cbuffer CB2 : register(b1)
 StructuredBuffer<Material> materials : register(t0);
 StructuredBuffer<FaceAttributes> faceAttributes : register(t1);
 StructuredBuffer<AreaLight> lights : register(t2);
-
 StructuredBuffer<float3> verts : register(t3);
 StructuredBuffer<float2> texVerts : register(t4);
 StructuredBuffer<float3> normals : register(t5);
 StructuredBuffer<uint3> indices : register(t6);
 StructuredBuffer<float4x3> matrices : register(t7);
+Texture2D<float3> gTextures[]: register(t8);
+
+// Sampler
+SamplerState gSampler : register(s0);
 
 struct MyInput
 {
 	uint id : SV_PrimitiveID;
 	float3 position : VS_POSITION;
 	float3 normal : VS_NORMAL;
+	float2 texUV : VS_TEXUV;
 };
 
 float4 main(MyInput myInput) : SV_TARGET
@@ -69,7 +73,10 @@ float4 main(MyInput myInput) : SV_TARGET
 			continue;
 
 		float len = length(shadowRay);
-		total += lightMat.Emissive * mat.Diffuse * primDot * lightDot / (len * len * PI);
+		float3 diffTex = float3(1.f, 1.f, 1.f);
+		if (mat.DiffuseTextureId >= 0)
+			diffTex = gTextures[mat.DiffuseTextureId].SampleLevel(gSampler, myInput.texUV, 0);
+		total += lightMat.Emissive * mat.Diffuse * diffTex * primDot * lightDot / (len * len * PI);
 	}
 
 	return float4(linearToSrgb(toneMap(mat.Emissive + total)), 1.0f);

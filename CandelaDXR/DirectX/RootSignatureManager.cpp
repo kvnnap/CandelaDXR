@@ -61,7 +61,7 @@ void RootSignatureManager::addParametersToRootSignature(const std::string& destS
 	v.insert(v.end(), parameterNames.begin(), parameterNames.end());
 }
 
-Microsoft::WRL::ComPtr<ID3D12RootSignature> RootSignatureManager::generateRootSignature(const string& rootSigatureName, Microsoft::WRL::ComPtr<ID3D12Device> pDevice)
+Microsoft::WRL::ComPtr<ID3D12RootSignature> RootSignatureManager::generateRootSignature(const string& rootSigatureName, Microsoft::WRL::ComPtr<ID3D12Device> pDevice, D3D12_ROOT_SIGNATURE_FLAGS rootSignatureFlags)
 {
 	auto& customRootDesc = rootSignatures.at(rootSigatureName);
 
@@ -75,7 +75,7 @@ Microsoft::WRL::ComPtr<ID3D12RootSignature> RootSignatureManager::generateRootSi
 		localParamters.data(),
 		customRootDesc.samplerSet ? 1 : 0,
 		customRootDesc.samplerSet ? &customRootDesc.sampler : nullptr,
-		D3D12_ROOT_SIGNATURE_FLAG_LOCAL_ROOT_SIGNATURE);
+		rootSignatureFlags);
 
 	return customRootDesc.compiledSignature = DXUtil::createRootSignature(pDevice, rootSignatureDesc);
 }

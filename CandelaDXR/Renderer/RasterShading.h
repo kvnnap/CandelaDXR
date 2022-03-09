@@ -5,8 +5,11 @@
 #include <wrl/client.h>
 
 #include <vector>
+#include <memory>
 
 #include "DirectX/CommandQueue.h"
+#include "DirectX/RootSignatureManager.h"
+#include "DirectX/ShadingTable.h"
 #include "Scene/Scene.h"
 
 #include "Mathematics/Types.h"
@@ -48,8 +51,11 @@ namespace candela::renderer
 		wrl::ComPtr<ID3D12DescriptorHeap> pDepthDescriptorHeap;
 		wrl::ComPtr<ID3D12Resource> constantBuffer;
 		std::vector<wrl::ComPtr<ID3D12Resource>> constantTempBuffer;
-		wrl::ComPtr<ID3D12RootSignature> rootSignature;
 		wrl::ComPtr<ID3D12PipelineState> pipelineState;
+
+		std::shared_ptr<directx::RootSignatureManager> rootSignatureManager;
+		wrl::ComPtr<ID3D12DescriptorHeap> rootDescriptorHeap;
+		wrl::ComPtr<ID3D12RootSignature> rootSignature;
 
 	};
 }
