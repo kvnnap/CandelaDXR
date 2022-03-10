@@ -17,6 +17,7 @@ using candela::scene::Material;
 using candela::scene::Scene;
 using candela::scene::SceneNode;
 using candela::scene::AreaLight;
+using candela::scene::SpecularPrimitive;
 using candela::scene::FaceAttributes;
 using candela::scene::IndexedSpan;
 
@@ -102,7 +103,16 @@ void candela::scene::Scene::addFace(
 	if (materials[materialId].isEmissive())
 	{
 		lights.emplace_back(AreaLight{
-			.Intensity = DirectX::XMVectorSet(1.f, 1.f, 1.f, 1.f),
+			.InstanceIndex = static_cast<uint32_t>(spanDataMap.size() - 1),
+			.PrimitiveId = static_cast<uint32_t>(indexData.size() / 3 - 1),
+			.MaterialId = materialId
+		});
+	}
+
+	// If specular?
+	if (materials[materialId].isSpecular())
+	{
+		speculars.emplace_back(SpecularPrimitive{
 			.InstanceIndex = static_cast<uint32_t>(spanDataMap.size() - 1),
 			.PrimitiveId = static_cast<uint32_t>(indexData.size() / 3 - 1),
 			.MaterialId = materialId
@@ -117,18 +127,27 @@ void candela::scene::Scene::addFace(
 	});
 }
 
+// This function should be called when changes in lights and speculars are known to occur
 void Scene::recalculateLightsAndFaceAttributes()
 {
 	lights.clear();
+	speculars.clear();
 	for (uint32_t i = 0; i < faceAttributes.size(); ++i)
 	{
 		auto& fAttr = faceAttributes[i];
 		const auto& mat = materials[fAttr.MaterialId];
 		if (mat.isEmissive())
 		{
-			fAttr.AreaLightId = lights.size();
+			fAttr.AreaLightId = static_cast<uint32_t>(lights.size());
 			lights.emplace_back(AreaLight{
-				.Intensity = DirectX::XMVectorSet(1.f, 1.f, 1.f, 1.f),
+				.InstanceIndex = fAttr.InstanceIndex,
+				.PrimitiveId = i,
+				.MaterialId = fAttr.MaterialId
+			});
+		}
+		if (mat.isSpecular())
+		{
+			speculars.emplace_back(SpecularPrimitive{
 				.InstanceIndex = fAttr.InstanceIndex,
 				.PrimitiveId = i,
 				.MaterialId = fAttr.MaterialId
@@ -144,12 +163,17 @@ void Scene::addSceneNodeToGroupMapping(const string& sceneNodeName, const string
 	sceneGraph.addChild(sceneNodeName, groupName);
 }
 
-bool candela::scene::Material::isEmissive() const
+bool Material::isEmissive() const
 {
 	return Emissive.x != 0.f || Emissive.y != 0.f || Emissive.z != 0.f;
 }
 
-void candela::scene::SceneNode::addChild(const string& nodeName, const string& groupName)
+bool Material::isSpecular() const
+{
+	return Dissolve < 1.f;
+}
+
+void SceneNode::addChild(const string& nodeName, const string& groupName)
 {
 	// Or throw
 	for (auto& child : Children)
@@ -175,15 +199,8 @@ const vector<Texture>& Scene::getTextures() const { return textures; }
 const vector<Material>& Scene::getMaterials() const { return materials; }
 vector<Material>& Scene::getMaterials() { return materials; }
 const vector<AreaLight>& Scene::getLights() const { return lights; }
+const vector<SpecularPrimitive>& Scene::getSpeculars() const { return speculars; }
 const vector<FaceAttributes>& Scene::getFaceAttributes() const { return faceAttributes; }
-
-//vector<const IndexedSpan*> Scene::getMeshIndexedSpans() const
-//{
-//	vector<const IndexedSpan*> list;
-//	for (auto& item : spanDataMap)
-//		list.push_back(&item.second);
-//	return list;
-//}
 
 const IndexedSpan& Scene::getMeshIndexedSpan(const string& groupName) const
 {

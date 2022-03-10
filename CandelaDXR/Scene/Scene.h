@@ -41,8 +41,15 @@ namespace candela::scene
 		std::uint32_t InstanceIndex;
 	};
 
-	struct alignas(16) AreaLight {
-		DirectX::XMVECTOR Intensity;
+	struct alignas(16) AreaLight
+	{
+		std::uint32_t InstanceIndex;
+		std::uint32_t PrimitiveId;
+		std::uint32_t MaterialId;
+	};
+
+	struct alignas(16) SpecularPrimitive
+	{
 		std::uint32_t InstanceIndex;
 		std::uint32_t PrimitiveId;
 		std::uint32_t MaterialId;
@@ -61,6 +68,7 @@ namespace candela::scene
 		float Dissolve;
 
 		bool isEmissive() const;
+		bool isSpecular() const;
 	};
 
 	class Scene
@@ -92,6 +100,7 @@ namespace candela::scene
 		const std::vector<Material>& getMaterials() const;
 		std::vector<Material>& getMaterials();
 		const std::vector<AreaLight>& getLights() const;
+		const std::vector<SpecularPrimitive>& getSpeculars() const;
 		const std::vector<FaceAttributes>& getFaceAttributes() const;
 
 		const IndexedSpan& getMeshIndexedSpan(const std::string& groupName) const;
@@ -115,6 +124,7 @@ namespace candela::scene
 		std::vector<Texture> textures;
 		std::vector<Material> materials;
 		std::vector<AreaLight> lights;
+		std::vector<SpecularPrimitive> speculars;
 
 		// These contain the vertices. The 3 arrays must all be the same size
 		// Storing separately vs interleaved. Trying separate first.

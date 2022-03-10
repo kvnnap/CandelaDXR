@@ -34,6 +34,7 @@ using candela::scene::Scene;
 using candela::scene::Material;
 using candela::scene::FaceAttributes;
 using candela::scene::AreaLight;
+using candela::scene::SpecularPrimitive;
 using candela::renderer::Renderer;
 using candela::renderer::Camera;
 using candela::renderer::IDrawable;
@@ -135,6 +136,7 @@ void Renderer::init()
 		.materialBuffer = materialBuffer,
 		.faceAttributeBuffer = faceAttributeBuffer,
 		.lightBuffer = lightBuffer,
+		.specularBuffer = specularBuffer,
 		.matrices = matrices,
 		.textures = textures,
 		.pRTVDescriptorHeap = pRTVDescriptorHeap,
@@ -284,6 +286,11 @@ void Renderer::initSceneResources()
 	wrl::ComPtr<ID3D12Resource> tempLight;
 	lightBuffer = DXUtil::uploadDataToDefaultHeap(pDevice, pCurrentCommandList, tempLight,
 		scene->getLights().data(), sizeof(AreaLight) * scene->getLights().size(),
+		D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+
+	wrl::ComPtr<ID3D12Resource> tempSpec;
+	specularBuffer = DXUtil::uploadDataToDefaultHeap(pDevice, pCurrentCommandList, tempSpec,
+		scene->getSpeculars().data(), sizeof(SpecularPrimitive) * scene->getSpeculars().size(),
 		D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
 	// Copy Matrices

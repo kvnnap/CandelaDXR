@@ -8,7 +8,14 @@ struct FaceAttributes
 
 struct AreaLight
 {
-	float4 Intensity;
+	uint InstanceIndex;
+	uint PrimitiveId;
+	uint MaterialId;
+	uint padding;
+};
+
+struct SpecularPrimitive
+{
 	uint InstanceIndex;
 	uint PrimitiveId;
 	uint MaterialId;

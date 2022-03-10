@@ -62,8 +62,9 @@ namespace candela::renderer
 			DirectX::XMVECTOR plane; // x, y and z (distance from point to plane)
 			std::uint32_t seeds[2];
 			std::uint32_t numLights;
-			std::uint32_t clear;
+			std::uint32_t numSpeculars;
 			std::uint32_t frameNumber;
+			std::uint32_t specularOnly;
 		} constBuffer;
 		std::vector<wrl::ComPtr<ID3D12Resource>> constantTempBuffer;
 		wrl::ComPtr<ID3D12Resource> outputTexture;

@@ -10,8 +10,9 @@ struct ConstBuff
 	float3 plane; // sensor dimensions (z contains distance to sensor plane)
 	uint2 seeds;
 	uint numLights;
-	uint clear;
+	uint numSpeculars;
 	uint frameNumber;
+	uint specularOnly;
 };
 
 struct RayPayload
@@ -41,11 +42,12 @@ StructuredBuffer<float4x3> matrices : register(t4);
 StructuredBuffer<FaceAttributes> faceAttributes : register(t5);
 StructuredBuffer<Material> materials : register(t6);
 StructuredBuffer<AreaLight> lights : register(t7);
+StructuredBuffer<SpecularPrimitive> speculars : register(t8);
 
-RaytracingAccelerationStructure gRtScene : register(t8);
+RaytracingAccelerationStructure gRtScene : register(t9);
 
-Texture2D<float> gIrrToRad : register(t9);
-Texture2D<float3> gTextures[]: register(t10);
+Texture2D<float> gIrrToRad : register(t10);
+Texture2D<float3> gTextures[]: register(t11);
 
 // Sampler
 SamplerState gSampler : register(s0);
@@ -163,6 +165,9 @@ void rayGen()
 	if (lightMat.EmissiveTextureId >= 0)
 		localContribution *= gTextures[lightMat.EmissiveTextureId].SampleLevel(gSampler, getTextureLocation(lightBary, lightIndexId), 0);
 
+	// First check if light normal is the right way round wrt camera
+	const float3 unitLightNormal = getUnitNormal(lightBary, lightIndexId, areaLight.InstanceIndex);
+
 	// Construct ray from light source to camera origin
 	RayDesc shadowRay;
 	shadowRay.TMin = 0.001f;
@@ -172,17 +177,13 @@ void rayGen()
 	float invShadowDistance = 1.f / length(shadowRay.Direction);
 	float3 unitShadowRayDirection = shadowRay.Direction * invShadowDistance;
 
-	// First check if light normal is the right way round wrt camera
-	float3 unitLightNormal = getUnitNormal(lightBary, lightIndexId, areaLight.InstanceIndex);
-	
-
 	uint2 pixel = uint2(0, 0);
 	float lightDot = dot(unitShadowRayDirection, unitLightNormal);
 	float cameraDot = -dot(unitShadowRayDirection, cBuffer.w);
 
 	ShadowPayload shadowPayload;
 
-	if (lightDot > 0.f && cameraDot > 0.f && getPixel(shadowRay, launchDim, pixel))
+	if (cBuffer.specularOnly == 0 && lightDot > 0.f && cameraDot > 0.f && getPixel(shadowRay, launchDim, pixel))
 	{
 		// Add direct light contribution
 		shadowPayload.occluded = true;
@@ -212,8 +213,44 @@ void rayGen()
 	ray.TMin = 0.001f;
 	ray.TMax = 3.402823e+38;
 	ray.Origin = shadowRay.Origin;
-	ray.Direction = randomRayLobe(seed, unitLightNormal, 1, pdf);
-	localContribution *= dot(unitLightNormal, ray.Direction) / pdf;
+
+	if (cBuffer.specularOnly)
+	{
+		if (cBuffer.numSpeculars == 0)
+			return;
+
+		// Choose a primitive
+		const uint specularIndex = chooseInRange(seed, 0, cBuffer.numSpeculars - 1);
+		SpecularPrimitive specularPrimitive = speculars[specularIndex];
+		const uint specularIndexId = specularPrimitive.PrimitiveId * 3;
+
+		// Compute specular primitive vertices
+		float3 lv[3];
+		getVertexWorldCoordinates(lv, specularIndexId, specularPrimitive.InstanceIndex);
+
+		// Generate a point on the specular primitive
+		float2 specularBary;
+		const float3 pointOnSpecular = samplePointOnTriangle(seed, lv, specularBary);
+
+		ray.Direction = pointOnSpecular - ray.Origin;
+		float invDistance = 1.f / length(ray.Direction);
+		ray.Direction *= invDistance; // Get Unit Direction
+
+		float3 specularUnitNormal = getUnitNormal(specularBary, specularIndexId, specularPrimitive.InstanceIndex);
+		float lightDot = dot(unitLightNormal, ray.Direction);
+		float causticsDot = -dot(specularUnitNormal, ray.Direction);
+
+		if (lightDot < 0.f || causticsDot < 0.f)
+			return;
+		localContribution *= getTriangleArea(lv) * cBuffer.numSpeculars * lightDot * causticsDot * invDistance * invDistance;
+	}
+	else
+	{
+		ray.Direction = randomRayLobe(seed, unitLightNormal, 1, pdf);
+		localContribution *= dot(unitLightNormal, ray.Direction) / pdf;
+	}
+
+	// Number of entries in transmissive materials
 	int numEntries = 0;
 
 	// Traverse scene to another surface
