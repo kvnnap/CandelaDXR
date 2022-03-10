@@ -183,7 +183,7 @@ void rayGen()
 
 	ShadowPayload shadowPayload;
 
-	if (cBuffer.specularOnly == 0 && lightDot > 0.f && cameraDot > 0.f && getPixel(shadowRay, launchDim, pixel))
+	if (lightDot > 0.f && cameraDot > 0.f && getPixel(shadowRay, launchDim, pixel))
 	{
 		// Add direct light contribution
 		shadowPayload.occluded = true;
@@ -214,41 +214,8 @@ void rayGen()
 	ray.TMax = 3.402823e+38;
 	ray.Origin = shadowRay.Origin;
 
-	if (cBuffer.specularOnly)
-	{
-		if (cBuffer.numSpeculars == 0)
-			return;
-
-		// Choose a primitive
-		const uint specularIndex = chooseInRange(seed, 0, cBuffer.numSpeculars - 1);
-		SpecularPrimitive specularPrimitive = speculars[specularIndex];
-		const uint specularIndexId = specularPrimitive.PrimitiveId * 3;
-
-		// Compute specular primitive vertices
-		float3 lv[3];
-		getVertexWorldCoordinates(lv, specularIndexId, specularPrimitive.InstanceIndex);
-
-		// Generate a point on the specular primitive
-		float2 specularBary;
-		const float3 pointOnSpecular = samplePointOnTriangle(seed, lv, specularBary);
-
-		ray.Direction = pointOnSpecular - ray.Origin;
-		float invDistance = 1.f / length(ray.Direction);
-		ray.Direction *= invDistance; // Get Unit Direction
-
-		float3 specularUnitNormal = getUnitNormal(specularBary, specularIndexId, specularPrimitive.InstanceIndex);
-		float lightDot = dot(unitLightNormal, ray.Direction);
-		float causticsDot = -dot(specularUnitNormal, ray.Direction);
-
-		if (lightDot < 0.f || causticsDot < 0.f)
-			return;
-		localContribution *= getTriangleArea(lv) * cBuffer.numSpeculars * lightDot * causticsDot * invDistance * invDistance;
-	}
-	else
-	{
-		ray.Direction = randomRayLobe(seed, unitLightNormal, 1, pdf);
-		localContribution *= dot(unitLightNormal, ray.Direction) / pdf;
-	}
+	ray.Direction = randomRayLobe(seed, unitLightNormal, 1, pdf);
+	localContribution *= dot(unitLightNormal, ray.Direction) / pdf;
 
 	// Number of entries in transmissive materials
 	int numEntries = 0;
