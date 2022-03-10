@@ -1,4 +1,5 @@
 #include <d3dcompiler.h>
+#include <vector>
 
 #include "RasterShading.h"
 #include "DirectX/d3dx12.h"
@@ -14,8 +15,12 @@ using candela::mathematics::UVector2;
 using candela::renderer::RasterShading;
 using candela::renderer::Camera;
 using candela::directx::DXUtil;
+using candela::directx::RootSignatureManager;
+using candela::directx::DescriptorHeap;
 using DirectX::XMMATRIX;
+using std::make_shared;
 using std::uint32_t;
+using std::vector;
 using Microsoft::WRL::ComPtr;
 
 RasterShading::RasterShading()
@@ -70,16 +75,6 @@ void candela::renderer::RasterShading::init(RendererResources* rRes)
 	dsvDescriptorSize = rRes->pDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
 	pDepthBuffers = DXUtil::createDepthStencilView(rRes->pDevice, pDepthDescriptorHeap, rRes->winDimensions.x, rRes->winDimensions.y, rRes->numBackBuffers);
 
-	//D3D12_INPUT_ELEMENT_DESC ied[] = {};
-
-	// Root signature - https://docs.microsoft.com/en-us/windows/desktop/direct3d12/root-signatures-overview
-	D3D12_FEATURE_DATA_ROOT_SIGNATURE featureData = {};
-	featureData.HighestVersion = D3D_ROOT_SIGNATURE_VERSION_1_1;
-	if (FAILED(rRes->pDevice->CheckFeatureSupport(D3D12_FEATURE_ROOT_SIGNATURE, &featureData, sizeof(featureData))))
-	{
-		featureData.HighestVersion = D3D_ROOT_SIGNATURE_VERSION_1_0;
-	}
-
 	// Allow input layout and deny unnecessary access to certain pipeline stages.
 	D3D12_ROOT_SIGNATURE_FLAGS rootSignatureFlags =
 		D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT
@@ -89,31 +84,46 @@ void candela::renderer::RasterShading::init(RendererResources* rRes)
 		//| D3D12_ROOT_SIGNATURE_FLAG_DENY_PIXEL_SHADER_ROOT_ACCESS
 		;
 
-	// A single 32-bit constant root parameter that is used by the vertex shader. (CAMERA)
-	CD3DX12_ROOT_PARAMETER1 rootParameters[10] = {};
-	//rootParameters[0].InitAsConstants(sizeof(XMMATRIX) / 4, 0, 0, D3D12_SHADER_VISIBILITY_VERTEX);
-	rootParameters[0].InitAsConstantBufferView(0);
-	rootParameters[1].InitAsShaderResourceView(0);
-	rootParameters[2].InitAsShaderResourceView(1);
-	rootParameters[3].InitAsShaderResourceView(2);
-	rootParameters[4].InitAsShaderResourceView(3);
-	rootParameters[5].InitAsShaderResourceView(4);
-	rootParameters[6].InitAsShaderResourceView(5);
-	rootParameters[7].InitAsShaderResourceView(6);
-	rootParameters[8].InitAsShaderResourceView(7);
-	rootParameters[9].InitAsConstants(2, 1);
+	D3D12_STATIC_SAMPLER_DESC sampler = {};
+	sampler.Filter = D3D12_FILTER_MIN_MAG_MIP_POINT;
+	sampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+	sampler.AddressV = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+	sampler.AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
+	sampler.ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER;
+	sampler.BorderColor = D3D12_STATIC_BORDER_COLOR_TRANSPARENT_BLACK;
+	sampler.MinLOD = 0.0f;
+	sampler.MaxLOD = D3D12_FLOAT32_MAX;
+	sampler.ShaderRegister = 0;
+	sampler.RegisterSpace = 0;
+	sampler.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+	CD3DX12_ROOT_PARAMETER1 param;
+	rootSignatureManager = make_shared<RootSignatureManager>();
+	param.InitAsShaderResourceView(0u); rootSignatureManager->setParameter("Material", param);
+	param.InitAsShaderResourceView(1u); rootSignatureManager->setParameter("Face", param);
+	param.InitAsShaderResourceView(2u); rootSignatureManager->setParameter("Light", param);
+	param.InitAsShaderResourceView(3u); rootSignatureManager->setParameter("Vertices", param);
+	param.InitAsShaderResourceView(4u); rootSignatureManager->setParameter("TexUV", param);
+	param.InitAsShaderResourceView(5u); rootSignatureManager->setParameter("Normals", param);
+	param.InitAsShaderResourceView(6u); rootSignatureManager->setParameter("Indices", param);
+	param.InitAsShaderResourceView(7u); rootSignatureManager->setParameter("Matrices", param);
+	rootSignatureManager->addDescriptorRange("Textures", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, static_cast<uint32_t>(rendererResources->textures.size()), 8u)); // gIrrToRad
+	rootSignatureManager->setDescriptorTableParameter("TexturesDescTable", "Textures");
+	param.InitAsConstantBufferView(0u); rootSignatureManager->setParameter("CBV", param);
+	param.InitAsConstants(2u, 1u); rootSignatureManager->setParameter("Constants", param);
+	rootSignatureManager->addParametersToRootSignature("RasterRootSignature", { "CBV", "Constants", "Material", "Face", "Light", "Vertices", "TexUV", "Normals", "Indices", "Matrices", "TexturesDescTable"});
+	rootSignatureManager->setSamplerForRootSignature("RasterRootSignature", sampler);
+	rootSignature = rootSignatureManager->generateRootSignature("RasterRootSignature", rendererResources->pDevice, rootSignatureFlags);
 
-	CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC rootSignatureDescription;
-	rootSignatureDescription.Init_1_1(_countof(rootParameters), rootParameters, 0, nullptr, rootSignatureFlags);
+	auto descHeapManager = DescriptorHeap(rootSignatureManager, "TexturesDescTable", "Textures1", rendererResources->pDevice);
+	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+	srvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+	srvDesc.Texture2D.MipLevels = 1;
+	for (const auto& texture : rendererResources->textures)
+		descHeapManager.setSRV(0, srvDesc, rendererResources->pDevice, texture);
+	rootDescriptorHeap = descHeapManager.getDescriptorHeap();
 
-	// Serialize the root signature.
-	wrl::ComPtr<ID3DBlob> rootSignatureBlob;
-	wrl::ComPtr<ID3DBlob> errorBlob;
-	GFXTHROWIFFAILED(D3DX12SerializeVersionedRootSignature(&rootSignatureDescription,
-		featureData.HighestVersion, &rootSignatureBlob, &errorBlob));
-	// Create the root signature.
-	GFXTHROWIFFAILED(rRes->pDevice->CreateRootSignature(0, rootSignatureBlob->GetBufferPointer(),
-		rootSignatureBlob->GetBufferSize(), IID_PPV_ARGS(&rootSignature)));
 
 	// Setup pipeline - TYPE info is contained within each property in the struct!
 	struct PipelineStateStream
@@ -200,14 +210,16 @@ void RasterShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandL
 		D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER,
 		D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
 	pCurrentCommandList->SetGraphicsRootConstantBufferView(0u, constantBuffer->GetGPUVirtualAddress()); // Const buff (includes Cam)
-	pCurrentCommandList->SetGraphicsRootShaderResourceView(1u, rendererResources->materialBuffer->GetGPUVirtualAddress());  // Material
-	pCurrentCommandList->SetGraphicsRootShaderResourceView(2u, rendererResources->faceAttributeBuffer->GetGPUVirtualAddress());  // Face
-	pCurrentCommandList->SetGraphicsRootShaderResourceView(3u, rendererResources->lightBuffer->GetGPUVirtualAddress());  // Light
-	pCurrentCommandList->SetGraphicsRootShaderResourceView(4u, bufferViews[0].BufferLocation);  // Vertices
-	pCurrentCommandList->SetGraphicsRootShaderResourceView(5u, bufferViews[1].BufferLocation);  // Tex
-	pCurrentCommandList->SetGraphicsRootShaderResourceView(6u, bufferViews[2].BufferLocation);  // Normals
-	pCurrentCommandList->SetGraphicsRootShaderResourceView(7u, indexView.BufferLocation);  // Indices
-	pCurrentCommandList->SetGraphicsRootShaderResourceView(8u, rendererResources->matrices->GetGPUVirtualAddress());  // Matrices
+	pCurrentCommandList->SetGraphicsRootShaderResourceView(2u, rendererResources->materialBuffer->GetGPUVirtualAddress());  // Material
+	pCurrentCommandList->SetGraphicsRootShaderResourceView(3u, rendererResources->faceAttributeBuffer->GetGPUVirtualAddress());  // Face
+	pCurrentCommandList->SetGraphicsRootShaderResourceView(4u, rendererResources->lightBuffer->GetGPUVirtualAddress());  // Light
+	pCurrentCommandList->SetGraphicsRootShaderResourceView(5u, bufferViews[0].BufferLocation);  // Vertices
+	pCurrentCommandList->SetGraphicsRootShaderResourceView(6u, bufferViews[1].BufferLocation);  // Tex
+	pCurrentCommandList->SetGraphicsRootShaderResourceView(7u, bufferViews[2].BufferLocation);  // Normals
+	pCurrentCommandList->SetGraphicsRootShaderResourceView(8u, indexView.BufferLocation);  // Indices
+	pCurrentCommandList->SetGraphicsRootShaderResourceView(9u, rendererResources->matrices->GetGPUVirtualAddress());  // Matrices
+	pCurrentCommandList->SetDescriptorHeaps(1u, rootDescriptorHeap.GetAddressOf());
+	pCurrentCommandList->SetGraphicsRootDescriptorTable(10u, rootDescriptorHeap->GetGPUDescriptorHandleForHeapStart()); // Textures
 
 	std::uint32_t i = 0;
 	std::array<std::uint32_t, 2> constants;
@@ -215,7 +227,7 @@ void RasterShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandL
 	{
 		auto& indexedSpan = rendererResources->scene->getMeshIndexedSpan(child.GroupName);
 		constants = { i++, static_cast<UINT>(indexedSpan.Start) };
-		pCurrentCommandList->SetGraphicsRoot32BitConstants(9u, 2u, constants.data(), 0u);
+		pCurrentCommandList->SetGraphicsRoot32BitConstants(1u, 2u, constants.data(), 0u);
 		pCurrentCommandList->DrawIndexedInstanced(static_cast<UINT>(indexedSpan.Size), 1u, static_cast<UINT>(indexedSpan.Start), 0u, 0u);
 	}
 }

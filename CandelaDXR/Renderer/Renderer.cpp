@@ -273,20 +273,18 @@ void Renderer::initSceneResources()
 	pCurrentCommandList->CopyResource(sceneBuffer.Get(), tempResource.Get());
 
 	// Upload materials and face attributes (in separate buffers otherwise we have to take care of alignment)
+	constexpr auto flags = D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
 	wrl::ComPtr<ID3D12Resource> tempFace;
 	materialBuffer = DXUtil::uploadDataToDefaultHeap(pDevice, pCurrentCommandList, tempFace,
-		scene->getMaterials().data(), sizeof(Material) * scene->getMaterials().size(),
-		D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+		scene->getMaterials().data(), sizeof(Material) * scene->getMaterials().size(), flags);
 
 	wrl::ComPtr<ID3D12Resource> tempFaceAttr;
 	faceAttributeBuffer = DXUtil::uploadDataToDefaultHeap(pDevice, pCurrentCommandList, tempFaceAttr,
-		scene->getFaceAttributes().data(), sizeof(FaceAttributes) * scene->getFaceAttributes().size(),
-		D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+		scene->getFaceAttributes().data(), sizeof(FaceAttributes) * scene->getFaceAttributes().size(), flags);
 
 	wrl::ComPtr<ID3D12Resource> tempLight;
 	lightBuffer = DXUtil::uploadDataToDefaultHeap(pDevice, pCurrentCommandList, tempLight,
-		scene->getLights().data(), sizeof(AreaLight) * scene->getLights().size(),
-		D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+		scene->getLights().data(), sizeof(AreaLight) * scene->getLights().size(), flags);
 
 	wrl::ComPtr<ID3D12Resource> tempSpec;
 	specularBuffer = DXUtil::uploadDataToDefaultHeap(pDevice, pCurrentCommandList, tempSpec,
@@ -297,8 +295,7 @@ void Renderer::initSceneResources()
 	wrl::ComPtr<ID3D12Resource> tempMatrices;
 	auto localMatrices = getMatrices();
 	matrices = DXUtil::uploadDataToDefaultHeap(pDevice, pCurrentCommandList, tempMatrices,
-		localMatrices.data(), sizeof(DirectX::XMFLOAT3X4) * localMatrices.size(),
-		D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+		localMatrices.data(), sizeof(DirectX::XMFLOAT3X4) * localMatrices.size(), flags);
 
 	// Upload textures
 	std::vector<wrl::ComPtr<ID3D12Resource>> texTempBuffer (scene->getTextures().size());
@@ -313,13 +310,12 @@ void Renderer::initSceneResources()
 			texture.getWidth(),
 			texture.getHeight(),
 			texture.getChannels(),
-			DXGI_FORMAT_R8G8B8A8_UNORM,
-			D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE));
+			DXGI_FORMAT_R8G8B8A8_UNORM, flags));
 	}
 
 	if (textures.empty())
 		textures.push_back(DXUtil::createTextureCommittedResource(
-			pDevice, D3D12_HEAP_TYPE_DEFAULT, 1, 1, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_FLAG_NONE, DXGI_FORMAT_R8G8B8A8_UNORM));
+			pDevice, D3D12_HEAP_TYPE_DEFAULT, 1, 1, flags, D3D12_RESOURCE_FLAG_NONE, DXGI_FORMAT_R8G8B8A8_UNORM));
 
 	auto fenceValue = commandQueue->executeCommandList(pCurrentCommandList);
 	commandQueue->waitForFenceValue(fenceValue);

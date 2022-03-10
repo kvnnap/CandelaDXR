@@ -2,6 +2,8 @@
 
 #include "Texture.h"
 
+#include "Exception/Exception.h"
+
 using candela::scene::Texture;
 
 Texture::Texture(const std::string& fileName)
@@ -9,6 +11,8 @@ Texture::Texture(const std::string& fileName)
 {
 	int imageChannels;
 	dataBuffer = StbImagePtr(stbi_load(fileName.c_str(), &width, &height, &imageChannels, channels = STBI_rgb_alpha), stbImageDeleter);
+	if (!dataBuffer)
+		ThrowException("Texture '" + fileName + "' cannot be loaded");
 }
 
 void Texture::stbImageDeleter(unsigned char* image)

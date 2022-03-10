@@ -18,6 +18,7 @@ struct MyInput
 {
 	float3 pos : POSITION;
 	float3 normal : NORMAL;
+	float2 texuv : TEXUV;
 };
 
 struct MyOutput
@@ -25,6 +26,7 @@ struct MyOutput
 	float4 Position : SV_POSITION;
 	float3 Pos : VS_POSITION;
 	float3 Normal : VS_NORMAL;
+	float2 TexUV : VS_TEXUV;
 };
 
 MyOutput main(MyInput myInput)
@@ -35,5 +37,6 @@ MyOutput main(MyInput myInput)
 	myOutput.Position = mul(float4(worldPos, 1.f), ViewPerspective);
 	myOutput.Pos = worldPos;
 	myOutput.Normal = mul(float4(myInput.normal, 0.f), lToW);
+	myOutput.TexUV = myInput.texuv;
 	return myOutput;
 }

@@ -2,6 +2,8 @@
 
 #include "Scene.h"
 
+#include "Exception/Exception.h"
+
 using std::array;
 using std::vector;
 using std::string;
@@ -43,7 +45,7 @@ void Scene::startGroup(const string& name)
 	if (!currentGroupName.empty())
 		endGroup();
 	if (spanDataMap.find(name) != spanDataMap.end())
-		throw runtime_error("Scene group " + string(name) + " already exists");
+		ThrowException("Scene group " + string(name) + " already exists");
 	currentGroupName = name;
 	spanDataMap.insert({ name, { name, indexData.size(), 0 } });
 }

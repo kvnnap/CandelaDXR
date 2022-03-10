@@ -43,7 +43,7 @@ namespace candela::directx
 		void addParameterToRootSignature(const std::string& destSignatureName, const std::string& parameterName);
 		void addParametersToRootSignature(const std::string& destSignatureName, const std::vector<std::string>& parameterNames);
 
-		Microsoft::WRL::ComPtr<ID3D12RootSignature> generateRootSignature(const std::string& rootSigatureName, Microsoft::WRL::ComPtr<ID3D12Device> pDevice);
+		Microsoft::WRL::ComPtr<ID3D12RootSignature> generateRootSignature(const std::string& rootSigatureName, Microsoft::WRL::ComPtr<ID3D12Device> pDevice, D3D12_ROOT_SIGNATURE_FLAGS rootSignatureFlags = D3D12_ROOT_SIGNATURE_FLAG_LOCAL_ROOT_SIGNATURE);
 		UINT32 getDescriptorHeapTotalEntrySize(const std::string& parameterName) const;
 		Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> generateDescriptorHeapForRangeParameter(const std::string& parameterName, Microsoft::WRL::ComPtr<ID3D12Device> pDevice) const;
 		D3D12_DESCRIPTOR_RANGE_TYPE getDescriptorHeapRangeType(const std::string& parameterName, size_t entryNumber) const;
