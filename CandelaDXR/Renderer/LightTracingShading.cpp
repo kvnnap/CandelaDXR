@@ -171,7 +171,7 @@ void LightTracingShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> currentCom
 	currentCommandList->SetComputeRootSignature(computeRootSignature.Get());
 	currentCommandList->SetDescriptorHeaps(1u, computeDescriptorHeap.GetAddressOf());
 	currentCommandList->SetComputeRootDescriptorTable(0u, computeDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
-	uint32_t c32data[4] = { dim.x, dim.y, constBuffer.frameNumber, clear ? 1 : 0 };
+	uint32_t c32data[4] = { dim.x, dim.y, constBuffer.frameNumber, clear ? 1u : 0u };
 	currentCommandList->SetComputeRoot32BitConstants(1u, 4u, &c32data[0], 0);
 	currentCommandList->Dispatch(dim.x / 8 + (dim.x % 8 == 0 ? 0 : 1), dim.y / 8 + (dim.y % 8 == 0 ? 0 : 1), 1);
 	clear = false;

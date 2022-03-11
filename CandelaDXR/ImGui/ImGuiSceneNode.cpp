@@ -32,10 +32,9 @@ void ImGuiSceneNode::drawUi()
 	ImGui::PushID(this);
 
 	ImGui::Text(sceneNode.NodeName.c_str());
-	changed =
-		ImGui::DragFloat3("Position", &position.x, 0.01f)
-		| ImGui::DragFloat3("Rotation", &rotation.x, 0.01f)
-		| ImGui::DragFloat3("Scale", &scale.x, 0.01f, 0.f, 1000.f);
+	changed  = ImGui::DragFloat3("Position", &position.x, 0.01f);
+	changed |= ImGui::DragFloat3("Rotation", &rotation.x, 0.01f);
+	changed |= ImGui::DragFloat3("Scale", &scale.x, 0.01f, 0.f, 1000.f);
 
 	ImGui::PopID();
 
