@@ -293,6 +293,8 @@ void Renderer::initSceneResources()
 {
 	auto totalSize = scene->getVerticesSizeBytes() + scene->getTextureCoordsSizeBytes()
 				   + scene->getNormalsSizeBytes() + scene->getIndicesSizeBytes();
+	if (totalSize == 0 || scene->getFaceAttributes().empty())
+		ThrowException("Scene is empty - nothing to render");
 
 	wrl::ComPtr<ID3D12Resource> tempVB;
 	sceneBuffer = DXUtil::createCommittedResource(pDevice, D3D12_HEAP_TYPE_DEFAULT, totalSize, D3D12_RESOURCE_STATE_COPY_DEST);
@@ -311,9 +313,11 @@ void Renderer::initSceneResources()
 
 	// Upload materials and face attributes (in separate buffers otherwise we have to take care of alignment)
 	constexpr auto flags = D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+	
+	const auto& mats = scene->getMaterials().empty() ? vector<Material>(1ULL) : scene->getMaterials();
 	wrl::ComPtr<ID3D12Resource> tempFace;
 	materialBuffer = DXUtil::uploadDataToDefaultHeap(pDevice, pCurrentCommandList, tempFace,
-		scene->getMaterials().data(), sizeof(Material) * scene->getMaterials().size(), flags);
+		mats.data(), sizeof(Material) * mats.size(), flags);
 	materialBuffer->SetName(L"Material Buffer");
 
 	wrl::ComPtr<ID3D12Resource> tempFaceAttr;
@@ -321,22 +325,23 @@ void Renderer::initSceneResources()
 		scene->getFaceAttributes().data(), sizeof(FaceAttributes) * scene->getFaceAttributes().size(), flags);
 	faceAttributeBuffer->SetName(L"Face Attribute Buffer");
 
+	const auto& lights = scene->getLights().empty() ? vector<AreaLight>(1ULL) : scene->getLights();
 	wrl::ComPtr<ID3D12Resource> tempLight;
 	lightBuffer = DXUtil::uploadDataToDefaultHeap(pDevice, pCurrentCommandList, tempLight,
-		scene->getLights().data(), sizeof(AreaLight) * scene->getLights().size(), flags);
+		lights.data(), sizeof(AreaLight) * lights.size(), flags);
 	lightBuffer->SetName(L"Light Buffer");
 
+	const auto& specs = scene->getSpeculars().empty() ? vector<SpecularPrimitive>(1ULL) : scene->getSpeculars();
 	wrl::ComPtr<ID3D12Resource> tempSpec;
 	specularBuffer = DXUtil::uploadDataToDefaultHeap(pDevice, pCurrentCommandList, tempSpec,
-		scene->getSpeculars().data(), sizeof(SpecularPrimitive) * scene->getSpeculars().size(),
-		D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+		specs.data(), sizeof(SpecularPrimitive) * specs.size(), flags);
 	specularBuffer->SetName(L"Specular Buffer");
 
 	// Copy Matrices
+	const auto& matrs = scene->getSceneGraph().Children.empty() ? vector<DirectX::XMFLOAT3X4>(1ULL) : getMatrices();
 	wrl::ComPtr<ID3D12Resource> tempMatrices;
-	auto localMatrices = getMatrices();
 	matrices = DXUtil::uploadDataToDefaultHeap(pDevice, pCurrentCommandList, tempMatrices,
-		localMatrices.data(), sizeof(DirectX::XMFLOAT3X4) * localMatrices.size(), flags);
+		matrs.data(), sizeof(DirectX::XMFLOAT3X4) * matrs.size(), flags);
 	matrices->SetName(L"Matrices Buffer");
 
 	// Upload textures
@@ -360,7 +365,6 @@ void Renderer::initSceneResources()
 	{
 		textures.push_back(DXUtil::createTextureCommittedResource(
 			pDevice, D3D12_HEAP_TYPE_DEFAULT, 1, 1, flags, D3D12_RESOURCE_FLAG_NONE, DXGI_FORMAT_R8G8B8A8_UNORM));
-
 		textures.back()->SetName(L"Empty Texture");
 	}
 
