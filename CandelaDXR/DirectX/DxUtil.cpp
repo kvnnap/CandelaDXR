@@ -3,6 +3,7 @@
 #include <array>
 #include <cstdio>
 #include <iostream>
+#include <string>
 #include <DirectXMath.h>
 
 #include "d3dx12.h"
@@ -13,6 +14,7 @@
 using std::array;
 using std::vector;
 using std::string;
+using std::wstring;
 using std::cout;
 using std::endl;
 using std::printf;
@@ -213,7 +215,6 @@ ComPtr<ID3D12DescriptorHeap> DXUtil::createDescriptorHeap(ComPtr<ID3D12Device> d
 	desc.Flags = shaderVisible ? D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE : D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
 
 	GFXTHROWIFFAILED(device->CreateDescriptorHeap(&desc, IID_PPV_ARGS(&descriptorHeap)));
-
 	return descriptorHeap;
 }
 
@@ -266,6 +267,7 @@ std::vector<ComPtr<ID3D12Resource>> DXUtil::createRenderTargetViews(
 		// MAY FAIL -------
 		/*ThrowDxgiInfoExceptionIfFailed*/(device->CreateRenderTargetView(backBuffers[i].Get(), nullptr, rtvHandle));
 		// MAY FAIL END ---
+		backBuffers[i]->SetName((L"RTV Back-Buffer " + std::to_wstring(i)).c_str());
 		rtvHandle.Offset(pRTVDescriptorSize);
 	}
 
@@ -308,6 +310,7 @@ std::vector<ComPtr<ID3D12Resource>> DXUtil::createDepthStencilView(
 			IID_PPV_ARGS(&depthBuffers[i])
 		));
 
+		depthBuffers[i]->SetName((L"Depth Buffer " + std::to_wstring(i)).c_str());
 		// Create view for resource
 		/*ThrowDxgiInfoExceptionIfFailed*/(device->CreateDepthStencilView(depthBuffers[i].Get(), &dsv, dsvHandle));
 		dsvHandle.Offset(pDSVDescriptorSize);
@@ -488,7 +491,9 @@ DXUtil::AccelerationStructureBuffers DXUtil::createBottomLevelAS(
 
 	// Create the buffers..
 	blasBuffers.pScratch = createCommittedResource(pDevice, D3D12_HEAP_TYPE_DEFAULT, prebuildInfo.ScratchDataSizeInBytes, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS);
+	blasBuffers.pScratch->SetName(L"BLAS Buffer pScratch");
 	blasBuffers.pResult = createCommittedResource(pDevice, D3D12_HEAP_TYPE_DEFAULT, prebuildInfo.ResultDataMaxSizeInBytes, D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS);
+	blasBuffers.pResult->SetName(L"BLAS Buffer pResult");
 
 	D3D12_BUILD_RAYTRACING_ACCELERATION_STRUCTURE_DESC blasDesc = {};
 	blasDesc.Inputs = rtStructureDescriptor;
@@ -531,7 +536,9 @@ void DXUtil::buildTopLevelAS(
 	else {
 		// Create the buffers..
 		tlasBuffers.pScratch = createCommittedResource(pDevice, D3D12_HEAP_TYPE_DEFAULT, prebuildInfo.ScratchDataSizeInBytes, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS);
+		tlasBuffers.pScratch->SetName(L"TLAS Buffer pScratch");
 		tlasBuffers.pResult = createCommittedResource(pDevice, D3D12_HEAP_TYPE_DEFAULT, prebuildInfo.ResultDataMaxSizeInBytes, D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS);
+		tlasBuffers.pResult->SetName(L"TLAS Buffer pResult");
 	}
 
 	std::vector<D3D12_RAYTRACING_INSTANCE_DESC> rtInstanceDescs;
@@ -550,9 +557,14 @@ void DXUtil::buildTopLevelAS(
 
 	// Upload ray tracing instance desc to GPU
 	if (update)
+	{
 		updateDataInDefaultHeap(pDevice, pCommandList, tlasBuffers.pInstanceDesc, tlasTempBuffer, rtInstanceDescs.data(), sizeof(D3D12_RAYTRACING_INSTANCE_DESC) * rtInstanceDescs.size(), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+	}
 	else
+	{
 		tlasBuffers.pInstanceDesc = uploadDataToDefaultHeap(pDevice, pCommandList, tlasTempBuffer, rtInstanceDescs.data(), sizeof(D3D12_RAYTRACING_INSTANCE_DESC) * rtInstanceDescs.size(), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+		tlasBuffers.pInstanceDesc->SetName(L"TLAS Buffer pInstanceDesc");
+	}
 
 	rtStructureDescriptor.InstanceDescs = tlasBuffers.pInstanceDesc->GetGPUVirtualAddress();
 

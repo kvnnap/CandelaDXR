@@ -72,6 +72,7 @@ void candela::renderer::RasterShading::init(RendererResources* rRes)
 
 	// And for depth stencil view
 	pDepthDescriptorHeap = DXUtil::createDescriptorHeap(rRes->pDevice, rRes->numBackBuffers, D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
+	pDepthDescriptorHeap->SetName(L"Depth Descriptor Heap");
 	dsvDescriptorSize = rRes->pDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
 	pDepthBuffers = DXUtil::createDepthStencilView(rRes->pDevice, pDepthDescriptorHeap, rRes->winDimensions.x, rRes->winDimensions.y, rRes->numBackBuffers);
 
@@ -173,6 +174,7 @@ void candela::renderer::RasterShading::init(RendererResources* rRes)
 		&constBuffer,
 		sizeof(constBuffer),
 		D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
+	constantBuffer->SetName(L"Constant Buffer");
 
 	auto fV = rRes->commandQueue->executeCommandList(commandList);
 	rRes->commandQueue->waitForFenceValue(fV);
@@ -236,4 +238,8 @@ void RasterShading::onChange(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentComm
 {
 }
 
-
+void RasterShading::onResize()
+{
+	viewport = CD3DX12_VIEWPORT(0.0f, 0.0f, static_cast<float>(rendererResources->winDimensions.x), static_cast<float>(rendererResources->winDimensions.y));
+	pDepthBuffers = DXUtil::createDepthStencilView(rendererResources->pDevice, pDepthDescriptorHeap, rendererResources->winDimensions.x, rendererResources->winDimensions.y, rendererResources->numBackBuffers);
+}

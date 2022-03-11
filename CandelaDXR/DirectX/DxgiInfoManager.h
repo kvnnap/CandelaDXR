@@ -5,6 +5,8 @@
 #include <vector>
 #include <string>
 
+#include "System/DllManager.h"
+
 namespace candela::directx
 {
 	class DxgiInfoManager
@@ -22,7 +24,7 @@ namespace candela::directx
 		std::vector<std::string> getMessages() const;
 
 	private:
-		static const char* hModuleName;
+		system::DllManager dxgiDebugDll;
 
 		UINT64 next;
 		Microsoft::WRL::ComPtr<IDXGIInfoQueue> pDxgiInfoQueue;

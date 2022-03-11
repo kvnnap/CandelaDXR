@@ -10,37 +10,18 @@ using std::make_unique;
 using candela::directx::DxgiInfoManager;
 
 // Static stuff
-const char* DxgiInfoManager::hModuleName = "dxgidebug.dll";
 
 DxgiInfoManager::DxgiInfoManager()
-	: next()
+	: dxgiDebugDll("DXGIDebug.dll"), next()
 {
-	using DxgiGetDebugInterface = decltype(DXGIGetDebugInterface);
-
-	HMODULE moduleHandle = LoadLibrary(hModuleName);
-	if (moduleHandle == NULL)
-		ThrowException("Cannot load module: " + string(hModuleName));
-
-	try {
-		DxgiGetDebugInterface* fn = reinterpret_cast<DxgiGetDebugInterface*>(GetProcAddress(moduleHandle, "DXGIGetDebugInterface"));
-		if (fn == nullptr)
-			ThrowException("Cannot find function DXGIGetDebugInterface");
-
-		HRESULT hr;
-		WinThrowIfFailed(fn(IID_PPV_ARGS(&pDxgiInfoQueue)));
-	} 
-	catch (...) {
-		FreeLibrary(moduleHandle);
-		throw;
-	}
+	auto fn = dxgiDebugDll.getFunction<decltype(DXGIGetDebugInterface)>("DXGIGetDebugInterface");
+	HRESULT hr;
+	WinThrowIfFailed(fn(IID_PPV_ARGS(&pDxgiInfoQueue)));
 }
 
 DxgiInfoManager::~DxgiInfoManager()
 {
 	pDxgiInfoQueue.Reset();
-	HMODULE moduleHandle = GetModuleHandle(hModuleName);
-	if (moduleHandle != NULL)
-		FreeLibrary(moduleHandle);
 }
 
 void DxgiInfoManager::set() noexcept

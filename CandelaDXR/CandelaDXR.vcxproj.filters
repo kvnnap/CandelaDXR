@@ -114,6 +114,9 @@
     <ClCompile Include="ImGui\ImGuiMaterial.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="System\DllManager.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Exception\GeneralException.h">
@@ -240,6 +243,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="ImGui\ImGuiMaterial.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="System\DllManager.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

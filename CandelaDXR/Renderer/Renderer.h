@@ -36,10 +36,13 @@ namespace candela::renderer
 		void renderFrame() override;
 
 	private:
+		template<class T>
+		using ComPtrVec = std::vector<wrl::ComPtr<T>>;
+
 		void initSceneResources();
 		void updateCamera();
+		void resize();
 		std::vector<DirectX::XMFLOAT3X4> getMatrices(); 
-
 		LRESULT wndCallback(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 		// Basic I/O and Window
@@ -55,11 +58,12 @@ namespace candela::renderer
 		wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList;
 
 		static constexpr UINT NumBackBuffers = 2;
+		wrl::ComPtr<IDXGIFactory> dxgiFactory;
 		wrl::ComPtr<IDXGISwapChain> pSwapChain;
 		wrl::ComPtr<ID3D12DescriptorHeap> pRTVDescriptorHeap;
-		wrl::ComPtr<ID3D12Resource> pRTVBackBuffers[NumBackBuffers];
-		wrl::ComPtr<ID3D12Resource> pMatricesTempBackBuffers[NumBackBuffers];
-		wrl::ComPtr<ID3D12Resource> pMaterialsTempBackBuffers[NumBackBuffers];
+		ComPtrVec<ID3D12Resource> pRTVBackBuffers;
+		ComPtrVec<ID3D12Resource> pMatricesTempBackBuffers;
+		ComPtrVec<ID3D12Resource> pMaterialsTempBackBuffers;
 
 		// ImGui
 		wrl::ComPtr<ID3D12DescriptorHeap> pImGuiDescriptorHeap;
@@ -69,7 +73,7 @@ namespace candela::renderer
 		// Constants and integral values
 		UINT rtvDescriptorSize;
 		UINT currentBackBufferIndex;
-		uint64_t frameFenceValues[NumBackBuffers];
+		std::vector<uint64_t> frameFenceValues;
 
 		// Stats
 		FpsCounter fpsCounter;

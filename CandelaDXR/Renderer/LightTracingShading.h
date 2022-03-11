@@ -35,12 +35,14 @@ namespace candela::renderer
 		void init(RendererResources* rendererResources) override;
 		void draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, std::uint32_t currentBackBufferIndex) override;
 		void onChange(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, std::uint32_t currentBackBufferIndex) override;
+		void onResize() override;
 
 	private:
 		void buildPipeline();
 		void createShaderResources();
 		void createShaderTable(wrl::ComPtr<ID3D12GraphicsCommandList> &commandList, wrl::ComPtr<ID3D12Resource> &tempResource);
 		void buildTlas(wrl::ComPtr<ID3D12GraphicsCommandList>& commandList, wrl::ComPtr<ID3D12Resource>& tempResource);
+		void generateIrrToRadTexture(wrl::ComPtr<ID3D12GraphicsCommandList>& commandList, wrl::ComPtr<ID3D12Resource>& tempResource);
 
 		mathematics::Vector2 toSensorSpace(std::uint32_t x, std::uint32_t y) const;
 		float cosIntegral(std::uint32_t x, std::uint32_t y) const;

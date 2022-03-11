@@ -6,6 +6,9 @@
 #include "DirectX/DxUtil.h"
 #include "DirectX/d3dx12.h"
 #include <DirectXMath.h>
+#include <dxgidebug.h>
+
+#include "System/DllManager.h"
 
 #include "imgui/imgui.h"
 #include "ImGui/Backend/imgui_impl_win32.h"
@@ -64,6 +67,20 @@ Renderer::~Renderer()
 {
 	if (commandQueue)
 		commandQueue->flush();
+
+	// Cannot destroy swapchain in full screen mode
+	pSwapChain->SetFullscreenState(false, nullptr);
+	// Uncomment to analyse resources
+	//if (debugEnabled)
+	//{
+	//	HRESULT hr;
+	//	system::DllManager dxgiDebugDll("DXGIDebug.dll");
+	//	auto fn = dxgiDebugDll.getFunction<decltype(DXGIGetDebugInterface)>("DXGIGetDebugInterface");
+	//	ComPtr<IDXGIDebug> debugInterface;
+	//	GFXTHROWIFFAILED(fn(IID_PPV_ARGS(&debugInterface)));
+	//	GFXTHROWIFFAILED(debugInterface->ReportLiveObjects(DXGI_DEBUG_ALL, DXGI_DEBUG_RLO_ALL));
+	//}
+	
 	if (dxgiInfoManager && dxgiInfoManager->hasMessages())
 	{
 		std::cout << "Printing messages from IDXGIInfoQueue:" << std::endl;
@@ -74,10 +91,15 @@ Renderer::~Renderer()
 
 void Renderer::init()
 {
-	HRESULT hr;
 	window = make_unique<Window>("CandelaDXR", windowDimensions.x, windowDimensions.y, &keyboard, &mouse);
 	using namespace std::placeholders;
 	window->addWndProcCallback(std::bind(&Renderer::wndCallback, this, _1, _2, _3, _4));
+
+	// Allocate 
+	pRTVBackBuffers.resize(NumBackBuffers);
+	pMatricesTempBackBuffers.resize(NumBackBuffers);
+	pMaterialsTempBackBuffers.resize(NumBackBuffers);
+	frameFenceValues.resize(NumBackBuffers);
 
 	// Init DirectX Debugging
 	if (debugEnabled)
@@ -86,7 +108,7 @@ void Renderer::init()
 		DXUtil::enableDebugLayer(); // Not sure what happens if called twice
 	}
 
-	auto dxgiFactory = DXUtil::createDXGIFactory(debugEnabled);
+	dxgiFactory = DXUtil::createDXGIFactory(debugEnabled);
 
 	// Get DX12 compatible hardware device - Adapter contains info about the actual device
 	D3D_FEATURE_LEVEL featureLevel;
@@ -102,23 +124,21 @@ void Renderer::init()
 
 	// Create swap chain
 	pSwapChain = DXUtil::createSwapChain(dxgiFactory, commandQueue->getCommandQueue(), window->getHandle(), NumBackBuffers);
-	//pSwapChain->ResizeBuffers();
-	//GFXTHROWIFFAILED(pSwapChain->SetFullscreenState(true, nullptr));
 
 	// Create descriptor heap for render target view
 	pRTVDescriptorHeap = DXUtil::createDescriptorHeap(pDevice, NumBackBuffers, D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+	pRTVDescriptorHeap->SetName(L"RTV Descriptor Heap");
 
 	// Create render target Views
 	rtvDescriptorSize = pDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-	auto backBuffers = DXUtil::createRenderTargetViews(pDevice, pRTVDescriptorHeap, pSwapChain, NumBackBuffers);
-	for (int i = 0; i < backBuffers.size(); ++i)
-		pRTVBackBuffers[i] = backBuffers[i];
+	pRTVBackBuffers = DXUtil::createRenderTargetViews(pDevice, pRTVDescriptorHeap, pSwapChain, NumBackBuffers);
 
 	// Upload scene resources
 	initSceneResources();
 
 	// ImGui
 	pImGuiDescriptorHeap = DXUtil::createDescriptorHeap(pDevice, 1u, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, true);
+	pImGuiDescriptorHeap->SetName(L"ImGui Descriptor Heap");
 	ImGui::CreateContext();
 	ImGui_ImplWin32_Init(window->getHandle());
 	ImGui_ImplDX12_Init(pDevice.Get(), NumBackBuffers, DXGI_FORMAT_R8G8B8A8_UNORM, pImGuiDescriptorHeap.Get(),
@@ -146,7 +166,7 @@ void Renderer::init()
 		.matrices = matrices,
 		.textures = textures,
 		.pRTVDescriptorHeap = pRTVDescriptorHeap,
-		.pRTVBackBuffers = backBuffers,
+		.pRTVBackBuffers = pRTVBackBuffers,
 		.commandQueue = commandQueue.get(),
 		.winDimensions = windowDimensions,
 		.numBackBuffers = NumBackBuffers,
@@ -162,7 +182,7 @@ void Renderer::init()
 void Renderer::renderFrame()
 {
 	// Clear frame and start frame
-	auto rtvBackBuffer = pRTVBackBuffers[currentBackBufferIndex];
+	auto &rtvBackBuffer = pRTVBackBuffers[currentBackBufferIndex];
 
 	CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(rtvBackBuffer.Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
 	pCurrentCommandList = commandQueue->getCommandList();
@@ -251,6 +271,8 @@ void Renderer::renderFrame()
 	pCurrentCommandList.Reset();
 
 	HRESULT hr;
+	// Present may wait on or execute the message pump when mode changes (fullscreen to windowed, etc)
+	// Therefore, make sure RTV buffers are not referenced here
 	GFXTHROWIFFAILED(pSwapChain->Present(vsync ? 1u : 0u, 0u));
 	ComPtr<IDXGISwapChain3> pSwapChain3;
 	GFXTHROWIFFAILED(pSwapChain.As(&pSwapChain3));
@@ -274,6 +296,7 @@ void Renderer::initSceneResources()
 
 	wrl::ComPtr<ID3D12Resource> tempVB;
 	sceneBuffer = DXUtil::createCommittedResource(pDevice, D3D12_HEAP_TYPE_DEFAULT, totalSize, D3D12_RESOURCE_STATE_COPY_DEST);
+	sceneBuffer->SetName(L"Scene Buffer");
 	auto tempResource = DXUtil::createCommittedResource(pDevice, D3D12_HEAP_TYPE_UPLOAD, totalSize, D3D12_RESOURCE_STATE_GENERIC_READ);
 	std::uint8_t* data;
 	auto readRange = D3D12_RANGE(0, 0);
@@ -291,25 +314,30 @@ void Renderer::initSceneResources()
 	wrl::ComPtr<ID3D12Resource> tempFace;
 	materialBuffer = DXUtil::uploadDataToDefaultHeap(pDevice, pCurrentCommandList, tempFace,
 		scene->getMaterials().data(), sizeof(Material) * scene->getMaterials().size(), flags);
+	materialBuffer->SetName(L"Material Buffer");
 
 	wrl::ComPtr<ID3D12Resource> tempFaceAttr;
 	faceAttributeBuffer = DXUtil::uploadDataToDefaultHeap(pDevice, pCurrentCommandList, tempFaceAttr,
 		scene->getFaceAttributes().data(), sizeof(FaceAttributes) * scene->getFaceAttributes().size(), flags);
+	faceAttributeBuffer->SetName(L"Face Attribute Buffer");
 
 	wrl::ComPtr<ID3D12Resource> tempLight;
 	lightBuffer = DXUtil::uploadDataToDefaultHeap(pDevice, pCurrentCommandList, tempLight,
 		scene->getLights().data(), sizeof(AreaLight) * scene->getLights().size(), flags);
+	lightBuffer->SetName(L"Light Buffer");
 
 	wrl::ComPtr<ID3D12Resource> tempSpec;
 	specularBuffer = DXUtil::uploadDataToDefaultHeap(pDevice, pCurrentCommandList, tempSpec,
 		scene->getSpeculars().data(), sizeof(SpecularPrimitive) * scene->getSpeculars().size(),
 		D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+	specularBuffer->SetName(L"Specular Buffer");
 
 	// Copy Matrices
 	wrl::ComPtr<ID3D12Resource> tempMatrices;
 	auto localMatrices = getMatrices();
 	matrices = DXUtil::uploadDataToDefaultHeap(pDevice, pCurrentCommandList, tempMatrices,
 		localMatrices.data(), sizeof(DirectX::XMFLOAT3X4) * localMatrices.size(), flags);
+	matrices->SetName(L"Matrices Buffer");
 
 	// Upload textures
 	std::vector<wrl::ComPtr<ID3D12Resource>> texTempBuffer (scene->getTextures().size());
@@ -325,11 +353,17 @@ void Renderer::initSceneResources()
 			texture.getHeight(),
 			texture.getChannels(),
 			DXGI_FORMAT_R8G8B8A8_UNORM, flags));
+		textures.back()->SetName(L"Texture");
 	}
 
 	if (textures.empty())
+	{
 		textures.push_back(DXUtil::createTextureCommittedResource(
 			pDevice, D3D12_HEAP_TYPE_DEFAULT, 1, 1, flags, D3D12_RESOURCE_FLAG_NONE, DXGI_FORMAT_R8G8B8A8_UNORM));
+
+		textures.back()->SetName(L"Empty Texture");
+	}
+
 
 	auto fenceValue = commandQueue->executeCommandList(pCurrentCommandList);
 	commandQueue->waitForFenceValue(fenceValue);
@@ -355,6 +389,22 @@ void Renderer::updateCamera()
 	if (keyboard.isKeyPressed('J') || keyboard.isKeyPressed('K'))
 		camera->incrementDirection(getValueIfPressed('J', deltaUnits), getValueIfPressed('K', deltaUnits));
 }
+//#pragma comment(lib, "dxgidebug.dll")
+void Renderer::resize()
+{
+	// Wait for all GPU operations to complete
+	commandQueue->flush();
+	rendererResources.pRTVBackBuffers.clear();
+	pRTVBackBuffers.clear();
+	currentBackBufferIndex = 0;
+	HRESULT hr;
+	auto flags = DXUtil::checkTearingSupport(dxgiFactory) ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING : 0;
+	GFXTHROWIFFAILED(pSwapChain->ResizeBuffers(NumBackBuffers, windowDimensions.x, windowDimensions.y, DXGI_FORMAT_UNKNOWN, flags));
+	rendererResources.pRTVBackBuffers = pRTVBackBuffers = DXUtil::createRenderTargetViews(pDevice, pRTVDescriptorHeap, pSwapChain, NumBackBuffers);
+	// Resize drawables
+	for (IDrawable* drawable : drawables)
+		drawable->onResize();
+}
 
 vector<DirectX::XMFLOAT3X4> Renderer::getMatrices()
 {
@@ -370,9 +420,11 @@ LRESULT Renderer::wndCallback(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 	switch (msg)
 	{
 	case WM_SIZE:
-		UINT width = LOWORD(lParam);
-		UINT height = HIWORD(lParam);
-		return 1; // need to return not zero since app is filtering messages
+		windowDimensions.x = LOWORD(lParam);
+		windowDimensions.y = HIWORD(lParam);
+		rendererResources.winDimensions = windowDimensions;
+		resize();
+		return true; // need to return not zero since app is filtering messages
 	}
-	return 0;
+	return false;
 }

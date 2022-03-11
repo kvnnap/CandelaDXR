@@ -210,6 +210,7 @@
     <ClCompile Include="Scene\Texture.cpp" />
     <ClCompile Include="Scene\WavefrontSceneLoader.cpp" />
     <ClCompile Include="Factory\WavefrontSceneLoaderFactory.cpp" />
+    <ClCompile Include="System\DllManager.cpp" />
     <ClCompile Include="Window\Window.cpp" />
     <ClCompile Include="Window\WindowClass.cpp" />
   </ItemGroup>
@@ -253,6 +254,7 @@
     <ClInclude Include="Scene\Texture.h" />
     <ClInclude Include="Scene\WavefrontSceneLoader.h" />
     <ClInclude Include="Factory\WavefrontSceneLoaderFactory.h" />
+    <ClInclude Include="System\DllManager.h" />
     <ClInclude Include="Window\Window.h" />
     <ClInclude Include="Window\WindowClass.h" />
     <ClInclude Include="Window\WindowsDef.h" />

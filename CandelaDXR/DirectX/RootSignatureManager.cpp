@@ -1,7 +1,10 @@
+#define _SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING
+
 #include "RootSignatureManager.h"
 
 #include <algorithm>
 #include <stdexcept>
+#include <codecvt>
 
 #include "DXUtil.h"
 
@@ -77,7 +80,9 @@ Microsoft::WRL::ComPtr<ID3D12RootSignature> RootSignatureManager::generateRootSi
 		customRootDesc.samplerSet ? &customRootDesc.sampler : nullptr,
 		rootSignatureFlags);
 
-	return customRootDesc.compiledSignature = DXUtil::createRootSignature(pDevice, rootSignatureDesc);
+	customRootDesc.compiledSignature = DXUtil::createRootSignature(pDevice, rootSignatureDesc);
+	customRootDesc.compiledSignature->SetName(std::wstring_convert<std::codecvt_utf8<wchar_t>, wchar_t>().from_bytes(rootSigatureName).c_str());
+	return customRootDesc.compiledSignature;
 }
 
 UINT32 RootSignatureManager::getDescriptorHeapTotalEntrySize(const std::string& parameterName) const
@@ -98,7 +103,10 @@ UINT32 RootSignatureManager::getDescriptorHeapTotalEntrySize(const std::string& 
 
 Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> RootSignatureManager::generateDescriptorHeapForRangeParameter(const std::string& parameterName, Microsoft::WRL::ComPtr<ID3D12Device> pDevice) const
 {
-	return DXUtil::createDescriptorHeap(pDevice, getDescriptorHeapTotalEntrySize(parameterName), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, true);
+	
+	auto heap = DXUtil::createDescriptorHeap(pDevice, getDescriptorHeapTotalEntrySize(parameterName), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, true);
+	heap->SetName(std::wstring_convert<std::codecvt_utf8<wchar_t>, wchar_t>().from_bytes(parameterName).c_str());
+	return heap;
 }
 
 D3D12_DESCRIPTOR_RANGE_TYPE RootSignatureManager::getDescriptorHeapRangeType(const std::string& parameterName, size_t entryNumber) const

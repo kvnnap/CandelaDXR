@@ -94,15 +94,9 @@ void LightTracingShading::init(RendererResources* rRes)
 	wrl::ComPtr<ID3D12Resource> tlasTempBuffer;
 	DXUtil::buildTopLevelAS(rRes->pDevice, commandList, tlasInstanceData, tlasTempBuffer, false, tlasBuffers);
 
-	// Compute irradianceToRadianceConstants
+	// Gen 
 	wrl::ComPtr<ID3D12Resource> irrToRadTempBuffer;
-	vector<float> irradianceToRadianceConstants;
-	irradianceToRadianceConstants.reserve(rRes->winDimensions.x * rRes->winDimensions.y);
-	for (uint32_t y = 0; y < rRes->winDimensions.y; ++y)
-		for (uint32_t x = 0; x < rRes->winDimensions.x; ++x)
-			irradianceToRadianceConstants.push_back(1.f / cosIntegral(x, y));
-	irrToRad = DXUtil::uploadTextureDataToDefaultHeap(rendererResources->pDevice, commandList, irrToRadTempBuffer, irradianceToRadianceConstants.data(),
-		rRes->winDimensions.x, rRes->winDimensions.y, sizeof(float), DXGI_FORMAT_R32_FLOAT, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+	generateIrrToRadTexture(commandList, irrToRadTempBuffer);
 
 	// Build Pipeline
 	buildPipeline();
@@ -113,6 +107,7 @@ void LightTracingShading::init(RendererResources* rRes)
 	// Constant buffer
 	wrl::ComPtr<ID3D12Resource> cBuffIntBuffer;
 	constantBuffer = DXUtil::uploadDataToDefaultHeap(rRes->pDevice, commandList, cBuffIntBuffer, &constBuffer, sizeof(constBuffer), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+	constantBuffer->SetName(L"Constant Buffer");
 
 	// Build shading table
 	wrl::ComPtr<ID3D12Resource> stTempBuffer;
@@ -281,6 +276,7 @@ void LightTracingShading::buildPipeline()
 	CD3DX12_GLOBAL_ROOT_SIGNATURE_SUBOBJECT globalRootSignature(stateObjectDesc);
 	CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC globalEmptyRootSignatureDesc(0, static_cast<CD3DX12_ROOT_PARAMETER1*>(nullptr), 0, nullptr, D3D12_ROOT_SIGNATURE_FLAG_NONE);
 	globalEmptyRootSignature = DXUtil::createRootSignature(rendererResources->pDevice, globalEmptyRootSignatureDesc);
+	globalEmptyRootSignature->SetName(L"Root Signature Global");
 	globalRootSignature.SetRootSignature(globalEmptyRootSignature.Get());
 
 	// Finally - Create the state
@@ -325,10 +321,14 @@ void LightTracingShading::createShaderResources()
 	descriptorHeap = descHeapManager.getDescriptorHeap();
 
 	const auto &dim = rendererResources->winDimensions;
+
 	// The output resource
 	outputTexture = DXUtil::createTextureCommittedResource(rendererResources->pDevice, D3D12_HEAP_TYPE_DEFAULT, dim.x, dim.y, D3D12_RESOURCE_STATE_COPY_SOURCE);
+	outputTexture->SetName(L"Output Texture");
 	irradianceTexture = DXUtil::createTextureCommittedResource(rendererResources->pDevice, D3D12_HEAP_TYPE_DEFAULT, dim.x, dim.y, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_FLAG_NONE, DXGI_FORMAT_R32G32B32A32_FLOAT);
+	irradianceTexture->SetName(L"Irradiance Texture");
 	irradianceDataStructure = DXUtil::createCommittedResource(rendererResources->pDevice, D3D12_HEAP_TYPE_DEFAULT, dim.x * dim.y * sizeof(uint32_t) * 4, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS);
+	irradianceDataStructure->SetName(L"Irradiance DS");
 
 	D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
 	uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
@@ -403,10 +403,36 @@ void LightTracingShading::buildTlas(wrl::ComPtr<ID3D12GraphicsCommandList> &comm
 	DXUtil::buildTopLevelAS(rendererResources->pDevice, commandList, tlasInstanceData, tempResource, true, tlasBuffers);
 }
 
+void LightTracingShading::generateIrrToRadTexture(wrl::ComPtr<ID3D12GraphicsCommandList>& commandList, wrl::ComPtr<ID3D12Resource>& tempResource)
+{
+	// Compute irradianceToRadianceConstants
+	const auto& dim = rendererResources->winDimensions;
+	vector<float> irradianceToRadianceConstants;
+	irradianceToRadianceConstants.reserve(dim.x * dim.y);
+	for (uint32_t y = 0; y < dim.y; ++y)
+		for (uint32_t x = 0; x < dim.x; ++x)
+			irradianceToRadianceConstants.push_back(1.f / cosIntegral(x, y));
+	irrToRad = DXUtil::uploadTextureDataToDefaultHeap(rendererResources->pDevice, commandList, tempResource, irradianceToRadianceConstants.data(),
+		dim.x, dim.y, sizeof(float), DXGI_FORMAT_R32_FLOAT, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+	irrToRad->SetName(L"Irr-to-rad Texture");
+}
+
 void LightTracingShading::onChange(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, uint32_t currentBackBufferIndex)
 {
 	buildTlas(pCurrentCommandList, tlasTempBuffer[currentBackBufferIndex]);
 	clear = true;
+}
+
+void LightTracingShading::onResize()
+{
+	auto commandList = rendererResources->commandQueue->getCommandList();
+	wrl::ComPtr<ID3D12Resource> irrToRadTempBuffer;
+	generateIrrToRadTexture(commandList, irrToRadTempBuffer);
+	createShaderResources();
+	clear = true;
+	// Wait
+	auto fV = rendererResources->commandQueue->executeCommandList(commandList);
+	rendererResources->commandQueue->waitForFenceValue(fV);
 }
 
 // Compute constants
