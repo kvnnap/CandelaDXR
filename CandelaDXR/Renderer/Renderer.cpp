@@ -55,7 +55,8 @@ Renderer::Renderer(Scene *scene, Camera *camera, const UVector2 &windowDimension
 	  drawables(std::move(p_drawables)),
 	  debugEnabled(debugEnabled),
 	  breakEnabled(breakEnabled),
-	  vsync(vsync)
+	  vsync(vsync),
+	  viewImgui()
 {
 }
 
@@ -73,7 +74,10 @@ Renderer::~Renderer()
 
 void Renderer::init()
 {
+	HRESULT hr;
 	window = make_unique<Window>("CandelaDXR", windowDimensions.x, windowDimensions.y, &keyboard, &mouse);
+	using namespace std::placeholders;
+	window->addWndProcCallback(std::bind(&Renderer::wndCallback, this, _1, _2, _3, _4));
 
 	// Init DirectX Debugging
 	if (debugEnabled)
@@ -98,6 +102,8 @@ void Renderer::init()
 
 	// Create swap chain
 	pSwapChain = DXUtil::createSwapChain(dxgiFactory, commandQueue->getCommandQueue(), window->getHandle(), NumBackBuffers);
+	//pSwapChain->ResizeBuffers();
+	//GFXTHROWIFFAILED(pSwapChain->SetFullscreenState(true, nullptr));
 
 	// Create descriptor heap for render target view
 	pRTVDescriptorHeap = DXUtil::createDescriptorHeap(pDevice, NumBackBuffers, D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
@@ -167,29 +173,34 @@ void Renderer::renderFrame()
 	pCurrentCommandList->ClearRenderTargetView(rtvDescriptorHandle, color, 0, nullptr);
 
 	// ImGui
-	ImGui_ImplDX12_NewFrame();
-	ImGui_ImplWin32_NewFrame();
-	ImGui::NewFrame();
-
-	ImGui::Begin("Transforms");
+	if (keyboard.hasKeyChanged('Q') && keyboard.isKeyPressed('Q'))
+		viewImgui = !viewImgui;
 	bool transformChanged = false;
-	for (auto& imguiSceneNode : imguiSceneNodes)
-	{
-		imguiSceneNode.drawUi();
-		transformChanged |= imguiSceneNode.hasChanged();
-	}
-	ImGui::End();
-
-	ImGui::Begin("Materials");
 	bool materialChanged = false;
-	for (auto& imguiMaterial : imguiMaterials)
+	if (viewImgui)
 	{
-		imguiMaterial.drawUi();
-		materialChanged |= imguiMaterial.hasChanged();
-	}
-	ImGui::End();
+		ImGui_ImplDX12_NewFrame();
+		ImGui_ImplWin32_NewFrame();
+		ImGui::NewFrame();
 
-	ImGui::Render();
+		ImGui::Begin("Transforms");
+		for (auto& imguiSceneNode : imguiSceneNodes)
+		{
+			imguiSceneNode.drawUi();
+			transformChanged |= imguiSceneNode.hasChanged();
+		}
+		ImGui::End();
+
+		ImGui::Begin("Materials");
+		for (auto& imguiMaterial : imguiMaterials)
+		{
+			imguiMaterial.drawUi();
+			materialChanged |= imguiMaterial.hasChanged();
+		}
+		ImGui::End();
+
+		ImGui::Render();
+	}
 
 	constexpr auto flags = D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
 
@@ -226,9 +237,12 @@ void Renderer::renderFrame()
 	}
 
 	// ImGui Render
-	pCurrentCommandList->OMSetRenderTargets(1u, &rtvDescriptorHandle, FALSE, nullptr);
-	pCurrentCommandList->SetDescriptorHeaps(1u, pImGuiDescriptorHeap.GetAddressOf());
-	ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), pCurrentCommandList.Get());
+	if (viewImgui)
+	{
+		pCurrentCommandList->OMSetRenderTargets(1u, &rtvDescriptorHandle, FALSE, nullptr);
+		pCurrentCommandList->SetDescriptorHeaps(1u, pImGuiDescriptorHeap.GetAddressOf());
+		ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), pCurrentCommandList.Get());
+	}
 
 	// End frame
 	barrier = CD3DX12_RESOURCE_BARRIER::Transition(rtvBackBuffer.Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
@@ -349,4 +363,16 @@ vector<DirectX::XMFLOAT3X4> Renderer::getMatrices()
 	for (auto child : scene->getSceneGraph().Children)
 		DirectX::XMStoreFloat3x4(&*ptMat++, child.Transform);
 	return localMatrices;
+}
+
+LRESULT Renderer::wndCallback(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
+{
+	switch (msg)
+	{
+	case WM_SIZE:
+		UINT width = LOWORD(lParam);
+		UINT height = HIWORD(lParam);
+		return 1; // need to return not zero since app is filtering messages
+	}
+	return 0;
 }

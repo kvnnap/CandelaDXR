@@ -40,11 +40,13 @@ namespace candela::renderer
 		void updateCamera();
 		std::vector<DirectX::XMFLOAT3X4> getMatrices(); 
 
+		LRESULT wndCallback(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
+
 		// Basic I/O and Window
 		feanor::io::Keyboard keyboard;
 		feanor::io::Mouse mouse;
 		std::unique_ptr<ui::Window> window;
-		const mathematics::UVector2 windowDimensions;
+		mathematics::UVector2 windowDimensions;
 
 		// DirectX
 		const std::uint32_t adapterIndex;
@@ -96,5 +98,6 @@ namespace candela::renderer
 		// otherwise on DX error, program calls abort/exit
 		const bool breakEnabled;
 		const bool vsync;
+		bool viewImgui;
 	};
 }

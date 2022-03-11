@@ -122,7 +122,7 @@ void Window::cleanup(bool destroying)
 Window::Window(const string& windowName, int width, int height, feanor::io::IKeyWriter* keyboardWriter, feanor::io::IMouseWriter* mouseWriter)
 	: hWnd(), keyboardWriter(keyboardWriter), mouseWriter(mouseWriter)
 {
-	auto dwClass = WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU;
+	auto dwClass = WS_OVERLAPPEDWINDOW;
 
 	RECT rect = {};
 	rect.right = width;
