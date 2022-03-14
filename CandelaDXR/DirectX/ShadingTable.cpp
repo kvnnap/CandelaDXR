@@ -188,7 +188,9 @@ Microsoft::WRL::ComPtr<ID3D12Resource> ShadingTable::generateShadingTable(
 	}
 
 	// Upload buffer to gpu
-	return pShadingTable = DXUtil::uploadDataToDefaultHeap(pDevice, pCurrentCommandList, shadingTableTempResource, buffer, totalTableSize, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+	pShadingTable = DXUtil::uploadDataToDefaultHeap(pDevice, pCurrentCommandList, shadingTableTempResource, buffer, totalTableSize, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+	pShadingTable->SetName(L"Shading Table");
+	return pShadingTable;
 }
 
 void ShadingTable::addProgramAssociationsToSubobject(CD3DX12_STATE_OBJECT_DESC& stateObjectDesc)

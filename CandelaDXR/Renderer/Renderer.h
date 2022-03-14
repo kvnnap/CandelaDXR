@@ -42,7 +42,8 @@ namespace candela::renderer
 		void initSceneResources();
 		void updateCamera();
 		void resize();
-		std::vector<DirectX::XMFLOAT3X4> getMatrices(); 
+		void refreshMaterialResources();
+		std::vector<DirectX::XMFLOAT3X4> getMatrices();
 		LRESULT wndCallback(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 		// Basic I/O and Window
@@ -64,6 +65,9 @@ namespace candela::renderer
 		ComPtrVec<ID3D12Resource> pRTVBackBuffers;
 		ComPtrVec<ID3D12Resource> pMatricesTempBackBuffers;
 		ComPtrVec<ID3D12Resource> pMaterialsTempBackBuffers;
+		ComPtrVec<ID3D12Resource> pLightsTempBackBuffers;
+		ComPtrVec<ID3D12Resource> pFaceAttrTempBackBuffers;
+		ComPtrVec<ID3D12Resource> pSpecularsTempBackBuffers;
 
 		// ImGui
 		wrl::ComPtr<ID3D12DescriptorHeap> pImGuiDescriptorHeap;

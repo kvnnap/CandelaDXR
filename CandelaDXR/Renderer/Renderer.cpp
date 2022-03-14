@@ -101,6 +101,10 @@ void Renderer::init()
 	pRTVBackBuffers.resize(NumBackBuffers);
 	pMatricesTempBackBuffers.resize(NumBackBuffers);
 	pMaterialsTempBackBuffers.resize(NumBackBuffers);
+	pLightsTempBackBuffers.resize(NumBackBuffers);
+	pFaceAttrTempBackBuffers.resize(NumBackBuffers);
+	pSpecularsTempBackBuffers.resize(NumBackBuffers);
+
 	frameFenceValues.resize(NumBackBuffers);
 
 	// Init DirectX Debugging
@@ -219,6 +223,8 @@ void Renderer::renderFrame()
 			imguiMaterial.drawUi();
 			if(imguiMaterial.hasChanged())
 				changeEvent |= static_cast<ChangeEvent_t>(ChangeEvent::SceneUpdate);
+			if(imguiMaterial.hasMajorChange())
+				changeEvent |= static_cast<ChangeEvent_t>(ChangeEvent::SceneChange);
 		}
 		ImGui::End();
 
@@ -249,6 +255,15 @@ void Renderer::renderFrame()
 		DXUtil::updateDataInDefaultHeap(pDevice, pCurrentCommandList, materialBuffer,
 			pMaterialsTempBackBuffers[currentBackBufferIndex], scene->getMaterials().data(), 
 			sizeof(Material) * scene->getMaterials().size(), flags, flags);
+		
+	}
+
+	// On Scene change need to update lights, specs and face attributes
+	if (changeEvent & static_cast<ChangeEvent_t>(ChangeEvent::SceneChange))
+	{
+		scene->recalculateLightsAndFaceAttributes();
+		commandQueue->flush(); // This ensures no resources are in the GPUs queue
+		refreshMaterialResources();
 	}
 
 	// Draw
@@ -319,27 +334,11 @@ void Renderer::initSceneResources()
 	constexpr auto flags = D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
 	
 	const auto& mats = scene->getMaterials().empty() ? vector<Material>(1ULL) : scene->getMaterials();
-	wrl::ComPtr<ID3D12Resource> tempFace;
-	materialBuffer = DXUtil::uploadDataToDefaultHeap(pDevice, pCurrentCommandList, tempFace,
-		mats.data(), sizeof(Material) * mats.size(), flags);
+	materialBuffer = DXUtil::uploadDataToDefaultHeap(pDevice, pCurrentCommandList,
+		pMaterialsTempBackBuffers[currentBackBufferIndex], mats.data(), sizeof(Material) * mats.size(), flags);
 	materialBuffer->SetName(L"Material Buffer");
 
-	wrl::ComPtr<ID3D12Resource> tempFaceAttr;
-	faceAttributeBuffer = DXUtil::uploadDataToDefaultHeap(pDevice, pCurrentCommandList, tempFaceAttr,
-		scene->getFaceAttributes().data(), sizeof(FaceAttributes) * scene->getFaceAttributes().size(), flags);
-	faceAttributeBuffer->SetName(L"Face Attribute Buffer");
-
-	const auto& lights = scene->getLights().empty() ? vector<AreaLight>(1ULL) : scene->getLights();
-	wrl::ComPtr<ID3D12Resource> tempLight;
-	lightBuffer = DXUtil::uploadDataToDefaultHeap(pDevice, pCurrentCommandList, tempLight,
-		lights.data(), sizeof(AreaLight) * lights.size(), flags);
-	lightBuffer->SetName(L"Light Buffer");
-
-	const auto& specs = scene->getSpeculars().empty() ? vector<SpecularPrimitive>(1ULL) : scene->getSpeculars();
-	wrl::ComPtr<ID3D12Resource> tempSpec;
-	specularBuffer = DXUtil::uploadDataToDefaultHeap(pDevice, pCurrentCommandList, tempSpec,
-		specs.data(), sizeof(SpecularPrimitive) * specs.size(), flags);
-	specularBuffer->SetName(L"Specular Buffer");
+	refreshMaterialResources();
 
 	// Copy Matrices
 	const auto& matrs = scene->getSceneGraph().Children.empty() ? vector<DirectX::XMFLOAT3X4>(1ULL) : getMatrices();
@@ -421,6 +420,28 @@ vector<DirectX::XMFLOAT3X4> Renderer::getMatrices()
 	for (auto child : scene->getSceneGraph().Children)
 		DirectX::XMStoreFloat3x4(&*ptMat++, child.Transform);
 	return localMatrices;
+}
+
+void Renderer::refreshMaterialResources()
+{
+	constexpr auto flags = D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
+
+	faceAttributeBuffer = DXUtil::uploadDataToDefaultHeap(pDevice, pCurrentCommandList, pFaceAttrTempBackBuffers[currentBackBufferIndex],
+		scene->getFaceAttributes().data(), sizeof(FaceAttributes) * scene->getFaceAttributes().size(), flags);
+	faceAttributeBuffer->SetName(L"Face Attribute Buffer");
+	rendererResources.faceAttributeBuffer = faceAttributeBuffer;
+
+	const auto& lights = scene->getLights().empty() ? vector<AreaLight>(1ULL) : scene->getLights();
+	lightBuffer = DXUtil::uploadDataToDefaultHeap(pDevice, pCurrentCommandList, pLightsTempBackBuffers[currentBackBufferIndex],
+		lights.data(), sizeof(AreaLight) * lights.size(), flags);
+	lightBuffer->SetName(L"Light Buffer");
+	rendererResources.lightBuffer = lightBuffer;
+
+	const auto& specs = scene->getSpeculars().empty() ? vector<SpecularPrimitive>(1ULL) : scene->getSpeculars();
+	specularBuffer = DXUtil::uploadDataToDefaultHeap(pDevice, pCurrentCommandList, pSpecularsTempBackBuffers[currentBackBufferIndex],
+		specs.data(), sizeof(SpecularPrimitive) * specs.size(), flags);
+	specularBuffer->SetName(L"Specular Buffer");
+	rendererResources.specularBuffer = specularBuffer;
 }
 
 LRESULT Renderer::wndCallback(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)

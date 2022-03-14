@@ -14,10 +14,14 @@ namespace candela::renderer::imgui
 		void drawUi();
 
 		bool hasChanged() const;
+
+		// A major change occurs if material becomes or stops become a light or specular
+		bool hasMajorChange() const;
 	private:
 		scene::Material& material;
 		std::size_t materialId;
 
 		bool changed;
+		bool majorChange;
 	};
 }

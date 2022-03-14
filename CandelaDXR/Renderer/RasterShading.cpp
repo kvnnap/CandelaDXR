@@ -237,6 +237,8 @@ void RasterShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandL
 
 void RasterShading::onChange(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, uint32_t currentBackBufferIndex, ChangeEvent_t changeEvent)
 {
+	if (changeEvent & static_cast<ChangeEvent_t>(ChangeEvent::SceneChange))
+		constBuffer.numLights = static_cast<uint32_t>(rendererResources->scene->getLights().size());
 }
 
 void RasterShading::onResize()

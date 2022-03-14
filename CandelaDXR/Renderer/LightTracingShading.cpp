@@ -423,6 +423,12 @@ void LightTracingShading::onChange(wrl::ComPtr<ID3D12GraphicsCommandList> pCurre
 {
 	if (changeEvent & static_cast<ChangeEvent_t>(ChangeEvent::Transformation))
 		buildTlas(pCurrentCommandList, tlasTempBuffer[currentBackBufferIndex]);
+	if (changeEvent & static_cast<ChangeEvent_t>(ChangeEvent::SceneChange))
+	{
+		constBuffer.numLights = static_cast<uint32_t>(rendererResources->scene->getLights().size());
+		constBuffer.numSpeculars = static_cast<uint32_t>(rendererResources->scene->getSpeculars().size());
+		createShaderTable(pCurrentCommandList, tlasTempBuffer[currentBackBufferIndex]);
+	}
 	clear = true;
 }
 
