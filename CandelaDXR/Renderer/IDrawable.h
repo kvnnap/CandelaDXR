@@ -1,13 +1,11 @@
 #pragma once
 
 #include <cstdint>
-
+#include <vector>
 
 #define NOMINMAX
 #include <d3d12.h>
 #include <wrl/client.h>
-
-#include <vector>
 
 #include "DirectX/CommandQueue.h"
 #include "Scene/Scene.h"
@@ -39,13 +37,26 @@ namespace candela::renderer
 		Camera *camera;
 	};
 
+	enum class ChangeEvent : std::uint32_t
+	{
+		Transformation = 0x01,		// Like Matrix Rotation, etc
+		SceneUpdate    = 0x02,		// Scene buffer content change but no size change
+		SceneChange    = 0x04		// Scene buffer size change (like num of lights, specs and so on)
+	};
+
+	using ChangeEvent_t = std::underlying_type<ChangeEvent>::type;
+
 	class IDrawable
 	{
 	public:
 		virtual ~IDrawable() = default;
 		virtual void init(RendererResources *rendererResources) = 0;
 		virtual void draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, std::uint32_t currentBackBufferIndex) = 0;
-		virtual void onChange(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, std::uint32_t currentBackBufferIndex) = 0;
+
+		// On matrix change
+		virtual void onChange(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, std::uint32_t currentBackBufferIndex, ChangeEvent_t changeEvent) = 0;
+
+		// On window resize
 		virtual void onResize() = 0;
 	};
 }

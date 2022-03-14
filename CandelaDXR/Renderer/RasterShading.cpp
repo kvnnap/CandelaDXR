@@ -14,6 +14,7 @@ using candela::mathematics::Vector3;
 using candela::mathematics::UVector2;
 using candela::renderer::RasterShading;
 using candela::renderer::Camera;
+using candela::renderer::ChangeEvent_t;
 using candela::directx::DXUtil;
 using candela::directx::RootSignatureManager;
 using candela::directx::DescriptorHeap;
@@ -234,7 +235,7 @@ void RasterShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandL
 	}
 }
 
-void RasterShading::onChange(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, uint32_t currentBackBufferIndex)
+void RasterShading::onChange(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, uint32_t currentBackBufferIndex, ChangeEvent_t changeEvent)
 {
 }
 

@@ -41,6 +41,8 @@ using candela::scene::SpecularPrimitive;
 using candela::renderer::Renderer;
 using candela::renderer::Camera;
 using candela::renderer::IDrawable;
+using candela::renderer::ChangeEvent;
+using candela::renderer::ChangeEvent_t;
 using candela::renderer::imgui::ImGuiSceneNode;
 
 using DirectX::XMVectorSet;
@@ -195,8 +197,7 @@ void Renderer::renderFrame()
 	// ImGui
 	if (keyboard.hasKeyChanged('Q') && keyboard.isKeyPressed('Q'))
 		viewImgui = !viewImgui;
-	bool transformChanged = false;
-	bool materialChanged = false;
+	ChangeEvent_t changeEvent{};
 	if (viewImgui)
 	{
 		ImGui_ImplDX12_NewFrame();
@@ -207,7 +208,8 @@ void Renderer::renderFrame()
 		for (auto& imguiSceneNode : imguiSceneNodes)
 		{
 			imguiSceneNode.drawUi();
-			transformChanged |= imguiSceneNode.hasChanged();
+			if (imguiSceneNode.hasChanged())
+				changeEvent |= static_cast<ChangeEvent_t>(ChangeEvent::Transformation);
 		}
 		ImGui::End();
 
@@ -215,7 +217,8 @@ void Renderer::renderFrame()
 		for (auto& imguiMaterial : imguiMaterials)
 		{
 			imguiMaterial.drawUi();
-			materialChanged |= imguiMaterial.hasChanged();
+			if(imguiMaterial.hasChanged())
+				changeEvent |= static_cast<ChangeEvent_t>(ChangeEvent::SceneUpdate);
 		}
 		ImGui::End();
 
@@ -224,8 +227,9 @@ void Renderer::renderFrame()
 
 	constexpr auto flags = D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
 
+	
 	// Update Transforms
-	if (transformChanged)
+	if (changeEvent & static_cast<ChangeEvent_t>(ChangeEvent::Transformation))
 	{
 		auto gMatrices = getMatrices();
 		DXUtil::updateDataInDefaultHeap(
@@ -240,7 +244,7 @@ void Renderer::renderFrame()
 	}
 
 	// Update material, face attributes and lights
-	if (materialChanged)
+	if (changeEvent & static_cast<ChangeEvent_t>(ChangeEvent::SceneUpdate))
 	{
 		DXUtil::updateDataInDefaultHeap(pDevice, pCurrentCommandList, materialBuffer,
 			pMaterialsTempBackBuffers[currentBackBufferIndex], scene->getMaterials().data(), 
@@ -251,8 +255,8 @@ void Renderer::renderFrame()
 	updateCamera();
 	for (IDrawable* drawable : drawables)
 	{
-		if (transformChanged || materialChanged)
-			drawable->onChange(pCurrentCommandList, currentBackBufferIndex);
+		if (changeEvent)
+			drawable->onChange(pCurrentCommandList, currentBackBufferIndex, changeEvent);
 		drawable->draw(pCurrentCommandList, currentBackBufferIndex);
 	}
 
@@ -280,7 +284,7 @@ void Renderer::renderFrame()
 	commandQueue->waitForFenceValue(frameFenceValues[currentBackBufferIndex]);
 
 	// Stats
-	if (transformChanged || camera->hasChanged())
+	if ((changeEvent & static_cast<ChangeEvent_t>(ChangeEvent::Transformation)) || camera->hasChanged())
 		fpsCounter.resetFrameCount();
 	if (fpsCounter.hitFrame())
 		window->setWindowName("CandelaDXR - Frames: " + to_string(fpsCounter.getFrameCount()) + " FPS: " + to_string(fpsCounter.getFramesPerSecond()));
@@ -393,7 +397,7 @@ void Renderer::updateCamera()
 	if (keyboard.isKeyPressed('J') || keyboard.isKeyPressed('K'))
 		camera->incrementDirection(getValueIfPressed('J', deltaUnits), getValueIfPressed('K', deltaUnits));
 }
-//#pragma comment(lib, "dxgidebug.dll")
+
 void Renderer::resize()
 {
 	// Wait for all GPU operations to complete

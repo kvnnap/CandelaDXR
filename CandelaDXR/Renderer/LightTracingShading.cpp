@@ -29,6 +29,8 @@ using candela::directx::ShadingRecordType;
 
 using candela::renderer::LightTracingShading;
 using candela::renderer::RendererResources;
+using candela::renderer::ChangeEvent;
+using candela::renderer::ChangeEvent_t;
 
 using candela::mathematics::UVector2;
 using candela::mathematics::Vector2;
@@ -417,9 +419,10 @@ void LightTracingShading::generateIrrToRadTexture(wrl::ComPtr<ID3D12GraphicsComm
 	irrToRad->SetName(L"Irr-to-rad Texture");
 }
 
-void LightTracingShading::onChange(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, uint32_t currentBackBufferIndex)
+void LightTracingShading::onChange(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, uint32_t currentBackBufferIndex, ChangeEvent_t changeEvent)
 {
-	buildTlas(pCurrentCommandList, tlasTempBuffer[currentBackBufferIndex]);
+	if (changeEvent & static_cast<ChangeEvent_t>(ChangeEvent::Transformation))
+		buildTlas(pCurrentCommandList, tlasTempBuffer[currentBackBufferIndex]);
 	clear = true;
 }
 
