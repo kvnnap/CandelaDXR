@@ -77,7 +77,7 @@ namespace candela::scene
 		Scene();
 
 		std::size_t addTexture(Texture texture);
-		void addMaterial(Material texture);
+		void addMaterial(Material material, const std::string& name = "");
 
 		void startGroup(const std::string& name);
 		void endGroup();
@@ -97,6 +97,7 @@ namespace candela::scene
 		const std::vector<int>& getIndices() const;
 
 		const std::vector<Texture>& getTextures() const;
+		std::string getMaterialName(std::size_t matId) const;
 		const std::vector<Material>& getMaterials() const;
 		std::vector<Material>& getMaterials();
 		const std::vector<AreaLight>& getLights() const;
@@ -123,6 +124,7 @@ namespace candela::scene
 		// Data
 		std::vector<Texture> textures;
 		std::vector<Material> materials;
+		std::vector<std::string> materialNames;
 		std::vector<AreaLight> lights;
 		std::vector<SpecularPrimitive> speculars;
 

@@ -9,7 +9,7 @@ namespace candela::renderer::imgui
 	class ImGuiMaterial
 	{
 	public:
-		ImGuiMaterial(scene::Material &material, std::size_t materialId);
+		ImGuiMaterial(scene::Material &material, std::size_t materialId, const std::string &materialName);
 
 		void drawUi();
 
@@ -20,6 +20,7 @@ namespace candela::renderer::imgui
 	private:
 		scene::Material& material;
 		std::size_t materialId;
+		std::string materialName;
 
 		bool changed;
 		bool majorChange;

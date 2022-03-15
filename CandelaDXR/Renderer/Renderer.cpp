@@ -158,7 +158,7 @@ void Renderer::init()
 	for (size_t i = 0; i < scene->getMaterials().size(); ++i)
 	{
 		auto& mat = scene->getMaterials()[i];
-		imguiMaterials.emplace_back(mat, i);
+		imguiMaterials.emplace_back(mat, i, scene->getMaterialName(i));
 	}
 
 	// Prepare struct to share with drawables

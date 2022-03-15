@@ -35,9 +35,10 @@ size_t Scene::addTexture(Texture texture)
 	return textures.size() - 1;
 }
 
-void Scene::addMaterial(Material material)
+void Scene::addMaterial(Material material, const string& name)
 {
 	materials.push_back(std::move(material));
+	materialNames.push_back(name);
 }
 
 void Scene::startGroup(const string& name)
@@ -199,6 +200,7 @@ const vector<int>& Scene::getIndices() const { return indexData; }
 
 const vector<Texture>& Scene::getTextures() const { return textures; }
 const vector<Material>& Scene::getMaterials() const { return materials; }
+string Scene::getMaterialName(size_t matId) const { return materialNames.at(matId); }
 vector<Material>& Scene::getMaterials() { return materials; }
 const vector<AreaLight>& Scene::getLights() const { return lights; }
 const vector<SpecularPrimitive>& Scene::getSpeculars() const { return speculars; }
@@ -209,7 +211,7 @@ const IndexedSpan& Scene::getMeshIndexedSpan(const string& groupName) const
 	return spanDataMap.at(groupName);
 }
 
-const std::unordered_map<std::string, IndexedSpan>& Scene::getMeshIndexedSpanDataMap() const
+const std::unordered_map<string, IndexedSpan>& Scene::getMeshIndexedSpanDataMap() const
 {
 	return spanDataMap;
 }

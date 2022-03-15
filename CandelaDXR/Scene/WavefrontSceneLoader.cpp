@@ -78,7 +78,7 @@ void WavefrontSceneLoader::loadScene()
             .TransmissiveFilter = Vector3(tinyMat.transmittance[0], tinyMat.transmittance[1], tinyMat.transmittance[2]),
             .RefractiveIndex = tinyMat.ior,
             .Dissolve = tinyMat.dissolve
-        });
+        }, tinyMat.name);
     }
 
     // Grouping - for each mesh group

@@ -5,9 +5,10 @@
 using candela::renderer::imgui::ImGuiMaterial;
 using candela::scene::Material;
 using std::size_t;
+using std::string;
 
-ImGuiMaterial::ImGuiMaterial(Material& material, size_t materialId)
-	: material(material), materialId(materialId), changed(), majorChange()
+ImGuiMaterial::ImGuiMaterial(Material& material, size_t materialId, const string &materialName)
+	: material(material), materialId(materialId), materialName(materialName), changed(), majorChange()
 {
 }
 
@@ -18,7 +19,7 @@ void ImGuiMaterial::drawUi()
 	auto emm = material.Emissive;
 	auto dis = material.Dissolve;
 
-	ImGui::Text("%d", materialId);
+	ImGui::Text("%d - %s", materialId, materialName.c_str());
 	changed = ImGui::DragFloat3("Diffuse", &material.Diffuse.x, 0.01f, 0.f, 1.f);
 	changed |= ImGui::DragFloat3("Emissive", &material.Emissive.x, 0.01f, 0.f, 1000.f);
 	changed |= ImGui::DragFloat3("Tf", &material.TransmissiveFilter.x, 0.01f, 0.f, 1000.f);
