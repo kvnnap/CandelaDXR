@@ -93,6 +93,7 @@ Renderer::~Renderer()
 
 void Renderer::init()
 {
+	camera->setAspectRatio(static_cast<float>(windowDimensions.x) / windowDimensions.y);
 	window = make_unique<Window>("CandelaDXR", windowDimensions.x, windowDimensions.y, &keyboard, &mouse);
 	using namespace std::placeholders;
 	window->addWndProcCallback(std::bind(&Renderer::wndCallback, this, _1, _2, _3, _4));
@@ -404,6 +405,7 @@ void Renderer::resize()
 	rendererResources.pRTVBackBuffers.clear();
 	pRTVBackBuffers.clear();
 	currentBackBufferIndex = 0;
+	camera->setAspectRatio(static_cast<float>(windowDimensions.x) / windowDimensions.y);
 	HRESULT hr;
 	auto flags = DXUtil::checkTearingSupport(dxgiFactory) ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING : 0;
 	GFXTHROWIFFAILED(pSwapChain->ResizeBuffers(NumBackBuffers, windowDimensions.x, windowDimensions.y, DXGI_FORMAT_UNKNOWN, flags));

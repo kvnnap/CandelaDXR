@@ -42,6 +42,12 @@ void Camera::lookTo(const DirectX::XMVECTOR& p_direction, const DirectX::XMVECTO
 	recalculateViewMatrix();
 }
 
+void Camera::setAspectRatio(float aspectRatio)
+{
+	nearWidth = aspectRatio * nearHeight;
+	perspectiveMatrix = DirectX::XMMatrixPerspectiveRH(nearWidth, nearHeight, nearZ, farZ);
+}
+
 void Camera::incrementPosition(const XMVECTOR& deltaPosition)
 {
 	position += deltaPosition;
@@ -115,8 +121,7 @@ XMMATRIX Camera::getViewPerspectiveMatrixColMajor() const
 
 bool Camera::hasChanged() const
 {
-	auto localChanged = changed;
-	return localChanged;
+	return changed;
 }
 
 void Camera::resetChanged()
