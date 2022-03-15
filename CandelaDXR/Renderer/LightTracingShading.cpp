@@ -38,8 +38,8 @@ using candela::mathematics::Vector3;
 
 using candela::sampler::ISampler;
 
-LightTracingShading::LightTracingShading(unique_ptr<ISampler> sampler)
-	: rendererResources(), constBuffer(), sampler(std::move(sampler)), clear()
+LightTracingShading::LightTracingShading(unique_ptr<ISampler> sampler, UVector2 lightDimensions)
+	: rendererResources(), constBuffer(), lightSamples(lightDimensions), sampler(std::move(sampler)), clear()
 {
 }
 
@@ -54,7 +54,6 @@ void LightTracingShading::init(RendererResources* rRes)
 	tlasTempBuffer.resize(rRes->numBackBuffers);
 	constBuffer.numLights = static_cast<uint32_t>(rRes->scene->getLights().size());
 	constBuffer.numSpeculars = static_cast<uint32_t>(rRes->scene->getSpeculars().size());
-	constBuffer.specularOnly = 0;
 	constBuffer.frameNumber = 0;
 
 	auto commandList = rRes->commandQueue->getCommandList();
@@ -141,6 +140,7 @@ void LightTracingShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> currentCom
 	constBuffer.plane = cam->getNearPlaneDimensions();
 	constBuffer.seeds[0] = sampler->nextUInt32();
 	constBuffer.seeds[1] = sampler->nextUInt32();
+	constBuffer.winDimensions = rendererResources->winDimensions;
 	clear |= cam->hasChanged();
 	if (clear)
 		constBuffer.frameNumber = 1;
@@ -156,8 +156,8 @@ void LightTracingShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> currentCom
 	commandList4->SetPipelineState1(stateObject.Get());
 
 	// Launch rays
-	auto& dim = rendererResources->winDimensions;
-	D3D12_DISPATCH_RAYS_DESC dispatchRaysDesc = shadingTable->getDispatchRaysDescriptor(dim.x, dim.y);
+	auto rayDimensions = lightSamples.x == 0 && lightSamples.y == 0 ? rendererResources->winDimensions : lightSamples;
+	D3D12_DISPATCH_RAYS_DESC dispatchRaysDesc = shadingTable->getDispatchRaysDescriptor(rayDimensions.x, rayDimensions.y);
 	commandList4->DispatchRays(&dispatchRaysDesc);
 
 	// Launch compute shader -  Make sure all writes to this UAV have completed from DispatchRays
@@ -168,8 +168,9 @@ void LightTracingShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> currentCom
 	currentCommandList->SetComputeRootSignature(computeRootSignature.Get());
 	currentCommandList->SetDescriptorHeaps(1u, computeDescriptorHeap.GetAddressOf());
 	currentCommandList->SetComputeRootDescriptorTable(0u, computeDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
-	uint32_t c32data[4] = { dim.x, dim.y, constBuffer.frameNumber, clear ? 1u : 0u };
-	currentCommandList->SetComputeRoot32BitConstants(1u, 4u, &c32data[0], 0);
+	auto& dim = rendererResources->winDimensions;
+	uint32_t c32data[5] = { dim.x, dim.y, rayDimensions.x * rayDimensions.y, constBuffer.frameNumber, clear ? 1u : 0u };
+	currentCommandList->SetComputeRoot32BitConstants(1u, 5u, &c32data[0], 0);
 	currentCommandList->Dispatch(dim.x / 8 + (dim.x % 8 == 0 ? 0 : 1), dim.y / 8 + (dim.y % 8 == 0 ? 0 : 1), 1);
 	clear = false;
 
@@ -291,7 +292,7 @@ void LightTracingShading::buildPipeline()
 	computeRSM->addDescriptorRange("ComputeData", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 3, 0)); // gOutput, gIrradianceDataStructure, gIrradiance
 	computeRSM->addDescriptorRange("ComputeData", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0)); // gIrrToRad
 	computeRSM->setDescriptorTableParameter("ComputeDataDescTable", "ComputeData");
-	param.InitAsConstants(4u, 0u); computeRSM->setParameter("ComputeConstants", param); // winDimensions (x,y), numFrames, clear
+	param.InitAsConstants(5u, 0u); computeRSM->setParameter("ComputeConstants", param); // winDimensions (x,y), lightSamples, numFrames, clear
 	computeRSM->addParametersToRootSignature("ComputeRootSignature", { "ComputeDataDescTable", "ComputeConstants" });
 	computeRootSignature = computeRSM->generateRootSignature("ComputeRootSignature", rendererResources->pDevice);
 

@@ -1,4 +1,5 @@
 #include "LightTracingDrawableFactory.h"
+#include "VectorFactory.h"
 
 #include "Renderer/LightTracingShading.h"
 
@@ -15,6 +16,8 @@ using candela::renderer::LightTracingShading;
 using candela::renderer::factory::LightTracingDrawableFactory;
 
 using candela::sampler::factory::UniformSamplerFactory;
+using candela::mathematics::UVector2;
+using candela::mathematics::factory::UVector2Factory;
 
 unique_ptr<IDrawable> LightTracingDrawableFactory::create() const
 {
@@ -23,8 +26,12 @@ unique_ptr<IDrawable> LightTracingDrawableFactory::create() const
 
 unique_ptr<IDrawable> LightTracingDrawableFactory::create(const ConfigurationNode& config) const
 {
-	auto instance = config.asObject().keyExists("Sampler")
-		? UniformSamplerFactory().create(config["Sampler"])
+	const auto &confObject = config.asObject();
+	auto instance = confObject.keyExists("Sampler")
+		? UniformSamplerFactory().create(confObject["Sampler"])
 		: UniformSamplerFactory().create();
-	return make_unique<LightTracingShading>(move(instance));
+	auto lightSamples = UVector2();
+	if (confObject.keyExists("LightSamples"))
+		lightSamples = *UVector2Factory().create(confObject["LightSamples"]);
+	return make_unique<LightTracingShading>(move(instance), lightSamples);
 }

@@ -30,7 +30,7 @@ namespace candela::renderer
 		: public IDrawable
 	{
 	public:
-		LightTracingShading(std::unique_ptr<sampler::ISampler> sampler);
+		LightTracingShading(std::unique_ptr<sampler::ISampler> sampler, mathematics::UVector2 lightSamples);
 
 		void init(RendererResources* rendererResources) override;
 		void draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, std::uint32_t currentBackBufferIndex) override;
@@ -63,11 +63,12 @@ namespace candela::renderer
 			DirectX::XMVECTOR direction;
 			DirectX::XMVECTOR plane; // x, y and z (distance from point to plane)
 			std::uint32_t seeds[2];
+			mathematics::UVector2 winDimensions;
 			std::uint32_t numLights;
 			std::uint32_t numSpeculars;
 			std::uint32_t frameNumber;
-			std::uint32_t specularOnly;
 		} constBuffer;
+		mathematics::UVector2 lightSamples;
 		std::vector<wrl::ComPtr<ID3D12Resource>> constantTempBuffer;
 		wrl::ComPtr<ID3D12Resource> outputTexture;
 		wrl::ComPtr<ID3D12Resource> constantBuffer;

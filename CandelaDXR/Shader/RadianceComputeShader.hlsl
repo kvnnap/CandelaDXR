@@ -3,8 +3,8 @@
 
 cbuffer CB1 : register(b0)
 {
-	uint ScreenWidth;
-	uint ScreenHeight;
+	uint2 ScreenDim;
+	uint LightSamples;
 	uint FrameNumber;
 	uint Clear;
 }
@@ -22,16 +22,16 @@ Texture2D<float> gIrrToRad : register(t0);
 [numthreads(8, 8, 1)]
 void main( uint3 DTid : SV_DispatchThreadID )
 {
-	if (DTid.x >= ScreenWidth || DTid.y >= ScreenHeight)
+	if (DTid.x >= ScreenDim.x || DTid.y >= ScreenDim.y)
 		return;
 
 	if (Clear)
 		gIrradiance[DTid.xy] = float4(0.f, 0.f, 0.f, 0.f);
 
-	const uint flatLaunchIndex = DTid.y * ScreenWidth + DTid.x;
+	const uint flatLaunchIndex = DTid.y * ScreenDim.x + DTid.x;
 	gIrradiance[DTid.xy] += float4(fixedToFloat(gIrradianceDS[flatLaunchIndex].value, ConvRangeBits), 0.f);
 	gIrradianceDS[flatLaunchIndex].value = 0;
 
-	const float sampleRatio = 1.f / (ScreenWidth * ScreenHeight * (float)FrameNumber);
+	const float sampleRatio = 1.f / (LightSamples * (float)FrameNumber);
 	gOutput[DTid.xy] = float4(linearToSrgb(toneMap(gIrradiance[DTid.xy].xyz * gIrrToRad[DTid.xy] * sampleRatio)), 1.f);
 }

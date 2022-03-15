@@ -9,10 +9,11 @@ struct ConstBuff
 	float3 direction;
 	float3 plane; // sensor dimensions (z contains distance to sensor plane)
 	uint2 seeds;
+	uint2 winDim;
 	uint numLights;
 	uint numSpeculars;
 	uint frameNumber;
-	uint specularOnly;
+	uint padding;
 };
 
 struct RayPayload
@@ -183,7 +184,7 @@ void rayGen()
 
 	ShadowPayload shadowPayload;
 
-	if (lightDot > 0.f && cameraDot > 0.f && getPixel(shadowRay, launchDim, pixel))
+	if (lightDot > 0.f && cameraDot > 0.f && getPixel(shadowRay, cBuffer.winDim, pixel))
 	{
 		// Add direct light contribution
 		shadowPayload.occluded = true;
@@ -201,7 +202,7 @@ void rayGen()
 		
 		if (!shadowPayload.occluded)
 		{
-			const uint pixLaunchIndex = pixel.y * launchDim.x + pixel.x;
+			const uint pixLaunchIndex = pixel.y * cBuffer.winDim.x + pixel.x;
 			float3 contrib = localContribution * lightDot * invShadowDistance * invShadowDistance * cameraDot;
 			AddContribution(pixLaunchIndex, contrib);
 		}
@@ -266,7 +267,7 @@ void rayGen()
 			float surfaceDot = dot(unitShadowRayDirection, unitFaceNormal);
 			cameraDot = -dot(unitShadowRayDirection, cBuffer.w);
 
-			if (surfaceDot > 0.f && cameraDot > 0.f && getPixel(shadowRay, launchDim, pixel))
+			if (surfaceDot > 0.f && cameraDot > 0.f && getPixel(shadowRay, cBuffer.winDim, pixel))
 			{
 				shadowPayload.occluded = true;
 				TraceRay(
@@ -283,7 +284,7 @@ void rayGen()
 
 				if (!shadowPayload.occluded)
 				{
-					const uint pixLaunchIndex = pixel.y * launchDim.x + pixel.x;
+					const uint pixLaunchIndex = pixel.y * cBuffer.winDim.x + pixel.x;
 					float3 brdfDiff = mat.Diffuse * OneOverPI;
 					if (mat.DiffuseTextureId >= 0)
 						brdfDiff *= gTextures[mat.DiffuseTextureId].SampleLevel(gSampler, getTextureLocation(rayPayload.bary, vertIndex), 0);
