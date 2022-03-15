@@ -98,7 +98,7 @@
       <AdditionalLibraryDirectories>$(FEANOR_ROOT)\lib</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy "$(ProjectDir)Assets" "$(OutDir)Assets\" /Y</Command>
+      <Command>xcopy "$(ProjectDir)Assets" "$(OutDir)Assets\" /E /Y</Command>
     </PostBuildEvent>
     <PostBuildEvent>
       <Message>Copy Assets</Message>
@@ -124,7 +124,7 @@
       <AdditionalLibraryDirectories>$(FEANOR_ROOT)\lib</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy "$(ProjectDir)Assets" "$(OutDir)Assets\" /Y</Command>
+      <Command>xcopy "$(ProjectDir)Assets" "$(OutDir)Assets\" /E /Y</Command>
     </PostBuildEvent>
     <PostBuildEvent>
       <Message>Copy Assets</Message>
@@ -146,7 +146,7 @@
       <AdditionalLibraryDirectories>$(FEANOR_ROOT)\lib</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy "$(ProjectDir)Assets" "$(OutDir)Assets\" /Y</Command>
+      <Command>xcopy "$(ProjectDir)Assets" "$(OutDir)Assets\" /E /Y</Command>
     </PostBuildEvent>
     <PostBuildEvent>
       <Message>Copy Assets</Message>
@@ -172,7 +172,7 @@
       <AdditionalLibraryDirectories>$(FEANOR_ROOT)\lib</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy "$(ProjectDir)Assets" "$(OutDir)Assets\" /Y</Command>
+      <Command>xcopy "$(ProjectDir)Assets" "$(OutDir)Assets\" /E /Y</Command>
     </PostBuildEvent>
     <PostBuildEvent>
       <Message>Copy Assets</Message>
