@@ -11,6 +11,7 @@ using DirectX::XMMatrixRotationAxis;
 using DirectX::XMMatrixLookToRH;
 using DirectX::XMMatrixTranspose;
 using DirectX::XMVectorSet;
+using DirectX::XMMatrixPerspectiveRH;
 using DirectX::operator+=;
 using DirectX::operator+;
 using DirectX::operator*;
@@ -19,33 +20,31 @@ Camera::Camera(const XMVECTOR& position, const XMVECTOR& direction, float nearWi
 	: position(position), direction(XMVector3Normalize(direction)), up(), nearWidth(nearWidth), nearHeight(nearHeight), nearZ(nearZ), farZ(farZ), viewMatrix(), changed()
 {
 	lookTo(direction);
-	perspectiveMatrix = DirectX::XMMatrixPerspectiveRH(nearWidth, nearHeight, nearZ, farZ);
+	perspectiveMatrix = XMMatrixPerspectiveRH(nearWidth, nearHeight, nearZ, farZ);
 }
 
 void Camera::recalculateViewMatrix()
 {
-	viewMatrix = XMMatrixLookToRH(position, direction, XMVectorSet(0.f, 1.f, 0.f, 0.f));
+	viewMatrix = XMMatrixLookToRH(position, direction, up);
 	changed = true;
 }
 
 XMVECTOR Camera::getCrossVector() const
 {
-	return XMVector3Cross(up, direction);
+	return XMVector3Normalize(XMVector3Cross(up, direction));
 }
 
 void Camera::lookTo(const DirectX::XMVECTOR& p_direction, const DirectX::XMVECTOR& p_up)
 {
 	up = XMVector3Normalize(p_up);
 	direction = XMVector3Normalize(p_direction);
-	XMVECTOR side = getCrossVector();
-	up = XMVector3Cross(direction, side);
 	recalculateViewMatrix();
 }
 
 void Camera::setAspectRatio(float aspectRatio)
 {
 	nearWidth = aspectRatio * nearHeight;
-	perspectiveMatrix = DirectX::XMMatrixPerspectiveRH(nearWidth, nearHeight, nearZ, farZ);
+	perspectiveMatrix = XMMatrixPerspectiveRH(nearWidth, nearHeight, nearZ, farZ);
 }
 
 void Camera::incrementPosition(const XMVECTOR& deltaPosition)
@@ -70,11 +69,8 @@ void Camera::incrementPositionAlongDirection(float moveLeftRight, float moveUpDo
 void Camera::incrementDirection(float rotationLeftRight, float rotationUpDown)
 {
 	XMVECTOR xAxisVector = getCrossVector();
-	// XMMatrixRotationY(rotationY) * XMMatrixRotationX(rotationX) <- incorrect rotation
-	// Try also XMMatrixRotationNormal, should be faster since up and direction are normalised (but may lose precision over time :/)
 	XMMATRIX rotMat = XMMatrixRotationAxis(up, rotationLeftRight) * XMMatrixRotationAxis(xAxisVector, rotationUpDown);
-	direction = XMVector4Transform(direction, rotMat);
-	up = XMVector4Transform(up, rotMat);
+	direction = XMVector3Normalize(XMVector4Transform(direction, rotMat));
 	recalculateViewMatrix();
 }
 
