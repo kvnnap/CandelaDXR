@@ -7,6 +7,7 @@
 #include <vector>
 #include <memory>
 #include <cstdint>
+#include <string>
 
 #include "DirectX/DXUtil.h"
 
@@ -41,10 +42,13 @@ namespace candela::renderer
 		const mathematics::UVector2& getLightSamples() const;
 		void setLightSamples(const mathematics::UVector2& lightSamples);
 
+		const std::vector<std::string>& getShaderPaths() const;
+		void setCurrentShaderIndex(std::uint32_t currentShaderIndex);
+
 	private:
 		void buildPipeline();
 		void createShaderResources();
-		void createShaderTable(wrl::ComPtr<ID3D12GraphicsCommandList> &commandList, wrl::ComPtr<ID3D12Resource> &tempResource);
+		void createShaderTable(wrl::ComPtr<ID3D12GraphicsCommandList> &commandList);
 		void buildTlas(wrl::ComPtr<ID3D12GraphicsCommandList>& commandList, wrl::ComPtr<ID3D12Resource>& tempResource);
 		void generateIrrToRadTexture(wrl::ComPtr<ID3D12GraphicsCommandList>& commandList, wrl::ComPtr<ID3D12Resource>& tempResource);
 
@@ -54,10 +58,13 @@ namespace candela::renderer
 		// Common renderer resources
 		RendererResources* rendererResources;
 		
+		// Shader paths
+		std::vector<std::string> shaderPaths;
+
 		// Light tracer descriptor stuff
 		wrl::ComPtr<ID3D12DescriptorHeap> descriptorHeap;
 		wrl::ComPtr<ID3D12RootSignature> globalEmptyRootSignature;
-		wrl::ComPtr<ID3D12StateObject> stateObject;
+		std::vector<wrl::ComPtr<ID3D12StateObject>> stateObjects;
 
 		// Light tracing shader resources
 		struct alignas(16) ConstBuff
@@ -74,6 +81,7 @@ namespace candela::renderer
 		} constBuffer;
 		mathematics::UVector2 lightSamples;
 		std::vector<wrl::ComPtr<ID3D12Resource>> constantTempBuffer;
+		std::vector<wrl::ComPtr<ID3D12Resource>> shadingTableTempBuffers;
 		wrl::ComPtr<ID3D12Resource> outputTexture;
 		wrl::ComPtr<ID3D12Resource> constantBuffer;
 		wrl::ComPtr<ID3D12Resource> irrToRad;
@@ -94,7 +102,9 @@ namespace candela::renderer
 		wrl::ComPtr<ID3D12PipelineState> computePipelineState;
 
 		// My helpers
-		std::unique_ptr<directx::ShadingTable> shadingTable;
+		std::vector<std::unique_ptr<directx::ShadingTable>> shadingTables;
+		std::shared_ptr<directx::RootSignatureManager> rootSignatureManager;
 		std::shared_ptr<directx::RootSignatureManager> computeRSM;
+		std::uint32_t currentShader;
 	};
 }

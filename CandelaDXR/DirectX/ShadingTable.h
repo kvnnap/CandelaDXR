@@ -31,6 +31,8 @@ namespace candela::directx
 		void setSRV(size_t entryNumber, const D3D12_SHADER_RESOURCE_VIEW_DESC& srvDescriptor, Microsoft::WRL::ComPtr<ID3D12Device> pDevice, Microsoft::WRL::ComPtr<ID3D12Resource> resource = {});
 
 		void validate() const;
+		const std::string& getInstanceName() const;
+		const std::shared_ptr<RootSignatureManager>& getRootSignatureManager() const;
 		Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> getDescriptorHeap() const;
 	private:
 		D3D12_CPU_DESCRIPTOR_HANDLE getCpuDescHandle(size_t entryNumber, Microsoft::WRL::ComPtr<ID3D12Device> pDevice) const;
@@ -80,6 +82,7 @@ namespace candela::directx
 		void addProgram(const std::wstring& programName, ShadingRecordType shadingRecordType, const std::string& rootSignatureName);
 
 		DescriptorHeap& generateDescriptorHeap(const std::string& parameterName, const std::string& instanceName, Microsoft::WRL::ComPtr<ID3D12Device> pDevice);
+		void addDescriptorHeap(std::shared_ptr<DescriptorHeap> descriptorHeap);
 
 		//void setInputForDescriptorTableParameter(const std::wstring& programName, const std::string& parameterName, Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> descriptorHeap);
 		void setInputForDescriptorTableParameter(const std::wstring& programName, const std::string& parameterName, const std::string& instanceName);
@@ -106,7 +109,7 @@ namespace candela::directx
 		std::unordered_map<std::wstring, size_t> shadingRecordsMap;
 		std::vector<ShadingRecord> shadingRecords;
 
-		std::unordered_map<std::string, DescriptorHeap> descriptorHeaps;
+		std::unordered_map<std::string, std::shared_ptr<DescriptorHeap>> descriptorHeaps;
 
 		ShadingTableLayout tableLayout[3];
 

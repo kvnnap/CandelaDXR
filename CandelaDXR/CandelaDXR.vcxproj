@@ -212,6 +212,7 @@
     <ClCompile Include="Scene\WavefrontSceneLoader.cpp" />
     <ClCompile Include="Factory\WavefrontSceneLoaderFactory.cpp" />
     <ClCompile Include="System\DllManager.cpp" />
+    <ClCompile Include="Util\StringUtil.cpp" />
     <ClCompile Include="Window\Window.cpp" />
     <ClCompile Include="Window\WindowClass.cpp" />
   </ItemGroup>
@@ -257,11 +258,28 @@
     <ClInclude Include="Scene\WavefrontSceneLoader.h" />
     <ClInclude Include="Factory\WavefrontSceneLoaderFactory.h" />
     <ClInclude Include="System\DllManager.h" />
+    <ClInclude Include="Util\StringUtil.h" />
     <ClInclude Include="Window\Window.h" />
     <ClInclude Include="Window\WindowClass.h" />
     <ClInclude Include="Window\WindowsDef.h" />
   </ItemGroup>
   <ItemGroup>
+    <FxCompile Include="Shader\LightTracingOptimisedShader.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Library</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">6.3</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Library</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">6.3</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Library</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">6.3</ShaderModel>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Library</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">6.3</ShaderModel>
+      <EnableDebuggingInformation Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</EnableDebuggingInformation>
+      <EnableDebuggingInformation Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</EnableDebuggingInformation>
+      <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(OutDir)Shaders/%(Filename).cso</ObjectFileOutput>
+      <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(OutDir)Shaders/%(Filename).cso</ObjectFileOutput>
+      <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)Shaders/%(Filename).cso</ObjectFileOutput>
+      <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(OutDir)Shaders/%(Filename).cso</ObjectFileOutput>
+    </FxCompile>
     <FxCompile Include="Shader\LightTracingShader.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Library</ShaderType>
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">6.3</ShaderModel>

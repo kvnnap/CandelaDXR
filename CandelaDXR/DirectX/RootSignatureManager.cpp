@@ -1,12 +1,10 @@
-#define _SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING
-
 #include "RootSignatureManager.h"
 
 #include <algorithm>
 #include <stdexcept>
-#include <codecvt>
 
 #include "DXUtil.h"
+#include "Util/StringUtil.h"
 
 using std::string;
 using std::to_string;
@@ -15,6 +13,8 @@ using std::runtime_error;
 
 using candela::directx::RootSignature;
 using candela::directx::RootSignatureManager;
+
+using candela::util::StringToWString;
 
 void RootSignatureManager::addDescriptorRange(const string& destRangeName, const D3D12_DESCRIPTOR_RANGE1& range)
 {
@@ -81,7 +81,7 @@ Microsoft::WRL::ComPtr<ID3D12RootSignature> RootSignatureManager::generateRootSi
 		rootSignatureFlags);
 
 	customRootDesc.compiledSignature = DXUtil::createRootSignature(pDevice, rootSignatureDesc);
-	customRootDesc.compiledSignature->SetName(std::wstring_convert<std::codecvt_utf8<wchar_t>, wchar_t>().from_bytes(rootSigatureName).c_str());
+	customRootDesc.compiledSignature->SetName(StringToWString(rootSigatureName).c_str());
 	return customRootDesc.compiledSignature;
 }
 
@@ -105,7 +105,7 @@ Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> RootSignatureManager::generateDescr
 {
 	
 	auto heap = DXUtil::createDescriptorHeap(pDevice, getDescriptorHeapTotalEntrySize(parameterName), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, true);
-	heap->SetName(std::wstring_convert<std::codecvt_utf8<wchar_t>, wchar_t>().from_bytes(parameterName).c_str());
+	heap->SetName(StringToWString(parameterName).c_str());
 	return heap;
 }
 

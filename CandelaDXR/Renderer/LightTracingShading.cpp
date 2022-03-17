@@ -9,9 +9,12 @@
 
 #include "Exception/WindowException.h"
 
+#include "Util/StringUtil.h"
+
 using std::uint32_t;
 using std::vector;
 using std::string;
+using std::wstring;
 using std::unordered_map;
 using std::unique_ptr;
 using std::make_unique;
@@ -38,8 +41,10 @@ using candela::mathematics::Vector3;
 
 using candela::sampler::ISampler;
 
+using candela::util::StringToWString;
+
 LightTracingShading::LightTracingShading(unique_ptr<ISampler> sampler, UVector2 lightSamples)
-	: rendererResources(), constBuffer(), lightSamples(lightSamples), sampler(std::move(sampler)), clear()
+	: rendererResources(), constBuffer(), lightSamples(lightSamples), sampler(std::move(sampler)), clear(), currentShader()
 {
 }
 
@@ -50,6 +55,8 @@ void LightTracingShading::init(RendererResources* rRes)
 	
 	rendererResources = rRes;
 
+	shaderPaths.emplace_back("./Shaders/LightTracingShader.cso");
+	shaderPaths.emplace_back("./Shaders/LightTracingOptimisedShader.cso");
 	constantTempBuffer.resize(rRes->numBackBuffers);
 	tlasTempBuffer.resize(rRes->numBackBuffers);
 	constBuffer.numLights = static_cast<uint32_t>(rRes->scene->getLights().size());
@@ -111,8 +118,8 @@ void LightTracingShading::init(RendererResources* rRes)
 	constantBuffer->SetName(L"Constant Buffer");
 
 	// Build shading table
-	wrl::ComPtr<ID3D12Resource> stTempBuffer;
-	createShaderTable(commandList, stTempBuffer);
+	shadingTableTempBuffers.resize(shaderPaths.size());
+	createShaderTable(commandList);
 	
 	// Wait
 	auto fV = rRes->commandQueue->executeCommandList(commandList);
@@ -126,7 +133,6 @@ void LightTracingShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> currentCom
 	auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(backBuff.Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_COPY_DEST);
 	currentCommandList->ResourceBarrier(1u, &barrier);
 
-	currentCommandList->SetDescriptorHeaps(1u, descriptorHeap.GetAddressOf());
 	barrier = CD3DX12_RESOURCE_BARRIER::Transition(outputTexture.Get(), D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 	currentCommandList->ResourceBarrier(1u, &barrier);
 
@@ -149,15 +155,16 @@ void LightTracingShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> currentCom
 	DXUtil::updateDataInDefaultHeap(rendererResources->pDevice, currentCommandList, constantBuffer, constantTempBuffer[currentBackBufferIndex],
 		&constBuffer, sizeof(constBuffer), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
+	currentCommandList->SetDescriptorHeaps(1u, descriptorHeap.GetAddressOf());
 	currentCommandList->SetComputeRootSignature(globalEmptyRootSignature.Get());
 	HRESULT hr;
 	ComPtr<ID3D12GraphicsCommandList4> commandList4;
 	GFXTHROWIFFAILED(currentCommandList.As(&commandList4));
-	commandList4->SetPipelineState1(stateObject.Get());
+	commandList4->SetPipelineState1(stateObjects[currentShader].Get());
 
 	// Launch rays
-	auto rayDimensions = lightSamples.x == 0 && lightSamples.y == 0 ? rendererResources->winDimensions : lightSamples;
-	D3D12_DISPATCH_RAYS_DESC dispatchRaysDesc = shadingTable->getDispatchRaysDescriptor(rayDimensions.x, rayDimensions.y);
+	auto rayDimensions = lightSamples.x == 0 || lightSamples.y == 0 ? rendererResources->winDimensions : lightSamples;
+	D3D12_DISPATCH_RAYS_DESC dispatchRaysDesc = shadingTables[currentShader]->getDispatchRaysDescriptor(rayDimensions.x, rayDimensions.y);
 	commandList4->DispatchRays(&dispatchRaysDesc);
 
 	// Launch compute shader -  Make sure all writes to this UAV have completed from DispatchRays
@@ -184,9 +191,8 @@ void LightTracingShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> currentCom
 
 void LightTracingShading::buildPipeline()
 {
-	auto rootSignatureManager = make_shared<RootSignatureManager>();
-	shadingTable = make_unique<ShadingTable>(rootSignatureManager);
-
+	rootSignatureManager = make_shared<RootSignatureManager>();
+	
 	HRESULT hr;
 
 	// Define State Object Descriptor (EXTENDED version from d3dx)
@@ -195,11 +201,7 @@ void LightTracingShading::buildPipeline()
 	// Construct sub objects
 
 	// First is DXIL - to load shader and Load symbols from the shader and identify the entry points
-	wrl::ComPtr<ID3DBlob> pBlob;
-	GFXTHROWIFFAILED(D3DReadFileToBlob(L"./Shaders/LightTracingShader.cso", &pBlob));
 	CD3DX12_DXIL_LIBRARY_SUBOBJECT dxilSubObject(stateObjectDesc);
-	auto shaderByteCodeDesc = CD3DX12_SHADER_BYTECODE(pBlob.Get());
-	dxilSubObject.SetDXILLibrary(&shaderByteCodeDesc);
 	const WCHAR* entryPoints[] = { L"rayGen", L"miss", L"chs", L"shadowMiss" };
 	dxilSubObject.DefineExports(entryPoints);
 
@@ -245,21 +247,12 @@ void LightTracingShading::buildPipeline()
 	rootSignatureManager->addParametersToRootSignature("RayGenRootSignature", { "BVHDescTable", "ConstBuff", "verts", "texVerts", "normals", "indices", "matrices", "faceAttributes", "materials", "lights", "speculars"});
 	rootSignatureManager->setSamplerForRootSignature("RayGenRootSignature", sampler);
 	rootSignatureManager->generateRootSignature("RayGenRootSignature", rendererResources->pDevice);
-
-	shadingTable->addProgram(L"rayGen", ShadingRecordType::RayGeneration, "RayGenRootSignature");
-
-	// Fifth - create empty lrs for miss program
+	
 	rootSignatureManager->addRootSignature("EmptyRootSignature");
 	rootSignatureManager->generateRootSignature("EmptyRootSignature", rendererResources->pDevice);
 
-	// Sixth - Associate the empty local root signature with the miss programs
-	shadingTable->addProgram(L"miss", ShadingRecordType::Miss, "EmptyRootSignature");
-	shadingTable->addProgram(L"shadowMiss", ShadingRecordType::Miss, "EmptyRootSignature");
-	shadingTable->addProgram(L"HitGroup", ShadingRecordType::HitGroup, "EmptyRootSignature");
-
 	// Generate/add subobjects
 	rootSignatureManager->addRootSignaturesToSubObject(stateObjectDesc);
-	shadingTable->addProgramAssociationsToSubobject(stateObjectDesc);
 
 	// Seventh - Shader Configuration (set payload sizes - the actual program parameters)
 	CD3DX12_RAYTRACING_SHADER_CONFIG_SUBOBJECT shaderConfig(stateObjectDesc);
@@ -285,7 +278,23 @@ void LightTracingShading::buildPipeline()
 	// Finally - Create the state
 	ComPtr<ID3D12Device5> pDevice5;
 	GFXTHROWIFFAILED(rendererResources->pDevice.As(&pDevice5));
-	GFXTHROWIFFAILED(pDevice5->CreateStateObject(stateObjectDesc, IID_PPV_ARGS(&stateObject)));
+	bool isFirst = true;
+	for (const auto& shaderPath : shaderPaths)
+	{
+		auto& shadingTable = shadingTables.emplace_back(make_unique<ShadingTable>(rootSignatureManager));
+		shadingTable->addProgram(L"rayGen", ShadingRecordType::RayGeneration, "RayGenRootSignature");
+		shadingTable->addProgram(L"miss", ShadingRecordType::Miss, "EmptyRootSignature");
+		shadingTable->addProgram(L"shadowMiss", ShadingRecordType::Miss, "EmptyRootSignature");
+		shadingTable->addProgram(L"HitGroup", ShadingRecordType::HitGroup, "EmptyRootSignature");
+		if (isFirst)
+			shadingTable->addProgramAssociationsToSubobject(stateObjectDesc);
+		isFirst = false;
+		wrl::ComPtr<ID3DBlob> pBlob;
+		GFXTHROWIFFAILED(D3DReadFileToBlob(StringToWString(shaderPath).c_str(), &pBlob));
+		auto shaderByteCodeDesc = CD3DX12_SHADER_BYTECODE(pBlob.Get());
+		dxilSubObject.SetDXILLibrary(&shaderByteCodeDesc);
+		GFXTHROWIFFAILED(pDevice5->CreateStateObject(stateObjectDesc, IID_PPV_ARGS(&stateObjects.emplace_back())));
+	}
 
 	// Compute shader
 	computeRSM = make_shared<RootSignatureManager>();
@@ -319,9 +328,15 @@ void LightTracingShading::buildPipeline()
 void LightTracingShading::createShaderResources()
 {
 	size_t entryNumber = 0;
+
 	// The descriptor heap to store SRV (Shader resource View) and UAV (Unordered access view) descriptors
-	auto& descHeapManager = shadingTable->generateDescriptorHeap("BVHDescTable", "BVH1", rendererResources->pDevice);
-	descriptorHeap = descHeapManager.getDescriptorHeap();
+	auto descHeapManager = make_shared<DescriptorHeap>(rootSignatureManager, "BVHDescTable", "BVH1", rendererResources->pDevice);
+
+	// Add to shading tables
+	for (auto& shadingTable : shadingTables)
+		shadingTable->addDescriptorHeap(descHeapManager);
+
+	descriptorHeap = descHeapManager->getDescriptorHeap();
 
 	const auto &dim = rendererResources->winDimensions;
 
@@ -335,19 +350,19 @@ void LightTracingShading::createShaderResources()
 
 	D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
 	uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
-	descHeapManager.setUAV(entryNumber++, uavDesc, rendererResources->pDevice, outputTexture);
+	descHeapManager->setUAV(entryNumber++, uavDesc, rendererResources->pDevice, outputTexture);
 	D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc2 = {};
 	uavDesc2.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
 	uavDesc2.Buffer.NumElements = dim.x * dim.y;
 	uavDesc2.Buffer.StructureByteStride = sizeof(uint32_t) * 4;
-	descHeapManager.setUAV(entryNumber++, uavDesc2, rendererResources->pDevice, irradianceDataStructure);
+	descHeapManager->setUAV(entryNumber++, uavDesc2, rendererResources->pDevice, irradianceDataStructure);
 
 	// Create the SRV descriptor in second place (following same order as in root signature)
 	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
 	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_RAYTRACING_ACCELERATION_STRUCTURE;
 	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 	srvDesc.RaytracingAccelerationStructure.Location = tlasBuffers.pResult->GetGPUVirtualAddress();
-	descHeapManager.setSRV(entryNumber++, srvDesc, rendererResources->pDevice);
+	descHeapManager->setSRV(entryNumber++, srvDesc, rendererResources->pDevice);
 
 	// Irr to Rad?
 	D3D12_SHADER_RESOURCE_VIEW_DESC irrToRadSrvDesc = {};
@@ -355,7 +370,7 @@ void LightTracingShading::createShaderResources()
 	irrToRadSrvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
 	irrToRadSrvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 	irrToRadSrvDesc.Texture2D.MipLevels = 1;
-	descHeapManager.setSRV(entryNumber++, irrToRadSrvDesc, rendererResources->pDevice, irrToRad);
+	descHeapManager->setSRV(entryNumber++, irrToRadSrvDesc, rendererResources->pDevice, irrToRad);
 
 	// Textures
 	srvDesc = {};
@@ -364,7 +379,7 @@ void LightTracingShading::createShaderResources()
 	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
 	srvDesc.Texture2D.MipLevels = 1;
 	for (const auto& texture : rendererResources->textures)
-		descHeapManager.setSRV(entryNumber++, srvDesc, rendererResources->pDevice, texture);
+		descHeapManager->setSRV(entryNumber++, srvDesc, rendererResources->pDevice, texture);
 
 	// Compute shader
 	auto cmpDescHeapManager = DescriptorHeap(computeRSM, "ComputeDataDescTable", "ComputeData1", rendererResources->pDevice);
@@ -375,25 +390,30 @@ void LightTracingShading::createShaderResources()
 	computeDescriptorHeap = cmpDescHeapManager.getDescriptorHeap();
 }
 
-void LightTracingShading::createShaderTable(wrl::ComPtr<ID3D12GraphicsCommandList> &commandList, wrl::ComPtr<ID3D12Resource> &tempResource)
+void LightTracingShading::createShaderTable(wrl::ComPtr<ID3D12GraphicsCommandList> &commandList)
 {
-	// Link rayGen
-	shadingTable->setInputForDescriptorTableParameter(L"rayGen", "BVHDescTable", "BVH1");
-	
-	// TODO - setInputForViewParameter should also accept and array to apply a resource to more than one view parameter
-	shadingTable->setInputForViewParameter(L"rayGen", "ConstBuff", constantBuffer);
-	shadingTable->setInputForViewParameter(L"rayGen", "verts", rendererResources->sceneBuffer, rendererResources->scene->getVerticesOffset());
-	shadingTable->setInputForViewParameter(L"rayGen", "texVerts", rendererResources->sceneBuffer, rendererResources->scene->getTextureCoordsOffset());
-	shadingTable->setInputForViewParameter(L"rayGen", "normals", rendererResources->sceneBuffer, rendererResources->scene->getNormalsOffset());
-	shadingTable->setInputForViewParameter(L"rayGen", "indices", rendererResources->sceneBuffer, rendererResources->scene->getIndicesOffset());
-	shadingTable->setInputForViewParameter(L"rayGen", "matrices", rendererResources->matrices);
-	shadingTable->setInputForViewParameter(L"rayGen", "faceAttributes", rendererResources->faceAttributeBuffer);
-	shadingTable->setInputForViewParameter(L"rayGen", "materials", rendererResources->materialBuffer);
-	shadingTable->setInputForViewParameter(L"rayGen", "lights", rendererResources->lightBuffer);
-	shadingTable->setInputForViewParameter(L"rayGen", "speculars", rendererResources->specularBuffer);
-	
-	// Generate
-	shadingTable->generateShadingTable(rendererResources->pDevice, commandList, stateObject, tempResource);
+	for (size_t i = 0; i < shadingTables.size(); ++i)
+	{
+		auto &shadingTable = shadingTables[i];
+		
+		// Link rayGen
+		shadingTable->setInputForDescriptorTableParameter(L"rayGen", "BVHDescTable", "BVH1");
+
+		// TODO - setInputForViewParameter should also accept and array to apply a resource to more than one view parameter
+		shadingTable->setInputForViewParameter(L"rayGen", "ConstBuff", constantBuffer);
+		shadingTable->setInputForViewParameter(L"rayGen", "verts", rendererResources->sceneBuffer, rendererResources->scene->getVerticesOffset());
+		shadingTable->setInputForViewParameter(L"rayGen", "texVerts", rendererResources->sceneBuffer, rendererResources->scene->getTextureCoordsOffset());
+		shadingTable->setInputForViewParameter(L"rayGen", "normals", rendererResources->sceneBuffer, rendererResources->scene->getNormalsOffset());
+		shadingTable->setInputForViewParameter(L"rayGen", "indices", rendererResources->sceneBuffer, rendererResources->scene->getIndicesOffset());
+		shadingTable->setInputForViewParameter(L"rayGen", "matrices", rendererResources->matrices);
+		shadingTable->setInputForViewParameter(L"rayGen", "faceAttributes", rendererResources->faceAttributeBuffer);
+		shadingTable->setInputForViewParameter(L"rayGen", "materials", rendererResources->materialBuffer);
+		shadingTable->setInputForViewParameter(L"rayGen", "lights", rendererResources->lightBuffer);
+		shadingTable->setInputForViewParameter(L"rayGen", "speculars", rendererResources->specularBuffer);
+
+		// Generate
+		shadingTable->generateShadingTable(rendererResources->pDevice, commandList, stateObjects[i], shadingTableTempBuffers[i]);
+	}
 }
 
 void LightTracingShading::buildTlas(wrl::ComPtr<ID3D12GraphicsCommandList> &commandList, wrl::ComPtr<ID3D12Resource>& tempResource)
@@ -428,7 +448,7 @@ void LightTracingShading::onChange(wrl::ComPtr<ID3D12GraphicsCommandList> pCurre
 	{
 		constBuffer.numLights = static_cast<uint32_t>(rendererResources->scene->getLights().size());
 		constBuffer.numSpeculars = static_cast<uint32_t>(rendererResources->scene->getSpeculars().size());
-		createShaderTable(pCurrentCommandList, tlasTempBuffer[currentBackBufferIndex]);
+		createShaderTable(pCurrentCommandList);
 	}
 	clear = true;
 }
@@ -458,6 +478,16 @@ const UVector2& LightTracingShading::getLightSamples() const
 void LightTracingShading::setLightSamples(const UVector2& p_lightSamples)
 {
 	lightSamples = p_lightSamples;
+}
+
+const vector<string>& LightTracingShading::getShaderPaths() const
+{
+	return shaderPaths;
+}
+
+void LightTracingShading::setCurrentShaderIndex(uint32_t currentShaderIndex)
+{
+	currentShader = currentShaderIndex;
 }
 
 // Compute constants

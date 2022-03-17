@@ -1,12 +1,11 @@
-#define _SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING
-
 #include "ShadingTable.h"
 
 #include "DXUtil.h"
 #include <stdexcept>
 #include <algorithm>
 #include <locale>
-#include <codecvt>
+
+#include "Util/StringUtil.h"
 
 using std::string;
 using std::to_string;
@@ -14,7 +13,9 @@ using std::wstring;
 using std::runtime_error;
 using std::numeric_limits;
 using std::unique_ptr;
+using std::shared_ptr;
 using std::make_unique;
+using std::make_shared;
 using std::vector;
 using std::max;
 using std::unordered_map;
@@ -23,6 +24,8 @@ using candela::directx::ShadingTable;
 using candela::directx::ShadingRecordType;
 using candela::directx::DescriptorHeap;
 using candela::directx::RootSignatureManager;
+
+using candela::util::WStringToString;
 
 ShadingTable::ShadingTable(std::shared_ptr<RootSignatureManager> rootSignatureManager)
 	: rootSignatureManager(rootSignatureManager), tableLayout {}//, numHitGroupGeometries()
@@ -36,8 +39,14 @@ void ShadingTable::addProgram(const wstring& programName, ShadingRecordType shad
 
 DescriptorHeap& ShadingTable::generateDescriptorHeap(const std::string& parameterName, const std::string& instanceName, Microsoft::WRL::ComPtr<ID3D12Device> pDevice)
 {
-	descriptorHeaps.emplace(instanceName, DescriptorHeap(rootSignatureManager, parameterName, instanceName, pDevice));
-	return descriptorHeaps.at(instanceName);
+	return *descriptorHeaps.emplace(instanceName, make_shared<DescriptorHeap>(rootSignatureManager, parameterName, instanceName, pDevice)).first->second;
+}
+
+void ShadingTable::addDescriptorHeap(std::shared_ptr<DescriptorHeap> descriptorHeap)
+{
+	if (rootSignatureManager != descriptorHeap->getRootSignatureManager())
+		throw runtime_error("Descriptor Heap has a different root signature than this shading table");
+	descriptorHeaps.emplace(descriptorHeap->getInstanceName(), descriptorHeap);
 }
 
 void ShadingTable::setInputForDescriptorTableParameter(const std::wstring& programName, const std::string& parameterName, const std::string& instanceName)
@@ -51,7 +60,7 @@ void ShadingTable::setInputForDescriptorTableParameter(const std::wstring& progr
 		throw runtime_error("Paramter '" + parameterName + "' not a descriptor table type");
 
 	// Set
-	programStruct.managedDescriptorHeapMap[parameterName] = &descriptorHeaps.at(instanceName);
+	programStruct.managedDescriptorHeapMap[parameterName] = descriptorHeaps.at(instanceName).get();
 }
 
 void ShadingTable::setInputForViewParameter(const wstring& programName, const std::string& parameterName, Microsoft::WRL::ComPtr<ID3D12Resource> resource, UINT64 offsetInBytes)
@@ -198,23 +207,19 @@ void ShadingTable::addProgramAssociationsToSubobject(CD3DX12_STATE_OBJECT_DESC& 
 	// build map
 	unordered_map<string, vector<wstring>> associations;
 
-	for (const auto& shadingRecord : shadingRecords) {
+	for (const auto& shadingRecord : shadingRecords)
 		associations[shadingRecord.rootSignatureName].push_back(shadingRecord.programName);
-	}
 
 	vecAssociations.clear();
 	vecAssociations.reserve(associations.size()); // DO NOT REMOVE THIS LINE
-	for (auto& association : associations) {
-		vecAssociations.emplace_back(stateObjectDesc);
-
-		CD3DX12_SUBOBJECT_TO_EXPORTS_ASSOCIATION_SUBOBJECT& rgAssociation = vecAssociations[vecAssociations.size() - 1];
-		for (auto& programName : association.second) {
+	for (auto& association : associations)
+	{
+		CD3DX12_SUBOBJECT_TO_EXPORTS_ASSOCIATION_SUBOBJECT& rgAssociation = vecAssociations.emplace_back(stateObjectDesc);
+		for (auto& programName : association.second)
 			rgAssociation.AddExport(programName.c_str());
-		}
 
 		const auto& rs = rootSignatureManager->getRootSignature(association.first);
-		const auto& subobject = rootSignatureManager->getRootSignature(association.first).subobject;
-		rgAssociation.SetSubobjectToAssociate(subobject);
+		rgAssociation.SetSubobjectToAssociate(rs.subobject);
 	}
 }
 
@@ -258,7 +263,7 @@ void ShadingTable::validateInputs()
 		for (const auto& parameterName : rs.parameterNames) {
 			const auto& parameter = rootSignatureManager->getParameterForRootSignature(shadingRecord.rootSignatureName, parameterName);
 
-			string progName = std::wstring_convert<std::codecvt_utf8<wchar_t>, wchar_t>().to_bytes(shadingRecord.programName);
+			string progName = WStringToString(shadingRecord.programName);
 
 			switch (parameter.ParameterType) 
 			{
@@ -353,6 +358,16 @@ void DescriptorHeap::validate() const
 		if (!resources[i].set)
 			throw runtime_error("Entry " + to_string(i) + " of paramter '" + parameterName + "'  of instance '" + instanceName + "' is not set");
 	}
+}
+
+const string& DescriptorHeap::getInstanceName() const
+{
+	return instanceName;
+}
+
+const shared_ptr<RootSignatureManager>& DescriptorHeap::getRootSignatureManager() const
+{
+	return rootSignatureManager;
 }
 
 Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> DescriptorHeap::getDescriptorHeap() const

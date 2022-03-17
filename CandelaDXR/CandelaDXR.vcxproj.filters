@@ -120,6 +120,9 @@
     <ClCompile Include="ImGui\ImGuiShading.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Util\StringUtil.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Exception\GeneralException.h">
@@ -254,12 +257,16 @@
     <ClInclude Include="ImGui\ImGuiShading.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Util\StringUtil.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Shader\PixelShader.hlsl" />
     <FxCompile Include="Shader\VertexShader.hlsl" />
     <FxCompile Include="Shader\LightTracingShader.hlsl" />
     <FxCompile Include="Shader\RadianceComputeShader.hlsl" />
+    <FxCompile Include="Shader\LightTracingOptimisedShader.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Shader\Utils.hlsli" />

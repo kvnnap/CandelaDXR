@@ -1,5 +1,8 @@
 #pragma once
 
+#include <vector>
+#include <string>
+
 #include "Renderer/IDrawable.h"
 
 #include "Mathematics/Types.h"
@@ -25,6 +28,10 @@ namespace candela::renderer::imgui
 		bool initialised;
 		bool changed;
 		bool enabled;
+
+		std::vector<std::string> shaderStrNames;
+		std::vector<const char*> shaderNames;
+
 		union {
 			// Raster Shading
 			struct {
@@ -34,6 +41,7 @@ namespace candela::renderer::imgui
 			// Light Shading
 			struct {
 				int lightSamples[2];
+				int shaderIndex;
 			};
 		};
 	};
