@@ -246,3 +246,8 @@ void RasterShading::onResize()
 	viewport = CD3DX12_VIEWPORT(0.0f, 0.0f, static_cast<float>(rendererResources->winDimensions.x), static_cast<float>(rendererResources->winDimensions.y));
 	pDepthBuffers = DXUtil::createDepthStencilView(rendererResources->pDevice, pDepthDescriptorHeap, rendererResources->winDimensions.x, rendererResources->winDimensions.y, rendererResources->numBackBuffers);
 }
+
+void RasterShading::accept(IVisitor* visitor)
+{
+	visitor->visit(this);
+}

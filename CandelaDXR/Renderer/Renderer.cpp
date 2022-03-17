@@ -160,6 +160,8 @@ void Renderer::init()
 		auto& mat = scene->getMaterials()[i];
 		imguiMaterials.emplace_back(mat, i, scene->getMaterialName(i));
 	}
+	for (auto& drawable : drawables)
+		imguiShaders.emplace_back(drawable);
 
 	// Prepare struct to share with drawables
 	rendererResources = RendererResources
@@ -229,6 +231,15 @@ void Renderer::renderFrame()
 		}
 		ImGui::End();
 
+		ImGui::Begin("Shaders");
+		for (auto& imguiShader : imguiShaders)
+		{
+			imguiShader.drawUi();
+			if (imguiShader.hasChanged())
+				changeEvent |= static_cast<ChangeEvent_t>(ChangeEvent::Statistics);
+		}
+		ImGui::End();
+
 		ImGui::Render();
 	}
 
@@ -269,11 +280,13 @@ void Renderer::renderFrame()
 
 	// Draw
 	updateCamera();
-	for (IDrawable* drawable : drawables)
+	for (size_t i = 0; i < drawables.size(); ++i)
 	{
+		auto drawable = drawables[i];
 		if (changeEvent)
 			drawable->onChange(pCurrentCommandList, currentBackBufferIndex, changeEvent);
-		drawable->draw(pCurrentCommandList, currentBackBufferIndex);
+		if (imguiShaders[i].isEnabled())
+			drawable->draw(pCurrentCommandList, currentBackBufferIndex);
 	}
 
 	// ImGui Render
@@ -300,7 +313,7 @@ void Renderer::renderFrame()
 	commandQueue->waitForFenceValue(frameFenceValues[currentBackBufferIndex]);
 
 	// Stats
-	if ((changeEvent & static_cast<ChangeEvent_t>(ChangeEvent::Transformation)) || camera->hasChanged())
+	if (changeEvent || camera->hasChanged())
 		fpsCounter.resetFrameCount();
 	if (fpsCounter.hitFrame())
 		window->setWindowName("CandelaDXR - Frames: " + to_string(fpsCounter.getFrameCount()) + " FPS: " + to_string(fpsCounter.getFramesPerSecond()));
@@ -410,6 +423,7 @@ void Renderer::resize()
 	auto flags = DXUtil::checkTearingSupport(dxgiFactory) ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING : 0;
 	GFXTHROWIFFAILED(pSwapChain->ResizeBuffers(NumBackBuffers, windowDimensions.x, windowDimensions.y, DXGI_FORMAT_UNKNOWN, flags));
 	rendererResources.pRTVBackBuffers = pRTVBackBuffers = DXUtil::createRenderTargetViews(pDevice, pRTVDescriptorHeap, pSwapChain, NumBackBuffers);
+	fpsCounter.resetFrameCount();
 	// Resize drawables
 	for (IDrawable* drawable : drawables)
 		drawable->onResize();

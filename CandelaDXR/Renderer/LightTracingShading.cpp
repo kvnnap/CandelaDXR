@@ -38,8 +38,8 @@ using candela::mathematics::Vector3;
 
 using candela::sampler::ISampler;
 
-LightTracingShading::LightTracingShading(unique_ptr<ISampler> sampler, UVector2 lightDimensions)
-	: rendererResources(), constBuffer(), lightSamples(lightDimensions), sampler(std::move(sampler)), clear()
+LightTracingShading::LightTracingShading(unique_ptr<ISampler> sampler, UVector2 lightSamples)
+	: rendererResources(), constBuffer(), lightSamples(lightSamples), sampler(std::move(sampler)), clear()
 {
 }
 
@@ -443,6 +443,21 @@ void LightTracingShading::onResize()
 	// Wait
 	auto fV = rendererResources->commandQueue->executeCommandList(commandList);
 	rendererResources->commandQueue->waitForFenceValue(fV);
+}
+
+void LightTracingShading::accept(IVisitor* visitor)
+{
+	visitor->visit(this);
+}
+
+const UVector2& LightTracingShading::getLightSamples() const
+{
+	return lightSamples;
+}
+
+void LightTracingShading::setLightSamples(const UVector2& p_lightSamples)
+{
+	lightSamples = p_lightSamples;
 }
 
 // Compute constants

@@ -32,6 +32,7 @@ namespace candela::renderer
 		void draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, std::uint32_t currentBackBufferIndex) override;
 		void onChange(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, std::uint32_t currentBackBufferIndex, ChangeEvent_t changeEvent) override;
 		void onResize() override;
+		void accept(IVisitor* visitor) override;
 	private:
 		RendererResources* rendererResources;
 

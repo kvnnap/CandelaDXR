@@ -41,10 +41,22 @@ namespace candela::renderer
 	{
 		Transformation = 0x01,		// Like Matrix Rotation, etc
 		SceneUpdate    = 0x02,		// Scene buffer content change but no size change
-		SceneChange    = 0x04		// Scene buffer size change (like num of lights, specs and so on)
+		SceneChange    = 0x04,		// Scene buffer size change (like num of lights, specs and so on)
+		Statistics	   = 0x08		// Update stats only
 	};
 
 	using ChangeEvent_t = std::underlying_type<ChangeEvent>::type;
+
+	class RasterShading;
+	class LightTracingShading;
+
+	class IVisitor
+	{
+	public:
+		virtual ~IVisitor() = default;
+		virtual void visit(RasterShading*) = 0;
+		virtual void visit(LightTracingShading*) = 0;
+	};
 
 	class IDrawable
 	{
@@ -52,7 +64,7 @@ namespace candela::renderer
 		virtual ~IDrawable() = default;
 		virtual void init(RendererResources *rendererResources) = 0;
 		virtual void draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, std::uint32_t currentBackBufferIndex) = 0;
-
+		virtual void accept(IVisitor *visitor) = 0;
 		// On matrix change
 		virtual void onChange(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, std::uint32_t currentBackBufferIndex, ChangeEvent_t changeEvent) = 0;
 

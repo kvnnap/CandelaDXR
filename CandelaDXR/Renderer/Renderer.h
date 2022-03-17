@@ -20,6 +20,7 @@
 
 #include "ImGui/ImGuiSceneNode.h"
 #include "ImGui/ImGuiMaterial.h"
+#include "ImGui/ImGuiShading.h"
 
 namespace candela::renderer
 {
@@ -73,6 +74,7 @@ namespace candela::renderer
 		wrl::ComPtr<ID3D12DescriptorHeap> pImGuiDescriptorHeap;
 		std::vector<imgui::ImGuiSceneNode> imguiSceneNodes;
 		std::vector<imgui::ImGuiMaterial> imguiMaterials;
+		std::vector<imgui::ImGuiShading> imguiShaders;
 
 		// Constants and integral values
 		UINT rtvDescriptorSize;

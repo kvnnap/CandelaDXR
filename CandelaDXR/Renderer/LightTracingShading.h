@@ -36,6 +36,10 @@ namespace candela::renderer
 		void draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, std::uint32_t currentBackBufferIndex) override;
 		void onChange(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, std::uint32_t currentBackBufferIndex, ChangeEvent_t changeEvent) override;
 		void onResize() override;
+		void accept(IVisitor* visitor) override;
+
+		const mathematics::UVector2& getLightSamples() const;
+		void setLightSamples(const mathematics::UVector2& lightSamples);
 
 	private:
 		void buildPipeline();
