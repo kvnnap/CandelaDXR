@@ -50,7 +50,8 @@ void ImGuiShading::visit(LightTracingShading* lightTracingShader)
 	if (!initialised)
 	{
 		memcpy(lightSamples, &lightTracingShader->getLightSamples(), 2 * sizeof(int));
-		shaderIndex = {};
+		shaderIndex = static_cast<int>(lightTracingShader->getCurrentShaderIndex());
+		causticsRatio = lightTracingShader->getCausticsRatio();
 		for (const auto& shaderName : lightTracingShader->getShaderPaths())
 			shaderStrNames.push_back(path(shaderName).filename().replace_extension().string());
 		for (const auto& shaderName : shaderStrNames)
@@ -69,6 +70,12 @@ void ImGuiShading::visit(LightTracingShading* lightTracingShader)
 	if (ImGui::ListBox("Shader", &shaderIndex, shaderNames.data(), static_cast<int>(shaderNames.size())))
 	{ 
 		lightTracingShader->setCurrentShaderIndex(static_cast<uint32_t>(shaderIndex));
+		changed = true;
+	}
+
+	if (shaderIndex == 1 && ImGui::DragFloat("Caustics Ratio", &causticsRatio, 0.01f, 0.f, 1.f))
+	{
+		lightTracingShader->setCausticsRatio(causticsRatio);
 		changed = true;
 	}
 }

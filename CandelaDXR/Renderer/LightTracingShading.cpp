@@ -62,6 +62,7 @@ void LightTracingShading::init(RendererResources* rRes)
 	constBuffer.numLights = static_cast<uint32_t>(rRes->scene->getLights().size());
 	constBuffer.numSpeculars = static_cast<uint32_t>(rRes->scene->getSpeculars().size());
 	constBuffer.frameNumber = 0;
+	constBuffer.causticsRatio = 0.f;
 
 	auto commandList = rRes->commandQueue->getCommandList();
 	auto& scene = *rRes->scene;
@@ -488,6 +489,21 @@ const vector<string>& LightTracingShading::getShaderPaths() const
 void LightTracingShading::setCurrentShaderIndex(uint32_t currentShaderIndex)
 {
 	currentShader = currentShaderIndex;
+}
+
+uint32_t LightTracingShading::getCurrentShaderIndex() const
+{
+	return currentShader;
+}
+
+void LightTracingShading::setCausticsRatio(float p_causticsRatio)
+{
+	constBuffer.causticsRatio = p_causticsRatio;
+}
+
+float LightTracingShading::getCausticsRatio() const
+{
+	return constBuffer.causticsRatio;
 }
 
 // Compute constants

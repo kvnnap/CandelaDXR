@@ -272,5 +272,6 @@
     <None Include="Shader\Utils.hlsli" />
     <None Include="Shader\Scene.hlsli" />
     <None Include="Shader\IrradianceItem.hlsli" />
+    <None Include="Shader\LightTracingVars.hlsli" />
   </ItemGroup>
 </Project>

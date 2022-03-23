@@ -42,6 +42,7 @@ namespace candela::renderer::imgui
 			struct {
 				int lightSamples[2];
 				int shaderIndex;
+				float causticsRatio; // Still unbiased
 			};
 		};
 	};

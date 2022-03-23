@@ -44,6 +44,10 @@ namespace candela::renderer
 
 		const std::vector<std::string>& getShaderPaths() const;
 		void setCurrentShaderIndex(std::uint32_t currentShaderIndex);
+		std::uint32_t getCurrentShaderIndex() const;
+
+		void setCausticsRatio(float p_causticsRatio);
+		float getCausticsRatio() const;
 
 	private:
 		void buildPipeline();
@@ -78,6 +82,7 @@ namespace candela::renderer
 			std::uint32_t numLights;
 			std::uint32_t numSpeculars;
 			std::uint32_t frameNumber;
+			float causticsRatio;
 		} constBuffer;
 		mathematics::UVector2 lightSamples;
 		std::vector<wrl::ComPtr<ID3D12Resource>> constantTempBuffer;
