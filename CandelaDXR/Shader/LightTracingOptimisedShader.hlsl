@@ -15,6 +15,52 @@ struct ShadowPayload
 	bool occluded;
 };
 
+// Functions
+bool sampleDiffuse(inout uint seed, inout RayDesc ray, inout float3 localContribution, inout bool causticsPath, inout uint specularPrimitiveId, float3 unitNormal)
+{
+	causticsPath = rand_next(seed) < cBuffer.causticsRatio;
+	if (causticsPath)
+	{
+		if (cBuffer.numSpeculars == 0)
+			return false;
+
+		// Choose a primitive
+		const uint specularIndex = chooseInRange(seed, 0, cBuffer.numSpeculars - 1);
+		SpecularPrimitive specularPrimitive = speculars[specularIndex];
+		const uint specularIndexId = specularPrimitive.PrimitiveId * 3;
+		specularPrimitiveId = specularPrimitive.PrimitiveId;
+
+		// Compute specular primitive vertices
+		float3 lv[3];
+		getVertexWorldCoordinates(lv, specularIndexId, specularPrimitive.InstanceIndex);
+
+		// Generate a point on the specular primitive
+		float2 specularBary;
+		const float3 pointOnSpecular = samplePointOnTriangle(seed, lv, specularBary);
+
+		ray.Direction = pointOnSpecular - ray.Origin;
+		float invDistance = 1.f / length(ray.Direction);
+		ray.Direction *= invDistance; // Get Unit Direction
+
+		float3 specularUnitNormal = getUnitNormal(specularBary, specularIndexId, specularPrimitive.InstanceIndex);
+		float surfaceDot = dot(unitNormal, ray.Direction);
+		float causticsDot = -dot(specularUnitNormal, ray.Direction);
+
+		if (surfaceDot < 0.f || causticsDot < 0.f)
+			return false;
+		localContribution *= getTriangleArea(lv) * cBuffer.numSpeculars * surfaceDot * causticsDot * invDistance * invDistance / cBuffer.causticsRatio;
+	}
+	else
+	{
+		// Sample the brdf and generate a new ray
+		float pdf;
+		ray.Direction = randomRayLobe(seed, unitNormal, 1, pdf);
+		localContribution *= dot(unitNormal, ray.Direction) / (pdf * (1.f - cBuffer.causticsRatio));
+	}
+
+	return true;
+}
+
 // Kernels
 
 [shader("raygeneration")]
@@ -98,8 +144,6 @@ void rayGen()
 		}
 	}
 
-	return;
-
 	// Construct ray from light source to random scene point
 	float pdf;
 	RayDesc ray;
@@ -107,8 +151,11 @@ void rayGen()
 	ray.TMax = 3.402823e+38;
 	ray.Origin = shadowRay.Origin;
 
-	ray.Direction = randomRayLobe(seed, unitLightNormal, 1, pdf);
-	localContribution *= dot(unitLightNormal, ray.Direction) / pdf;
+	bool performChecks = true;
+	bool causticsPath;
+	uint specularPrimitiveId;
+	if(!sampleDiffuse(seed, ray, localContribution, causticsPath, specularPrimitiveId, unitLightNormal))
+		return;
 
 	// Number of entries in transmissive materials
 	int numEntries = 0;
@@ -124,23 +171,28 @@ void rayGen()
 		1,			// MultiplierForGeometryContributionToShaderIndex
 		0,			// Miss shader index (within the shader table) (calls miss)
 		ray,
-		rayPayload), rayPayload.t != 0.f)
+		rayPayload), rayPayload.t != 0.f && (!performChecks || !causticsPath || specularPrimitiveId == rayPayload.faceIndex))
 	{
-		float3 intersectionPoint = ray.Origin + rayPayload.t * ray.Direction;
-
 		// Get Face attributes
 		FaceAttributes fAttr = faceAttributes[rayPayload.faceIndex];
+
+		// Get appropriate BRDF - assuming Diffuse (Will handle Reflective and Transmissive later)
+		Material mat = materials[fAttr.MaterialId];
+
+		// If we hit spec object when we're not sampling them, return [Rejection Sampling pt2])
+		if (performChecks && !causticsPath && mat.Dissolve != 1.f)
+			return;
+
+		performChecks = false;
 
 		const uint vertIndex = rayPayload.faceIndex * 3;
 
 		// Get face unit normal
 		float3 unitFaceNormal = getUnitNormal(rayPayload.bary, vertIndex, fAttr.InstanceIndex);
 		float wiDot = dot(ray.Direction, unitFaceNormal);
-
-		// Get appropriate BRDF - assuming Diffuse (Will handle Reflective and Transmissive later)
-		Material mat = materials[fAttr.MaterialId];
-
 		const bool isInternal = wiDot > 0.f;
+		
+		float3 intersectionPoint = ray.Origin + rayPayload.t * ray.Direction;
 
 		// Beer's law
 		if (isInternal)
@@ -226,11 +278,13 @@ void rayGen()
 		if (rand_next(seed) < dissolve)
 		{
 			// Sample the brdf and generate a new ray
-			ray.Direction = randomRayLobe(seed, unitFaceNormal, 1, pdf);
+			if (!sampleDiffuse(seed, ray, localContribution, causticsPath, specularPrimitiveId, unitFaceNormal))
+				return;
 			float3 brdfDiff = mat.Diffuse * OneOverPI;
 			if (mat.DiffuseTextureId >= 0)
 				brdfDiff *= gTextures[mat.DiffuseTextureId].SampleLevel(gSampler, getTextureLocation(rayPayload.bary, vertIndex), 0);
-			localContribution *= brdfDiff * dot(unitFaceNormal, ray.Direction) / pdf;
+			localContribution *= brdfDiff;
+			performChecks = true;
 		}
 		else
 		{
