@@ -28,7 +28,7 @@ void ImGuiMaterial::drawUi()
 
 	majorChange = (emm.x == 0.f && emm.y == 0.f && emm.z == 0.f && material.isEmissive())
 		|| ((emm.x > 0.f || emm.y > 0.f || emm.z > 0.f) && !material.isEmissive())
-		|| (dis == 0.f && material.Dissolve > 0.f || dis > 0.f && material.Dissolve == 0.f);
+		|| (dis == 1.f && material.Dissolve < 1.f || dis < 1.f && material.Dissolve == 1.f);
 
 	ImGui::PopID();
 }
