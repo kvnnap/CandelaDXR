@@ -63,6 +63,7 @@ void LightTracingShading::init(RendererResources* rRes)
 	constBuffer.numSpeculars = static_cast<uint32_t>(rRes->scene->getSpeculars().size());
 	constBuffer.frameNumber = 0;
 	constBuffer.causticsRatio = 0.f;
+	constBuffer.pathFilter = 0xFFFFFFFF;
 
 	auto commandList = rRes->commandQueue->getCommandList();
 	auto& scene = *rRes->scene;
@@ -506,6 +507,16 @@ void LightTracingShading::setCausticsRatio(float p_causticsRatio)
 float LightTracingShading::getCausticsRatio() const
 {
 	return constBuffer.causticsRatio;
+}
+
+uint32_t LightTracingShading::getPathFilter() const
+{
+	return constBuffer.pathFilter;
+}
+
+void LightTracingShading::setPathFilter(uint32_t pathFilter)
+{
+	constBuffer.pathFilter = pathFilter;
 }
 
 // Compute constants

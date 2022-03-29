@@ -49,6 +49,9 @@ namespace candela::renderer
 		void setCausticsRatio(float p_causticsRatio);
 		float getCausticsRatio() const;
 
+		std::uint32_t getPathFilter() const;
+		void setPathFilter(std::uint32_t pathFilter);
+
 	private:
 		void buildPipeline();
 		void createShaderResources();
@@ -83,6 +86,7 @@ namespace candela::renderer
 			std::uint32_t numSpeculars;
 			std::uint32_t frameNumber;
 			float causticsRatio;
+			std::uint32_t pathFilter;
 		} constBuffer;
 		mathematics::UVector2 lightSamples;
 		std::vector<wrl::ComPtr<ID3D12Resource>> constantTempBuffer;

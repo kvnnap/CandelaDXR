@@ -52,6 +52,7 @@ void ImGuiShading::visit(LightTracingShading* lightTracingShader)
 		memcpy(lightSamples, &lightTracingShader->getLightSamples(), 2 * sizeof(int));
 		shaderIndex = static_cast<int>(lightTracingShader->getCurrentShaderIndex());
 		causticsRatio = lightTracingShader->getCausticsRatio();
+		lightFlag = reflectFlag = refractFlag = diffuseFlag = true;
 		for (const auto& shaderName : lightTracingShader->getShaderPaths())
 			shaderStrNames.push_back(path(shaderName).filename().replace_extension().string());
 		for (const auto& shaderName : shaderStrNames)
@@ -78,4 +79,16 @@ void ImGuiShading::visit(LightTracingShading* lightTracingShader)
 		lightTracingShader->setCausticsRatio(causticsRatio);
 		changed = true;
 	}
+
+	changed |= ImGui::Checkbox("Direct Light Flag", &lightFlag);
+	changed |= ImGui::Checkbox("Reflect Flag", &reflectFlag);
+	changed |= ImGui::Checkbox("Refract Flag", &refractFlag);
+	changed |= ImGui::Checkbox("Diffuse Flag", &diffuseFlag);
+	std::uint32_t pathFlags = 0;
+	if (lightFlag) pathFlags |= PathInteraction::Light;
+	if (reflectFlag) pathFlags |= PathInteraction::Reflect;
+	if (refractFlag) pathFlags |= PathInteraction::Refract;
+	if (diffuseFlag) pathFlags |= PathInteraction::Diffuse;
+	if (changed)
+		lightTracingShader->setPathFilter(pathFlags);
 }

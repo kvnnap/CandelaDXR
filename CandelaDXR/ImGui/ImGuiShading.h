@@ -24,6 +24,14 @@ namespace candela::renderer::imgui
 		void visit(LightTracingShading*) override;
 
 	private:
+		enum PathInteraction : std::uint32_t
+		{
+			Light = 1,
+			Reflect = 2,
+			Refract = 4,
+			Diffuse = 8
+		};
+
 		IDrawable *drawable;
 		bool initialised;
 		bool changed;
@@ -43,6 +51,10 @@ namespace candela::renderer::imgui
 				int lightSamples[2];
 				int shaderIndex;
 				float causticsRatio; // Still unbiased
+				bool lightFlag;
+				bool reflectFlag;
+				bool refractFlag;
+				bool diffuseFlag;
 			};
 		};
 	};

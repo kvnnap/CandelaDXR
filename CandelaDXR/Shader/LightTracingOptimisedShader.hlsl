@@ -120,7 +120,10 @@ void rayGen()
 
 	ShadowPayload shadowPayload;
 
-	if (lightDot > 0.f && cameraDot > 0.f && getPixel(shadowRay, cBuffer.winDim, pixel))
+	// Path filter
+	PathInteraction prevStateFlags = Light;
+
+	if ((prevStateFlags & cBuffer.pathFilter) != 0 && lightDot > 0.f && cameraDot > 0.f && getPixel(shadowRay, cBuffer.winDim, pixel))
 	{
 		// Add direct light contribution
 		shadowPayload.occluded = true;
@@ -201,7 +204,7 @@ void rayGen()
 				return;
 			localContribution *= exp((-rayPayload.t) * mat.TransmissiveFilter);
 		}
-		else
+		else if ((prevStateFlags & cBuffer.pathFilter) != 0)
 		{
 			// Check contribution to eye
 			shadowRay.Origin = intersectionPoint;
@@ -271,6 +274,7 @@ void rayGen()
 		if (rand_next(seed) < fr)
 		{
 			ray.Direction = reflect(ray.Direction, coeff * unitFaceNormal);
+			prevStateFlags = Reflect;
 			continue;
 		}
 
@@ -285,6 +289,7 @@ void rayGen()
 				brdfDiff *= gTextures[mat.DiffuseTextureId].SampleLevel(gSampler, getTextureLocation(rayPayload.bary, vertIndex), 0);
 			localContribution *= brdfDiff;
 			performChecks = true;
+			prevStateFlags = Diffuse;
 		}
 		else
 		{
@@ -294,10 +299,12 @@ void rayGen()
 			{
 				ray.Direction = dir;
 				numEntries += isInternal ? -1 : 1;
+				prevStateFlags = Refract;
 			}
 			else
 			{
 				ray.Direction = reflect(ray.Direction, coeff * unitFaceNormal);
+				prevStateFlags = Reflect;
 			}
 		}
 	}

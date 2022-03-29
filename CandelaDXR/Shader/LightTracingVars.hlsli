@@ -1,3 +1,12 @@
+// Used to filter path components for analysis
+enum PathInteraction : uint
+{
+	Light = 1,
+	Reflect = 2,
+	Refract = 4,
+	Diffuse = 8
+};
+
 struct ConstBuff
 {
 	float3 u, v, w;
@@ -10,6 +19,8 @@ struct ConstBuff
 	uint numSpeculars;
 	uint frameNumber;
 	float causticsRatio;
+	PathInteraction pathFilter;
+	uint3 padding;
 };
 
 // UAVs
