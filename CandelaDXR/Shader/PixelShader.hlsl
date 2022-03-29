@@ -30,7 +30,8 @@ StructuredBuffer<float2> texVerts : register(t4);
 StructuredBuffer<float3> normals : register(t5);
 StructuredBuffer<uint3> indices : register(t6);
 StructuredBuffer<float4x3> matrices : register(t7);
-Texture2D<float3> gTextures[]: register(t8);
+StructuredBuffer<float3x3> normalMatrices : register(t8);
+Texture2D<float3> gTextures[]: register(t9);
 
 // Sampler
 SamplerState gSampler : register(s0);
@@ -58,10 +59,9 @@ float4 main(MyInput myInput) : SV_TARGET
 		AreaLight light = lights[i];
 		// Get area light primitive
 		uint3 index = indices[light.PrimitiveId];
-		float4x3 trans = matrices[light.InstanceIndex];
 		// Use just one point
-		float3 lightPos = mul(float4(verts[index.x], 1.f), trans);
-		float3 lightNorm = mul(float4(normals[index.x], 0.f), trans);
+		float3 lightPos = mul(float4(verts[index.x], 1.f), matrices[light.InstanceIndex]);
+		float3 lightNorm = normalize(mul(normals[index.x], normalMatrices[light.InstanceIndex]));
 		Material lightMat = materials[light.MaterialId];
 
 		// Shadow ray

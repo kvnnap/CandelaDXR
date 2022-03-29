@@ -24,15 +24,16 @@ StructuredBuffer<float2> texVerts : register(t1);
 StructuredBuffer<float3> normals : register(t2);
 StructuredBuffer<uint> indices : register(t3);
 StructuredBuffer<float4x3> matrices : register(t4);
-StructuredBuffer<FaceAttributes> faceAttributes : register(t5);
-StructuredBuffer<Material> materials : register(t6);
-StructuredBuffer<AreaLight> lights : register(t7);
-StructuredBuffer<SpecularPrimitive> speculars : register(t8);
+StructuredBuffer<float3x3> normalMatrices : register(t5);
+StructuredBuffer<FaceAttributes> faceAttributes : register(t6);
+StructuredBuffer<Material> materials : register(t7);
+StructuredBuffer<AreaLight> lights : register(t8);
+StructuredBuffer<SpecularPrimitive> speculars : register(t9);
 
-RaytracingAccelerationStructure gRtScene : register(t9);
+RaytracingAccelerationStructure gRtScene : register(t10);
 
-Texture2D<float> gIrrToRad : register(t10);
-Texture2D<float3> gTextures[]: register(t11);
+Texture2D<float> gIrrToRad : register(t11);
+Texture2D<float3> gTextures[]: register(t12);
 
 // Sampler
 SamplerState gSampler : register(s0);
@@ -79,9 +80,9 @@ bool getPixel(RayDesc ray, uint2 screenDimensions, inout uint2 pixel)
 float3 getUnitNormal(float2 bary, uint vertBaseId, uint matrixId)
 {
 	float3 ln[3];
-	ln[0] = mul(float4(normals[indices[vertBaseId + 0]], 0.f), matrices[matrixId]);
-	ln[1] = mul(float4(normals[indices[vertBaseId + 1]], 0.f), matrices[matrixId]);
-	ln[2] = mul(float4(normals[indices[vertBaseId + 2]], 0.f), matrices[matrixId]);
+	ln[0] = mul(normals[indices[vertBaseId + 0]], normalMatrices[matrixId]);
+	ln[1] = mul(normals[indices[vertBaseId + 1]], normalMatrices[matrixId]);
+	ln[2] = mul(normals[indices[vertBaseId + 2]], normalMatrices[matrixId]);
 	return normalize(interpolateVertices(bary, ln));
 }
 

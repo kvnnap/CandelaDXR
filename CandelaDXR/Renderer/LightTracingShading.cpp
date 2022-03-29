@@ -213,9 +213,9 @@ void LightTracingShading::buildPipeline()
 
 	// Third - Local Root Signature for Ray Gen shader
 	rootSignatureManager->addDescriptorRange("BVH", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 2, 0)); //gOutput, gIrradiance
-	rootSignatureManager->addDescriptorRange("BVH", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 2, 9)); //gRtScene, gIrrToRad
+	rootSignatureManager->addDescriptorRange("BVH", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 2, 10)); //gRtScene, gIrrToRad
 	if (!rendererResources->textures.empty())
-		rootSignatureManager->addDescriptorRange("BVH", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, static_cast<UINT>(rendererResources->textures.size()), 11));
+		rootSignatureManager->addDescriptorRange("BVH", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, static_cast<UINT>(rendererResources->textures.size()), 12));
 	
 	rootSignatureManager->setDescriptorTableParameter("BVHDescTable", "BVH");
 	CD3DX12_ROOT_PARAMETER1 param;
@@ -227,10 +227,11 @@ void LightTracingShading::buildPipeline()
 	param.InitAsShaderResourceView(2); rootSignatureManager->setParameter("normals", param);
 	param.InitAsShaderResourceView(3); rootSignatureManager->setParameter("indices", param);
 	param.InitAsShaderResourceView(4); rootSignatureManager->setParameter("matrices", param);
-	param.InitAsShaderResourceView(5); rootSignatureManager->setParameter("faceAttributes", param);
-	param.InitAsShaderResourceView(6); rootSignatureManager->setParameter("materials", param);
-	param.InitAsShaderResourceView(7); rootSignatureManager->setParameter("lights", param);
-	param.InitAsShaderResourceView(8); rootSignatureManager->setParameter("speculars", param);
+	param.InitAsShaderResourceView(5); rootSignatureManager->setParameter("normalMatrices", param);
+	param.InitAsShaderResourceView(6); rootSignatureManager->setParameter("faceAttributes", param);
+	param.InitAsShaderResourceView(7); rootSignatureManager->setParameter("materials", param);
+	param.InitAsShaderResourceView(8); rootSignatureManager->setParameter("lights", param);
+	param.InitAsShaderResourceView(9); rootSignatureManager->setParameter("speculars", param);
 
 	D3D12_STATIC_SAMPLER_DESC sampler = {};
 	sampler.Filter = D3D12_FILTER_MIN_MAG_MIP_POINT;
@@ -245,7 +246,7 @@ void LightTracingShading::buildPipeline()
 	sampler.RegisterSpace = 0;
 	sampler.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 
-	rootSignatureManager->addParametersToRootSignature("RayGenRootSignature", { "BVHDescTable", "ConstBuff", "verts", "texVerts", "normals", "indices", "matrices", "faceAttributes", "materials", "lights", "speculars"});
+	rootSignatureManager->addParametersToRootSignature("RayGenRootSignature", { "BVHDescTable", "ConstBuff", "verts", "texVerts", "normals", "indices", "matrices", "normalMatrices", "faceAttributes", "materials", "lights", "speculars"});
 	rootSignatureManager->setSamplerForRootSignature("RayGenRootSignature", sampler);
 	rootSignatureManager->generateRootSignature("RayGenRootSignature", rendererResources->pDevice);
 	
@@ -407,6 +408,7 @@ void LightTracingShading::createShaderTable(wrl::ComPtr<ID3D12GraphicsCommandLis
 		shadingTable->setInputForViewParameter(L"rayGen", "normals", rendererResources->sceneBuffer, rendererResources->scene->getNormalsOffset());
 		shadingTable->setInputForViewParameter(L"rayGen", "indices", rendererResources->sceneBuffer, rendererResources->scene->getIndicesOffset());
 		shadingTable->setInputForViewParameter(L"rayGen", "matrices", rendererResources->matrices);
+		shadingTable->setInputForViewParameter(L"rayGen", "normalMatrices", rendererResources->normalMatrices);
 		shadingTable->setInputForViewParameter(L"rayGen", "faceAttributes", rendererResources->faceAttributeBuffer);
 		shadingTable->setInputForViewParameter(L"rayGen", "materials", rendererResources->materialBuffer);
 		shadingTable->setInputForViewParameter(L"rayGen", "lights", rendererResources->lightBuffer);

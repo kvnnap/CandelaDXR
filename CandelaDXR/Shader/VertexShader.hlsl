@@ -2,6 +2,7 @@
 
 StructuredBuffer<FaceAttributes> faceAttributes : register(t1); 
 StructuredBuffer<float4x3> matrices : register(t7);
+StructuredBuffer<float3x3> normalMatrices : register(t8);
 
 cbuffer CB1 : register(b0)
 {
@@ -31,12 +32,11 @@ struct MyOutput
 
 MyOutput main(MyInput myInput)
 {
-	float4x3 lToW = matrices[groupId];
-	float3 worldPos = mul(float4(myInput.pos, 1.f), lToW);
+	float3 worldPos = mul(float4(myInput.pos, 1.f), matrices[groupId]);
 	MyOutput myOutput;
 	myOutput.Position = mul(float4(worldPos, 1.f), ViewPerspective);
 	myOutput.Pos = worldPos;
-	myOutput.Normal = mul(float4(myInput.normal, 0.f), lToW);
+	myOutput.Normal = normalize(mul(myInput.normal, normalMatrices[groupId]));
 	myOutput.TexUV = myInput.texuv;
 	return myOutput;
 }

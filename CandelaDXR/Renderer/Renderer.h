@@ -45,6 +45,7 @@ namespace candela::renderer
 		void resize();
 		void refreshMaterialResources();
 		std::vector<DirectX::XMFLOAT3X4> getMatrices();
+		std::vector<DirectX::XMFLOAT3X3> getNormalMatrices();
 		LRESULT wndCallback(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 		// Basic I/O and Window
@@ -65,6 +66,7 @@ namespace candela::renderer
 		wrl::ComPtr<ID3D12DescriptorHeap> pRTVDescriptorHeap;
 		ComPtrVec<ID3D12Resource> pRTVBackBuffers;
 		ComPtrVec<ID3D12Resource> pMatricesTempBackBuffers;
+		ComPtrVec<ID3D12Resource> pNormalMatricesTempBackBuffers;
 		ComPtrVec<ID3D12Resource> pMaterialsTempBackBuffers;
 		ComPtrVec<ID3D12Resource> pLightsTempBackBuffers;
 		ComPtrVec<ID3D12Resource> pFaceAttrTempBackBuffers;
@@ -93,6 +95,7 @@ namespace candela::renderer
 		wrl::ComPtr<ID3D12Resource> lightBuffer;
 		wrl::ComPtr<ID3D12Resource> specularBuffer;
 		wrl::ComPtr<ID3D12Resource> matrices;
+		wrl::ComPtr<ID3D12Resource> normalMatrices;
 		std::vector<wrl::ComPtr<ID3D12Resource>> textures;
 
 		// TEST AREA

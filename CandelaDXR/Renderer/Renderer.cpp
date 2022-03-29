@@ -101,6 +101,7 @@ void Renderer::init()
 	// Allocate 
 	pRTVBackBuffers.resize(NumBackBuffers);
 	pMatricesTempBackBuffers.resize(NumBackBuffers);
+	pNormalMatricesTempBackBuffers.resize(NumBackBuffers);
 	pMaterialsTempBackBuffers.resize(NumBackBuffers);
 	pLightsTempBackBuffers.resize(NumBackBuffers);
 	pFaceAttrTempBackBuffers.resize(NumBackBuffers);
@@ -173,6 +174,7 @@ void Renderer::init()
 		.lightBuffer = lightBuffer,
 		.specularBuffer = specularBuffer,
 		.matrices = matrices,
+		.normalMatrices = normalMatrices,
 		.textures = textures,
 		.pRTVDescriptorHeap = pRTVDescriptorHeap,
 		.pRTVBackBuffers = pRTVBackBuffers,
@@ -255,8 +257,19 @@ void Renderer::renderFrame()
 			pCurrentCommandList,
 			matrices,
 			pMatricesTempBackBuffers[currentBackBufferIndex],
-			getMatrices().data(),
+			gMatrices.data(),
 			sizeof(decltype(gMatrices)::value_type) * gMatrices.size(),
+			flags,
+			flags);
+
+		auto nMatrices = getNormalMatrices();
+		DXUtil::updateDataInDefaultHeap(
+			pDevice,
+			pCurrentCommandList,
+			normalMatrices,
+			pNormalMatricesTempBackBuffers[currentBackBufferIndex],
+			nMatrices.data(),
+			sizeof(decltype(nMatrices)::value_type) * nMatrices.size(),
 			flags,
 			flags);
 	}
@@ -355,11 +368,19 @@ void Renderer::initSceneResources()
 	refreshMaterialResources();
 
 	// Copy Matrices
-	const auto& matrs = scene->getSceneGraph().Children.empty() ? vector<DirectX::XMFLOAT3X4>(1ULL) : getMatrices();
+	auto matVec = getMatrices();
+	const auto& matrs = matVec.empty() ? decltype(matVec)(1ULL) : matVec;
 	wrl::ComPtr<ID3D12Resource> tempMatrices;
 	matrices = DXUtil::uploadDataToDefaultHeap(pDevice, pCurrentCommandList, tempMatrices,
-		matrs.data(), sizeof(DirectX::XMFLOAT3X4) * matrs.size(), flags);
+		matrs.data(), sizeof(decltype(matVec)::value_type) * matrs.size(), flags);
 	matrices->SetName(L"Matrices Buffer");
+
+	auto normMatVec = getNormalMatrices();
+	const auto& normMatrs = normMatVec.empty() ? decltype(normMatVec)(1ULL) : normMatVec;
+	wrl::ComPtr<ID3D12Resource> tempNormalMatrices;
+	normalMatrices = DXUtil::uploadDataToDefaultHeap(pDevice, pCurrentCommandList, tempNormalMatrices,
+		normMatrs.data(), sizeof(decltype(normMatVec)::value_type) * normMatrs.size(), flags);
+	normalMatrices->SetName(L"Normal Matrices Buffer");
 
 	// Upload textures
 	std::vector<wrl::ComPtr<ID3D12Resource>> texTempBuffer (scene->getTextures().size());
@@ -434,7 +455,17 @@ vector<DirectX::XMFLOAT3X4> Renderer::getMatrices()
 	vector<DirectX::XMFLOAT3X4> localMatrices(scene->getSceneGraph().Children.size());
 	auto ptMat = localMatrices.begin();
 	for (auto child : scene->getSceneGraph().Children)
-		DirectX::XMStoreFloat3x4(&*ptMat++, child.Transform);
+		DirectX::XMStoreFloat3x4(&*ptMat++, child.Transform); // Transpose implicit since we read as 4x3 in shader
+	return localMatrices;
+}
+
+vector<DirectX::XMFLOAT3X3> Renderer::getNormalMatrices()
+{
+	vector<DirectX::XMFLOAT3X3> localMatrices(scene->getSceneGraph().Children.size());
+	auto ptMat = localMatrices.begin();
+	// Transpose needed for row to col major but it cancels with the tranpose we are supposed to apply
+	for (auto child : scene->getSceneGraph().Children)
+		DirectX::XMStoreFloat3x3(&*ptMat++, DirectX::XMMatrixInverse(nullptr, child.Transform));
 	return localMatrices;
 }
 

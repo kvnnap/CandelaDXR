@@ -108,11 +108,12 @@ void candela::renderer::RasterShading::init(RendererResources* rRes)
 	param.InitAsShaderResourceView(5u); rootSignatureManager->setParameter("Normals", param);
 	param.InitAsShaderResourceView(6u); rootSignatureManager->setParameter("Indices", param);
 	param.InitAsShaderResourceView(7u); rootSignatureManager->setParameter("Matrices", param);
-	rootSignatureManager->addDescriptorRange("Textures", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, static_cast<uint32_t>(rendererResources->textures.size()), 8u)); // gIrrToRad
+	param.InitAsShaderResourceView(8u); rootSignatureManager->setParameter("NormalMatrices", param);
+	rootSignatureManager->addDescriptorRange("Textures", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, static_cast<uint32_t>(rendererResources->textures.size()), 9u));
 	rootSignatureManager->setDescriptorTableParameter("TexturesDescTable", "Textures");
 	param.InitAsConstantBufferView(0u); rootSignatureManager->setParameter("CBV", param);
 	param.InitAsConstants(2u, 1u); rootSignatureManager->setParameter("Constants", param);
-	rootSignatureManager->addParametersToRootSignature("RasterRootSignature", { "CBV", "Constants", "Material", "Face", "Light", "Vertices", "TexUV", "Normals", "Indices", "Matrices", "TexturesDescTable"});
+	rootSignatureManager->addParametersToRootSignature("RasterRootSignature", { "CBV", "Constants", "Material", "Face", "Light", "Vertices", "TexUV", "Normals", "Indices", "Matrices", "NormalMatrices", "TexturesDescTable"});
 	rootSignatureManager->setSamplerForRootSignature("RasterRootSignature", sampler);
 	rootSignature = rootSignatureManager->generateRootSignature("RasterRootSignature", rendererResources->pDevice, rootSignatureFlags);
 
@@ -221,8 +222,9 @@ void RasterShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandL
 	pCurrentCommandList->SetGraphicsRootShaderResourceView(7u, bufferViews[2].BufferLocation);  // Normals
 	pCurrentCommandList->SetGraphicsRootShaderResourceView(8u, indexView.BufferLocation);  // Indices
 	pCurrentCommandList->SetGraphicsRootShaderResourceView(9u, rendererResources->matrices->GetGPUVirtualAddress());  // Matrices
+	pCurrentCommandList->SetGraphicsRootShaderResourceView(10u, rendererResources->normalMatrices->GetGPUVirtualAddress());  // Normal Matrices
 	pCurrentCommandList->SetDescriptorHeaps(1u, rootDescriptorHeap.GetAddressOf());
-	pCurrentCommandList->SetGraphicsRootDescriptorTable(10u, rootDescriptorHeap->GetGPUDescriptorHandleForHeapStart()); // Textures
+	pCurrentCommandList->SetGraphicsRootDescriptorTable(11u, rootDescriptorHeap->GetGPUDescriptorHandleForHeapStart()); // Textures
 
 	std::uint32_t i = 0;
 	std::array<std::uint32_t, 2> constants;
