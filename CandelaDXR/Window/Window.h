@@ -15,8 +15,8 @@ namespace candela::ui
 	{
 	public:
 		// Types
-		using WNDCALLBACKFN = std::function<LRESULT(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)>;
-		using WNDCALLBACKPT = LRESULT(CALLBACK*)(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
+		using WNDCALLBACKFN  = std::function<bool(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam, LRESULT& result)>;
+		using WNDCALLBACKFN2 = std::function<LRESULT(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)>;
 
 		// Constructors
 		Window(const std::string& windowName, int width, int height, feanor::io::IKeyWriter* keyboardWriter = nullptr, feanor::io::IMouseWriter* mouseWriter = nullptr);
@@ -26,6 +26,7 @@ namespace candela::ui
 		HWND getHandle() const;
 		void setWindowName(const std::string& windowName) const;
 		void addWndProcCallback(WNDCALLBACKFN fn);
+		void addWndProcCallback(WNDCALLBACKFN2 fn, LRESULT acceptedValue);
 
 		// Static
 		static std::optional<int> ProcessMessages(bool blocking = false);

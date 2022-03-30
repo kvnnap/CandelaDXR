@@ -53,13 +53,13 @@ std::optional<int> Window::ProcessMessages(bool blocking)
 
 LRESULT Window::wndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) noexcept
 {
-	bool handled = std::any_of(callbacks.begin(), callbacks.end(), [hwnd, msg, wParam, lParam](const WNDCALLBACKFN& fn) -> bool {
-		return fn(hwnd, msg, wParam, lParam) != 0;
-	});
-
-	if (handled)
-		return handled;
-
+	for (auto& callback : callbacks)
+	{
+		LRESULT retValue;
+		if (callback(hwnd, msg, wParam, lParam, retValue))
+			return retValue;
+	}
+	
 	switch (msg)
 	{
 	case WM_DESTROY:
@@ -170,4 +170,12 @@ void candela::ui::Window::setWindowName(const std::string& windowName) const
 void Window::addWndProcCallback(WNDCALLBACKFN a)
 {
 	callbacks.push_back(move(a));
+}
+
+void Window::addWndProcCallback(WNDCALLBACKFN2 fn, LRESULT acceptedValue)
+{
+	callbacks.push_back([fn = std::move(fn), acceptedValue](HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam, LRESULT& result) -> bool {
+		result = fn(hwnd, msg, wParam, lParam);
+		return result == acceptedValue;
+	});
 }

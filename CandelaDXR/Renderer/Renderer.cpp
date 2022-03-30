@@ -19,6 +19,9 @@
 using std::make_unique;
 using std::to_string;
 using std::vector;
+using std::uint8_t;
+using std::cout;
+using std::endl;
 
 using Microsoft::WRL::ComPtr;
 
@@ -85,9 +88,9 @@ Renderer::~Renderer()
 	
 	if (dxgiInfoManager && dxgiInfoManager->hasMessages())
 	{
-		std::cout << "Printing messages from IDXGIInfoQueue:" << std::endl;
+		cout << "Printing messages from IDXGIInfoQueue:" << endl;
 		for (const auto& msg : dxgiInfoManager->getMessages())
-			std::cout << msg << std::endl;
+			cout << msg << endl;
 	}
 }
 
@@ -96,7 +99,7 @@ void Renderer::init()
 	camera->setAspectRatio(static_cast<float>(windowDimensions.x) / windowDimensions.y);
 	window = make_unique<Window>("CandelaDXR", windowDimensions.x, windowDimensions.y, &keyboard, &mouse);
 	using namespace std::placeholders;
-	window->addWndProcCallback(std::bind(&Renderer::wndCallback, this, _1, _2, _3, _4));
+	window->addWndProcCallback(std::bind(&Renderer::wndCallback, this, _1, _2, _3, _4), 0);
 
 	// Allocate 
 	pRTVBackBuffers.resize(NumBackBuffers);
@@ -153,7 +156,7 @@ void Renderer::init()
 		pImGuiDescriptorHeap->GetCPUDescriptorHandleForHeapStart(),
 		pImGuiDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
 	ImGui::StyleColorsDark();
-	window->addWndProcCallback(ImGui_ImplWin32_WndProcHandler);
+	window->addWndProcCallback(ImGui_ImplWin32_WndProcHandler, TRUE);
 	for (auto& child : scene->getSceneGraph().Children)
 		imguiSceneNodes.emplace_back(child, *scene);
 	for (size_t i = 0; i < scene->getMaterials().size(); ++i)
@@ -346,7 +349,7 @@ void Renderer::initSceneResources()
 	sceneBuffer = DXUtil::createCommittedResource(pDevice, D3D12_HEAP_TYPE_DEFAULT, totalSize, D3D12_RESOURCE_STATE_COPY_DEST);
 	sceneBuffer->SetName(L"Scene Buffer");
 	auto tempResource = DXUtil::createCommittedResource(pDevice, D3D12_HEAP_TYPE_UPLOAD, totalSize, D3D12_RESOURCE_STATE_GENERIC_READ);
-	std::uint8_t* data;
+	uint8_t* data;
 	auto readRange = D3D12_RANGE(0, 0);
 	tempResource->Map(0, &readRange, reinterpret_cast<void**>(&data));
 	memcpy(data + scene->getVerticesOffset(), scene->getVertices().data(), scene->getVerticesSizeBytes());
@@ -383,7 +386,7 @@ void Renderer::initSceneResources()
 	normalMatrices->SetName(L"Normal Matrices Buffer");
 
 	// Upload textures
-	std::vector<wrl::ComPtr<ID3D12Resource>> texTempBuffer (scene->getTextures().size());
+	vector<wrl::ComPtr<ID3D12Resource>> texTempBuffer (scene->getTextures().size());
 	auto tempTexBuffer = texTempBuffer.begin();
 	for (const auto& texture : scene->getTextures())
 	{
@@ -498,9 +501,11 @@ LRESULT Renderer::wndCallback(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 	case WM_SIZE:
 		windowDimensions.x = LOWORD(lParam);
 		windowDimensions.y = HIWORD(lParam);
+		if (windowDimensions.x == 0 || windowDimensions.y == 0) 
+			return 1;
 		rendererResources.winDimensions = windowDimensions;
 		resize();
-		return true; // need to return not zero since app is filtering messages
+		return 0;
 	}
-	return false;
+	return 1;
 }
