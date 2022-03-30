@@ -40,6 +40,7 @@ void rayGen()
 	const uint lightIndexId = lights[lightIndex].PrimitiveId * 3;
 	AreaLight areaLight = lights[lightIndex];
 	Material lightMat = materials[areaLight.MaterialId];
+	const bool lightDirectional = lightMat.EmissiveType == 1;
 
 	// Compute light vertices
 	float3 lv[3];
@@ -77,27 +78,30 @@ void rayGen()
 	// Path filter
 	PathInteraction prevStateFlags = Light;
 
-	if ((prevStateFlags & cBuffer.pathFilter) != 0 && lightDot > 0.f && cameraDot > 0.f && getPixel(shadowRay, cBuffer.winDim, pixel))
+	if ((prevStateFlags & cBuffer.pathFilter) != 0 && !lightDirectional && lightDot > 0.f && cameraDot > 0.f)
 	{
-		// Add direct light contribution
-		shadowPayload.occluded = true;
-		TraceRay(
-			gRtScene,	// Acceleration Structure
-			RAY_FLAG_FORCE_OPAQUE
-		  | RAY_FLAG_SKIP_CLOSEST_HIT_SHADER
-		  | RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH,			// Ray flags
-			0xFF,		// Instance inclusion Mask (0xFF includes everything)
-			1,			// RayContributionToHitGroupIndex (calls shadowAnyHit)
-			1,			// MultiplierForGeometryContributionToShaderIndex (We only have 1 hit group)
-			1,			// Miss shader index (within the shader table) (calls shadowMiss)
-			shadowRay,
-			shadowPayload);
-		
-		if (!shadowPayload.occluded)
+		if (getPixel(shadowRay, cBuffer.winDim, pixel))
 		{
-			const uint pixLaunchIndex = pixel.y * cBuffer.winDim.x + pixel.x;
-			float3 contrib = localContribution * lightDot * invShadowDistance * invShadowDistance * cameraDot;
-			AddContribution(pixLaunchIndex, contrib);
+			// Add direct light contribution
+			shadowPayload.occluded = true;
+			TraceRay(
+				gRtScene,	// Acceleration Structure
+				RAY_FLAG_FORCE_OPAQUE
+				| RAY_FLAG_SKIP_CLOSEST_HIT_SHADER
+				| RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH,			// Ray flags
+				0xFF,		// Instance inclusion Mask (0xFF includes everything)
+				1,			// RayContributionToHitGroupIndex (calls shadowAnyHit)
+				1,			// MultiplierForGeometryContributionToShaderIndex (We only have 1 hit group)
+				1,			// Miss shader index (within the shader table) (calls shadowMiss)
+				shadowRay,
+				shadowPayload);
+
+			if (!shadowPayload.occluded)
+			{
+				const uint pixLaunchIndex = pixel.y * cBuffer.winDim.x + pixel.x;
+				float3 contrib = localContribution * lightDot * invShadowDistance * invShadowDistance * cameraDot;
+				AddContribution(pixLaunchIndex, contrib);
+			}
 		}
 	}
 
@@ -107,9 +111,12 @@ void rayGen()
 	ray.TMin = 0.001f;
 	ray.TMax = 3.402823e+38;
 	ray.Origin = shadowRay.Origin;
-
-	ray.Direction = randomRayLobe(seed, unitLightNormal, 1, pdf);
-	localContribution *= dot(unitLightNormal, ray.Direction) / pdf;
+	ray.Direction = unitLightNormal;
+	if (!lightDirectional)
+	{
+		ray.Direction = randomRayLobe(seed, unitLightNormal, 1, pdf);
+		localContribution *= dot(unitLightNormal, ray.Direction) / pdf;
+	}
 
 	// Number of entries in transmissive materials
 	int numEntries = 0;
@@ -160,29 +167,32 @@ void rayGen()
 			float surfaceDot = dot(unitShadowRayDirection, unitFaceNormal);
 			cameraDot = -dot(unitShadowRayDirection, cBuffer.w);
 
-			if (surfaceDot > 0.f && cameraDot > 0.f && getPixel(shadowRay, cBuffer.winDim, pixel))
+			if (surfaceDot > 0.f && cameraDot > 0.f)
 			{
-				shadowPayload.occluded = true;
-				TraceRay(
-					gRtScene,	// Acceleration Structure
-					RAY_FLAG_FORCE_OPAQUE
-					| RAY_FLAG_SKIP_CLOSEST_HIT_SHADER
-					| RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH,			// Ray flags
-					0xFF,		// Instance inclusion Mask (0xFF includes everything)
-					1,			// RayContributionToHitGroupIndex (calls shadowAnyHit)
-					1,			// MultiplierForGeometryContributionToShaderIndex (We only have 1 hit group)
-					1,			// Miss shader index (within the shader table) (calls shadowMiss)
-					shadowRay,
-					shadowPayload);
-
-				if (!shadowPayload.occluded)
+				if (getPixel(shadowRay, cBuffer.winDim, pixel))
 				{
-					const uint pixLaunchIndex = pixel.y * cBuffer.winDim.x + pixel.x;
-					float3 brdfDiff = mat.Diffuse * OneOverPI;
-					if (mat.DiffuseTextureId >= 0)
-						brdfDiff *= gTextures[mat.DiffuseTextureId].SampleLevel(gSampler, getTextureLocation(rayPayload.bary, vertIndex), 0);
-					float3 contrib = (localContribution * brdfDiff) * mat.Dissolve * surfaceDot * invShadowDistance * invShadowDistance * cameraDot;
-					AddContribution(pixLaunchIndex, contrib);
+					shadowPayload.occluded = true;
+					TraceRay(
+						gRtScene,	// Acceleration Structure
+						RAY_FLAG_FORCE_OPAQUE
+						| RAY_FLAG_SKIP_CLOSEST_HIT_SHADER
+						| RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH,			// Ray flags
+						0xFF,		// Instance inclusion Mask (0xFF includes everything)
+						1,			// RayContributionToHitGroupIndex (calls shadowAnyHit)
+						1,			// MultiplierForGeometryContributionToShaderIndex (We only have 1 hit group)
+						1,			// Miss shader index (within the shader table) (calls shadowMiss)
+						shadowRay,
+						shadowPayload);
+
+					if (!shadowPayload.occluded)
+					{
+						const uint pixLaunchIndex = pixel.y * cBuffer.winDim.x + pixel.x;
+						float3 brdfDiff = mat.Diffuse * OneOverPI;
+						if (mat.DiffuseTextureId >= 0)
+							brdfDiff *= gTextures[mat.DiffuseTextureId].SampleLevel(gSampler, getTextureLocation(rayPayload.bary, vertIndex), 0);
+						float3 contrib = (localContribution * brdfDiff) * mat.Dissolve * surfaceDot * invShadowDistance * invShadowDistance * cameraDot;
+						AddContribution(pixLaunchIndex, contrib);
+					}
 				}
 			}
 		}

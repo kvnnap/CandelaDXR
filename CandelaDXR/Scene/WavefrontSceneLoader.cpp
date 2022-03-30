@@ -77,7 +77,8 @@ void WavefrontSceneLoader::loadScene()
             .SpecularTextureId = currentSpecTexId,
             .TransmissiveFilter = Vector3(tinyMat.transmittance[0], tinyMat.transmittance[1], tinyMat.transmittance[2]),
             .RefractiveIndex = tinyMat.ior,
-            .Dissolve = tinyMat.dissolve
+            .Dissolve = tinyMat.dissolve,
+            .EmissiveType = 0
         }, tinyMat.name);
     }
 

@@ -66,6 +66,7 @@ namespace candela::scene
 		mathematics::Vector3 TransmissiveFilter;
 		float RefractiveIndex;
 		float Dissolve;
+		std::uint32_t EmissiveType; // This should move in the AreaLight struct but is easier here
 
 		bool isEmissive() const;
 		bool isSpecular() const;

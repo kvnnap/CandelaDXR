@@ -33,5 +33,6 @@ struct Material
 	float3 TransmissiveFilter;
 	float RefractiveIndex;
 	float Dissolve;
-	uint3 padding;
+	uint EmissiveType;
+	uint2 padding;
 };
