@@ -57,6 +57,7 @@ void LightTracingShading::init(RendererResources* rRes)
 
 	shaderPaths.emplace_back("./Shaders/LightTracingShader.cso");
 	shaderPaths.emplace_back("./Shaders/LightTracingOptimisedShader.cso");
+	shaderPaths.emplace_back("./Shaders/PathTracingShader.cso");
 	constantTempBuffer.resize(rRes->numBackBuffers);
 	tlasTempBuffer.resize(rRes->numBackBuffers);
 	constBuffer.numLights = static_cast<uint32_t>(rRes->scene->getLights().size());
@@ -165,22 +166,25 @@ void LightTracingShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> currentCom
 	commandList4->SetPipelineState1(stateObjects[currentShader].Get());
 
 	// Launch rays
-	auto rayDimensions = lightSamples.x == 0 || lightSamples.y == 0 ? rendererResources->winDimensions : lightSamples;
+	auto rayDimensions = currentShader == 2 || lightSamples.x == 0 || lightSamples.y == 0 ? rendererResources->winDimensions : lightSamples;
 	D3D12_DISPATCH_RAYS_DESC dispatchRaysDesc = shadingTables[currentShader]->getDispatchRaysDescriptor(rayDimensions.x, rayDimensions.y);
 	commandList4->DispatchRays(&dispatchRaysDesc);
 
-	// Launch compute shader -  Make sure all writes to this UAV have completed from DispatchRays
-	auto uavBarrier = CD3DX12_RESOURCE_BARRIER::UAV(irradianceDataStructure.Get());
-	currentCommandList->ResourceBarrier(1u, &uavBarrier);
+	if (currentShader < 2)
+	{
+		// Launch compute shader -  Make sure all writes to this UAV have completed from DispatchRays
+		auto uavBarrier = CD3DX12_RESOURCE_BARRIER::UAV(irradianceDataStructure.Get());
+		currentCommandList->ResourceBarrier(1u, &uavBarrier);
 
-	currentCommandList->SetPipelineState(computePipelineState.Get());
-	currentCommandList->SetComputeRootSignature(computeRootSignature.Get());
-	currentCommandList->SetDescriptorHeaps(1u, computeDescriptorHeap.GetAddressOf());
-	currentCommandList->SetComputeRootDescriptorTable(0u, computeDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
-	auto& dim = rendererResources->winDimensions;
-	uint32_t c32data[5] = { dim.x, dim.y, rayDimensions.x * rayDimensions.y, constBuffer.frameNumber, clear ? 1u : 0u };
-	currentCommandList->SetComputeRoot32BitConstants(1u, 5u, &c32data[0], 0);
-	currentCommandList->Dispatch(dim.x / 8 + (dim.x % 8 == 0 ? 0 : 1), dim.y / 8 + (dim.y % 8 == 0 ? 0 : 1), 1);
+		currentCommandList->SetPipelineState(computePipelineState.Get());
+		currentCommandList->SetComputeRootSignature(computeRootSignature.Get());
+		currentCommandList->SetDescriptorHeaps(1u, computeDescriptorHeap.GetAddressOf());
+		currentCommandList->SetComputeRootDescriptorTable(0u, computeDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
+		auto& dim = rendererResources->winDimensions;
+		uint32_t c32data[5] = { dim.x, dim.y, rayDimensions.x * rayDimensions.y, constBuffer.frameNumber, clear ? 1u : 0u };
+		currentCommandList->SetComputeRoot32BitConstants(1u, 5u, &c32data[0], 0);
+		currentCommandList->Dispatch(dim.x / 8 + (dim.x % 8 == 0 ? 0 : 1), dim.y / 8 + (dim.y % 8 == 0 ? 0 : 1), 1);
+	}
 	clear = false;
 
 	// After

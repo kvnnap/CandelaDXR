@@ -28,6 +28,7 @@ struct ConstBuff
 // Output texture
 RWTexture2D<float4> gOutput : register(u0);
 RWStructuredBuffer<IrradianceItem> gIrradianceDS : register(u1);
+RWStructuredBuffer<IrradianceItemFloat> gIrradianceDSFloat : register(u1);
 
 // SRVs
 StructuredBuffer<float3> verts : register(t0);
