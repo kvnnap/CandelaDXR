@@ -81,18 +81,26 @@ void rayGen()
 		const bool isInternal = wiDot > 0.f;
 		const float3 intersectionPoint = ray.Origin + rayPayload.t * ray.Direction;
 
+		// Fresnel vars
+		float n1, n2, dissolve, coeff;
+
 		// Beer's law
 		if (isInternal)
 		{
-			break; // For the time being support diffuse only
 			if (numEntries <= 0)
-				return;
+				break;
 			localCoefficient *= exp((-rayPayload.t) * mat.TransmissiveFilter);
+
+			// Fresnel
+			n1 = mat.RefractiveIndex;
+			n2 = 1.f;
+			dissolve = 0.f;
+			coeff = -1.f;
 		}
 		else
 		{
 			// If material is emissive, add its radiance
-			if (/*mat.EmissiveType == 0 && */((prevInteraction & (Light | Reflect | Refract)) != 0) && any(mat.Emissive))
+			if (((prevInteraction & (Light | Reflect | Refract)) != 0) && any(mat.Emissive))
 			{
 				float3 albedo = mat.Emissive;
 				if (mat.EmissiveTextureId >= 0)
@@ -100,6 +108,41 @@ void rayGen()
 				radiance += localCoefficient * albedo;
 			}
 
+			// Fresnel
+			n1 = 1.f;
+			n2 = mat.RefractiveIndex;
+			dissolve = mat.Dissolve;
+			coeff = 1.f;
+		}
+
+		// Russian roulette
+		if (++i >= 3)
+		{
+			const float probabilityOfContinuing = 0.5f;
+			if (rand_next(seed) > probabilityOfContinuing)
+				break;
+			localCoefficient *= 1.f / probabilityOfContinuing;
+		}
+
+		// Next ray origin
+		ray.Origin = intersectionPoint;
+
+		// Compute Fresnel
+		float fr = fresnel(-coeff * wiDot, n1, n2);
+
+		// Should reflect?
+		if (rand_next(seed) < fr)
+		{
+			ray.Direction = reflect(ray.Direction, coeff * unitFaceNormal);
+			prevInteraction = Reflect;
+			continue;
+		}
+
+		localCoefficient *= 1.f / (1.f - fr);
+
+		// Diffuse?
+		if (rand_next(seed) < dissolve)
+		{
 			// NES - Cast a shadow ray and collect light
 			const uint lightIndex = chooseInRange(seed, 0, cBuffer.numLights - 1);
 			const uint lightIndexId = lights[lightIndex].PrimitiveId * 3;
@@ -143,6 +186,7 @@ void rayGen()
 
 				if (!shadowPayload.occluded)
 				{
+					fr = fresnel(surfaceLightDot, n1, n2);
 					Material lightMat = materials[areaLight.MaterialId];
 					float3 lightRadiance = lightMat.Emissive;
 					if (lightMat.EmissiveTextureId >= 0)
@@ -151,29 +195,44 @@ void rayGen()
 					float3 brdfDiff = mat.Diffuse * OneOverPI;
 					if (mat.DiffuseTextureId >= 0)
 						brdfDiff *= gTextures[mat.DiffuseTextureId].SampleLevel(gSampler, getTextureLocation(rayPayload.bary, vertIndex), 0);
-					radiance += localCoefficient * lightRadiance * brdfDiff;
+					radiance += localCoefficient * lightRadiance * brdfDiff * (1.f - fr);
 				}
 			}
+
+			// Proceed with normal diffuse hemispherical
+			float pdf;
+			ray.Direction = randomRayLobe(seed, unitFaceNormal, 1, pdf);
+			fr = fresnel(dot(unitFaceNormal, ray.Direction), n1, n2);
+			float3 brdfDiff = mat.Diffuse * OneOverPI;
+			if (mat.DiffuseTextureId >= 0)
+				brdfDiff *= gTextures[mat.DiffuseTextureId].SampleLevel(gSampler, getTextureLocation(rayPayload.bary, vertIndex), 0);
+			localCoefficient *= brdfDiff * dot(unitFaceNormal, ray.Direction) * (1.f - fr) / pdf;
+			prevInteraction = Diffuse;
 		}
-		
-		// Russian roulette
-		if (++i >= 3)
+		else
 		{
-			const float probabilityOfContinuing = 0.5f;
-			if (rand_next(seed) > probabilityOfContinuing)
-				break;
-			localCoefficient *= 1.f / probabilityOfContinuing;
+			// Transmission
+			float3 dir = refract(ray.Direction, coeff * unitFaceNormal, n1 / n2);
+			// fr = fresnel(dot(unitFaceNormal, ray.Direction), n1, n2); TODO!!
+			if (any(dir))
+			{
+				ray.Direction = dir;
+				numEntries += isInternal ? -1 : 1;
+				prevInteraction = Refract;
+				if (isInternal) // On Surface Exit, apply correct weights
+				{ 
+					fr = fresnel(dot(unitFaceNormal, ray.Direction), n2, n1);
+					localCoefficient *= 1.f / (1.f - fr);
+				}
+			}
+			else
+			{   // Total internal reflection - should occur at the start of the code, not here
+				ray.Direction = reflect(ray.Direction, coeff * unitFaceNormal);
+				prevInteraction = Reflect;
+			}
 		}
 
-		// Next bounce
-		float pdf;
-		ray.Origin = intersectionPoint;
-		ray.Direction = randomRayLobe(seed, unitFaceNormal, 1, pdf);
-		float3 brdfDiff = mat.Diffuse * OneOverPI;
-		if (mat.DiffuseTextureId >= 0)
-			brdfDiff *= gTextures[mat.DiffuseTextureId].SampleLevel(gSampler, getTextureLocation(rayPayload.bary, vertIndex), 0);
-		localCoefficient *= brdfDiff * dot(unitFaceNormal, ray.Direction) / pdf;
-		prevInteraction = Diffuse;
+		//ray.Direction = normalize(ray.Direction);
 	}
 
 	// Using this resource as a RADIANCE accumulator
