@@ -222,7 +222,7 @@ void rayGen()
 				if (isInternal) // On Surface Exit, apply correct weights
 				{ 
 					fr = fresnel(dot(unitFaceNormal, ray.Direction), n2, n1);
-					localCoefficient *= 1.f / (1.f - fr);
+					localCoefficient *= 1.f - fr;
 				}
 			}
 			else
