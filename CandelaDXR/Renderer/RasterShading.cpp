@@ -21,6 +21,7 @@ using candela::directx::DescriptorHeap;
 using DirectX::XMMATRIX;
 using std::make_shared;
 using std::uint32_t;
+using std::size_t;
 using std::vector;
 using Microsoft::WRL::ComPtr;
 
@@ -123,8 +124,11 @@ void candela::renderer::RasterShading::init(RendererResources* rRes)
 	srvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
 	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
 	srvDesc.Texture2D.MipLevels = 1;
-	for (const auto& texture : rendererResources->textures)
-		descHeapManager.setSRV(0, srvDesc, rendererResources->pDevice, texture);
+	for (size_t i = 0; i < rendererResources->textures.size(); ++i)
+	{
+		const auto& texture = rendererResources->textures[i];
+		descHeapManager.setSRV(i, srvDesc, rendererResources->pDevice, texture);
+	}
 	rootDescriptorHeap = descHeapManager.getDescriptorHeap();
 
 

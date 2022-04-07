@@ -72,11 +72,11 @@ float4 main(MyInput myInput) : SV_TARGET
 		if (primDot < 0 || lightDot < 0)
 			continue;
 
-		float len = length(shadowRay);
+		float invShadLen = 1.f / length(shadowRay);
 		float3 diffTex = float3(1.f, 1.f, 1.f);
 		if (mat.DiffuseTextureId >= 0)
 			diffTex = gTextures[mat.DiffuseTextureId].SampleLevel(gSampler, myInput.texUV, 0);
-		total += lightMat.Emissive * mat.Diffuse * diffTex * primDot * lightDot / (len * len * PI);
+		total += lightMat.Emissive * mat.Diffuse * diffTex * primDot * lightDot * OneOverPI * invShadLen * invShadLen;
 	}
 
 	return float4(linearToSrgb(toneMap(mat.Emissive + total)), 1.0f);
