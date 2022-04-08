@@ -103,6 +103,10 @@
     <PostBuildEvent>
       <Message>Copy Assets</Message>
     </PostBuildEvent>
+    <PreBuildEvent>
+      <Command>Version\GenerateAutoVersion.bat</Command>
+      <Message>Generate Version Data</Message>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -129,6 +133,10 @@
     <PostBuildEvent>
       <Message>Copy Assets</Message>
     </PostBuildEvent>
+    <PreBuildEvent>
+      <Command>Version\GenerateAutoVersion.bat</Command>
+      <Message>Generate Version Data</Message>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -151,6 +159,10 @@
     <PostBuildEvent>
       <Message>Copy Assets</Message>
     </PostBuildEvent>
+    <PreBuildEvent>
+      <Command>Version\GenerateAutoVersion.bat</Command>
+      <Message>Generate Version Data</Message>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -177,6 +189,10 @@
     <PostBuildEvent>
       <Message>Copy Assets</Message>
     </PostBuildEvent>
+    <PreBuildEvent>
+      <Command>Version\GenerateAutoVersion.bat</Command>
+      <Message>Generate Version Data</Message>
+    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="DirectX\CommandQueue.cpp" />
@@ -213,6 +229,7 @@
     <ClCompile Include="Factory\WavefrontSceneLoaderFactory.cpp" />
     <ClCompile Include="System\DllManager.cpp" />
     <ClCompile Include="Util\StringUtil.cpp" />
+    <ClCompile Include="Version\Version.cpp" />
     <ClCompile Include="Window\Window.cpp" />
     <ClCompile Include="Window\WindowClass.cpp" />
   </ItemGroup>
@@ -259,6 +276,7 @@
     <ClInclude Include="Factory\WavefrontSceneLoaderFactory.h" />
     <ClInclude Include="System\DllManager.h" />
     <ClInclude Include="Util\StringUtil.h" />
+    <ClInclude Include="Version\Version.h" />
     <ClInclude Include="Window\Window.h" />
     <ClInclude Include="Window\WindowClass.h" />
     <ClInclude Include="Window\WindowsDef.h" />

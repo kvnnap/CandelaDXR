@@ -1,14 +1,11 @@
-// CandelaDXR.cpp : This file contains the 'main' function. Program execution begins and ends there.
-//
-
 #include <iostream>
 #include <string>
-
 
 #include "Exception/Exception.h"
 #include "Environment/Environment.h"
 #include "Window/Window.h"
 #include "Renderer/IRenderer.h"
+#include "Version/Version.h"
 
 using std::cout;
 using std::endl;
@@ -19,9 +16,10 @@ using candela::environment::Environment;
 using candela::renderer::IRenderer;
 using candela::ui::Window;
 
-
 int main(int argc, char** argv)
 {
+    cout << "Version: " << candela::version::CommitSummary() << " Date: " << candela::version::Date << endl;
+
     string err;
 
     try {

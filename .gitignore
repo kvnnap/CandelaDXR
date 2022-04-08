@@ -364,3 +364,6 @@ FodyWeavers.xsd
 
 # Allow assets
 !CandelaDXR/Assets/**
+
+# Ignore auto-generated version file
+/CandelaDXR/Version/AutoVersion.h
