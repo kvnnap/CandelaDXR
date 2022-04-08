@@ -3,9 +3,15 @@
 #if __has_include("AutoVersion.h")
 #include "AutoVersion.h"
 #else
-#define CANDELA_COMMIT N/A
-#define CANDELA_DATE N/A
 #define CANDELA_DIRTY
+#endif
+
+#ifndef CANDELA_COMMIT
+#define CANDELA_COMMIT N/A
+#endif
+
+#ifndef CANDELA_DATE
+#define CANDELA_DATE N/A
 #endif
 
 #ifdef CANDELA_DIRTY
@@ -21,6 +27,7 @@
 const char* candela::version::Commit = STRINGIFY(CANDELA_COMMIT);
 const char* candela::version::Date = STRINGIFY(CANDELA_DATE);
 const bool candela::version::Dirty = CANDELA_DIRTY;
+
 static char commitSummary[16] = {};
 
 const char* candela::version::CommitSummary()
@@ -29,9 +36,12 @@ const char* candela::version::CommitSummary()
 	{
 		for (int i = 0; i < 7; ++i)
 			commitSummary[i] = Commit[i];
-		const auto dirty = "-dirty";
-		for (int i = 0; i < 6; ++i)
-			commitSummary[i + 7] = dirty[i];
+		if (Dirty)
+		{
+			const auto dirty = "-dirty";
+			for (int i = 0; i < 6; ++i)
+				commitSummary[i + 7] = dirty[i];
+		}
 	}
 	return commitSummary;
 }
