@@ -57,3 +57,20 @@ int main(int argc, char** argv)
     cout << err << endl;
     return EXIT_FAILURE;
 }
+
+//#include "Util/WebUtil.h"
+
+//{
+//    Environment env;
+//    std::string headers = "Accept: application/vnd.github.v3+json\nAuthorization: token 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";
+//    //std::string response;
+//    std::vector<uint8_t> response;
+//    candela::util::WWWFileBuffer("api.github.com", "/repos/kvnnap/CandelaDXR/actions/runs?per_page=1&branch=master", headers, response);
+//    auto &parser = env.getConfigurationManager().getFactoryManager().get("JsonConfigurationParser");
+//    
+//    //WWWFileBuffer("api.github.com", "/repos/kvnnap/CandelaDXR/actions/runs/2115995498/artifacts", response);
+//    cout << response.size() << endl;
+//}
+// Need string: obj.workflow_runs[0].artifacts_url and then obj.artifacts[0].archive_download_url
+// Regex: [^.\[\]]+|(?:\[(\d+)\])
+// Cross-platform: Use libcurl and unzip libraries
