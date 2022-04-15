@@ -132,10 +132,10 @@ void LightTracingShading::init(RendererResources* rRes)
 void LightTracingShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> currentCommandList, uint32_t currentBackBufferIndex)
 {
 	// Pre-stuff
-	auto &backBuff = rendererResources->pRTVBackBuffers[currentBackBufferIndex];
+	auto &backBuff = rendererResources->pRTVRadBackBuffers[currentBackBufferIndex];
 	auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(backBuff.Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_COPY_DEST);
 	currentCommandList->ResourceBarrier(1u, &barrier);
-
+	
 	barrier = CD3DX12_RESOURCE_BARRIER::Transition(outputTexture.Get(), D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 	currentCommandList->ResourceBarrier(1u, &barrier);
 
@@ -348,9 +348,9 @@ void LightTracingShading::createShaderResources()
 	const auto &dim = rendererResources->winDimensions;
 
 	// The output resource
-	outputTexture = DXUtil::createTextureCommittedResource(rendererResources->pDevice, D3D12_HEAP_TYPE_DEFAULT, dim.x, dim.y, D3D12_RESOURCE_STATE_COPY_SOURCE);
+	outputTexture = DXUtil::createTextureCommittedResource(rendererResources->pDevice, D3D12_HEAP_TYPE_DEFAULT, dim.x, dim.y, D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, DXGI_FORMAT_R32G32B32A32_FLOAT);
 	outputTexture->SetName(L"Output Texture");
-	irradianceTexture = DXUtil::createTextureCommittedResource(rendererResources->pDevice, D3D12_HEAP_TYPE_DEFAULT, dim.x, dim.y, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_FLAG_NONE, DXGI_FORMAT_R32G32B32A32_FLOAT);
+	irradianceTexture = DXUtil::createTextureCommittedResource(rendererResources->pDevice, D3D12_HEAP_TYPE_DEFAULT, dim.x, dim.y, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, DXGI_FORMAT_R32G32B32A32_FLOAT);
 	irradianceTexture->SetName(L"Irradiance Texture");
 	irradianceDataStructure = DXUtil::createCommittedResource(rendererResources->pDevice, D3D12_HEAP_TYPE_DEFAULT, dim.x * dim.y * sizeof(uint32_t) * 4, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS);
 	irradianceDataStructure->SetName(L"Irradiance DS");

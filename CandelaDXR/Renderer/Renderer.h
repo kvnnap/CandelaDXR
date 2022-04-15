@@ -12,6 +12,7 @@
 #include "Window/Window.h"
 #include "DirectX/DxgiInfoManager.h"
 #include "DirectX/CommandQueue.h"
+#include "DirectX/RootSignatureManager.h"
 #include "FpsCounter.h"
 #include "Scene/Scene.h"
 #include "IRenderer.h"
@@ -41,8 +42,11 @@ namespace candela::renderer
 		using ComPtrVec = std::vector<wrl::ComPtr<T>>;
 
 		void initSceneResources();
+		void initShaders();
+		void createShaderResources();
 		void updateCamera();
 		void resize();
+		void resizeFloatTargetTextures();
 		void refreshMaterialResources();
 		std::vector<DirectX::XMFLOAT3X4> getMatrices();
 		std::vector<DirectX::XMFLOAT3X3> getNormalMatrices();
@@ -64,7 +68,10 @@ namespace candela::renderer
 		wrl::ComPtr<IDXGIFactory> dxgiFactory;
 		wrl::ComPtr<IDXGISwapChain> pSwapChain;
 		wrl::ComPtr<ID3D12DescriptorHeap> pRTVDescriptorHeap;
+		wrl::ComPtr<ID3D12Resource> pRadAccumulator;
+		wrl::ComPtr<ID3D12Resource> pRTV8BitBackBuffer;
 		ComPtrVec<ID3D12Resource> pRTVBackBuffers;
+		ComPtrVec<ID3D12Resource> pRTVRadBackBuffers;
 		ComPtrVec<ID3D12Resource> pMatricesTempBackBuffers;
 		ComPtrVec<ID3D12Resource> pNormalMatricesTempBackBuffers;
 		ComPtrVec<ID3D12Resource> pMaterialsTempBackBuffers;
@@ -96,7 +103,14 @@ namespace candela::renderer
 		wrl::ComPtr<ID3D12Resource> specularBuffer;
 		wrl::ComPtr<ID3D12Resource> matrices;
 		wrl::ComPtr<ID3D12Resource> normalMatrices;
+
 		std::vector<wrl::ComPtr<ID3D12Resource>> textures;
+
+		// Shaders
+		std::shared_ptr<directx::RootSignatureManager> computeRSM;
+		wrl::ComPtr<ID3D12RootSignature> computeRootSignature;
+		wrl::ComPtr<ID3D12PipelineState> computePipelineState;
+		wrl::ComPtr<ID3D12DescriptorHeap> computeDescriptorHeap;
 
 		// TEST AREA
 		std::vector<IDrawable*> drawables;

@@ -274,6 +274,39 @@ std::vector<ComPtr<ID3D12Resource>> DXUtil::createRenderTargetViews(
 	return backBuffers;
 }
 
+// Fills in heap for texture targets and the coupled swap chain render targets
+std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>> DXUtil::createRenderTargetViewsEx(
+	ComPtr<ID3D12Device> device, 
+	ComPtr<ID3D12DescriptorHeap> descriptorHeap, 
+	ComPtr<IDXGISwapChain> swapChain,
+	vector<ComPtr<ID3D12Resource>>& textureTargets, UINT numRTV)
+{
+	auto rtvDescSize = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(descriptorHeap->GetCPUDescriptorHandleForHeapStart());
+
+	{
+		UINT i = 0;
+		// Start with texture targets
+		for (auto& textureTarget : textureTargets)
+		{
+			device->CreateRenderTargetView(textureTargets[i++].Get(), nullptr, rtvHandle);
+			rtvHandle.Offset(rtvDescSize);
+		}
+	}
+
+	// Finish off with the swap chain buffers
+	HRESULT hr;
+	std::vector<ComPtr<ID3D12Resource>> backBuffers(numRTV);
+	for (UINT i = 0; i < numRTV; ++i) {
+		GFXTHROWIFFAILED(swapChain->GetBuffer(i, IID_PPV_ARGS(&backBuffers[i])));
+		device->CreateRenderTargetView(backBuffers[i].Get(), nullptr, rtvHandle);
+		backBuffers[i]->SetName((L"RTV Back-Buffer " + std::to_wstring(i)).c_str());
+		rtvHandle.Offset(rtvDescSize);
+	}
+
+	return backBuffers;
+}
+
 std::vector<ComPtr<ID3D12Resource>> DXUtil::createDepthStencilView(
 	ComPtr<ID3D12Device> device,
 	ComPtr<ID3D12DescriptorHeap> depthDescriptorHeap,
@@ -345,7 +378,7 @@ ComPtr<ID3D12Resource> DXUtil::createTextureCommittedResource(ComPtr<ID3D12Devic
 	// TODO: Check - Do we need mip level 1 for Ray Tracing?
 	HRESULT hr;
 	auto heapPropDesc = CD3DX12_HEAP_PROPERTIES(heapType);
-	auto tex2DDesc = CD3DX12_RESOURCE_DESC::Tex2D(format, width, height, 1u, 1u, 1u, 0u, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS);
+	auto tex2DDesc = CD3DX12_RESOURCE_DESC::Tex2D(format, width, height, 1u, 1u, 1u, 0u, resourceFlags);
 	GFXTHROWIFFAILED(device->CreateCommittedResource(
 		&heapPropDesc,
 		D3D12_HEAP_FLAG_NONE,

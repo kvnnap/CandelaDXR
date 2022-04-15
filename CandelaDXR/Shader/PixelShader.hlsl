@@ -79,5 +79,5 @@ float4 main(MyInput myInput) : SV_TARGET
 		total += lightMat.Emissive * mat.Diffuse * diffTex * primDot * lightDot * OneOverPI * invShadLen * invShadLen;
 	}
 
-	return float4(linearToSrgb(toneMap(mat.Emissive + total)), 1.0f);
+	return float4(mat.Emissive + total, 1.0f);
 }

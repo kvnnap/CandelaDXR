@@ -240,7 +240,7 @@ void rayGen()
 	if (cBuffer.frameNumber == 1)
 		gIrradianceDSFloat[flatLaunchIndex].value = 0.f;
 	gIrradianceDSFloat[flatLaunchIndex].value += radiance;
-	gOutput[launchIndex] = float4(linearToSrgb(toneMap(gIrradianceDSFloat[flatLaunchIndex].value / cBuffer.frameNumber)), 1.f);
+	gOutput[launchIndex] = float4(gIrradianceDSFloat[flatLaunchIndex].value / cBuffer.frameNumber, 1.f);
 }
 
 // Ray

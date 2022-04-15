@@ -286,6 +286,7 @@
     <FxCompile Include="Shader\RadianceComputeShader.hlsl" />
     <FxCompile Include="Shader\LightTracingOptimisedShader.hlsl" />
     <FxCompile Include="Shader\PathTracingShader.hlsl" />
+    <FxCompile Include="Shader\AccumulatorShader.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Shader\Utils.hlsli" />
