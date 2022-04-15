@@ -11,11 +11,12 @@
 
 #include "Util/StringUtil.h"
 
+#include "AccelerationStructure.h"
+
 using std::uint32_t;
 using std::vector;
 using std::string;
 using std::wstring;
-using std::unordered_map;
 using std::unique_ptr;
 using std::make_unique;
 using std::make_shared;
@@ -34,6 +35,8 @@ using candela::renderer::LightTracingShading;
 using candela::renderer::RendererResources;
 using candela::renderer::ChangeEvent;
 using candela::renderer::ChangeEvent_t;
+using candela::renderer::ResourceRegFunction;
+using candela::renderer::AccelerationStructure;
 
 using candela::mathematics::UVector2;
 using candela::mathematics::Vector2;
@@ -48,66 +51,33 @@ LightTracingShading::LightTracingShading(unique_ptr<ISampler> sampler, UVector2 
 {
 }
 
-void LightTracingShading::init(RendererResources* rRes)
+void LightTracingShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12GraphicsCommandList> &pCurrentCommandList, ResourceRegFunction& resRegFn)
 {
 	if (!DXUtil::checkDeviceRTSupport(rRes->pDevice))
 		ThrowException("Ray tracing is not supported on this device");
 	
+	if (!rRes->accelerationStructure)
+	{
+		auto accel = make_unique<AccelerationStructure>();
+		rRes->accelerationStructure = accel.get();
+		resRegFn(std::move(accel));
+	}
+
 	rendererResources = rRes;
 
 	shaderPaths.emplace_back("./Shaders/LightTracingShader.cso");
 	shaderPaths.emplace_back("./Shaders/LightTracingOptimisedShader.cso");
 	shaderPaths.emplace_back("./Shaders/PathTracingShader.cso");
 	constantTempBuffer.resize(rRes->numBackBuffers);
-	tlasTempBuffer.resize(rRes->numBackBuffers);
 	constBuffer.numLights = static_cast<uint32_t>(rRes->scene->getLights().size());
 	constBuffer.numSpeculars = static_cast<uint32_t>(rRes->scene->getSpeculars().size());
 	constBuffer.frameNumber = 0;
 	constBuffer.causticsRatio = 0.f;
 	constBuffer.pathFilter = 0xFFFFFFFF;
-
-	auto commandList = rRes->commandQueue->getCommandList();
 	auto& scene = *rRes->scene;
 
-	const DXUtil::BottomLevelAccelerationData blasReferenceData
-	{
-		.vertexBuffer = rRes->sceneBuffer->GetGPUVirtualAddress(),
-		.indexBuffer = rRes->sceneBuffer->GetGPUVirtualAddress() + scene.getIndicesOffset(),
-		.vertexCount = static_cast<UINT>(scene.getVertices().size()),
-		.indexCount = static_cast<UINT>(scene.getIndices().size()),
-	};
-
-	// Build bottom-layer - This incorporates all meshes - one BLAS per group
-	unordered_map<string, size_t> bufferMap;
-	for (auto &item : scene.getMeshIndexedSpanDataMap())
-	{
-		auto mis = &item.second;
-		
-		DXUtil::BottomLevelAccelerationData blasData = blasReferenceData;
-		blasData.indexBuffer += static_cast<UINT>(mis->Start) * sizeof(int);
-		blasData.indexCount = static_cast<UINT>(mis->Size);
-
-		bufferMap[item.first] = blasBuffers.size();
-		blasBuffers.push_back(DXUtil::createBottomLevelAS(rRes->pDevice, commandList, { blasData }, 3 * sizeof(float)));
-	}
-
-	for (const auto &child : scene.getSceneGraph().Children)
-	{
-		auto &indexedSpan = scene.getMeshIndexedSpan(child.GroupName);
-		auto &ref = tlasInstanceData.emplace_back(DXUtil::TopLevelAccelerationData {
-			.instanceId = indexedSpan.Start,
-			.blasBuffer = blasBuffers[bufferMap.at(child.GroupName)]
-		});
-		XMStoreFloat3x4(&ref.transform, child.Transform);
-	}
-
-	// Build Top-Layer
-	wrl::ComPtr<ID3D12Resource> tlasTempBuffer;
-	DXUtil::buildTopLevelAS(rRes->pDevice, commandList, tlasInstanceData, tlasTempBuffer, false, tlasBuffers);
-
 	// Gen 
-	wrl::ComPtr<ID3D12Resource> irrToRadTempBuffer;
-	generateIrrToRadTexture(commandList, irrToRadTempBuffer);
+	generateIrrToRadTexture(pCurrentCommandList, rendererResources->initTempBuffers.emplace_back());
 
 	// Build Pipeline
 	buildPipeline();
@@ -116,17 +86,12 @@ void LightTracingShading::init(RendererResources* rRes)
 	createShaderResources();
 
 	// Constant buffer
-	wrl::ComPtr<ID3D12Resource> cBuffIntBuffer;
-	constantBuffer = DXUtil::uploadDataToDefaultHeap(rRes->pDevice, commandList, cBuffIntBuffer, &constBuffer, sizeof(constBuffer), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+	constantBuffer = DXUtil::uploadDataToDefaultHeap(rRes->pDevice, pCurrentCommandList, rendererResources->initTempBuffers.emplace_back(), &constBuffer, sizeof(constBuffer), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 	constantBuffer->SetName(L"Constant Buffer");
 
 	// Build shading table
 	shadingTableTempBuffers.resize(shaderPaths.size());
-	createShaderTable(commandList);
-	
-	// Wait
-	auto fV = rRes->commandQueue->executeCommandList(commandList);
-	rRes->commandQueue->waitForFenceValue(fV);
+	createShaderTable(pCurrentCommandList);
 }
 
 void LightTracingShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> currentCommandList, uint32_t currentBackBufferIndex)
@@ -368,7 +333,7 @@ void LightTracingShading::createShaderResources()
 	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
 	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_RAYTRACING_ACCELERATION_STRUCTURE;
 	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-	srvDesc.RaytracingAccelerationStructure.Location = tlasBuffers.pResult->GetGPUVirtualAddress();
+	srvDesc.RaytracingAccelerationStructure.Location = rendererResources->accelerationStructure->getTopLayerBufferAddress();
 	descHeapManager->setSRV(entryNumber++, srvDesc, rendererResources->pDevice);
 
 	// Irr to Rad?
@@ -424,16 +389,6 @@ void LightTracingShading::createShaderTable(wrl::ComPtr<ID3D12GraphicsCommandLis
 	}
 }
 
-void LightTracingShading::buildTlas(wrl::ComPtr<ID3D12GraphicsCommandList> &commandList, wrl::ComPtr<ID3D12Resource>& tempResource)
-{
-	// Warning, we are assuming order - will not be the case when instancing in the future
-	auto tlas = tlasInstanceData.begin();
-	for (const auto &child : rendererResources->scene->getSceneGraph().Children)
-		XMStoreFloat3x4(&(tlas++)->transform, child.Transform);
-
-	DXUtil::buildTopLevelAS(rendererResources->pDevice, commandList, tlasInstanceData, tempResource, true, tlasBuffers);
-}
-
 void LightTracingShading::generateIrrToRadTexture(wrl::ComPtr<ID3D12GraphicsCommandList>& commandList, wrl::ComPtr<ID3D12Resource>& tempResource)
 {
 	// Compute irradianceToRadianceConstants
@@ -450,8 +405,6 @@ void LightTracingShading::generateIrrToRadTexture(wrl::ComPtr<ID3D12GraphicsComm
 
 void LightTracingShading::onChange(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, uint32_t currentBackBufferIndex, ChangeEvent_t changeEvent)
 {
-	if (changeEvent & static_cast<ChangeEvent_t>(ChangeEvent::Transformation))
-		buildTlas(pCurrentCommandList, tlasTempBuffer[currentBackBufferIndex]);
 	if (changeEvent & static_cast<ChangeEvent_t>(ChangeEvent::SceneChange))
 	{
 		constBuffer.numLights = static_cast<uint32_t>(rendererResources->scene->getLights().size());

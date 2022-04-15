@@ -221,6 +221,7 @@
     <ClCompile Include="Renderer\LightTracingShading.cpp" />
     <ClCompile Include="Renderer\RasterShading.cpp" />
     <ClCompile Include="Renderer\Renderer.cpp" />
+    <ClCompile Include="Renderer\AccelerationStructure.cpp" />
     <ClCompile Include="Sampler\UniformSampler.cpp" />
     <ClCompile Include="Scene\Scene.cpp" />
     <ClCompile Include="Factory\SceneFactory.cpp" />
@@ -260,6 +261,7 @@
     <ClInclude Include="ImGui\ImGuiShading.h" />
     <ClInclude Include="Mathematics\Constants.h" />
     <ClInclude Include="Mathematics\Types.h" />
+    <ClInclude Include="Renderer\AccelerationStructure.h" />
     <ClInclude Include="Renderer\Camera.h" />
     <ClInclude Include="Renderer\FpsCounter.h" />
     <ClInclude Include="Renderer\IDrawable.h" />

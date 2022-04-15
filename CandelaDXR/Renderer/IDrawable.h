@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <vector>
+#include <functional>
 
 #define NOMINMAX
 #include <d3d12.h>
@@ -17,6 +18,8 @@
 namespace candela::renderer
 {
 	namespace wrl = Microsoft::WRL;
+
+	class AccelerationStructure;
 
 	struct RendererResources
 	{
@@ -36,6 +39,8 @@ namespace candela::renderer
 		UINT numBackBuffers;
 		scene::Scene *scene;
 		Camera *camera;
+		AccelerationStructure* accelerationStructure;
+		std::vector<wrl::ComPtr<ID3D12Resource>> initTempBuffers;
 	};
 
 	enum class ChangeEvent : std::uint32_t
@@ -59,11 +64,21 @@ namespace candela::renderer
 		virtual void visit(LightTracingShading*) = 0;
 	};
 
+	class IResource
+	{
+	public:
+		virtual ~IResource() = default;
+		virtual void init(RendererResources* rendererResources, wrl::ComPtr<ID3D12GraphicsCommandList>& pCurrentCommandList) = 0;
+		virtual void onChange(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, std::uint32_t currentBackBufferIndex, ChangeEvent_t changeEvent) = 0;
+	};
+
+	using ResourceRegFunction = std::function<void(std::unique_ptr<IResource>)>;
+
 	class IDrawable
 	{
 	public:
 		virtual ~IDrawable() = default;
-		virtual void init(RendererResources *rendererResources) = 0;
+		virtual void init(RendererResources *rendererResources, wrl::ComPtr<ID3D12GraphicsCommandList>& pCurrentCommandList, ResourceRegFunction& resRegFn) = 0;
 		virtual void draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, std::uint32_t currentBackBufferIndex) = 0;
 		virtual void accept(IVisitor *visitor) = 0;
 		// On matrix change

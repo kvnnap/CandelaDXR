@@ -14,6 +14,7 @@ using candela::mathematics::Vector3;
 using candela::mathematics::UVector2;
 using candela::renderer::RasterShading;
 using candela::renderer::Camera;
+using candela::renderer::ResourceRegFunction;
 using candela::renderer::ChangeEvent_t;
 using candela::directx::DXUtil;
 using candela::directx::RootSignatureManager;
@@ -30,7 +31,7 @@ RasterShading::RasterShading()
 {
 }
 
-void candela::renderer::RasterShading::init(RendererResources* rRes)
+void candela::renderer::RasterShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12GraphicsCommandList>& pCurrentCommandList, ResourceRegFunction& resRegFn)
 {
 	this->rendererResources = rRes;
 
@@ -168,22 +169,16 @@ void candela::renderer::RasterShading::init(RendererResources* rRes)
 	GFXTHROWIFFAILED(rRes->pDevice.As(&pDevice2));
 	GFXTHROWIFFAILED(pDevice2->CreatePipelineState(&pipelineStateStreamDesc, IID_PPV_ARGS(&pipelineState)));
 
-	auto commandList = rRes->commandQueue->getCommandList();
-
 	// Init const buffer
 	constBuffer.numLights = static_cast<uint32_t>(rendererResources->scene->getLights().size());
-	wrl::ComPtr<ID3D12Resource> cBuffIntBuffer;
 	constantBuffer = DXUtil::uploadDataToDefaultHeap(
 		rRes->pDevice,
-		commandList,
-		cBuffIntBuffer,
+		pCurrentCommandList,
+		rendererResources->initTempBuffers.emplace_back(),
 		&constBuffer,
 		sizeof(constBuffer),
 		D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
 	constantBuffer->SetName(L"Constant Buffer");
-
-	auto fV = rRes->commandQueue->executeCommandList(commandList);
-	rRes->commandQueue->waitForFenceValue(fV);
 }
 
 void RasterShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, uint32_t currentBackBufferIndex)

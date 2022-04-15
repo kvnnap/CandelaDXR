@@ -114,6 +114,7 @@ namespace candela::renderer
 
 		// TEST AREA
 		std::vector<IDrawable*> drawables;
+		std::vector<std::unique_ptr<IResource>> resources;
 
 		// To pass
 		RendererResources rendererResources;

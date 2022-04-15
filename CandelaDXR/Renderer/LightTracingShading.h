@@ -33,7 +33,7 @@ namespace candela::renderer
 	public:
 		LightTracingShading(std::unique_ptr<sampler::ISampler> sampler, mathematics::UVector2 lightSamples);
 
-		void init(RendererResources* rendererResources) override;
+		void init(RendererResources* rendererResources, wrl::ComPtr<ID3D12GraphicsCommandList> &pCurrentCommandList, ResourceRegFunction& resRegFn) override;
 		void draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, std::uint32_t currentBackBufferIndex) override;
 		void onChange(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, std::uint32_t currentBackBufferIndex, ChangeEvent_t changeEvent) override;
 		void onResize() override;
@@ -56,7 +56,7 @@ namespace candela::renderer
 		void buildPipeline();
 		void createShaderResources();
 		void createShaderTable(wrl::ComPtr<ID3D12GraphicsCommandList> &commandList);
-		void buildTlas(wrl::ComPtr<ID3D12GraphicsCommandList>& commandList, wrl::ComPtr<ID3D12Resource>& tempResource);
+		
 		void generateIrrToRadTexture(wrl::ComPtr<ID3D12GraphicsCommandList>& commandList, wrl::ComPtr<ID3D12Resource>& tempResource);
 
 		mathematics::Vector2 toSensorSpace(std::uint32_t x, std::uint32_t y) const;
@@ -98,12 +98,6 @@ namespace candela::renderer
 		wrl::ComPtr<ID3D12Resource> irradianceDataStructure;
 		std::unique_ptr<sampler::ISampler> sampler;
 		bool clear;
-
-		// Acceleration structure
-		std::vector<directx::DXUtil::AccelerationStructureBuffers> blasBuffers;
-		directx::DXUtil::AccelerationStructureBuffers tlasBuffers;
-		std::vector<directx::DXUtil::TopLevelAccelerationData> tlasInstanceData;
-		std::vector<wrl::ComPtr<ID3D12Resource>> tlasTempBuffer;
 
 		// Compute shader
 		wrl::ComPtr<ID3D12DescriptorHeap> computeDescriptorHeap;

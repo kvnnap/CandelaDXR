@@ -8,6 +8,7 @@
 #include <DirectXMath.h>
 #include <d3dcompiler.h>
 #include <dxgidebug.h>
+#include <functional>
 
 #include "DirectX/ShadingTable.h"
 
@@ -146,7 +147,7 @@ void Renderer::init()
 	pSwapChain = DXUtil::createSwapChain(dxgiFactory, commandQueue->getCommandQueue(), window->getHandle(), NumBackBuffers);
 
 	// Create descriptor heap for render target view
-	pRTVDescriptorHeap = DXUtil::createDescriptorHeap(pDevice, NumBackBuffers * pRTVRadBackBuffers.size(), D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+	pRTVDescriptorHeap = DXUtil::createDescriptorHeap(pDevice, NumBackBuffers * static_cast<UINT>(pRTVRadBackBuffers.size()), D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 	pRTVDescriptorHeap->SetName(L"RTV Descriptor Heap");
 
 	// Create render target Views
@@ -194,15 +195,35 @@ void Renderer::init()
 		.winDimensions = windowDimensions,
 		.numBackBuffers = NumBackBuffers,
 		.scene = scene,
-		.camera = camera
+		.camera = camera,
+		.accelerationStructure = nullptr
 	};
 
 	initShaders();
 	createShaderResources();
 
+	pCurrentCommandList = commandQueue->getCommandList();
+
+	// Init Resources
+	for (auto &resource : resources)
+		resource->init(&rendererResources, pCurrentCommandList);
+
+	// Init and add those added later
+	ResourceRegFunction resourceFn = [this] (std::unique_ptr<IResource> resource) -> void {
+		resource->init(&rendererResources, pCurrentCommandList);
+		resources.push_back(std::move(resource));
+	};
+
 	// Init drawables
 	for (IDrawable* drawable : drawables)
-		drawable->init(&rendererResources);
+		drawable->init(&rendererResources, pCurrentCommandList, resourceFn);
+
+	// Wait
+	auto fV = commandQueue->executeCommandList(pCurrentCommandList);
+	commandQueue->waitForFenceValue(fV);
+
+	// Clear temporary buffers
+	rendererResources.initTempBuffers.clear();
 }
 
 void Renderer::renderFrame()
@@ -306,6 +327,10 @@ void Renderer::renderFrame()
 		refreshMaterialResources();
 	}
 
+	// Resources on change
+	for (auto& resource : resources)
+		resource->onChange(pCurrentCommandList, currentBackBufferIndex, changeEvent);
+
 	// Draw
 	updateCamera();
 	for (size_t i = 0; i < drawables.size(); ++i)
@@ -325,7 +350,7 @@ void Renderer::renderFrame()
 		pCurrentCommandList->SetComputeRootSignature(computeRootSignature.Get());
 		pCurrentCommandList->SetDescriptorHeaps(1u, computeDescriptorHeap.GetAddressOf());
 		// in, out, clear, linearToSrgb - Accumulate
-		int32_t c32data[4] = { currentBackBufferIndex + 2, 1u, i == 0 ? 1u : 0u, finalLoop ? 1u : 0u };
+		int32_t c32data[4] = { static_cast<int>(currentBackBufferIndex) + 2, 1u, i == 0 ? 1u : 0u, finalLoop ? 1u : 0u };
 		pCurrentCommandList->SetComputeRoot32BitConstants(0u, 4u, &c32data[0], 0);
 		pCurrentCommandList->SetComputeRootDescriptorTable(1u, computeDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
 		const auto& dim = windowDimensions;
