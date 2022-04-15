@@ -4,6 +4,7 @@
 
 #include "Renderer/RasterShading.h"
 #include "Renderer/LightTracingShading.h"
+#include "Renderer/PathTracingShading.h"
 
 #include <filesystem>
 
@@ -12,6 +13,7 @@ using std::filesystem::path;
 
 using candela::renderer::RasterShading;
 using candela::renderer::LightTracingShading;
+using candela::renderer::PathTracingShading;
 
 using candela::renderer::imgui::ImGuiShading;
 
@@ -91,4 +93,9 @@ void ImGuiShading::visit(LightTracingShading* lightTracingShader)
 	if (diffuseFlag) pathFlags |= PathInteraction::Diffuse;
 	if (changed)
 		lightTracingShader->setPathFilter(pathFlags);
+}
+
+void ImGuiShading::visit(PathTracingShading* pathTracingShader)
+{
+	ImGui::Text("PathTracingShading");
 }

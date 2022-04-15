@@ -135,6 +135,12 @@
     <ClCompile Include="Renderer\AccelerationStructure.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Renderer\PathTracingShading.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Factory\PathTracingDrawableFactory.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Exception\GeneralException.h">
@@ -284,6 +290,12 @@
     <ClInclude Include="Renderer\AccelerationStructure.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Renderer\PathTracingShading.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Factory\PathTracingDrawableFactory.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Shader\PixelShader.hlsl" />
@@ -299,5 +311,6 @@
     <None Include="Shader\Scene.hlsli" />
     <None Include="Shader\IrradianceItem.hlsli" />
     <None Include="Shader\LightTracingVars.hlsli" />
+    <None Include="Shader\RayTracingUtils.hlsli" />
   </ItemGroup>
 </Project>

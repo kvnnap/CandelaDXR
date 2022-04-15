@@ -41,6 +41,7 @@ namespace candela::renderer
 		Camera *camera;
 		AccelerationStructure* accelerationStructure;
 		std::vector<wrl::ComPtr<ID3D12Resource>> initTempBuffers;
+		std::vector<std::vector<wrl::ComPtr<ID3D12Resource>>> tempBuffers;
 	};
 
 	enum class ChangeEvent : std::uint32_t
@@ -55,6 +56,7 @@ namespace candela::renderer
 
 	class RasterShading;
 	class LightTracingShading;
+	class PathTracingShading;
 
 	class IVisitor
 	{
@@ -62,6 +64,7 @@ namespace candela::renderer
 		virtual ~IVisitor() = default;
 		virtual void visit(RasterShading*) = 0;
 		virtual void visit(LightTracingShading*) = 0;
+		virtual void visit(PathTracingShading*) = 0;
 	};
 
 	class IResource

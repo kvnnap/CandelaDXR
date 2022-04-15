@@ -86,7 +86,7 @@ void LightTracingShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12Graphi
 
 	// Constant buffer
 	constantBuffer = DXUtil::uploadDataToDefaultHeap(rRes->pDevice, pCurrentCommandList, rendererResources->initTempBuffers.emplace_back(), &constBuffer, sizeof(constBuffer), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-	constantBuffer->SetName(L"Constant Buffer");
+	constantBuffer->SetName(L"LT Constant Buffer");
 
 	// Build shading table
 	shadingTableTempBuffers.resize(shaderPaths.size());

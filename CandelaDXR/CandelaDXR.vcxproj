@@ -202,6 +202,7 @@
     <ClCompile Include="Environment\Environment.cpp" />
     <ClCompile Include="Factory\CameraFactory.cpp" />
     <ClCompile Include="Factory\LightTracingDrawableFactory.cpp" />
+    <ClCompile Include="Factory\PathTracingDrawableFactory.cpp" />
     <ClCompile Include="Factory\RasterDrawableFactory.cpp" />
     <ClCompile Include="Factory\RendererFactory.cpp" />
     <ClCompile Include="Factory\UniformSamplerFactory.cpp" />
@@ -219,6 +220,7 @@
     <ClCompile Include="Renderer\Camera.cpp" />
     <ClCompile Include="Renderer\FpsCounter.cpp" />
     <ClCompile Include="Renderer\LightTracingShading.cpp" />
+    <ClCompile Include="Renderer\PathTracingShading.cpp" />
     <ClCompile Include="Renderer\RasterShading.cpp" />
     <ClCompile Include="Renderer\Renderer.cpp" />
     <ClCompile Include="Renderer\AccelerationStructure.cpp" />
@@ -249,6 +251,7 @@
     <ClInclude Include="Exception\GeneralException.h" />
     <ClInclude Include="Exception\WindowException.h" />
     <ClInclude Include="Factory\CameraFactory.h" />
+    <ClInclude Include="Factory\PathTracingDrawableFactory.h" />
     <ClInclude Include="Factory\LightTracingDrawableFactory.h" />
     <ClInclude Include="Factory\RasterDrawableFactory.h" />
     <ClInclude Include="Factory\UniformSamplerFactory.h" />
@@ -267,6 +270,7 @@
     <ClInclude Include="Renderer\IDrawable.h" />
     <ClInclude Include="Renderer\IRenderer.h" />
     <ClInclude Include="Renderer\LightTracingShading.h" />
+    <ClInclude Include="Renderer\PathTracingShading.h" />
     <ClInclude Include="Renderer\RasterShading.h" />
     <ClInclude Include="Renderer\Renderer.h" />
     <ClInclude Include="Sampler\ISampler.h" />
@@ -428,6 +432,7 @@
   <ItemGroup>
     <None Include="Shader\IrradianceItem.hlsli" />
     <None Include="Shader\LightTracingVars.hlsli" />
+    <None Include="Shader\RayTracingUtils.hlsli" />
     <None Include="Shader\Scene.hlsli" />
     <None Include="Shader\Utils.hlsli" />
   </ItemGroup>

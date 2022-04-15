@@ -199,6 +199,8 @@ void Renderer::init()
 		.accelerationStructure = nullptr
 	};
 
+	rendererResources.tempBuffers.resize(NumBackBuffers);
+
 	initShaders();
 	createShaderResources();
 
@@ -417,6 +419,7 @@ void Renderer::renderFrame()
 	GFXTHROWIFFAILED(pSwapChain.As(&pSwapChain3));
 	currentBackBufferIndex = pSwapChain3->GetCurrentBackBufferIndex();
 	commandQueue->waitForFenceValue(frameFenceValues[currentBackBufferIndex]);
+	rendererResources.tempBuffers[currentBackBufferIndex].clear();
 
 	// Stats
 	if (changeEvent || camera->hasChanged())

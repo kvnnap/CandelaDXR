@@ -9,6 +9,7 @@
 #include "factory/RendererFactory.h"
 #include "factory/RasterDrawableFactory.h"
 #include "factory/LightTracingDrawableFactory.h"
+#include "factory/PathTracingDrawableFactory.h"
 #include "factory/CameraFactory.h"
 
 using candela::environment::Environment;
@@ -29,6 +30,7 @@ using candela::scene::factory::WavefrontSceneLoaderFactory;
 using candela::renderer::factory::RendererFactory;
 using candela::renderer::factory::RasterDrawableFactory;
 using candela::renderer::factory::LightTracingDrawableFactory;
+using candela::renderer::factory::PathTracingDrawableFactory;
 using candela::renderer::factory::CameraFactory;
 
 using std::string;
@@ -109,6 +111,7 @@ void Environment::loadCoreFactories()
     // Drawables
     drawableManager.getFactoryManager().registerItem<RasterDrawableFactory>("RasterDrawable");
     drawableManager.getFactoryManager().registerItem<LightTracingDrawableFactory>("LightTracingDrawable");
+    drawableManager.getFactoryManager().registerItem<PathTracingDrawableFactory>("PathTracingDrawable");
 
     // Cameras
     cameraManager.getFactoryManager().registerItem<CameraFactory>("Camera");

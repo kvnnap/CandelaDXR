@@ -1,7 +1,27 @@
 #include "Utils.hlsli"
 #include "Scene.hlsli"
-#include "IrradianceItem.hlsli"
-#include "LightTracingVars.hlsli"
+
+// Used to filter path components for analysis
+enum PathInteraction : uint
+{
+	Light = 1,
+	Reflect = 2,
+	Refract = 4,
+	Diffuse = 8
+};
+
+struct ConstBuff
+{
+	float3 u, v, w;
+	float3 position;
+	float3 direction;
+	float3 plane; // sensor dimensions (z contains distance to sensor plane)
+	uint2 seeds;
+	uint2 winDim;
+	uint numLights;
+	uint frameNumber;
+	uint2 padding;
+};
 
 struct RayPayload
 {
@@ -14,6 +34,36 @@ struct ShadowPayload
 {
 	bool occluded;
 };
+
+RWTexture2D<float4> gOutput : register(u0);
+RWTexture2D<float4> gRadiance : register(u1);
+
+// SRVs
+StructuredBuffer<float3> verts : register(t0);
+StructuredBuffer<float2> texVerts : register(t1);
+StructuredBuffer<float3> normals : register(t2);
+StructuredBuffer<uint> indices : register(t3);
+StructuredBuffer<float4x3> matrices : register(t4);
+StructuredBuffer<float3x3> normalMatrices : register(t5);
+StructuredBuffer<FaceAttributes> faceAttributes : register(t6);
+StructuredBuffer<Material> materials : register(t7);
+StructuredBuffer<AreaLight> lights : register(t8);
+
+RaytracingAccelerationStructure gRtScene : register(t10);
+
+Texture2D<float3> gTextures[]: register(t12);
+
+// Sampler
+SamplerState gSampler : register(s0);
+
+// CBVs
+cbuffer CB1 : register(b0)
+{
+	ConstBuff cBuffer;
+}
+
+// Util Functions
+#include "RayTracingUtils.hlsli"
 
 // Kernels
 
@@ -236,11 +286,10 @@ void rayGen()
 	}
 
 	// Using this resource as a RADIANCE accumulator
-	const uint flatLaunchIndex = launchIndex.y * launchDim.x + launchIndex.x;
 	if (cBuffer.frameNumber == 1)
-		gIrradianceDSFloat[flatLaunchIndex].value = 0.f;
-	gIrradianceDSFloat[flatLaunchIndex].value += radiance;
-	gOutput[launchIndex] = float4(gIrradianceDSFloat[flatLaunchIndex].value / cBuffer.frameNumber, 1.f);
+		gRadiance[launchIndex] = float4(0.f, 0.f, 0.f, 0.f);
+	gRadiance[launchIndex] += float4(radiance, 0.f);
+	gOutput[launchIndex] = float4(gRadiance[launchIndex].xyz / cBuffer.frameNumber, 1.f);
 }
 
 // Ray
