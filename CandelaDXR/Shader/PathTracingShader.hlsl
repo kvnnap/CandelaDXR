@@ -76,8 +76,6 @@ void rayGen()
 	// Dimensions - the previous x,y point is contained within these dimensions
 	const uint2 launchDim = DispatchRaysDimensions().xy;
 
-	gOutput[launchIndex] = float4(0.f, 0.f, 0.f, 0.f);
-
 	// Early-exit checks
 	if (cBuffer.numLights == 0)
 		return;

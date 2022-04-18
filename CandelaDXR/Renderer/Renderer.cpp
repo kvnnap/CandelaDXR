@@ -239,7 +239,6 @@ void Renderer::renderFrame()
 
 	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvDescriptorHandle(pRTVDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), currentBackBufferIndex, rtvDescriptorSize);
 	FLOAT color[] = { 0.f, 0.f, 0.f, 1.0f };
-	pCurrentCommandList->ClearRenderTargetView(rtvDescriptorHandle, color, 0, nullptr);
 
 	// ImGui
 	if (keyboard.hasKeyChanged('Q') && keyboard.isKeyPressed('Q'))
@@ -335,15 +334,28 @@ void Renderer::renderFrame()
 
 	// Draw
 	updateCamera();
+
+	int32_t first = -1, last = -1;
+	for (int32_t i = 0; i < static_cast<int>(drawables.size()); ++i)
+	{
+		if (!imguiShaders[i].isEnabled()) continue;
+		if (first == -1)
+			first = i;
+		if (i > last)
+			last = i;
+	}
+
 	for (size_t i = 0; i < drawables.size(); ++i)
 	{
-		bool finalLoop = (i + 1) == drawables.size();
 		auto drawable = drawables[i];
 		if (changeEvent)
 			drawable->onChange(pCurrentCommandList, currentBackBufferIndex, changeEvent);
-		if (imguiShaders[i].isEnabled())
-			drawable->draw(pCurrentCommandList, currentBackBufferIndex);
-
+		if (!imguiShaders[i].isEnabled())
+			continue;
+		
+		// Clear the RadRTV 
+		pCurrentCommandList->ClearRenderTargetView(rtvDescriptorHandle, color, 0, nullptr);
+		drawable->draw(pCurrentCommandList, currentBackBufferIndex);
 		barrier = CD3DX12_RESOURCE_BARRIER::Transition(rtvRadBackBuffer.Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 		pCurrentCommandList->ResourceBarrier(1u, &barrier);
 
@@ -352,7 +364,7 @@ void Renderer::renderFrame()
 		pCurrentCommandList->SetComputeRootSignature(computeRootSignature.Get());
 		pCurrentCommandList->SetDescriptorHeaps(1u, computeDescriptorHeap.GetAddressOf());
 		// in, out, clear, linearToSrgb - Accumulate
-		int32_t c32data[4] = { static_cast<int>(currentBackBufferIndex) + 2, 1u, i == 0 ? 1u : 0u, finalLoop ? 1u : 0u };
+		int32_t c32data[4] = { static_cast<int>(currentBackBufferIndex) + 2, 1u, first == i ? 1u : 0u, last == i ? 1u : 0u };
 		pCurrentCommandList->SetComputeRoot32BitConstants(0u, 4u, &c32data[0], 0);
 		pCurrentCommandList->SetComputeRootDescriptorTable(1u, computeDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
 		const auto& dim = windowDimensions;
@@ -364,7 +376,7 @@ void Renderer::renderFrame()
 		pCurrentCommandList->ResourceBarrier(1u, &barrier2);
 	}
 
-	// Copy to 8-bit shit
+	// Copy to 8-bit
 	pCurrentCommandList->SetPipelineState(computePipelineState.Get());
 	pCurrentCommandList->SetComputeRootSignature(computeRootSignature.Get());
 	pCurrentCommandList->SetDescriptorHeaps(1u, computeDescriptorHeap.GetAddressOf());
@@ -380,21 +392,25 @@ void Renderer::renderFrame()
 	pCurrentCommandList->ResourceBarrier(1, &barrier);
 
 	rtvDescriptorHandle.Offset(rtvDescriptorSize * 2);
-	barrier = CD3DX12_RESOURCE_BARRIER::Transition(pRTVBackBuffers[currentBackBufferIndex].Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_COPY_DEST);
-	pCurrentCommandList->ResourceBarrier(1, &barrier);
-	
-	barrier = CD3DX12_RESOURCE_BARRIER::Transition(pRTV8BitBackBuffer.Get(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_SOURCE);
+	barrier = CD3DX12_RESOURCE_BARRIER::Transition(pRTVBackBuffers[currentBackBufferIndex].Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
 	pCurrentCommandList->ResourceBarrier(1, &barrier);
 
-	pCurrentCommandList->CopyResource(pRTVBackBuffers[currentBackBufferIndex].Get(), pRTV8BitBackBuffer.Get());
+	pCurrentCommandList->ClearRenderTargetView(rtvDescriptorHandle, color, 0, nullptr);
 
-	barrier = CD3DX12_RESOURCE_BARRIER::Transition(pRTV8BitBackBuffer.Get(), D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-	pCurrentCommandList->ResourceBarrier(1, &barrier);
+	if (first != -1)
+	{
+		barrier = CD3DX12_RESOURCE_BARRIER::Transition(pRTVBackBuffers[currentBackBufferIndex].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_COPY_DEST);
+		pCurrentCommandList->ResourceBarrier(1, &barrier);
+		barrier = CD3DX12_RESOURCE_BARRIER::Transition(pRTV8BitBackBuffer.Get(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_SOURCE);
+		pCurrentCommandList->ResourceBarrier(1, &barrier);
 
-	barrier = CD3DX12_RESOURCE_BARRIER::Transition(pRTVBackBuffers[currentBackBufferIndex].Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_RENDER_TARGET);
-	pCurrentCommandList->ResourceBarrier(1, &barrier);
+		pCurrentCommandList->CopyResource(pRTVBackBuffers[currentBackBufferIndex].Get(), pRTV8BitBackBuffer.Get());
 
-	// Out of loop we need to copy accumulator to unorm render target
+		barrier = CD3DX12_RESOURCE_BARRIER::Transition(pRTV8BitBackBuffer.Get(), D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+		pCurrentCommandList->ResourceBarrier(1, &barrier);
+		barrier = CD3DX12_RESOURCE_BARRIER::Transition(pRTVBackBuffers[currentBackBufferIndex].Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_RENDER_TARGET);
+		pCurrentCommandList->ResourceBarrier(1, &barrier);
+	}
 
 	// ImGui Render
 	if (viewImgui)
