@@ -27,5 +27,8 @@ unique_ptr<IDrawable> PathTracingDrawableFactory::create(const ConfigurationNode
 	auto instance = confObject.keyExists("Sampler")
 		? UniformSamplerFactory().create(confObject["Sampler"])
 		: UniformSamplerFactory().create();
-	return make_unique<PathTracingShading>(move(instance));
+	auto specularOnly = confObject.keyExists("SpecularOnly")
+		? confObject["SpecularOnly"].read<bool>()
+		: false;
+	return make_unique<PathTracingShading>(move(instance), specularOnly);
 }

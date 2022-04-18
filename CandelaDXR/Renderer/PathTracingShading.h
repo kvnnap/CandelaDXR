@@ -31,13 +31,16 @@ namespace candela::renderer
 		: public IDrawable
 	{
 	public:
-		PathTracingShading(std::unique_ptr<sampler::ISampler> sampler);
+		PathTracingShading(std::unique_ptr<sampler::ISampler> sampler, bool specularOnly);
 
 		void init(RendererResources* rendererResources, wrl::ComPtr<ID3D12GraphicsCommandList>& pCurrentCommandList, ResourceRegFunction& resRegFn) override;
 		void draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, std::uint32_t currentBackBufferIndex) override;
 		void onChange(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, std::uint32_t currentBackBufferIndex, ChangeEvent_t changeEvent) override;
 		void onResize() override;
 		void accept(IVisitor* visitor) override;
+
+		void setSpecularOnly(bool specularOnly);
+		bool getSpecularOnly() const;
 
 	private:
 		void buildPipeline();
@@ -63,6 +66,7 @@ namespace candela::renderer
 			mathematics::UVector2 winDimensions;
 			std::uint32_t numLights;
 			std::uint32_t frameNumber;
+			std::uint32_t specularOnly;
 		} constBuffer;
 
 		std::vector<wrl::ComPtr<ID3D12Resource>> constantTempBuffer;
@@ -70,6 +74,7 @@ namespace candela::renderer
 		wrl::ComPtr<ID3D12Resource> radianceTexture;
 		wrl::ComPtr<ID3D12Resource> constantBuffer;
 		std::unique_ptr<sampler::ISampler> sampler;
+		bool specularOnly;
 		bool clear;
 
 		// My helpers

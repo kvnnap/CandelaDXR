@@ -20,7 +20,8 @@ struct ConstBuff
 	uint2 winDim;
 	uint numLights;
 	uint frameNumber;
-	uint2 padding;
+	uint specularOnly;
+	uint padding;
 };
 
 struct RayPayload
@@ -76,6 +77,9 @@ void rayGen()
 	// Dimensions - the previous x,y point is contained within these dimensions
 	const uint2 launchDim = DispatchRaysDimensions().xy;
 
+	// Clear output pixel
+	gOutput[launchIndex] = float4(0.f, 0.f, 0.f, 0.f);
+
 	// Early-exit checks
 	if (cBuffer.numLights == 0)
 		return;
@@ -122,6 +126,8 @@ void rayGen()
 		// Get Face attributes
 		const FaceAttributes fAttr = faceAttributes[rayPayload.faceIndex];
 		const Material mat = materials[fAttr.MaterialId];
+		if (cBuffer.specularOnly && i == 0 && mat.Dissolve >= 1.f)
+			break;
 
 		const uint vertIndex = rayPayload.faceIndex * 3;
 		const float3 unitFaceNormal = getUnitNormal(rayPayload.bary, vertIndex, fAttr.InstanceIndex);

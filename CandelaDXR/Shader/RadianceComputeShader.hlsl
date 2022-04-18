@@ -25,6 +25,7 @@ void main( uint3 DTid : SV_DispatchThreadID )
 	if (DTid.x >= ScreenDim.x || DTid.y >= ScreenDim.y)
 		return;
 
+	gOutput[DTid.xy] = float4(0.f, 0.f, 0.f, 0.f);
 	if (Clear)
 		gIrradiance[DTid.xy] = float4(0.f, 0.f, 0.f, 0.f);
 

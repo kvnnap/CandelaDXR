@@ -31,8 +31,8 @@ using candela::renderer::RendererResources;
 using candela::renderer::ResourceRegFunction;
 using candela::renderer::PathTracingShading;
 
-PathTracingShading::PathTracingShading(unique_ptr<ISampler> sampler)
-	: rendererResources(), constBuffer(), sampler(std::move(sampler)), clear()
+PathTracingShading::PathTracingShading(unique_ptr<ISampler> sampler, bool specularOnly)
+	: rendererResources(), constBuffer(), sampler(std::move(sampler)), specularOnly(specularOnly), clear()
 {
 }
 
@@ -89,6 +89,7 @@ void PathTracingShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCom
 	constBuffer.seeds[0] = sampler->nextUInt32();
 	constBuffer.seeds[1] = sampler->nextUInt32();
 	constBuffer.winDimensions = rendererResources->winDimensions;
+	constBuffer.specularOnly = specularOnly;
 	clear |= cam->hasChanged();
 	if (clear)
 		constBuffer.frameNumber = 1;
@@ -137,6 +138,16 @@ void PathTracingShading::onResize()
 void PathTracingShading::accept(IVisitor* visitor)
 {
 	visitor->visit(this);
+}
+
+void PathTracingShading::setSpecularOnly(bool p_specularOnly)
+{
+	specularOnly = p_specularOnly;
+}
+
+bool PathTracingShading::getSpecularOnly() const
+{
+	return specularOnly;
 }
 
 void PathTracingShading::buildPipeline()

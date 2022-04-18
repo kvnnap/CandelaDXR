@@ -376,7 +376,7 @@ void Renderer::renderFrame()
 		pCurrentCommandList->ResourceBarrier(1u, &barrier2);
 	}
 
-	// Copy to 8-bit
+	// Copy accumulator to 8-bit tex
 	pCurrentCommandList->SetPipelineState(computePipelineState.Get());
 	pCurrentCommandList->SetComputeRootSignature(computeRootSignature.Get());
 	pCurrentCommandList->SetDescriptorHeaps(1u, computeDescriptorHeap.GetAddressOf());
@@ -404,6 +404,7 @@ void Renderer::renderFrame()
 		barrier = CD3DX12_RESOURCE_BARRIER::Transition(pRTV8BitBackBuffer.Get(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_SOURCE);
 		pCurrentCommandList->ResourceBarrier(1, &barrier);
 
+		// Copy 8-bit tex to rtv
 		pCurrentCommandList->CopyResource(pRTVBackBuffers[currentBackBufferIndex].Get(), pRTV8BitBackBuffer.Get());
 
 		barrier = CD3DX12_RESOURCE_BARRIER::Transition(pRTV8BitBackBuffer.Get(), D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);

@@ -57,6 +57,11 @@ namespace candela::renderer::imgui
 				bool refractFlag;
 				bool diffuseFlag;
 			};
+
+			// Raster Shading
+			struct {
+				bool specularOnly;
+			};
 		};
 	};
 }

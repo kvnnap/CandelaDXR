@@ -97,5 +97,15 @@ void ImGuiShading::visit(LightTracingShading* lightTracingShader)
 
 void ImGuiShading::visit(PathTracingShading* pathTracingShader)
 {
+	if (!initialised)
+	{
+		specularOnly = pathTracingShader->getSpecularOnly();
+	}
+
 	ImGui::Text("PathTracingShading");
+	if (ImGui::Checkbox("Specular Only", &specularOnly))
+	{
+		pathTracingShader->setSpecularOnly(specularOnly);
+		changed = true;
+	}
 }
