@@ -1,5 +1,7 @@
 #include "PathTracingShading.h"
 
+#include <cstdint>
+
 #include <d3dcompiler.h>
 
 #include "DirectX/DxUtil.h"
@@ -10,6 +12,7 @@
 
 #include "Util/StringUtil.h"
 
+using std::uint32_t;
 using std::unique_ptr;
 using std::make_unique;
 using std::make_shared;
@@ -32,8 +35,9 @@ using candela::renderer::ResourceRegFunction;
 using candela::renderer::PathTracingShading;
 
 PathTracingShading::PathTracingShading(unique_ptr<ISampler> sampler, bool specularOnly)
-	: rendererResources(), constBuffer(), sampler(std::move(sampler)), specularOnly(specularOnly), clear()
+	: rendererResources(), constBuffer(), sampler(std::move(sampler)), clear()
 {
+	setSpecularOnly(specularOnly);
 }
 
 void PathTracingShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12GraphicsCommandList>& pCurrentCommandList, ResourceRegFunction& resRegFn)
@@ -54,6 +58,7 @@ void PathTracingShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12Graphic
 	// Const buffer initial values
 	constantTempBuffer.resize(rRes->numBackBuffers);
 	constBuffer.numLights = static_cast<uint32_t>(rRes->scene->getLights().size());
+	constBuffer.pathFilter = 0xFFFFFFFF;
 
 	// Build Pipeline
 	buildPipeline();
@@ -89,7 +94,6 @@ void PathTracingShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCom
 	constBuffer.seeds[0] = sampler->nextUInt32();
 	constBuffer.seeds[1] = sampler->nextUInt32();
 	constBuffer.winDimensions = rendererResources->winDimensions;
-	constBuffer.specularOnly = specularOnly;
 	clear |= cam->hasChanged();
 	if (clear)
 		constBuffer.frameNumber = 1;
@@ -140,14 +144,24 @@ void PathTracingShading::accept(IVisitor* visitor)
 	visitor->visit(this);
 }
 
-void PathTracingShading::setSpecularOnly(bool p_specularOnly)
+void PathTracingShading::setSpecularOnly(bool specularOnly)
 {
-	specularOnly = p_specularOnly;
+	constBuffer.specularOnly = specularOnly;
 }
 
 bool PathTracingShading::getSpecularOnly() const
 {
-	return specularOnly;
+	return constBuffer.specularOnly;
+}
+
+void PathTracingShading::setPathFilter(std::uint32_t pathFilter)
+{
+	constBuffer.pathFilter = pathFilter;
+}
+
+uint32_t PathTracingShading::getPathFilter() const
+{
+	return constBuffer.pathFilter;
 }
 
 void PathTracingShading::buildPipeline()

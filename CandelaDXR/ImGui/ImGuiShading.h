@@ -33,6 +33,8 @@ namespace candela::renderer::imgui
 			Diffuse = 8
 		};
 
+		static bool processPathFilter(uint32_t &pathFlags, bool (&cPathFlags)[4]);
+
 		IDrawable *drawable;
 		bool initialised;
 		bool changed;
@@ -52,15 +54,13 @@ namespace candela::renderer::imgui
 				int lightSamples[2];
 				int shaderIndex;
 				float causticsRatio; // Still unbiased
-				bool lightFlag;
-				bool reflectFlag;
-				bool refractFlag;
-				bool diffuseFlag;
+				bool lightPathFlags[4];
 			};
 
-			// Raster Shading
+			// Path Shading
 			struct {
 				bool specularOnly;
+				bool pathPathFlags[4];
 			};
 		};
 	};

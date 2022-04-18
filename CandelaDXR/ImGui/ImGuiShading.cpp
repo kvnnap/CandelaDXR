@@ -54,7 +54,7 @@ void ImGuiShading::visit(LightTracingShading* lightTracingShader)
 		memcpy(lightSamples, &lightTracingShader->getLightSamples(), 2 * sizeof(int));
 		shaderIndex = static_cast<int>(lightTracingShader->getCurrentShaderIndex());
 		causticsRatio = lightTracingShader->getCausticsRatio();
-		lightFlag = reflectFlag = refractFlag = diffuseFlag = true;
+		memset(lightPathFlags, true, sizeof(lightPathFlags));
 		for (const auto& shaderName : lightTracingShader->getShaderPaths())
 			shaderStrNames.push_back(path(shaderName).filename().replace_extension().string());
 		for (const auto& shaderName : shaderStrNames)
@@ -82,17 +82,12 @@ void ImGuiShading::visit(LightTracingShading* lightTracingShader)
 		changed = true;
 	}
 
-	changed |= ImGui::Checkbox("Direct Light Flag", &lightFlag);
-	changed |= ImGui::Checkbox("Reflect Flag", &reflectFlag);
-	changed |= ImGui::Checkbox("Refract Flag", &refractFlag);
-	changed |= ImGui::Checkbox("Diffuse Flag", &diffuseFlag);
-	std::uint32_t pathFlags = 0;
-	if (lightFlag) pathFlags |= PathInteraction::Light;
-	if (reflectFlag) pathFlags |= PathInteraction::Reflect;
-	if (refractFlag) pathFlags |= PathInteraction::Refract;
-	if (diffuseFlag) pathFlags |= PathInteraction::Diffuse;
-	if (changed)
+	uint32_t pathFlags;
+	if (processPathFilter(pathFlags, lightPathFlags))
+	{
 		lightTracingShader->setPathFilter(pathFlags);
+		changed = true;
+	}
 }
 
 void ImGuiShading::visit(PathTracingShading* pathTracingShader)
@@ -100,6 +95,7 @@ void ImGuiShading::visit(PathTracingShading* pathTracingShader)
 	if (!initialised)
 	{
 		specularOnly = pathTracingShader->getSpecularOnly();
+		memset(pathPathFlags, true, sizeof(pathPathFlags));
 	}
 
 	ImGui::Text("PathTracingShading");
@@ -108,4 +104,26 @@ void ImGuiShading::visit(PathTracingShading* pathTracingShader)
 		pathTracingShader->setSpecularOnly(specularOnly);
 		changed = true;
 	}
+
+	uint32_t pathFlags;
+	if (processPathFilter(pathFlags, pathPathFlags))
+	{
+		pathTracingShader->setPathFilter(pathFlags);
+		changed = true;
+	}
+}
+
+bool ImGuiShading::processPathFilter(uint32_t &pathFlags, bool (&cPathFlags)[4])
+{
+	bool lChanged = false;
+	lChanged |= ImGui::Checkbox("Direct Light Flag", &cPathFlags[0]);
+	lChanged |= ImGui::Checkbox("Reflect Flag", &cPathFlags[1]);
+	lChanged |= ImGui::Checkbox("Refract Flag", &cPathFlags[2]);
+	lChanged |= ImGui::Checkbox("Diffuse Flag", &cPathFlags[3]);
+	pathFlags = 0;
+	if (cPathFlags[0]) pathFlags |= PathInteraction::Light;
+	if (cPathFlags[1]) pathFlags |= PathInteraction::Reflect;
+	if (cPathFlags[2]) pathFlags |= PathInteraction::Refract;
+	if (cPathFlags[3]) pathFlags |= PathInteraction::Diffuse;
+	return lChanged;
 }

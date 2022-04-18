@@ -42,6 +42,9 @@ namespace candela::renderer
 		void setSpecularOnly(bool specularOnly);
 		bool getSpecularOnly() const;
 
+		void setPathFilter(std::uint32_t pathFilter);
+		std::uint32_t getPathFilter() const;
+
 	private:
 		void buildPipeline();
 		void createShaderResources();
@@ -67,6 +70,7 @@ namespace candela::renderer
 			std::uint32_t numLights;
 			std::uint32_t frameNumber;
 			std::uint32_t specularOnly;
+			std::uint32_t pathFilter;
 		} constBuffer;
 
 		std::vector<wrl::ComPtr<ID3D12Resource>> constantTempBuffer;
@@ -74,7 +78,6 @@ namespace candela::renderer
 		wrl::ComPtr<ID3D12Resource> radianceTexture;
 		wrl::ComPtr<ID3D12Resource> constantBuffer;
 		std::unique_ptr<sampler::ISampler> sampler;
-		bool specularOnly;
 		bool clear;
 
 		// My helpers
