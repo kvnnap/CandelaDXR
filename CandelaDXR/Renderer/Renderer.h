@@ -13,6 +13,7 @@
 #include "DirectX/DxgiInfoManager.h"
 #include "DirectX/CommandQueue.h"
 #include "DirectX/RootSignatureManager.h"
+#include "DirectX/Resource.h"
 #include "FpsCounter.h"
 #include "Scene/Scene.h"
 #include "IRenderer.h"
@@ -68,7 +69,7 @@ namespace candela::renderer
 		wrl::ComPtr<IDXGIFactory> dxgiFactory;
 		wrl::ComPtr<IDXGISwapChain> pSwapChain;
 		wrl::ComPtr<ID3D12DescriptorHeap> pRTVDescriptorHeap;
-		wrl::ComPtr<ID3D12Resource> pRadAccumulator;
+		std::unique_ptr<directx::Resource> pRadAccumulator;
 		wrl::ComPtr<ID3D12Resource> pRTV8BitBackBuffer;
 		ComPtrVec<ID3D12Resource> pRTVBackBuffers;
 		ComPtrVec<ID3D12Resource> pRTVRadBackBuffers;

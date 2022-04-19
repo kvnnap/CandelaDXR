@@ -37,6 +37,7 @@ using candela::directx::DXUtil;
 using candela::directx::CommandQueue;
 using candela::directx::RootSignatureManager;
 using candela::directx::DescriptorHeap;
+using candela::directx::Resource;
 
 using candela::mathematics::Vector2;
 using candela::mathematics::UVector2;
@@ -371,9 +372,8 @@ void Renderer::renderFrame()
 		pCurrentCommandList->Dispatch(dim.x / 8 + (dim.x % 8 == 0 ? 0 : 1), dim.y / 8 + (dim.y % 8 == 0 ? 0 : 1), 1);
 
 		barrier = CD3DX12_RESOURCE_BARRIER::Transition(rtvRadBackBuffer.Get(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_RENDER_TARGET);
-		auto barrier2 = CD3DX12_RESOURCE_BARRIER::UAV(pRadAccumulator.Get());
 		pCurrentCommandList->ResourceBarrier(1u, &barrier);
-		pCurrentCommandList->ResourceBarrier(1u, &barrier2);
+		pRadAccumulator->uavBarrier(pCurrentCommandList);
 	}
 
 	// Copy accumulator to 8-bit tex
@@ -386,8 +386,7 @@ void Renderer::renderFrame()
 	const auto& dim = windowDimensions;
 	pCurrentCommandList->Dispatch(dim.x / 8 + (dim.x % 8 == 0 ? 0 : 1), dim.y / 8 + (dim.y % 8 == 0 ? 0 : 1), 1);
 
-	auto barrier2 = CD3DX12_RESOURCE_BARRIER::UAV(pRadAccumulator.Get());
-	pCurrentCommandList->ResourceBarrier(1u, &barrier2);
+	pRadAccumulator->uavBarrier(pCurrentCommandList);
 	barrier = CD3DX12_RESOURCE_BARRIER::Transition(rtvRadBackBuffer.Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
 	pCurrentCommandList->ResourceBarrier(1, &barrier);
 
@@ -564,7 +563,7 @@ void Renderer::createShaderResources()
 	uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
 	auto cmpDescHeapManager = DescriptorHeap(computeRSM, "ComputeDataDescTable", "ComputeData1", pDevice);
 	cmpDescHeapManager.setUAV(0, uavDesc, pDevice, pRTV8BitBackBuffer);
-	cmpDescHeapManager.setUAV(1, uavDesc, pDevice, pRadAccumulator);
+	cmpDescHeapManager.setUAV(1, uavDesc, pDevice, *pRadAccumulator);
 	for (uint32_t i = 0; i < pRTVRadBackBuffers.size(); ++i)
 		cmpDescHeapManager.setUAV(i + 2, uavDesc, pDevice, pRTVRadBackBuffers[i]);
 	
@@ -598,7 +597,7 @@ void Renderer::resize()
 	commandQueue->flush();
 	rendererResources.pRTVRadBackBuffers.clear();
 	pRTVBackBuffers.clear();
-	pRadAccumulator.Reset();
+	pRadAccumulator.reset();
 	currentBackBufferIndex = 0;
 	camera->setAspectRatio(static_cast<float>(windowDimensions.x) / windowDimensions.y);
 	HRESULT hr;
@@ -627,11 +626,11 @@ void Renderer::resizeFloatTargetTextures()
 	pRTV8BitBackBuffer->SetName(L"RTV Radiance 8-bit Back-Buffer");
 
 	// Create accumulator
-	pRadAccumulator = DXUtil::createTextureCommittedResource(
-		pDevice, D3D12_HEAP_TYPE_DEFAULT, windowDimensions.x, windowDimensions.y,
+	pRadAccumulator = make_unique<Resource>(Resource::createTextureCommittedResource(
+		pDevice, windowDimensions.x, windowDimensions.y,
 		D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
-		D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, DXGI_FORMAT_R32G32B32A32_FLOAT);
-	pRadAccumulator->SetName(L"Radiance Accumulator");
+		DXGI_FORMAT_R32G32B32A32_FLOAT, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS));
+	pRadAccumulator->setName(L"Radiance Accumulator");
 
 	// Create Float RTV Targets
 	for (uint32_t i = 0; i < NumBackBuffers; ++i)
