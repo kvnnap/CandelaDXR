@@ -12,6 +12,7 @@
 #include "Exception/DxgiInfoException.h"
 
 using std::array;
+using std::shared_ptr;
 using std::vector;
 using std::string;
 using std::wstring;
@@ -24,6 +25,7 @@ using std::uint32_t;
 using Microsoft::WRL::ComPtr;
 
 using candela::directx::DXUtil;
+using candela::directx::Resource;
 
 void DXUtil::enableDebugLayer()
 {
@@ -274,8 +276,21 @@ std::vector<ComPtr<ID3D12Resource>> DXUtil::createRenderTargetViews(
 	return backBuffers;
 }
 
+vector<ComPtr<ID3D12Resource>> DXUtil::createRenderTargetViewsEx(
+	ComPtr<ID3D12Device> device,
+	ComPtr<ID3D12DescriptorHeap> descriptorHeap,
+	ComPtr<IDXGISwapChain> swapChain,
+	vector<shared_ptr<Resource>>& textureTargets, UINT numRTV)
+{
+	vector<ComPtr<ID3D12Resource>> conv;
+	conv.reserve(textureTargets.size());
+	for (auto& t : textureTargets)
+		conv.push_back(*t);
+	return createRenderTargetViewsEx(device, descriptorHeap, swapChain, conv, numRTV);
+}
+
 // Fills in heap for texture targets and the coupled swap chain render targets
-std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>> DXUtil::createRenderTargetViewsEx(
+vector<ComPtr<ID3D12Resource>> DXUtil::createRenderTargetViewsEx(
 	ComPtr<ID3D12Device> device, 
 	ComPtr<ID3D12DescriptorHeap> descriptorHeap, 
 	ComPtr<IDXGISwapChain> swapChain,

@@ -78,9 +78,8 @@ void PathTracingShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCom
 {
 	// Pre-stuff
 	auto& backBuff = rendererResources->pRTVRadBackBuffers[currentBackBufferIndex];
-	auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(backBuff.Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_COPY_DEST);
-	pCurrentCommandList->ResourceBarrier(1u, &barrier);
-	barrier = CD3DX12_RESOURCE_BARRIER::Transition(outputTexture.Get(), D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+	backBuff->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_COPY_DEST);
+	auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(outputTexture.Get(), D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 	pCurrentCommandList->ResourceBarrier(1u, &barrier);
 
 	// Copy and update camera
@@ -118,9 +117,8 @@ void PathTracingShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCom
 	// After
 	barrier = CD3DX12_RESOURCE_BARRIER::Transition(outputTexture.Get(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_SOURCE);
 	pCurrentCommandList->ResourceBarrier(1u, &barrier);
-	pCurrentCommandList->CopyResource(backBuff.Get(), outputTexture.Get());
-	barrier = CD3DX12_RESOURCE_BARRIER::Transition(backBuff.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_RENDER_TARGET);
-	pCurrentCommandList->ResourceBarrier(1u, &barrier);
+	pCurrentCommandList->CopyResource(*backBuff, outputTexture.Get());
+	backBuff->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);
 }
 
 void PathTracingShading::onChange(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, std::uint32_t currentBackBufferIndex, ChangeEvent_t changeEvent)

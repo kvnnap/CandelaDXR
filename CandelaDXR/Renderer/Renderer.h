@@ -72,7 +72,7 @@ namespace candela::renderer
 		std::unique_ptr<directx::Resource> pRadAccumulator;
 		wrl::ComPtr<ID3D12Resource> pRTV8BitBackBuffer;
 		ComPtrVec<ID3D12Resource> pRTVBackBuffers;
-		ComPtrVec<ID3D12Resource> pRTVRadBackBuffers;
+		std::vector<std::shared_ptr<directx::Resource>> pRTVRadBackBuffers;
 		ComPtrVec<ID3D12Resource> pMatricesTempBackBuffers;
 		ComPtrVec<ID3D12Resource> pNormalMatricesTempBackBuffers;
 		ComPtrVec<ID3D12Resource> pMaterialsTempBackBuffers;

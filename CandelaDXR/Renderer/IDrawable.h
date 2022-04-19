@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <memory>
 #include <vector>
 #include <functional>
 
@@ -9,6 +10,7 @@
 #include <wrl/client.h>
 
 #include "DirectX/CommandQueue.h"
+#include "DirectX/Resource.h"
 #include "Scene/Scene.h"
 
 #include "Mathematics/Types.h"
@@ -33,7 +35,7 @@ namespace candela::renderer
 		wrl::ComPtr<ID3D12Resource> normalMatrices;
 		std::vector<wrl::ComPtr<ID3D12Resource>> textures;
 		wrl::ComPtr<ID3D12DescriptorHeap> pRTVDescriptorHeap;
-		std::vector<wrl::ComPtr<ID3D12Resource>> pRTVRadBackBuffers;
+		std::vector<std::shared_ptr<directx::Resource>> pRTVRadBackBuffers;
 		directx::CommandQueue *commandQueue;
 		mathematics::UVector2 winDimensions;
 		UINT numBackBuffers;

@@ -97,10 +97,9 @@ void LightTracingShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> currentCom
 {
 	// Pre-stuff
 	auto &backBuff = rendererResources->pRTVRadBackBuffers[currentBackBufferIndex];
-	auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(backBuff.Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_COPY_DEST);
-	currentCommandList->ResourceBarrier(1u, &barrier);
+	backBuff->transistionBarrier(currentCommandList, D3D12_RESOURCE_STATE_COPY_DEST);
 	
-	barrier = CD3DX12_RESOURCE_BARRIER::Transition(outputTexture.Get(), D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+	auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(outputTexture.Get(), D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 	currentCommandList->ResourceBarrier(1u, &barrier);
 
 	// Copy and update camera
@@ -151,9 +150,8 @@ void LightTracingShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> currentCom
 	// After
 	barrier = CD3DX12_RESOURCE_BARRIER::Transition(outputTexture.Get(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_SOURCE);
 	currentCommandList->ResourceBarrier(1u, &barrier);
-	currentCommandList->CopyResource(backBuff.Get(), outputTexture.Get());
-	barrier = CD3DX12_RESOURCE_BARRIER::Transition(backBuff.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_RENDER_TARGET);
-	currentCommandList->ResourceBarrier(1u, &barrier);
+	currentCommandList->CopyResource(*backBuff, outputTexture.Get());
+	backBuff->transistionBarrier(currentCommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);
 }
 
 void LightTracingShading::buildPipeline()

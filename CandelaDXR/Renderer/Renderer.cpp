@@ -234,9 +234,9 @@ void Renderer::renderFrame()
 	// Clear frame and start frame
 	auto &rtvRadBackBuffer = pRTVRadBackBuffers[currentBackBufferIndex];
 
-	CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(rtvRadBackBuffer.Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
+	CD3DX12_RESOURCE_BARRIER barrier;
 	pCurrentCommandList = commandQueue->getCommandList();
-	pCurrentCommandList->ResourceBarrier(1, &barrier);
+	rtvRadBackBuffer->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);
 
 	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvDescriptorHandle(pRTVDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), currentBackBufferIndex, rtvDescriptorSize);
 	FLOAT color[] = { 0.f, 0.f, 0.f, 1.0f };
@@ -357,8 +357,7 @@ void Renderer::renderFrame()
 		// Clear the RadRTV 
 		pCurrentCommandList->ClearRenderTargetView(rtvDescriptorHandle, color, 0, nullptr);
 		drawable->draw(pCurrentCommandList, currentBackBufferIndex);
-		barrier = CD3DX12_RESOURCE_BARRIER::Transition(rtvRadBackBuffer.Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-		pCurrentCommandList->ResourceBarrier(1u, &barrier);
+		rtvRadBackBuffer->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
 		// Copy - per loop - testing here
 		pCurrentCommandList->SetPipelineState(computePipelineState.Get());
@@ -371,8 +370,7 @@ void Renderer::renderFrame()
 		const auto& dim = windowDimensions;
 		pCurrentCommandList->Dispatch(dim.x / 8 + (dim.x % 8 == 0 ? 0 : 1), dim.y / 8 + (dim.y % 8 == 0 ? 0 : 1), 1);
 
-		barrier = CD3DX12_RESOURCE_BARRIER::Transition(rtvRadBackBuffer.Get(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_RENDER_TARGET);
-		pCurrentCommandList->ResourceBarrier(1u, &barrier);
+		rtvRadBackBuffer->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);
 		pRadAccumulator->uavBarrier(pCurrentCommandList);
 	}
 
@@ -387,8 +385,7 @@ void Renderer::renderFrame()
 	pCurrentCommandList->Dispatch(dim.x / 8 + (dim.x % 8 == 0 ? 0 : 1), dim.y / 8 + (dim.y % 8 == 0 ? 0 : 1), 1);
 
 	pRadAccumulator->uavBarrier(pCurrentCommandList);
-	barrier = CD3DX12_RESOURCE_BARRIER::Transition(rtvRadBackBuffer.Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
-	pCurrentCommandList->ResourceBarrier(1, &barrier);
+	rtvRadBackBuffer->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_PRESENT);
 
 	rtvDescriptorHandle.Offset(rtvDescriptorSize * 2);
 	barrier = CD3DX12_RESOURCE_BARRIER::Transition(pRTVBackBuffers[currentBackBufferIndex].Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
@@ -565,7 +562,7 @@ void Renderer::createShaderResources()
 	cmpDescHeapManager.setUAV(0, uavDesc, pDevice, pRTV8BitBackBuffer);
 	cmpDescHeapManager.setUAV(1, uavDesc, pDevice, *pRadAccumulator);
 	for (uint32_t i = 0; i < pRTVRadBackBuffers.size(); ++i)
-		cmpDescHeapManager.setUAV(i + 2, uavDesc, pDevice, pRTVRadBackBuffers[i]);
+		cmpDescHeapManager.setUAV(i + 2, uavDesc, pDevice, *pRTVRadBackBuffers[i]);
 	
 	computeDescriptorHeap = cmpDescHeapManager.getDescriptorHeap();
 }
@@ -635,12 +632,11 @@ void Renderer::resizeFloatTargetTextures()
 	// Create Float RTV Targets
 	for (uint32_t i = 0; i < NumBackBuffers; ++i)
 	{
-		pRTVRadBackBuffers[i] = DXUtil::createTextureCommittedResource(
-			pDevice, D3D12_HEAP_TYPE_DEFAULT, windowDimensions.x, windowDimensions.y,
-			D3D12_RESOURCE_STATE_PRESENT,
-			D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS | D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET, 
-			DXGI_FORMAT_R32G32B32A32_FLOAT);
-		pRTVRadBackBuffers[i]->SetName((L"RTV Radiance Back-Buffer " + std::to_wstring(i)).c_str());
+		pRTVRadBackBuffers[i] = make_shared<Resource>(Resource::createTextureCommittedResource(
+			pDevice, windowDimensions.x, windowDimensions.y,
+			D3D12_RESOURCE_STATE_PRESENT, DXGI_FORMAT_R32G32B32A32_FLOAT, 
+			D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS | D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET));
+		pRTVRadBackBuffers[i]->setName(L"RTV Radiance Back-Buffer " + std::to_wstring(i));
 	}
 }
 

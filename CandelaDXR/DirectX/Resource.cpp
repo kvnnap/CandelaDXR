@@ -32,6 +32,11 @@ Resource::operator DXResource()
 	return resource;
 }
 
+Resource::operator ID3D12Resource* ()
+{
+	return resource.Get();
+}
+
 void Resource::setName(const std::wstring& name)
 {
 	resource->SetName(name.c_str());
