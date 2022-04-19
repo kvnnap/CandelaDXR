@@ -83,6 +83,11 @@ Renderer::~Renderer()
 
 	// Cannot destroy swapchain in full screen mode
 	pSwapChain->SetFullscreenState(false, nullptr);
+	
+	// Cleanup ImGui
+	ImGui_ImplDX12_Shutdown();
+	ImGui_ImplWin32_Shutdown();
+	
 	// Uncomment to analyse resources
 	//if (debugEnabled)
 	//{
