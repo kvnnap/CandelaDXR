@@ -3,7 +3,13 @@
 #include "d3dx12.h"
 #include "DxUtil.h"
 
+#include "Exception/Exception.h"
+
+using std::vector;
+using DirectX::XMFLOAT4;
+
 using candela::directx::Resource;
+using candela::directx::ResourceData;
 using candela::directx::DXResource;
 using candela::directx::DXUtil;
 
@@ -35,6 +41,71 @@ Resource::operator DXResource()
 Resource::operator ID3D12Resource* ()
 {
 	return resource.Get();
+}
+
+ResourceData Resource::read(DXCommandQueue& commandQueue)
+{
+	// Get device
+	DXDevice device;
+	resource->GetDevice(IID_PPV_ARGS(&device));
+
+	// Get resource info
+	auto desc = resource->GetDesc();
+	if (desc.Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE2D)
+		ThrowException("Only Texture2D currently supported");
+
+	UINT numRows;
+	UINT64 rowSizeInBytes, totalSize;
+	device->GetCopyableFootprints(&desc, 0u, 1u, 0u, nullptr, &numRows, &rowSizeInBytes, &totalSize);
+	UINT64 rowPitchSizeInBytes = (rowSizeInBytes + (D3D12_TEXTURE_DATA_PITCH_ALIGNMENT - 1u)) & ~(D3D12_TEXTURE_DATA_PITCH_ALIGNMENT - 1u);
+	
+	// Create readback buffer
+	auto commandList = commandQueue->getCommandList();
+	auto res = createCommittedResource(device, totalSize, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_FLAG_NONE, D3D12_HEAP_TYPE_READBACK);
+	const auto prevState = state;
+	transistionBarrier(commandList, D3D12_RESOURCE_STATE_COPY_SOURCE);
+
+	D3D12_PLACED_SUBRESOURCE_FOOTPRINT bufferFootprint = {};
+	bufferFootprint.Footprint.Width = static_cast<UINT>(desc.Width);
+	bufferFootprint.Footprint.Height = desc.Height;
+	bufferFootprint.Footprint.Depth = 1u;
+	bufferFootprint.Footprint.RowPitch = static_cast<UINT>(rowPitchSizeInBytes);
+	bufferFootprint.Footprint.Format = desc.Format;
+
+	CD3DX12_TEXTURE_COPY_LOCATION Dst(res, bufferFootprint);
+	CD3DX12_TEXTURE_COPY_LOCATION Src(resource.Get(), 0u);
+	commandList->CopyTextureRegion(&Dst, 0u, 0u, 0u, &Src, nullptr);
+	transistionBarrier(commandList, prevState);
+
+	auto fenceValue = commandQueue->executeCommandList(commandList);
+	commandQueue->waitForFenceValue(fenceValue);
+
+	// Can now read data
+
+	D3D12_RANGE destRange{ 0u, totalSize };
+	vector<XMFLOAT4> data;
+	auto floatsPerRow = rowSizeInBytes / sizeof(float); // decltype(data)::value_type
+	data.reserve(rowSizeInBytes / sizeof(decltype(data)::value_type) * numRows);
+	float* values{};
+	res.resource->Map(0u, &destRange, reinterpret_cast<void**>(&values));
+
+	auto skipAmount = rowPitchSizeInBytes / sizeof(float);
+
+	// Copy it to our own buffer
+	for (UINT r = 0; r < numRows; ++r)
+	{
+		for (UINT64 c = 0; c < floatsPerRow; c += 4)
+		{
+			data.emplace_back(values[c], values[c + 1], values[c + 2], values[c + 3]);
+		}
+		values += skipAmount;
+	}
+
+	// Unmap
+	destRange.End = 0u;
+	res.resource->Unmap(0u, &destRange);
+
+	return ResourceData{desc.Width, desc.Height, std::move(data)};
 }
 
 void Resource::setName(const std::wstring& name)

@@ -19,6 +19,7 @@
 #include "IRenderer.h"
 #include "IDrawable.h"
 #include "Camera.h"
+#include "Chain/IChain.h"
 
 #include "ImGui/ImGuiSceneNode.h"
 #include "ImGui/ImGuiMaterial.h"
@@ -106,6 +107,9 @@ namespace candela::renderer
 		wrl::ComPtr<ID3D12Resource> normalMatrices;
 
 		std::vector<wrl::ComPtr<ID3D12Resource>> textures;
+
+		// Chain
+		std::vector<std::unique_ptr<chain::IChain>> chain;
 
 		// Shaders
 		std::shared_ptr<directx::RootSignatureManager> computeRSM;

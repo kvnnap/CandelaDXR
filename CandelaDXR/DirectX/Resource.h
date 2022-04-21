@@ -4,6 +4,12 @@
 #include <d3d12.h>
 #include <wrl/client.h>
 #include <string>
+#include <memory>
+#include <vector>
+
+#include <DirectXMath.h>
+
+#include "CommandQueue.h"
 
 namespace candela::directx
 {
@@ -12,6 +18,14 @@ namespace candela::directx
 	using DXDevice = wrl::ComPtr<ID3D12Device>;
 	using DXResource = wrl::ComPtr<ID3D12Resource>;
 	using DXCommandList = wrl::ComPtr<ID3D12GraphicsCommandList>;
+	using DXCommandQueue = std::unique_ptr<directx::CommandQueue>;
+
+	struct ResourceData
+	{
+		UINT64 Width;
+		UINT Height;
+		std::vector<DirectX::XMFLOAT4> data;
+	};
 
 	class Resource {
 	public:
@@ -21,6 +35,8 @@ namespace candela::directx
 		void uavBarrier(DXCommandList &commandList);
 		operator DXResource();
 		operator ID3D12Resource*();
+
+		ResourceData read(DXCommandQueue& commandList);
 
 		void setName(const std::wstring& name);
 		std::wstring getName() const;

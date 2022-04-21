@@ -1,4 +1,5 @@
 #include "Renderer.h"
+#include "RadianceBuffer.h"
 
 #include "Exception/WindowException.h"
 #include "Mathematics/Types.h"
@@ -18,8 +19,13 @@
 #include "ImGui/Backend/imgui_impl_win32.h"
 #include "ImGui/Backend/imgui_impl_dx12.h"
 
+#include "Chain/ToneMapping.h"
+#include "Chain/AlphaCorrection.h"
+#include "Chain/FileOutput.h"
+
 #include <iostream>
 
+using std::unique_ptr;
 using std::make_unique;
 using std::make_shared;
 using std::to_string;
@@ -32,6 +38,10 @@ using Microsoft::WRL::ComPtr;
 
 using feanor::io::Keyboard;
 using feanor::io::Mouse;
+
+using candela::chain::ToneMapping;
+using candela::chain::AlphaCorrection;
+using candela::chain::FileOutput;
 
 using candela::directx::DXUtil;
 using candela::directx::CommandQueue;
@@ -50,6 +60,7 @@ using candela::scene::FaceAttributes;
 using candela::scene::AreaLight;
 using candela::scene::SpecularPrimitive;
 using candela::renderer::Renderer;
+using candela::renderer::RadianceBuffer;
 using candela::renderer::Camera;
 using candela::renderer::IDrawable;
 using candela::renderer::ChangeEvent;
@@ -114,6 +125,14 @@ void Renderer::init()
 	using namespace std::placeholders;
 	window->addWndProcCallback(std::bind(&Renderer::wndCallback, this, _1, _2, _3, _4), 0);
 
+	// Chains - TODO: Configurable through Factory
+	chain.clear();
+	//chain.push_back(make_unique<ToneMapping>());
+	//chain.push_back(make_unique<AlphaCorrection>());
+	auto fileOutput = make_unique<FileOutput>();
+	fileOutput->setFileType(FileOutput::PNG);
+	chain.push_back(std::move(fileOutput));
+
 	// Allocate 
 	pRTVBackBuffers.resize(NumBackBuffers);
 	pRTVRadBackBuffers.resize(NumBackBuffers);
@@ -159,7 +178,7 @@ void Renderer::init()
 	// Create render target Views
 	rtvDescriptorSize = pDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 	pRTVBackBuffers = DXUtil::createRenderTargetViewsEx(pDevice, pRTVDescriptorHeap, pSwapChain, pRTVRadBackBuffers, NumBackBuffers);
-
+	
 	// Upload scene resources
 	initSceneResources();
 
@@ -428,6 +447,17 @@ void Renderer::renderFrame()
 	// End frame
 	frameFenceValues[currentBackBufferIndex] = commandQueue->executeCommandList(pCurrentCommandList);
 	pCurrentCommandList.Reset();
+
+	if (keyboard.hasKeyChanged('P') && keyboard.isKeyPressed('P'))
+	{
+		// Will cause synchronous behaviour (blocking)
+		RadianceBuffer radBuffer = pRadAccumulator->read(commandQueue);
+
+		// Execute Chain to output data
+		for (auto& chainItem : chain)
+			chainItem->process(radBuffer);
+	}
+
 
 	HRESULT hr;
 	// Present may wait on or execute the message pump when mode changes (fullscreen to windowed, etc)

@@ -195,6 +195,9 @@
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Chain\AlphaCorrection.cpp" />
+    <ClCompile Include="Chain\FileOutput.cpp" />
+    <ClCompile Include="Chain\ToneMapping.cpp" />
     <ClCompile Include="DirectX\CommandQueue.cpp" />
     <ClCompile Include="DirectX\DxUtil.cpp" />
     <ClCompile Include="DirectX\Resource.cpp" />
@@ -222,6 +225,7 @@
     <ClCompile Include="Renderer\FpsCounter.cpp" />
     <ClCompile Include="Renderer\LightTracingShading.cpp" />
     <ClCompile Include="Renderer\PathTracingShading.cpp" />
+    <ClCompile Include="Renderer\RadianceBuffer.cpp" />
     <ClCompile Include="Renderer\RasterShading.cpp" />
     <ClCompile Include="Renderer\Renderer.cpp" />
     <ClCompile Include="Renderer\AccelerationStructure.cpp" />
@@ -240,6 +244,10 @@
     <ClCompile Include="Window\WindowClass.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Chain\AlphaCorrection.h" />
+    <ClInclude Include="Chain\IChain.h" />
+    <ClInclude Include="Chain\FileOutput.h" />
+    <ClInclude Include="Chain\ToneMapping.h" />
     <ClInclude Include="DirectX\CommandQueue.h" />
     <ClInclude Include="DirectX\d3dx12.h" />
     <ClInclude Include="DirectX\DxgiInfoManager.h" />
@@ -273,6 +281,7 @@
     <ClInclude Include="Renderer\IRenderer.h" />
     <ClInclude Include="Renderer\LightTracingShading.h" />
     <ClInclude Include="Renderer\PathTracingShading.h" />
+    <ClInclude Include="Renderer\RadianceBuffer.h" />
     <ClInclude Include="Renderer\RasterShading.h" />
     <ClInclude Include="Renderer\Renderer.h" />
     <ClInclude Include="Sampler\ISampler.h" />
