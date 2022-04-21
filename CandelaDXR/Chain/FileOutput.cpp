@@ -6,7 +6,6 @@
 #include <stdexcept>
 #include <algorithm>
 
-#define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "stb/stb_image_write.h"
 
 using candela::chain::FileOutput;

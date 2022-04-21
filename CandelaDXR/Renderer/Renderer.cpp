@@ -31,6 +31,7 @@ using std::make_shared;
 using std::to_string;
 using std::vector;
 using std::uint8_t;
+using std::uint32_t;
 using std::cout;
 using std::endl;
 
@@ -127,9 +128,12 @@ void Renderer::init()
 
 	// Chains - TODO: Configurable through Factory
 	chain.clear();
-	//chain.push_back(make_unique<ToneMapping>());
-	//chain.push_back(make_unique<AlphaCorrection>());
 	auto fileOutput = make_unique<FileOutput>();
+	fileOutput->setFileType(FileOutput::RAW);
+	chain.push_back(std::move(fileOutput));
+	chain.push_back(make_unique<ToneMapping>());
+	chain.push_back(make_unique<AlphaCorrection>());
+	fileOutput = make_unique<FileOutput>();
 	fileOutput->setFileType(FileOutput::PNG);
 	chain.push_back(std::move(fileOutput));
 
@@ -370,6 +374,9 @@ void Renderer::renderFrame()
 			last = i;
 	}
 
+	const auto grabRadiancePressed = keyboard.hasKeyChanged('P') && keyboard.isKeyPressed('P');
+	const auto& dim = windowDimensions;
+
 	for (size_t i = 0; i < drawables.size(); ++i)
 	{
 		auto drawable = drawables[i];
@@ -387,28 +394,56 @@ void Renderer::renderFrame()
 		pCurrentCommandList->SetPipelineState(computePipelineState.Get());
 		pCurrentCommandList->SetComputeRootSignature(computeRootSignature.Get());
 		pCurrentCommandList->SetDescriptorHeaps(1u, computeDescriptorHeap.GetAddressOf());
-		// in, out, clear, linearToSrgb - Accumulate
-		int32_t c32data[4] = { static_cast<int>(currentBackBufferIndex) + 2, 1u, first == i ? 1u : 0u, last == i ? 1u : 0u };
-		pCurrentCommandList->SetComputeRoot32BitConstants(0u, 4u, &c32data[0], 0);
 		pCurrentCommandList->SetComputeRootDescriptorTable(1u, computeDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
-		const auto& dim = windowDimensions;
+		// in, out, clear, accumulate, linearToSrgb
+		uint32_t c32data[5] = { static_cast<int>(currentBackBufferIndex) + 2, 1u, first == i ? 1u : 0u, 1u, !grabRadiancePressed && last == i ? 1u : 0u };
+		pCurrentCommandList->SetComputeRoot32BitConstants(0u, 5u, &c32data[0], 0);
 		pCurrentCommandList->Dispatch(dim.x / 8 + (dim.x % 8 == 0 ? 0 : 1), dim.y / 8 + (dim.y % 8 == 0 ? 0 : 1), 1);
 
 		rtvRadBackBuffer->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);
 		pRadAccumulator->uavBarrier(pCurrentCommandList);
 	}
 
-	// Copy accumulator to 8-bit tex
+	// Compute setup
 	pCurrentCommandList->SetPipelineState(computePipelineState.Get());
 	pCurrentCommandList->SetComputeRootSignature(computeRootSignature.Get());
 	pCurrentCommandList->SetDescriptorHeaps(1u, computeDescriptorHeap.GetAddressOf());
-	int32_t c32data[4] = { 1u, 0u, 1u, 0u };
-	pCurrentCommandList->SetComputeRoot32BitConstants(0u, 4u, &c32data[0], 0);
 	pCurrentCommandList->SetComputeRootDescriptorTable(1u, computeDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
-	const auto& dim = windowDimensions;
+
+	// Extract radiance values if needed
+	if (grabRadiancePressed)
+	{
+		// Execute prev command list - command lists in same queue are executed in order
+		commandQueue->executeCommandList(pCurrentCommandList);
+
+		// Will cause synchronous behaviour (blocking)
+		RadianceBuffer radBuffer = pRadAccumulator->read(commandQueue);
+
+		// Execute Chain to output data
+		for (auto& chainItem : chain)
+			chainItem->process(radBuffer);
+
+		// Get another command list
+		pCurrentCommandList = commandQueue->getCommandList();
+
+		// Restore compute stuff
+		pCurrentCommandList->SetPipelineState(computePipelineState.Get());
+		pCurrentCommandList->SetComputeRootSignature(computeRootSignature.Get());
+		pCurrentCommandList->SetDescriptorHeaps(1u, computeDescriptorHeap.GetAddressOf());
+		pCurrentCommandList->SetComputeRootDescriptorTable(1u, computeDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
+
+		// Perform tone mapping
+		uint32_t c32data[5] = { 1u, 1u, 0u, 0u, 1u };
+		pCurrentCommandList->SetComputeRoot32BitConstants(0u, 5u, &c32data[0], 0);
+		pCurrentCommandList->Dispatch(dim.x / 8 + (dim.x % 8 == 0 ? 0 : 1), dim.y / 8 + (dim.y % 8 == 0 ? 0 : 1), 1);
+		pRadAccumulator->uavBarrier(pCurrentCommandList);
+	}
+
+	// Copy accumulator to 8-bit tex
+	uint32_t c32data2[5] = { 1u, 0u, 1u, 1u, 0u };
+	pCurrentCommandList->SetComputeRoot32BitConstants(0u, 5u, &c32data2[0], 0);
 	pCurrentCommandList->Dispatch(dim.x / 8 + (dim.x % 8 == 0 ? 0 : 1), dim.y / 8 + (dim.y % 8 == 0 ? 0 : 1), 1);
 
-	pRadAccumulator->uavBarrier(pCurrentCommandList);
 	rtvRadBackBuffer->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_PRESENT);
 
 	rtvDescriptorHandle.Offset(rtvDescriptorSize * 2);
@@ -447,17 +482,6 @@ void Renderer::renderFrame()
 	// End frame
 	frameFenceValues[currentBackBufferIndex] = commandQueue->executeCommandList(pCurrentCommandList);
 	pCurrentCommandList.Reset();
-
-	if (keyboard.hasKeyChanged('P') && keyboard.isKeyPressed('P'))
-	{
-		// Will cause synchronous behaviour (blocking)
-		RadianceBuffer radBuffer = pRadAccumulator->read(commandQueue);
-
-		// Execute Chain to output data
-		for (auto& chainItem : chain)
-			chainItem->process(radBuffer);
-	}
-
 
 	HRESULT hr;
 	// Present may wait on or execute the message pump when mode changes (fullscreen to windowed, etc)
@@ -562,8 +586,8 @@ void Renderer::initShaders()
 	CD3DX12_ROOT_PARAMETER1 param; 
 	computeRSM->addDescriptorRange("ComputeData", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 2 * NumBackBuffers, 0)); // gOutput, gInput
 	computeRSM->setDescriptorTableParameter("ComputeDataDescTable", "ComputeData");
-	param.InitAsConstants(4u, 0u);
-	computeRSM->setParameter("ComputeConstants", param); // frameNumber ,clear, linearToSrgb
+	param.InitAsConstants(5u, 0u);
+	computeRSM->setParameter("ComputeConstants", param); // inIndex, outInde, clear, accumulate, linearToSrgb
 	computeRSM->addParametersToRootSignature("ComputeRootSignature", { "ComputeConstants", "ComputeDataDescTable"});
 	computeRootSignature = computeRSM->generateRootSignature("ComputeRootSignature", pDevice);
 
