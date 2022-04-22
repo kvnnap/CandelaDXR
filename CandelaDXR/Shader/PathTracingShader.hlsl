@@ -126,17 +126,51 @@ void rayGen()
 		// Get Face attributes
 		const FaceAttributes fAttr = faceAttributes[rayPayload.faceIndex];
 		const Material mat = materials[fAttr.MaterialId];
-		if (cBuffer.specularOnly && i == 0 && mat.Dissolve >= 1.f)
-			break;
-
+		
 		const uint vertIndex = rayPayload.faceIndex * 3;
 		const float3 unitFaceNormal = getUnitNormal(rayPayload.bary, vertIndex, fAttr.InstanceIndex);
 		const float wiDot = dot(ray.Direction, unitFaceNormal);
 		const bool isInternal = wiDot > 0.f;
 		const float3 intersectionPoint = ray.Origin + rayPayload.t * ray.Direction;
+		
+		// Next ray origin
+		ray.Origin = intersectionPoint;
 
 		// Fresnel vars
 		float n1, n2, dissolve, coeff;
+
+		if (cBuffer.specularOnly && i == 0)
+		{
+			if (mat.Dissolve >= 1.f && mat.RefractiveIndex <= 1.f)
+				break;
+			
+			++i;
+			float fr = fresnel(-wiDot, 1.f, mat.RefractiveIndex);
+			if (rand_next(seed) < fr)
+			{
+				ray.Direction = reflect(ray.Direction, unitFaceNormal);
+				prevInteraction = Reflect;
+				continue;
+			}
+
+			localCoefficient *= 1.f / (1.f - fr);
+
+			// Transmission
+			float3 dir = refract(ray.Direction, unitFaceNormal, 1.f / mat.RefractiveIndex);
+			if (any(dir))
+			{
+				ray.Direction = dir;
+				++numEntries;
+				prevInteraction = Refract;
+			}
+			else
+			{   // Total internal reflection - should occur at the start of the code, not here
+				ray.Direction = reflect(ray.Direction, unitFaceNormal);
+				prevInteraction = Reflect;
+			}
+			
+			continue;
+		}
 
 		// Beer's law
 		if (isInternal)
@@ -177,9 +211,6 @@ void rayGen()
 				break;
 			localCoefficient *= 1.f / probabilityOfContinuing;
 		}
-
-		// Next ray origin
-		ray.Origin = intersectionPoint;
 
 		// Compute Fresnel
 		float fr = fresnel(-coeff * wiDot, n1, n2);

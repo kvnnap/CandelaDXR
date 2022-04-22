@@ -41,7 +41,16 @@
     },
     {
       "Type": "LightTracingDrawable",
-      "Name": "LT"
+      "Name": "LT",
+      "LightSamples": {
+        "x": 900,
+        "y": 600
+      }
+    },
+    {
+      "Type": "PathTracingDrawable",
+      "Name": "PT",
+      "SpecularOnly": true
     }
   ],
   "Renderers": [
@@ -54,7 +63,8 @@
       "Scene": "Scene",
       "Camera": "Camera",
       "Drawables": [
-        "LT"
+        "LT",
+        "PT"
       ],
       "WindowDimensions": {
         "x": 900,
