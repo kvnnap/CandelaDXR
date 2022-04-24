@@ -227,7 +227,7 @@ void rayGen()
 
 		// Compute Fresnel
 		float fr = fresnel(-coeff * wiDot, n1, n2); // Reflection 
-		if (rand_next(seed) < fr)
+		if (rand_next(seed) <= fr)
 		{
 			ray.Direction = reflect(ray.Direction, coeff * unitFaceNormal);
 			prevStateFlags = Reflect;
@@ -235,7 +235,7 @@ void rayGen()
 		}
 
 		// Diffuse?
-		if (rand_next(seed) < dissolve)
+		if (rand_next(seed) <= dissolve)
 		{
 			// Sample the brdf and generate a new ray
 			ray.Direction = randomRayLobe(seed, unitFaceNormal, 1, pdf);
@@ -257,8 +257,7 @@ void rayGen()
 			}
 			else
 			{
-				ray.Direction = reflect(ray.Direction, coeff * unitFaceNormal);
-				prevStateFlags = Reflect;
+				break; // Should never happen
 			}
 		}
 	}

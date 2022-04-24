@@ -141,12 +141,15 @@ void rayGen()
 
 		if (cBuffer.specularOnly && i == 0)
 		{
+			n1 = 1.f;
+			n2 = mat.RefractiveIndex;
+
 			if (mat.Dissolve >= 1.f && mat.RefractiveIndex <= 1.f)
 				break;
 			
 			++i;
-			float fr = fresnel(-wiDot, 1.f, mat.RefractiveIndex);
-			if (rand_next(seed) < fr)
+			float fr = fresnel(-wiDot, n1, n2);
+			if (rand_next(seed) <= fr)
 			{
 				ray.Direction = reflect(ray.Direction, unitFaceNormal);
 				prevInteraction = Reflect;
@@ -156,17 +159,18 @@ void rayGen()
 			localCoefficient *= 1.f / (1.f - fr);
 
 			// Transmission
-			float3 dir = refract(ray.Direction, unitFaceNormal, 1.f / mat.RefractiveIndex);
+			float3 dir = refract(ray.Direction, unitFaceNormal, n1 / n2);
 			if (any(dir))
 			{
 				ray.Direction = dir;
+				fr = fresnel(-dot(unitFaceNormal, ray.Direction), n2, n1);
+				localCoefficient *= 1.f - fr;
 				++numEntries;
 				prevInteraction = Refract;
 			}
 			else
-			{   // Total internal reflection - should occur at the start of the code, not here
-				ray.Direction = reflect(ray.Direction, unitFaceNormal);
-				prevInteraction = Reflect;
+			{
+				break; // Should never happen
 			}
 			
 			continue;
@@ -216,7 +220,7 @@ void rayGen()
 		float fr = fresnel(-coeff * wiDot, n1, n2);
 
 		// Should reflect?
-		if (rand_next(seed) < fr)
+		if (rand_next(seed) <= fr)
 		{
 			ray.Direction = reflect(ray.Direction, coeff * unitFaceNormal);
 			prevInteraction = Reflect;
@@ -226,7 +230,7 @@ void rayGen()
 		localCoefficient *= 1.f / (1.f - fr);
 
 		// Diffuse?
-		if (rand_next(seed) < dissolve)
+		if (rand_next(seed) <= dissolve)
 		{
 			if ((prevInteraction & cBuffer.pathFilter) != 0)
 			{
@@ -307,16 +311,14 @@ void rayGen()
 				ray.Direction = dir;
 				numEntries += isInternal ? -1 : 1;
 				prevInteraction = Refract;
-				if (isInternal) // On Surface Exit, apply correct weights
-				{ 
-					fr = fresnel(dot(unitFaceNormal, ray.Direction), n2, n1);
-					localCoefficient *= 1.f - fr;
-				}
+				fr = fresnel(-coeff * dot(unitFaceNormal, ray.Direction), n2, n1);
+				localCoefficient *= (1.f - fr) / (1.f - dissolve);
+				if (isInternal) // On Surface Exit, distribute using dissolve too
+					localCoefficient *= 1.f - mat.Dissolve;
 			}
 			else
-			{   // Total internal reflection - should occur at the start of the code, not here
-				ray.Direction = reflect(ray.Direction, coeff * unitFaceNormal);
-				prevInteraction = Reflect;
+			{   
+				break; // Should never happen
 			}
 		}
 
