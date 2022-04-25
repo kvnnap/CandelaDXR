@@ -11,8 +11,12 @@ RadianceBuffer::RadianceBuffer()
 }
 
 RadianceBuffer::RadianceBuffer(directx::ResourceData&& resourceData)
-    : width (resourceData.Width), height (resourceData.Height), radiance (std::move(resourceData.data))
+    : width (resourceData.Width), height (resourceData.Height)
 {
+    radiance.reserve(width * height);
+    for (auto& datum : resourceData.data)
+        radiance.emplace_back(RgbSpectrum{ datum.x, datum.y, datum.z });
+    resourceData.data = {};
 }
 
 void RadianceBuffer::reset(std::size_t p_width, std::size_t p_height)

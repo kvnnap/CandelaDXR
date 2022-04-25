@@ -9,7 +9,7 @@
 
 namespace candela::renderer
 {
-    using RgbSpectrum = DirectX::XMFLOAT4;
+    using RgbSpectrum = DirectX::XMFLOAT3;
     class RadianceBuffer
     {
     public:

@@ -396,7 +396,7 @@ void Renderer::renderFrame()
 		pCurrentCommandList->SetDescriptorHeaps(1u, computeDescriptorHeap.GetAddressOf());
 		pCurrentCommandList->SetComputeRootDescriptorTable(1u, computeDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
 		// in, out, clear, accumulate, linearToSrgb
-		uint32_t c32data[5] = { static_cast<int>(currentBackBufferIndex) + 2, 1u, first == i ? 1u : 0u, 1u, !grabRadiancePressed && last == i ? 1u : 0u };
+		uint32_t c32data[5] = { currentBackBufferIndex + 2, 1u, first == i ? 1u : 0u, 1u, !grabRadiancePressed && last == i ? 1u : 0u };
 		pCurrentCommandList->SetComputeRoot32BitConstants(0u, 5u, &c32data[0], 0);
 		pCurrentCommandList->Dispatch(dim.x / 8 + (dim.x % 8 == 0 ? 0 : 1), dim.y / 8 + (dim.y % 8 == 0 ? 0 : 1), 1);
 
