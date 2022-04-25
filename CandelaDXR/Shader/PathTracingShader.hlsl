@@ -192,7 +192,7 @@ void rayGen()
 		else
 		{
 			// If material is emissive, add its radiance
-			if (((prevInteraction & cBuffer.pathFilter & (Light | Reflect | Refract)) != 0) && any(mat.Emissive))
+			if (((prevInteraction & cBuffer.pathFilter & (Light | Reflect | Refract)) != 0) && mat.EmissiveType != 1 && any(mat.Emissive))
 			{
 				float3 albedo = mat.Emissive;
 				if (mat.EmissiveTextureId >= 0)
