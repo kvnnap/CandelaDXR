@@ -238,51 +238,94 @@ void rayGen()
 				const uint lightIndex = chooseInRange(seed, 0, cBuffer.numLights - 1);
 				const uint lightIndexId = lights[lightIndex].PrimitiveId * 3;
 				AreaLight areaLight = lights[lightIndex];
+				Material lightMat = materials[areaLight.MaterialId];
+				const bool lightDirectional = lightMat.EmissiveType == 1;
 
-				// Compute light vertices
-				float3 lv[3];
-				getVertexWorldCoordinates(lv, lightIndexId, areaLight.InstanceIndex);
-
-				// Generate a point on the light
-				float2 lightBary;
-				const float3 pointOnLightSource = samplePointOnTriangle(seed, lv, lightBary);
-				const float3 unitLightNormal = getUnitNormal(lightBary, lightIndexId, areaLight.InstanceIndex);
-
+				// Start constructing shadow ray
 				RayDesc shadowRay;
 				shadowRay.TMin = 0.001f;
-				shadowRay.TMax = 0.999f;
 				shadowRay.Origin = intersectionPoint;
-				shadowRay.Direction = pointOnLightSource - intersectionPoint;
-				const float invShadowDistance = 1.f / length(shadowRay.Direction);
-				const float3 unitShadowRayDirection = shadowRay.Direction * invShadowDistance;
-				const float lightDot = -dot(unitShadowRayDirection, unitLightNormal);
+
+				float3 unitLightNormal;
+				float invShadowDistance = 1.f;
+				float3 unitShadowRayDirection;
+				float lightDot = 1.f;
+				float triangleArea = 1.f;
+				float2 lightBary = float2(0.5f, 0.5f);
+
+				if (lightDirectional)
+				{
+					unitLightNormal = getUnitNormal(lightBary, lightIndexId, areaLight.InstanceIndex);
+					shadowRay.TMax = 3.402823e+38;
+					shadowRay.Direction = -unitLightNormal;
+
+					// Constants
+					unitShadowRayDirection = shadowRay.Direction;
+				}
+				else
+				{
+					// Compute light vertices
+					float3 lv[3];
+					getVertexWorldCoordinates(lv, lightIndexId, areaLight.InstanceIndex);
+
+					// Generate a point on the light
+					const float3 pointOnLightSource = samplePointOnTriangle(seed, lv, lightBary);
+					unitLightNormal = getUnitNormal(lightBary, lightIndexId, areaLight.InstanceIndex);
+					shadowRay.TMax = 0.999f;
+					shadowRay.Direction = pointOnLightSource - intersectionPoint;
+
+					// Constants
+					invShadowDistance = 1.f / length(shadowRay.Direction);
+					unitShadowRayDirection = shadowRay.Direction * invShadowDistance;
+					lightDot = -dot(unitShadowRayDirection, unitLightNormal);
+					triangleArea = getTriangleArea(lv);
+				}
+
 				const float surfaceLightDot = dot(unitShadowRayDirection, unitFaceNormal);
 
 				if (lightDot > 0.f && surfaceLightDot > 0.f)
 				{
-					// Test using shadow ray
-					ShadowPayload shadowPayload;
-					shadowPayload.occluded = true;
-					TraceRay(
-						gRtScene,	// Acceleration Structure
-						RAY_FLAG_FORCE_OPAQUE
-						| RAY_FLAG_SKIP_CLOSEST_HIT_SHADER
-						| RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH,			// Ray flags
-						0xFF,		// Instance inclusion Mask (0xFF includes everything)
-						1,			// RayContributionToHitGroupIndex (calls shadowAnyHit)
-						1,			// MultiplierForGeometryContributionToShaderIndex (We only have 1 hit group)
-						1,			// Miss shader index (within the shader table) (calls shadowMiss)
-						shadowRay,
-						shadowPayload);
+					bool notOccluded;
+					if (lightDirectional)
+					{
+						// Test using shadow ray
+						RayPayload shadowPayload;
+						TraceRay(
+							gRtScene,	// Acceleration Structure
+							0,			// Ray flags
+							0xFF,		// Instance inclusion Mask (0xFF includes everything)
+							0,			// RayContributionToHitGroupIndex (calls chs)
+							1,			// MultiplierForGeometryContributionToShaderIndex
+							0,			// Miss shader index (within the shader table) (calls miss)
+							shadowRay,
+							shadowPayload);
+						notOccluded = shadowPayload.t != 0.f && shadowPayload.faceIndex == areaLight.PrimitiveId;
+					}
+					else // Use first hit approach to be more efficient
+					{
+						ShadowPayload shadowPayload;
+						shadowPayload.occluded = true;
+						TraceRay(
+							gRtScene,	// Acceleration Structure
+							RAY_FLAG_FORCE_OPAQUE
+							| RAY_FLAG_SKIP_CLOSEST_HIT_SHADER
+							| RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH,			// Ray flags
+							0xFF,		// Instance inclusion Mask (0xFF includes everything)
+							1,			// RayContributionToHitGroupIndex (calls shadowAnyHit)
+							1,			// MultiplierForGeometryContributionToShaderIndex (We only have 1 hit group)
+							1,			// Miss shader index (within the shader table) (calls shadowMiss)
+							shadowRay,
+							shadowPayload);
+						notOccluded = !shadowPayload.occluded;
+					}
 
-					if (!shadowPayload.occluded)
+					if (notOccluded)
 					{
 						fr = fresnel(surfaceLightDot, n1, n2);
-						Material lightMat = materials[areaLight.MaterialId];
 						float3 lightRadiance = lightMat.Emissive;
 						if (lightMat.EmissiveTextureId >= 0)
 							lightRadiance *= gTextures[lightMat.EmissiveTextureId].SampleLevel(gSampler, getTextureLocation(lightBary, lightIndexId), 0);
-						lightRadiance *= getTriangleArea(lv) * cBuffer.numLights * surfaceLightDot * lightDot * invShadowDistance * invShadowDistance;
+						lightRadiance *= triangleArea * cBuffer.numLights * surfaceLightDot * lightDot * invShadowDistance * invShadowDistance;
 						float3 brdfDiff = mat.Diffuse * OneOverPI;
 						if (mat.DiffuseTextureId >= 0)
 							brdfDiff *= gTextures[mat.DiffuseTextureId].SampleLevel(gSampler, getTextureLocation(rayPayload.bary, vertIndex), 0);
