@@ -74,8 +74,8 @@ float4 main(MyInput myInput) : SV_TARGET
 {
 	if (dot(cBuffer.camera.position.xyz - myInput.position, normalize(myInput.normal)) < 0.f)
 		return float4(0.f, 0.f, 0.f, 1.f);
-	uint matId = faceAttributes[instanceId / 3 + myInput.id].MaterialId;
-	Material mat = materials[matId];
+	const uint matId = faceAttributes[instanceId / 3 + myInput.id].MaterialId;
+	const Material mat = materials[matId];
 
 	const float2 midpointBary = 1.f / 3.f;
 	float3 total = 0.f;
@@ -99,7 +99,7 @@ float4 main(MyInput myInput) : SV_TARGET
 		const float primDot = dot(normalize(myInput.normal.xyz), unitShadowRay);
 		const float lightDot = -dot(unitLightNorm, unitShadowRay);
 
-		if (primDot < 0 || lightDot < 0)
+		if (primDot <= 0.f || lightDot <= 0.f)
 			continue;
 
 		// Also apply any emission from texture
@@ -107,11 +107,14 @@ float4 main(MyInput myInput) : SV_TARGET
 		if (lightMat.EmissiveTextureId >= 0)
 			lightEmissive *= gTextures[lightMat.EmissiveTextureId].SampleLevel(gSampler, getTextureLocation(midpointBary, lightIndexId), 0);
 
+		// Fresnel and Dissolve (contributing towards Diffuse reflection)
+		const float frAndDissolve = (1.f - fresnel(primDot, 1.f, mat.RefractiveIndex)) * mat.Dissolve;
+
 		const float triArea = getTriangleArea(lv);
 		float3 diffTex = mat.Diffuse;
 		if (mat.DiffuseTextureId >= 0)
 			diffTex *= gTextures[mat.DiffuseTextureId].SampleLevel(gSampler, myInput.texUV, 0);
-		total += lightEmissive * triArea * diffTex * OneOverPI * primDot * lightDot * invShadLen * invShadLen;
+		total += lightEmissive * diffTex * (frAndDissolve * triArea * OneOverPI * primDot * lightDot * invShadLen * invShadLen);
 	}
 
 	return float4(mat.Emissive + total, 1.0f);

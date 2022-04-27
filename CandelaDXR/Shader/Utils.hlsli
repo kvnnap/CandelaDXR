@@ -174,16 +174,21 @@ float3 fixedToFloat(uint3 value, uint rangeBits)
 
 float fresnel(const float cosx, const float n1, const float n2)
 {
+	float fr = 1.f;
 	const float ior = n1 / n2;
 	const float t = 1.f - ior * ior * (1.f - cosx * cosx);
-	if (t < 0.f)
-		return 1.f;
-	const float s = sqrt(t);
-	const float n1Cosx = n1 * cosx;
-	const float n2S = n2 * s;
-	const float ra = (n1Cosx - n2S) / (n1Cosx + n2S);
-	const float n2Cosx = n2 * cosx;
-	const float n1S = n1 * s;
-	const float rb = (n1S - n2Cosx) / (n1S + n2Cosx);
-	return 0.5f * (ra * ra + rb * rb);
+
+	if (t > 0.f)
+	{
+		const float s = sqrt(t);
+		const float n1Cosx = n1 * cosx;
+		const float n2S = n2 * s;
+		const float ra = (n1Cosx - n2S) / (n1Cosx + n2S);
+		const float n2Cosx = n2 * cosx;
+		const float n1S = n1 * s;
+		const float rb = (n1S - n2Cosx) / (n1S + n2Cosx);
+		fr = 0.5f * (ra * ra + rb * rb);
+	}
+	
+	return fr;
 }
