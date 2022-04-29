@@ -36,14 +36,14 @@ namespace candela::directx
 			Microsoft::WRL::ComPtr<IDXGISwapChain> swapChain,
 			UINT numRTV);
 
-		static std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>> createRenderTargetViewsEx(
+		static std::vector<std::shared_ptr<Resource>> createRenderTargetViewsEx(
 			Microsoft::WRL::ComPtr<ID3D12Device> device,
 			Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> descriptorHeap,
 			Microsoft::WRL::ComPtr<IDXGISwapChain> swapChain,
 			std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>>& textureTargets,
 			UINT numRTV);
 
-		static std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>> createRenderTargetViewsEx(
+		static std::vector<std::shared_ptr<Resource>> createRenderTargetViewsEx(
 			Microsoft::WRL::ComPtr<ID3D12Device> device,
 			Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> descriptorHeap,
 			Microsoft::WRL::ComPtr<IDXGISwapChain> swapChain,

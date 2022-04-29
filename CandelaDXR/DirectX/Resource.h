@@ -33,7 +33,7 @@ namespace candela::directx
 
 		void transistionBarrier(DXCommandList &commandList, D3D12_RESOURCE_STATES state);
 		void uavBarrier(DXCommandList &commandList);
-		operator DXResource();
+		operator DXResource&();
 		operator ID3D12Resource*();
 
 		ResourceData read(DXCommandQueue& commandList);

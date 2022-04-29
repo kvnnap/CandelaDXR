@@ -42,6 +42,8 @@ namespace candela::renderer
 	private:
 		template<class T>
 		using ComPtrVec = std::vector<wrl::ComPtr<T>>;
+		
+		using ResPtrVec = std::vector<std::shared_ptr<directx::Resource>>;
 
 		void initSceneResources();
 		void initShaders();
@@ -50,6 +52,7 @@ namespace candela::renderer
 		void resize();
 		void resizeFloatTargetTextures();
 		void refreshMaterialResources();
+		directx::DXResource& getTempResource();
 		std::vector<DirectX::XMFLOAT3X4> getMatrices();
 		std::vector<DirectX::XMFLOAT3X3> getNormalMatrices();
 		LRESULT wndCallback(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
@@ -71,15 +74,10 @@ namespace candela::renderer
 		wrl::ComPtr<IDXGISwapChain> pSwapChain;
 		wrl::ComPtr<ID3D12DescriptorHeap> pRTVDescriptorHeap;
 		std::unique_ptr<directx::Resource> pRadAccumulator;
-		wrl::ComPtr<ID3D12Resource> pRTV8BitBackBuffer;
-		ComPtrVec<ID3D12Resource> pRTVBackBuffers;
-		std::vector<std::shared_ptr<directx::Resource>> pRTVRadBackBuffers;
-		ComPtrVec<ID3D12Resource> pMatricesTempBackBuffers;
-		ComPtrVec<ID3D12Resource> pNormalMatricesTempBackBuffers;
-		ComPtrVec<ID3D12Resource> pMaterialsTempBackBuffers;
-		ComPtrVec<ID3D12Resource> pLightsTempBackBuffers;
-		ComPtrVec<ID3D12Resource> pFaceAttrTempBackBuffers;
-		ComPtrVec<ID3D12Resource> pSpecularsTempBackBuffers;
+		std::unique_ptr<directx::Resource> pRTV8BitBackBuffer;
+		ResPtrVec pRTVBackBuffers;
+		ResPtrVec pRTVRadBackBuffers;
+		std::vector<ComPtrVec<ID3D12Resource>> tempBuffers;
 
 		// ImGui
 		wrl::ComPtr<ID3D12DescriptorHeap> pImGuiDescriptorHeap;

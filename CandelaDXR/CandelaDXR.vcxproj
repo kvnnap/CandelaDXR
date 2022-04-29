@@ -226,6 +226,7 @@
     <ClCompile Include="Renderer\LightTracingShading.cpp" />
     <ClCompile Include="Renderer\PathTracingShading.cpp" />
     <ClCompile Include="Renderer\RadianceBuffer.cpp" />
+    <ClCompile Include="Renderer\RasterRTShadowsShading.cpp" />
     <ClCompile Include="Renderer\RasterShading.cpp" />
     <ClCompile Include="Renderer\Renderer.cpp" />
     <ClCompile Include="Renderer\AccelerationStructure.cpp" />
@@ -282,6 +283,7 @@
     <ClInclude Include="Renderer\LightTracingShading.h" />
     <ClInclude Include="Renderer\PathTracingShading.h" />
     <ClInclude Include="Renderer\RadianceBuffer.h" />
+    <ClInclude Include="Renderer\RasterRTShadowsShading.h" />
     <ClInclude Include="Renderer\RasterShading.h" />
     <ClInclude Include="Renderer\Renderer.h" />
     <ClInclude Include="Sampler\ISampler.h" />

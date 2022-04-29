@@ -140,13 +140,7 @@ void Renderer::init()
 	// Allocate 
 	pRTVBackBuffers.resize(NumBackBuffers);
 	pRTVRadBackBuffers.resize(NumBackBuffers);
-	pMatricesTempBackBuffers.resize(NumBackBuffers);
-	pNormalMatricesTempBackBuffers.resize(NumBackBuffers);
-	pMaterialsTempBackBuffers.resize(NumBackBuffers);
-	pLightsTempBackBuffers.resize(NumBackBuffers);
-	pFaceAttrTempBackBuffers.resize(NumBackBuffers);
-	pSpecularsTempBackBuffers.resize(NumBackBuffers);
-
+	tempBuffers.resize(NumBackBuffers);
 	frameFenceValues.resize(NumBackBuffers);
 
 	// Init DirectX Debugging
@@ -262,7 +256,6 @@ void Renderer::renderFrame()
 	// Clear frame and start frame
 	auto &rtvRadBackBuffer = pRTVRadBackBuffers[currentBackBufferIndex];
 
-	CD3DX12_RESOURCE_BARRIER barrier;
 	pCurrentCommandList = commandQueue->getCommandList();
 	rtvRadBackBuffer->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);
 
@@ -322,7 +315,7 @@ void Renderer::renderFrame()
 			pDevice,
 			pCurrentCommandList,
 			matrices,
-			pMatricesTempBackBuffers[currentBackBufferIndex],
+			getTempResource(),
 			gMatrices.data(),
 			sizeof(decltype(gMatrices)::value_type) * gMatrices.size(),
 			flags,
@@ -333,7 +326,7 @@ void Renderer::renderFrame()
 			pDevice,
 			pCurrentCommandList,
 			normalMatrices,
-			pNormalMatricesTempBackBuffers[currentBackBufferIndex],
+			getTempResource(),
 			nMatrices.data(),
 			sizeof(decltype(nMatrices)::value_type) * nMatrices.size(),
 			flags,
@@ -344,7 +337,7 @@ void Renderer::renderFrame()
 	if (changeEvent & static_cast<ChangeEvent_t>(ChangeEvent::SceneUpdate))
 	{
 		DXUtil::updateDataInDefaultHeap(pDevice, pCurrentCommandList, materialBuffer,
-			pMaterialsTempBackBuffers[currentBackBufferIndex], scene->getMaterials().data(), 
+			getTempResource(), scene->getMaterials().data(),
 			sizeof(Material) * scene->getMaterials().size(), flags, flags);
 		
 	}
@@ -447,25 +440,19 @@ void Renderer::renderFrame()
 	rtvRadBackBuffer->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_PRESENT);
 
 	rtvDescriptorHandle.Offset(rtvDescriptorSize * 2);
-	barrier = CD3DX12_RESOURCE_BARRIER::Transition(pRTVBackBuffers[currentBackBufferIndex].Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
-	pCurrentCommandList->ResourceBarrier(1, &barrier);
-
+	pRTVBackBuffers[currentBackBufferIndex]->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);
 	pCurrentCommandList->ClearRenderTargetView(rtvDescriptorHandle, color, 0, nullptr);
 
 	if (first != -1)
 	{
-		barrier = CD3DX12_RESOURCE_BARRIER::Transition(pRTVBackBuffers[currentBackBufferIndex].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_COPY_DEST);
-		pCurrentCommandList->ResourceBarrier(1, &barrier);
-		barrier = CD3DX12_RESOURCE_BARRIER::Transition(pRTV8BitBackBuffer.Get(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_SOURCE);
-		pCurrentCommandList->ResourceBarrier(1, &barrier);
+		pRTVBackBuffers[currentBackBufferIndex]->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_COPY_DEST);
+		pRTV8BitBackBuffer->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_COPY_SOURCE);
 
 		// Copy 8-bit tex to rtv
-		pCurrentCommandList->CopyResource(pRTVBackBuffers[currentBackBufferIndex].Get(), pRTV8BitBackBuffer.Get());
-
-		barrier = CD3DX12_RESOURCE_BARRIER::Transition(pRTV8BitBackBuffer.Get(), D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-		pCurrentCommandList->ResourceBarrier(1, &barrier);
-		barrier = CD3DX12_RESOURCE_BARRIER::Transition(pRTVBackBuffers[currentBackBufferIndex].Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_RENDER_TARGET);
-		pCurrentCommandList->ResourceBarrier(1, &barrier);
+		pCurrentCommandList->CopyResource(*pRTVBackBuffers[currentBackBufferIndex], *pRTV8BitBackBuffer);
+		
+		pRTV8BitBackBuffer->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+		pRTVBackBuffers[currentBackBufferIndex]->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);
 	}
 
 	// ImGui Render
@@ -476,8 +463,7 @@ void Renderer::renderFrame()
 		ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), pCurrentCommandList.Get());
 	}
 
-	barrier = CD3DX12_RESOURCE_BARRIER::Transition(pRTVBackBuffers[currentBackBufferIndex].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
-	pCurrentCommandList->ResourceBarrier(1, &barrier);
+	pRTVBackBuffers[currentBackBufferIndex]->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_PRESENT);
 
 	// End frame
 	frameFenceValues[currentBackBufferIndex] = commandQueue->executeCommandList(pCurrentCommandList);
@@ -492,6 +478,7 @@ void Renderer::renderFrame()
 	currentBackBufferIndex = pSwapChain3->GetCurrentBackBufferIndex();
 	commandQueue->waitForFenceValue(frameFenceValues[currentBackBufferIndex]);
 	rendererResources.tempBuffers[currentBackBufferIndex].clear();
+	tempBuffers[currentBackBufferIndex].clear();
 
 	// Stats
 	if (changeEvent || camera->hasChanged())
@@ -530,7 +517,7 @@ void Renderer::initSceneResources()
 	
 	const auto& mats = scene->getMaterials().empty() ? vector<Material>(1ULL) : scene->getMaterials();
 	materialBuffer = DXUtil::uploadDataToDefaultHeap(pDevice, pCurrentCommandList,
-		pMaterialsTempBackBuffers[currentBackBufferIndex], mats.data(), sizeof(Material) * mats.size(), flags);
+		getTempResource(), mats.data(), sizeof(Material) * mats.size(), flags);
 	materialBuffer->SetName(L"Material Buffer");
 
 	refreshMaterialResources();
@@ -618,7 +605,7 @@ void Renderer::createShaderResources()
 	D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
 	uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
 	auto cmpDescHeapManager = DescriptorHeap(computeRSM, "ComputeDataDescTable", "ComputeData1", pDevice);
-	cmpDescHeapManager.setUAV(0, uavDesc, pDevice, pRTV8BitBackBuffer);
+	cmpDescHeapManager.setUAV(0, uavDesc, pDevice, *pRTV8BitBackBuffer);
 	cmpDescHeapManager.setUAV(1, uavDesc, pDevice, *pRadAccumulator);
 	for (uint32_t i = 0; i < pRTVRadBackBuffers.size(); ++i)
 		cmpDescHeapManager.setUAV(i + 2, uavDesc, pDevice, *pRTVRadBackBuffers[i]);
@@ -674,12 +661,11 @@ void Renderer::resize()
 void Renderer::resizeFloatTargetTextures()
 {
 	// The resource that will be used to copy back to render target
-	pRTV8BitBackBuffer = DXUtil::createTextureCommittedResource(
-		pDevice, D3D12_HEAP_TYPE_DEFAULT, windowDimensions.x, windowDimensions.y,
+	pRTV8BitBackBuffer = make_unique<Resource>(Resource::createTextureCommittedResource(
+		pDevice, windowDimensions.x, windowDimensions.y,
 		D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
-		D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
-		DXGI_FORMAT_R8G8B8A8_UNORM);
-	pRTV8BitBackBuffer->SetName(L"RTV Radiance 8-bit Back-Buffer");
+		DXGI_FORMAT_R8G8B8A8_UNORM, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS));
+	pRTV8BitBackBuffer->setName(L"RTV Radiance 8-bit Back-Buffer");
 
 	// Create accumulator
 	pRadAccumulator = make_unique<Resource>(Resource::createTextureCommittedResource(
@@ -722,22 +708,27 @@ void Renderer::refreshMaterialResources()
 {
 	constexpr auto flags = D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
 
-	faceAttributeBuffer = DXUtil::uploadDataToDefaultHeap(pDevice, pCurrentCommandList, pFaceAttrTempBackBuffers[currentBackBufferIndex],
+	faceAttributeBuffer = DXUtil::uploadDataToDefaultHeap(pDevice, pCurrentCommandList, getTempResource(),
 		scene->getFaceAttributes().data(), sizeof(FaceAttributes) * scene->getFaceAttributes().size(), flags);
 	faceAttributeBuffer->SetName(L"Face Attribute Buffer");
 	rendererResources.faceAttributeBuffer = faceAttributeBuffer;
 
 	const auto& lights = scene->getLights().empty() ? vector<AreaLight>(1ULL) : scene->getLights();
-	lightBuffer = DXUtil::uploadDataToDefaultHeap(pDevice, pCurrentCommandList, pLightsTempBackBuffers[currentBackBufferIndex],
+	lightBuffer = DXUtil::uploadDataToDefaultHeap(pDevice, pCurrentCommandList, getTempResource(),
 		lights.data(), sizeof(AreaLight) * lights.size(), flags);
 	lightBuffer->SetName(L"Light Buffer");
 	rendererResources.lightBuffer = lightBuffer;
 
 	const auto& specs = scene->getSpeculars().empty() ? vector<SpecularPrimitive>(1ULL) : scene->getSpeculars();
-	specularBuffer = DXUtil::uploadDataToDefaultHeap(pDevice, pCurrentCommandList, pSpecularsTempBackBuffers[currentBackBufferIndex],
+	specularBuffer = DXUtil::uploadDataToDefaultHeap(pDevice, pCurrentCommandList, getTempResource(),
 		specs.data(), sizeof(SpecularPrimitive) * specs.size(), flags);
 	specularBuffer->SetName(L"Specular Buffer");
 	rendererResources.specularBuffer = specularBuffer;
+}
+
+candela::directx::DXResource& Renderer::getTempResource()
+{
+	return tempBuffers[currentBackBufferIndex].emplace_back();
 }
 
 LRESULT Renderer::wndCallback(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)

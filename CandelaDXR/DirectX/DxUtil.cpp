@@ -276,7 +276,7 @@ std::vector<ComPtr<ID3D12Resource>> DXUtil::createRenderTargetViews(
 	return backBuffers;
 }
 
-vector<ComPtr<ID3D12Resource>> DXUtil::createRenderTargetViewsEx(
+vector<shared_ptr<Resource>> DXUtil::createRenderTargetViewsEx(
 	ComPtr<ID3D12Device> device,
 	ComPtr<ID3D12DescriptorHeap> descriptorHeap,
 	ComPtr<IDXGISwapChain> swapChain,
@@ -290,7 +290,7 @@ vector<ComPtr<ID3D12Resource>> DXUtil::createRenderTargetViewsEx(
 }
 
 // Fills in heap for texture targets and the coupled swap chain render targets
-vector<ComPtr<ID3D12Resource>> DXUtil::createRenderTargetViewsEx(
+vector<shared_ptr<Resource>> DXUtil::createRenderTargetViewsEx(
 	ComPtr<ID3D12Device> device, 
 	ComPtr<ID3D12DescriptorHeap> descriptorHeap, 
 	ComPtr<IDXGISwapChain> swapChain,
@@ -311,11 +311,13 @@ vector<ComPtr<ID3D12Resource>> DXUtil::createRenderTargetViewsEx(
 
 	// Finish off with the swap chain buffers
 	HRESULT hr;
-	std::vector<ComPtr<ID3D12Resource>> backBuffers(numRTV);
+	vector<shared_ptr<Resource>> backBuffers;
 	for (UINT i = 0; i < numRTV; ++i) {
-		GFXTHROWIFFAILED(swapChain->GetBuffer(i, IID_PPV_ARGS(&backBuffers[i])));
-		device->CreateRenderTargetView(backBuffers[i].Get(), nullptr, rtvHandle);
-		backBuffers[i]->SetName((L"RTV Back-Buffer " + std::to_wstring(i)).c_str());
+		ComPtr<ID3D12Resource> res;
+		GFXTHROWIFFAILED(swapChain->GetBuffer(i, IID_PPV_ARGS(&res)));
+		backBuffers.emplace_back(std::make_shared<Resource>(res, D3D12_RESOURCE_STATE_PRESENT));
+		device->CreateRenderTargetView(*backBuffers[i], nullptr, rtvHandle);
+		backBuffers[i]->setName((L"RTV Back-Buffer " + std::to_wstring(i)).c_str());
 		rtvHandle.Offset(rtvDescSize);
 	}
 

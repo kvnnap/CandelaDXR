@@ -16,8 +16,6 @@ using candela::directx::DXUtil;
 Resource::Resource(DXResource resource, D3D12_RESOURCE_STATES state)
 	: resource(resource), state(state)
 {
-	auto desc = resource->GetDesc();
-	desc = desc;
 }
 
 void Resource::transistionBarrier(DXCommandList& commandList, D3D12_RESOURCE_STATES nextState)
@@ -33,7 +31,7 @@ void Resource::uavBarrier(DXCommandList& commandList)
 	commandList->ResourceBarrier(1u, &barrier);
 }
 
-Resource::operator DXResource()
+Resource::operator DXResource&()
 {
 	return resource;
 }
@@ -95,9 +93,7 @@ ResourceData Resource::read(DXCommandQueue& commandQueue)
 	for (UINT r = 0; r < numRows; ++r)
 	{
 		for (UINT64 c = 0; c < floatsPerRow; c += 4)
-		{
 			data.emplace_back(values[c], values[c + 1], values[c + 2], values[c + 3]);
-		}
 		values += skipAmount;
 	}
 
@@ -116,6 +112,7 @@ void Resource::setName(const std::wstring& name)
 std::wstring Resource::getName() const
 {
 	wchar_t name[128];
+	name[0] = 0;
 	UINT nameSize = sizeof(name);
 	resource->GetPrivateData(WKPDID_D3DDebugObjectNameW, &nameSize, name);
 	return name;
