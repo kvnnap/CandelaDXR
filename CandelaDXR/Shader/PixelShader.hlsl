@@ -36,14 +36,6 @@ Texture2D<float3> gTextures[]: register(t9);
 // Sampler
 SamplerState gSampler : register(s0);
 
-struct MyInput
-{
-	uint id : SV_PrimitiveID;
-	float3 position : VS_POSITION;
-	float3 normal : VS_NORMAL;
-	float2 texUV : VS_TEXUV;
-};
-
 // Functions
 float3 getUnitNormal(float2 bary, uint vertBaseId, uint matrixId)
 {
@@ -70,10 +62,30 @@ void getVertexWorldCoordinates(inout float3 lv[3], uint vertBaseId, uint matrixI
 	lv[2] = mul(float4(verts[indices[vertBaseId + 2]], 1.f), matrices[matrixId]);
 }
 
-float4 main(MyInput myInput) : SV_TARGET
+struct MyInput
 {
+	uint id : SV_PrimitiveID;
+	float3 position : VS_POSITION;
+	float3 normal : VS_NORMAL;
+	float2 texUV : VS_TEXUV;
+};
+
+struct MyOutput
+{
+	float4 radiance : SV_Target0;
+	float4 position : SV_Target1;
+	float4 normal : SV_Target2;
+};
+
+MyOutput main(MyInput myInput)
+{
+	MyOutput output;
+	output.radiance = float4(0.f, 0.f, 0.f, 1.f);
+	output.position = float4(myInput.position, 1.f);
+	output.normal = float4(normalize(myInput.normal), 1.f);
+
 	if (dot(cBuffer.camera.position.xyz - myInput.position, normalize(myInput.normal)) < 0.f)
-		return float4(0.f, 0.f, 0.f, 1.f);
+		return output;
 	const uint matId = faceAttributes[instanceId / 3 + myInput.id].MaterialId;
 	const Material mat = materials[matId];
 
@@ -116,6 +128,7 @@ float4 main(MyInput myInput) : SV_TARGET
 			diffTex *= gTextures[mat.DiffuseTextureId].SampleLevel(gSampler, myInput.texUV, 0);
 		total += lightEmissive * diffTex * (frAndDissolve * triArea * OneOverPI * primDot * lightDot * invShadLen * invShadLen);
 	}
-
-	return float4(mat.Emissive + total, 1.0f);
+	
+	output.radiance = float4(mat.Emissive + total, 1.f);
+	return output;
 }

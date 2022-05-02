@@ -159,6 +159,9 @@
     <ClCompile Include="Renderer\RasterRTShadowsShading.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Factory\RasterRTShadowsDrawableFactory.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Exception\GeneralException.h">
@@ -335,6 +338,9 @@
     <ClInclude Include="Renderer\RasterRTShadowsShading.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Factory\RasterRTShadowsDrawableFactory.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Shader\PixelShader.hlsl" />
@@ -344,6 +350,7 @@
     <FxCompile Include="Shader\LightTracingOptimisedShader.hlsl" />
     <FxCompile Include="Shader\PathTracingShader.hlsl" />
     <FxCompile Include="Shader\AccumulatorShader.hlsl" />
+    <FxCompile Include="Shader\RTShadows.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Shader\Utils.hlsli" />

@@ -260,7 +260,7 @@ void Renderer::renderFrame()
 	rtvRadBackBuffer->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);
 
 	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvDescriptorHandle(pRTVDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), currentBackBufferIndex, rtvDescriptorSize);
-	FLOAT color[] = { 0.f, 0.f, 0.f, 1.0f };
+	FLOAT color[] = { 0.f, 0.f, 0.f, 0.0f };
 
 	// ImGui
 	if (keyboard.hasKeyChanged('Q') && keyboard.isKeyPressed('Q'))
@@ -439,7 +439,7 @@ void Renderer::renderFrame()
 
 	rtvRadBackBuffer->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_PRESENT);
 
-	rtvDescriptorHandle.Offset(rtvDescriptorSize * 2);
+	rtvDescriptorHandle.Offset(rtvDescriptorSize * NumBackBuffers);
 	pRTVBackBuffers[currentBackBufferIndex]->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);
 	pCurrentCommandList->ClearRenderTargetView(rtvDescriptorHandle, color, 0, nullptr);
 

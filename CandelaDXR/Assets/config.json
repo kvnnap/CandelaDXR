@@ -40,6 +40,10 @@
       "Name": "Raster"
     },
     {
+      "Type": "RasterRTShadowsDrawable",
+      "Name": "RasterRT"
+    },
+    {
       "Type": "LightTracingDrawable",
       "Name": "LT",
       "LightSamples": {

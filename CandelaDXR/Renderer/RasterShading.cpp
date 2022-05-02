@@ -16,9 +16,11 @@ using candela::renderer::RasterShading;
 using candela::renderer::Camera;
 using candela::renderer::ResourceRegFunction;
 using candela::renderer::ChangeEvent_t;
+using candela::renderer::ResPtrVec;
 using candela::directx::DXUtil;
 using candela::directx::RootSignatureManager;
 using candela::directx::DescriptorHeap;
+using candela::directx::Resource;
 using DirectX::XMMATRIX;
 using std::make_shared;
 using std::uint32_t;
@@ -26,16 +28,14 @@ using std::size_t;
 using std::vector;
 using Microsoft::WRL::ComPtr;
 
-RasterShading::RasterShading()
-	: constBuffer{}, scissorRect(CD3DX12_RECT(0, 0, LONG_MAX, LONG_MAX))
+RasterShading::RasterShading(bool computeGBuffer)
+	: constBuffer{}, scissorRect(CD3DX12_RECT(0, 0, LONG_MAX, LONG_MAX)), computeGBuffer(computeGBuffer), numRenderTargets(computeGBuffer ? 3u : 1u)
 {
 }
 
 void candela::renderer::RasterShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12GraphicsCommandList>& pCurrentCommandList, ResourceRegFunction& resRegFn)
 {
 	this->rendererResources = rRes;
-
-	constantTempBuffer.resize(rRes->numBackBuffers);
 
 	// Handle result used for errors
 	HRESULT hr;
@@ -77,7 +77,6 @@ void candela::renderer::RasterShading::init(RendererResources* rRes, wrl::ComPtr
 	pDepthDescriptorHeap = DXUtil::createDescriptorHeap(rRes->pDevice, rRes->numBackBuffers, D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
 	pDepthDescriptorHeap->SetName(L"Depth Descriptor Heap");
 	dsvDescriptorSize = rRes->pDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
-	pDepthBuffers = DXUtil::createDepthStencilView(rRes->pDevice, pDepthDescriptorHeap, rRes->winDimensions.x, rRes->winDimensions.y, rRes->numBackBuffers);
 
 	// Allow input layout and deny unnecessary access to certain pipeline stages.
 	D3D12_ROOT_SIGNATURE_FLAGS rootSignatureFlags =
@@ -147,8 +146,9 @@ void candela::renderer::RasterShading::init(RendererResources* rRes, wrl::ComPtr
 	} pipelineStateStream;
 
 	D3D12_RT_FORMAT_ARRAY rtvFormats = {};
-	rtvFormats.NumRenderTargets = 1;
-	rtvFormats.RTFormats[0] = DXGI_FORMAT_R32G32B32A32_FLOAT;
+	rtvFormats.NumRenderTargets = numRenderTargets;
+	for (UINT i = 0; i < numRenderTargets; ++i)
+		rtvFormats.RTFormats[i] = DXGI_FORMAT_R32G32B32A32_FLOAT;
 
 	auto rasterDesc = CD3DX12_RASTERIZER_DESC(CD3DX12_DEFAULT());
 	rasterDesc.CullMode = D3D12_CULL_MODE_NONE;
@@ -179,6 +179,14 @@ void candela::renderer::RasterShading::init(RendererResources* rRes, wrl::ComPtr
 		sizeof(constBuffer),
 		D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
 	constantBuffer->SetName(L"Constant Buffer");
+
+	// Init G-Buffer
+	if (computeGBuffer)
+	{
+		gBuffer.resize(rendererResources->numBackBuffers * 2); // 2 because we have gPos and gNorm for each back buffer
+		pGDescriptorHeap = DXUtil::createDescriptorHeap(rRes->pDevice, static_cast<UINT>(gBuffer.size()), D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+	}
+	onResize();
 }
 
 void RasterShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, uint32_t currentBackBufferIndex)
@@ -197,8 +205,18 @@ void RasterShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandL
 	pCurrentCommandList->RSSetScissorRects(1u, &scissorRect);
 	pCurrentCommandList->RSSetViewports(1u, &viewport);
 
-	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvDescriptorHandle(rendererResources->pRTVDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), currentBackBufferIndex, rendererResources->pDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV));
-	pCurrentCommandList->OMSetRenderTargets(1u, &rtvDescriptorHandle, FALSE, &dsvDescriptorHandle);
+	D3D12_CPU_DESCRIPTOR_HANDLE rtvDescriptorHandles[3];
+	const auto incrementSize = rendererResources->pDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+	rtvDescriptorHandles[0] = CD3DX12_CPU_DESCRIPTOR_HANDLE(rendererResources->pRTVDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), currentBackBufferIndex, incrementSize);
+	if (computeGBuffer)
+	{
+		rtvDescriptorHandles[1] = CD3DX12_CPU_DESCRIPTOR_HANDLE(pGDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), currentBackBufferIndex * 2, incrementSize); // position
+		rtvDescriptorHandles[2] = CD3DX12_CPU_DESCRIPTOR_HANDLE(pGDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), currentBackBufferIndex * 2 + 1, incrementSize); // normals
+		FLOAT color[] = { 0.f, 0.f, 0.f, 0.0f };
+		pCurrentCommandList->ClearRenderTargetView(rtvDescriptorHandles[1], color, 0, nullptr);
+		pCurrentCommandList->ClearRenderTargetView(rtvDescriptorHandles[2], color, 0, nullptr);
+	}
+	pCurrentCommandList->OMSetRenderTargets(numRenderTargets, &rtvDescriptorHandles[0], FALSE, &dsvDescriptorHandle);
 
 	// Update the MVP matrix
 	constBuffer.ViewPerspective = rendererResources->camera->getViewPerspectiveMatrixColMajor();
@@ -207,7 +225,7 @@ void RasterShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandL
 		rendererResources->pDevice,
 		pCurrentCommandList,
 		constantBuffer,
-		constantTempBuffer[currentBackBufferIndex],
+		rendererResources->tempBuffers[currentBackBufferIndex].emplace_back(),
 		&constBuffer,
 		sizeof(constBuffer),
 		D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER,
@@ -246,9 +264,32 @@ void RasterShading::onResize()
 {
 	viewport = CD3DX12_VIEWPORT(0.0f, 0.0f, static_cast<float>(rendererResources->winDimensions.x), static_cast<float>(rendererResources->winDimensions.y));
 	pDepthBuffers = DXUtil::createDepthStencilView(rendererResources->pDevice, pDepthDescriptorHeap, rendererResources->winDimensions.x, rendererResources->winDimensions.y, rendererResources->numBackBuffers);
+	
+	if (computeGBuffer)
+	{
+		const auto rtvDescSize = rendererResources->pDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+		CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(pGDescriptorHeap->GetCPUDescriptorHandleForHeapStart());
+
+		for (UINT i = 0; i < gBuffer.size(); ++i)
+		{
+			gBuffer[i] = make_shared<Resource>(Resource::createTextureCommittedResource(
+				rendererResources->pDevice, rendererResources->winDimensions.x, rendererResources->winDimensions.y,
+				D3D12_RESOURCE_STATE_RENDER_TARGET, DXGI_FORMAT_R32G32B32A32_FLOAT, 
+				D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET)
+			);
+			
+			rendererResources->pDevice->CreateRenderTargetView(*gBuffer[i], nullptr, rtvHandle);
+			rtvHandle.Offset(rtvDescSize);
+		}
+	}
 }
 
 void RasterShading::accept(IVisitor* visitor)
 {
 	visitor->visit(this);
+}
+
+ResPtrVec& RasterShading::getGBuffer()
+{
+	return gBuffer;
 }

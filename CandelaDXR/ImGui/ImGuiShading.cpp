@@ -5,6 +5,7 @@
 #include "Renderer/RasterShading.h"
 #include "Renderer/LightTracingShading.h"
 #include "Renderer/PathTracingShading.h"
+#include "Renderer/RasterRTShadowsShading.h"
 
 #include <filesystem>
 
@@ -14,6 +15,7 @@ using std::filesystem::path;
 using candela::renderer::RasterShading;
 using candela::renderer::LightTracingShading;
 using candela::renderer::PathTracingShading;
+using candela::renderer::RasterRTShadowsShading;
 
 using candela::renderer::imgui::ImGuiShading;
 
@@ -45,6 +47,11 @@ bool ImGuiShading::isEnabled() const
 void ImGuiShading::visit(RasterShading* rasterShader)
 {
 	ImGui::Text("RasterShading");
+}
+
+void ImGuiShading::visit(RasterRTShadowsShading* rasterShader)
+{
+	ImGui::Text("RasterRTShadowsShading");
 }
 
 void ImGuiShading::visit(LightTracingShading* lightTracingShader)

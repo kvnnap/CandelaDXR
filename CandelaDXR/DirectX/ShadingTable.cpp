@@ -237,14 +237,20 @@ D3D12_DISPATCH_RAYS_DESC ShadingTable::getDispatchRaysDescriptor(UINT32 width, U
 	dispatchRaysDesc.RayGenerationShaderRecord.SizeInBytes = tableLayout[0].numOfRecords * tableLayout[0].alignedRecordSize;
 
 	// Miss ray record
-	dispatchRaysDesc.MissShaderTable.StartAddress = pShadingTable->GetGPUVirtualAddress() + tableLayout[1].offsetInBytes;
-	dispatchRaysDesc.MissShaderTable.StrideInBytes = tableLayout[1].alignedRecordSize;
-	dispatchRaysDesc.MissShaderTable.SizeInBytes = dispatchRaysDesc.MissShaderTable.StrideInBytes * tableLayout[1].numOfRecords;
+	if (tableLayout[1].numOfRecords > 0)
+	{
+		dispatchRaysDesc.MissShaderTable.StartAddress = pShadingTable->GetGPUVirtualAddress() + tableLayout[1].offsetInBytes;
+		dispatchRaysDesc.MissShaderTable.StrideInBytes = tableLayout[1].alignedRecordSize;
+		dispatchRaysDesc.MissShaderTable.SizeInBytes = dispatchRaysDesc.MissShaderTable.StrideInBytes * tableLayout[1].numOfRecords;
+	}
 
 	// Hit ray record
-	dispatchRaysDesc.HitGroupTable.StartAddress = pShadingTable->GetGPUVirtualAddress() + tableLayout[2].offsetInBytes;;
-	dispatchRaysDesc.HitGroupTable.StrideInBytes = tableLayout[2].alignedRecordSize;
-	dispatchRaysDesc.HitGroupTable.SizeInBytes = dispatchRaysDesc.HitGroupTable.StrideInBytes * tableLayout[2].numOfRecords;
+	if (tableLayout[2].numOfRecords > 0)
+	{
+		dispatchRaysDesc.HitGroupTable.StartAddress = pShadingTable->GetGPUVirtualAddress() + tableLayout[2].offsetInBytes;;
+		dispatchRaysDesc.HitGroupTable.StrideInBytes = tableLayout[2].alignedRecordSize;
+		dispatchRaysDesc.HitGroupTable.SizeInBytes = dispatchRaysDesc.HitGroupTable.StrideInBytes * tableLayout[2].numOfRecords;
+	}
 
 	return dispatchRaysDesc;
 }
