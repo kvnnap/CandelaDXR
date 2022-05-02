@@ -38,6 +38,7 @@ namespace candela::renderer
 		void onResize() override;
 		void accept(IVisitor* visitor) override;
 		ResPtrVec& getGBuffer();
+		UINT getNumRenderTargets() const;
 	private:
 
 		RendererResources* rendererResources;

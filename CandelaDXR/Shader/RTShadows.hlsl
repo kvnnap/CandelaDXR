@@ -31,6 +31,7 @@ StructuredBuffer<AreaLight> lights : register(t8);
 RaytracingAccelerationStructure gRtScene : register(t10);
 Texture2D<float4> gPos : register(t11);
 Texture2D<float4> gNorm : register(t12);
+Texture2D<float4> gAlb : register(t13);
 
 Texture2D<float3> gTextures[]: register(t14);
 
@@ -90,10 +91,9 @@ void rayGen()
 	const float invShadowDistance = 1.f / length(shadowRay.Direction);
 	const float3 unitShadowRayDirection = shadowRay.Direction * invShadowDistance;
 	const float lightDot = -dot(unitShadowRayDirection, unitLightNormal);
-	const float triangleArea = getTriangleArea(lv);
 	const float surfaceLightDot = dot(unitShadowRayDirection, unitFaceNormal);
 
-	float3 radiance = gOutput[launchIndex].xyz;
+	float3 radiance = 0.f;
 
 	if (lightDot > 0.f && surfaceLightDot > 0.f)
 	{
@@ -112,7 +112,13 @@ void rayGen()
 			shadowPayload);
 		if (shadowPayload.occluded)
 		{
-			radiance = 0.f;
+			Material lightMat = materials[areaLight.MaterialId];
+			const float triangleArea = getTriangleArea(lv);
+			float3 lightRadiance = lightMat.Emissive;
+			if (lightMat.EmissiveTextureId >= 0)
+				lightRadiance *= gTextures[lightMat.EmissiveTextureId].SampleLevel(gSampler, getTextureLocation(lightBary, lightIndexId), 0);
+			lightRadiance *= triangleArea * cBuffer.numLights * surfaceLightDot * lightDot * invShadowDistance * invShadowDistance;
+			radiance += lightRadiance * gAlb[launchIndex].xyz * OneOverPI * (1.f - fresnel(surfaceLightDot, 1.f, gAlb[launchIndex].w));
 		}
 	}
 
@@ -120,7 +126,8 @@ void rayGen()
 	if (cBuffer.frameNumber == 1)
 		gRadiance[launchIndex] = float4(0.f, 0.f, 0.f, 0.f);
 	gRadiance[launchIndex] += float4(radiance, 0.f);
-	gOutput[launchIndex] = float4(gRadiance[launchIndex].xyz / cBuffer.frameNumber, 1.f);
+	gOutput[launchIndex] -= float4(gRadiance[launchIndex].xyz / cBuffer.frameNumber, 0.f);
+	gOutput[launchIndex] = max(float4(0.f, 0.f, 0.f, 0.f), gOutput[launchIndex]);
 }
 
 // Shadow

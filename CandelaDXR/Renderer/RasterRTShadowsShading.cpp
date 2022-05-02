@@ -12,6 +12,7 @@
 
 #include "Util/StringUtil.h"
 
+using std::int32_t;
 using std::uint32_t;
 using std::unique_ptr;
 using std::make_unique;
@@ -82,8 +83,9 @@ void RasterRTShadowsShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurren
 	backBuff->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
 	// Do we need these barriers? I think so
-	rasterShader.getGBuffer()[currentBackBufferIndex * rendererResources->numBackBuffers + 0]->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-	rasterShader.getGBuffer()[currentBackBufferIndex * rendererResources->numBackBuffers + 1]->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+	const auto c = rasterShader.getNumRenderTargets() - 1;
+	for (UINT i = 0; i < c; ++i)
+		rasterShader.getGBuffer()[currentBackBufferIndex * c + i]->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
 	// Copy and update camera
 	auto cam = rendererResources->camera;
@@ -113,8 +115,8 @@ void RasterRTShadowsShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurren
 	clear = false;
 
 	// After
-	rasterShader.getGBuffer()[currentBackBufferIndex * rendererResources->numBackBuffers + 0]->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);
-	rasterShader.getGBuffer()[currentBackBufferIndex * rendererResources->numBackBuffers + 1]->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);
+	for (UINT i = 0; i < c; ++i)
+		rasterShader.getGBuffer()[currentBackBufferIndex * c + i]->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);
 	backBuff->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);
 }
 
@@ -125,7 +127,7 @@ void RasterRTShadowsShading::onChange(wrl::ComPtr<ID3D12GraphicsCommandList> pCu
 	if (changeEvent & static_cast<ChangeEvent_t>(ChangeEvent::SceneChange))
 	{
 		constBuffer.numLights = static_cast<uint32_t>(rendererResources->scene->getLights().size());
-		createShaderTable(pCurrentCommandList);
+		createShaderTable(pCurrentCommandList, currentBackBufferIndex);
 	}
 	clear = true;
 }
@@ -164,7 +166,7 @@ void RasterRTShadowsShading::buildPipeline()
 
 	// Third - Local Root Signature for Ray Gen shader
 	rootSignatureManager->addDescriptorRange("BVH", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 2, 0)); //gOutput, gRadiance
-	rootSignatureManager->addDescriptorRange("BVH", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 3, 10)); //gRtScene, gPos, gNorm
+	rootSignatureManager->addDescriptorRange("BVH", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 4, 10)); //gRtScene, gPos, gNorm, gAlb
 	if (!rendererResources->textures.empty())
 		rootSignatureManager->addDescriptorRange("BVH", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, static_cast<UINT>(rendererResources->textures.size()), 14));
 
@@ -282,8 +284,9 @@ void RasterRTShadowsShading::createShaderResources()
 		srvDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
 		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
 		srvDesc.Texture2D.MipLevels = 1;
-		descHeapManager.setSRV(entryNumber++, srvDesc, rendererResources->pDevice, *rasterShader.getGBuffer()[i * rendererResources->numBackBuffers + 0]);
-		descHeapManager.setSRV(entryNumber++, srvDesc, rendererResources->pDevice, *rasterShader.getGBuffer()[i * rendererResources->numBackBuffers + 1]);
+		const auto gBuffRenTargets = rasterShader.getNumRenderTargets() - 1;
+		for (UINT j = 0; j < gBuffRenTargets; ++j)
+			descHeapManager.setSRV(entryNumber++, srvDesc, rendererResources->pDevice, *rasterShader.getGBuffer()[i * gBuffRenTargets + j]);
 
 		// Textures
 		srvDesc = {};
@@ -296,7 +299,7 @@ void RasterRTShadowsShading::createShaderResources()
 	}
 }
 
-void RasterRTShadowsShading::createShaderTable(wrl::ComPtr<ID3D12GraphicsCommandList>& commandList)
+void RasterRTShadowsShading::createShaderTable(wrl::ComPtr<ID3D12GraphicsCommandList>& commandList, int32_t currentBackBufferIndex)
 {
 	for (size_t i = 0; i < shadingTables.size(); ++i)
 	{
@@ -318,6 +321,9 @@ void RasterRTShadowsShading::createShaderTable(wrl::ComPtr<ID3D12GraphicsCommand
 		shadingTable->setInputForViewParameter(L"rayGen", "lights", rendererResources->lightBuffer);
 
 		// Generate
-		shadingTable->generateShadingTable(rendererResources->pDevice, commandList, stateObject, rendererResources->tempBuffers[0].emplace_back());
+		shadingTable->generateShadingTable(rendererResources->pDevice, commandList, stateObject, 
+			currentBackBufferIndex == -1 ?
+			rendererResources->initTempBuffers.emplace_back() : 
+			rendererResources->tempBuffers[currentBackBufferIndex].emplace_back());
 	}
 }

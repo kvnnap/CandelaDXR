@@ -29,7 +29,7 @@ using std::vector;
 using Microsoft::WRL::ComPtr;
 
 RasterShading::RasterShading(bool computeGBuffer)
-	: constBuffer{}, scissorRect(CD3DX12_RECT(0, 0, LONG_MAX, LONG_MAX)), computeGBuffer(computeGBuffer), numRenderTargets(computeGBuffer ? 3u : 1u)
+	: constBuffer{}, scissorRect(CD3DX12_RECT(0, 0, LONG_MAX, LONG_MAX)), computeGBuffer(computeGBuffer), numRenderTargets(computeGBuffer ? 4u : 1u)
 {
 }
 
@@ -183,7 +183,7 @@ void candela::renderer::RasterShading::init(RendererResources* rRes, wrl::ComPtr
 	// Init G-Buffer
 	if (computeGBuffer)
 	{
-		gBuffer.resize(rendererResources->numBackBuffers * 2); // 2 because we have gPos and gNorm for each back buffer
+		gBuffer.resize(rendererResources->numBackBuffers * (numRenderTargets - 1)); // gPos, gNorm, gAlb
 		pGDescriptorHeap = DXUtil::createDescriptorHeap(rRes->pDevice, static_cast<UINT>(gBuffer.size()), D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 	}
 	onResize();
@@ -205,16 +205,17 @@ void RasterShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandL
 	pCurrentCommandList->RSSetScissorRects(1u, &scissorRect);
 	pCurrentCommandList->RSSetViewports(1u, &viewport);
 
-	D3D12_CPU_DESCRIPTOR_HANDLE rtvDescriptorHandles[3];
+	D3D12_CPU_DESCRIPTOR_HANDLE rtvDescriptorHandles[4];
 	const auto incrementSize = rendererResources->pDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 	rtvDescriptorHandles[0] = CD3DX12_CPU_DESCRIPTOR_HANDLE(rendererResources->pRTVDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), currentBackBufferIndex, incrementSize);
 	if (computeGBuffer)
 	{
-		rtvDescriptorHandles[1] = CD3DX12_CPU_DESCRIPTOR_HANDLE(pGDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), currentBackBufferIndex * 2, incrementSize); // position
-		rtvDescriptorHandles[2] = CD3DX12_CPU_DESCRIPTOR_HANDLE(pGDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), currentBackBufferIndex * 2 + 1, incrementSize); // normals
 		FLOAT color[] = { 0.f, 0.f, 0.f, 0.0f };
-		pCurrentCommandList->ClearRenderTargetView(rtvDescriptorHandles[1], color, 0, nullptr);
-		pCurrentCommandList->ClearRenderTargetView(rtvDescriptorHandles[2], color, 0, nullptr);
+		for (UINT i = 1; i < numRenderTargets; ++i)
+		{
+			rtvDescriptorHandles[i] = CD3DX12_CPU_DESCRIPTOR_HANDLE(pGDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), currentBackBufferIndex * (numRenderTargets - 1) + (i - 1), incrementSize); // position, normal, albedo
+			pCurrentCommandList->ClearRenderTargetView(rtvDescriptorHandles[i], color, 0, nullptr);
+		}
 	}
 	pCurrentCommandList->OMSetRenderTargets(numRenderTargets, &rtvDescriptorHandles[0], FALSE, &dsvDescriptorHandle);
 
@@ -274,7 +275,7 @@ void RasterShading::onResize()
 		{
 			gBuffer[i] = make_shared<Resource>(Resource::createTextureCommittedResource(
 				rendererResources->pDevice, rendererResources->winDimensions.x, rendererResources->winDimensions.y,
-				D3D12_RESOURCE_STATE_RENDER_TARGET, DXGI_FORMAT_R32G32B32A32_FLOAT, 
+				D3D12_RESOURCE_STATE_RENDER_TARGET, DXGI_FORMAT_R32G32B32A32_FLOAT,
 				D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET)
 			);
 			
@@ -292,4 +293,9 @@ void RasterShading::accept(IVisitor* visitor)
 ResPtrVec& RasterShading::getGBuffer()
 {
 	return gBuffer;
+}
+
+UINT RasterShading::getNumRenderTargets() const
+{
+	return numRenderTargets;
 }
