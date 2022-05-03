@@ -47,7 +47,7 @@ namespace candela::renderer::imgui
 		union {
 			// Raster Shading
 			struct {
-				
+				bool lightType;
 			};
 
 			// Light Shading

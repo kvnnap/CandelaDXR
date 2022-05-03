@@ -33,7 +33,7 @@ RasterShading::RasterShading(bool computeGBuffer)
 {
 }
 
-void candela::renderer::RasterShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12GraphicsCommandList>& pCurrentCommandList, ResourceRegFunction& resRegFn)
+void RasterShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12GraphicsCommandList>& pCurrentCommandList, ResourceRegFunction& resRegFn)
 {
 	this->rendererResources = rRes;
 
@@ -171,6 +171,7 @@ void candela::renderer::RasterShading::init(RendererResources* rRes, wrl::ComPtr
 
 	// Init const buffer
 	constBuffer.numLights = static_cast<uint32_t>(rendererResources->scene->getLights().size());
+	constBuffer.computeRadiance = 1;
 	constantBuffer = DXUtil::uploadDataToDefaultHeap(
 		rRes->pDevice,
 		pCurrentCommandList,
@@ -299,3 +300,14 @@ UINT RasterShading::getNumRenderTargets() const
 {
 	return numRenderTargets;
 }
+
+uint32_t RasterShading::getComputeRadiance() const
+{
+	return constBuffer.computeRadiance;
+}
+
+void RasterShading::setComputeRadiance(uint32_t cType)
+{
+	constBuffer.computeRadiance = cType;
+}
+

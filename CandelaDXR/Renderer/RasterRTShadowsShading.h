@@ -41,6 +41,8 @@ namespace candela::renderer
 		void onResize() override;
 		void accept(IVisitor* visitor) override;
 
+		std::uint32_t getLightType() const;
+		void setLightType(std::uint32_t);
 	private:
 		void buildPipeline();
 		void createShaderResources();
@@ -64,6 +66,7 @@ namespace candela::renderer
 			mathematics::UVector2 winDimensions;
 			std::uint32_t numLights;
 			std::uint32_t frameNumber;
+			std::uint32_t lightType;
 		} constBuffer;
 
 		wrl::ComPtr<ID3D12Resource> radianceTexture;

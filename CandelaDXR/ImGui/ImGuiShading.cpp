@@ -51,7 +51,16 @@ void ImGuiShading::visit(RasterShading* rasterShader)
 
 void ImGuiShading::visit(RasterRTShadowsShading* rasterShader)
 {
+	if (!initialised)
+	{
+		lightType = rasterShader->getLightType();
+	}
 	ImGui::Text("RasterRTShadowsShading");
+	if (ImGui::Checkbox("Area Light", &lightType))
+	{
+		rasterShader->setLightType(lightType ? 1 : 0);
+		changed = true;
+	}
 }
 
 void ImGuiShading::visit(LightTracingShading* lightTracingShader)

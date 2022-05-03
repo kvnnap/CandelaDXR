@@ -144,6 +144,17 @@ void RasterRTShadowsShading::accept(IVisitor* visitor)
 	visitor->visit(this);
 }
 
+uint32_t RasterRTShadowsShading::getLightType() const
+{
+	return constBuffer.lightType;
+}
+
+void RasterRTShadowsShading::setLightType(uint32_t lightType)
+{
+	constBuffer.lightType = lightType;
+	rasterShader.setComputeRadiance(lightType == 0 ? 1 : 0);
+}
+
 void RasterRTShadowsShading::buildPipeline()
 {
 	rootSignatureManager = make_shared<RootSignatureManager>();

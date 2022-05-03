@@ -39,6 +39,8 @@ namespace candela::renderer
 		void accept(IVisitor* visitor) override;
 		ResPtrVec& getGBuffer();
 		UINT getNumRenderTargets() const;
+		std::uint32_t getComputeRadiance() const;
+		void setComputeRadiance(std::uint32_t cType);
 	private:
 
 		RendererResources* rendererResources;
@@ -48,6 +50,7 @@ namespace candela::renderer
 			DirectX::XMMATRIX ViewPerspective; // Column-Major
 			DirectX::XMVECTOR CameraPosition;
 			std::uint32_t numLights;
+			std::uint32_t computeRadiance;
 		} constBuffer;
 
 		D3D12_VERTEX_BUFFER_VIEW bufferViews[3];

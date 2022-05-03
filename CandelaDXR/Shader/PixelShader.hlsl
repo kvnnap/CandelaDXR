@@ -9,6 +9,7 @@ struct ConstBuff {
 	matrix ViewPerspective;
 	Camera camera;
 	uint numLights;
+	uint computeRadiance;
 };
 
 cbuffer CB1 : register(b0)
@@ -83,21 +84,26 @@ MyOutput main(MyInput myInput)
 	MyOutput output;
 	output.radiance = float4(0.f, 0.f, 0.f, 1.f);
 	output.position = float4(myInput.position, 1.f);
-	output.normal = float4(normalize(myInput.normal), 1.f);
+	output.normal = float4(normalize(myInput.normal), 0.f);
 	output.albedo = 0;
 
-	if (dot(cBuffer.camera.position.xyz - myInput.position, normalize(myInput.normal)) < 0.f)
-		return output;
 	const uint matId = faceAttributes[instanceId / 3 + myInput.id].MaterialId;
 	const Material mat = materials[matId];
-
-	const float2 midpointBary = 1.f / 3.f;
-	float3 total = 0.f;
-
+	output.radiance.xyz = mat.Emissive;
 	float3 diffTex = mat.Diffuse;
 	if (mat.DiffuseTextureId >= 0)
 		diffTex *= gTextures[mat.DiffuseTextureId].SampleLevel(gSampler, myInput.texUV, 0);
 	output.albedo = float4(diffTex * mat.Dissolve, mat.RefractiveIndex);
+
+	if (dot(cBuffer.camera.position.xyz - myInput.position, normalize(myInput.normal)) < 0.f)
+		return output;
+
+	output.normal.w = 1.f; // Indicates back-face culling (1 = no culling)
+	const float2 midpointBary = 1.f / 3.f;
+	float3 total = 0.f;
+
+	if (!cBuffer.computeRadiance)
+		return output;
 
 	// Calculate lights
 	for (uint i = 0; i < cBuffer.numLights; ++i)
@@ -133,6 +139,6 @@ MyOutput main(MyInput myInput)
 		total += lightEmissive * diffTex * (frAndDissolve * triArea * OneOverPI * primDot * lightDot * invShadLen * invShadLen);
 	}
 	
-	output.radiance = float4(mat.Emissive + total, 1.f);
+	output.radiance.xyz += total;
 	return output;
 }
