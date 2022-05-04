@@ -34,7 +34,8 @@ namespace candela::renderer::imgui
 			Diffuse = 8
 		};
 
-		static bool processPathFilter(uint32_t &pathFlags, bool (&cPathFlags)[4]);
+		static bool processPathFilter(uint32_t& pathFlags, bool(&cPathFlags)[4]);
+		static bool processPathLength(int(&bounces)[2]);
 
 		IDrawable *drawable;
 		bool initialised;
@@ -53,6 +54,7 @@ namespace candela::renderer::imgui
 			// Light Shading
 			struct {
 				int lightSamples[2];
+				int bounces[2];
 				int shaderIndex;
 				float causticsRatio; // Still unbiased
 				bool lightPathFlags[4];
@@ -61,6 +63,7 @@ namespace candela::renderer::imgui
 			// Path Shading
 			struct {
 				bool specularOnly;
+				int pathBounces[2];
 				bool pathPathFlags[4];
 			};
 		};

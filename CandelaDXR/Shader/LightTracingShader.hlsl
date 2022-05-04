@@ -75,10 +75,12 @@ void rayGen()
 
 	ShadowPayload shadowPayload;
 
+	uint i = 1;
+
 	// Path filter
 	PathInteraction prevStateFlags = Light;
 
-	if ((prevStateFlags & cBuffer.pathFilter) != 0 && !lightDirectional && lightDot > 0.f && cameraDot > 0.f)
+	if ((prevStateFlags & cBuffer.pathFilter) != 0 && i >= cBuffer.minBounces && (i <= cBuffer.maxBounces || cBuffer.maxBounces == 0) && !lightDirectional && lightDot > 0.f && cameraDot > 0.f)
 	{
 		if (getPixel(shadowRay, cBuffer.winDim, pixel))
 		{
@@ -122,7 +124,6 @@ void rayGen()
 	int numEntries = 0;
 
 	// Traverse scene to another surface
-	uint i = 0;
 	RayPayload rayPayload;
 	while (TraceRay(
 		gRtScene,	// Acceleration Structure
@@ -134,6 +135,10 @@ void rayGen()
 		ray,
 		rayPayload), rayPayload.t != 0.f)
 	{ 
+		++i;
+		if (cBuffer.maxBounces != 0 && i > cBuffer.maxBounces)
+			break;
+
 		float3 intersectionPoint = ray.Origin + rayPayload.t * ray.Direction;
 
 		// Get Face attributes
@@ -175,7 +180,7 @@ void rayGen()
 				return;
 			localContribution *= exp((-rayPayload.t) * mat.TransmissiveFilter);
 		}
-		else if ((prevStateFlags & cBuffer.pathFilter) != 0)
+		else if ((prevStateFlags & cBuffer.pathFilter) != 0 && i >= cBuffer.minBounces)
 		{
 			// Check contribution to eye
 			shadowRay.Origin = intersectionPoint;
@@ -216,7 +221,7 @@ void rayGen()
 		}
 
 		// Russian roulette
-		if (++i >= 3)
+		if (i >= 4)
 		{
 			const float probabilityOfContinuing = 0.5f;
 			if (rand_next(seed) > probabilityOfContinuing)

@@ -68,6 +68,8 @@ void ImGuiShading::visit(LightTracingShading* lightTracingShader)
 	if (!initialised)
 	{
 		memcpy(lightSamples, &lightTracingShader->getLightSamples(), 2 * sizeof(int));
+		bounces[0] = static_cast<int>(lightTracingShader->getMinBounces());
+		bounces[1] = static_cast<int>(lightTracingShader->getMaxBounces());
 		shaderIndex = static_cast<int>(lightTracingShader->getCurrentShaderIndex());
 		causticsRatio = lightTracingShader->getCausticsRatio();
 		memset(lightPathFlags, true, sizeof(lightPathFlags));
@@ -83,6 +85,13 @@ void ImGuiShading::visit(LightTracingShading* lightTracingShader)
 			static_cast<uint32_t>(lightSamples[0]),
 			static_cast<uint32_t>(lightSamples[1])
 		});
+		changed = true;
+	}
+
+	if (processPathLength(bounces))
+	{
+		lightTracingShader->setMinBounces(bounces[0]);
+		lightTracingShader->setMaxBounces(bounces[1]);
 		changed = true;
 	}
 
@@ -111,6 +120,8 @@ void ImGuiShading::visit(PathTracingShading* pathTracingShader)
 	if (!initialised)
 	{
 		specularOnly = pathTracingShader->getSpecularOnly();
+		pathBounces[0] = static_cast<int>(pathTracingShader->getMinBounces());
+		pathBounces[1] = static_cast<int>(pathTracingShader->getMaxBounces());
 		memset(pathPathFlags, true, sizeof(pathPathFlags));
 	}
 
@@ -118,6 +129,13 @@ void ImGuiShading::visit(PathTracingShading* pathTracingShader)
 	if (ImGui::Checkbox("Specular Only", &specularOnly))
 	{
 		pathTracingShader->setSpecularOnly(specularOnly);
+		changed = true;
+	}
+
+	if (processPathLength(pathBounces))
+	{
+		pathTracingShader->setMinBounces(pathBounces[0]);
+		pathTracingShader->setMaxBounces(pathBounces[1]);
 		changed = true;
 	}
 
@@ -142,4 +160,22 @@ bool ImGuiShading::processPathFilter(uint32_t &pathFlags, bool (&cPathFlags)[4])
 	if (cPathFlags[2]) pathFlags |= PathInteraction::Refract;
 	if (cPathFlags[3]) pathFlags |= PathInteraction::Diffuse;
 	return lChanged;
+}
+
+bool ImGuiShading::processPathLength(int(&bounces)[2])
+{
+	auto prevMin = bounces[0];
+	if (ImGui::DragInt2("Path Length", &bounces[0], 1.f, 0, 16384))
+	{
+		if (bounces[0] > bounces[1])
+		{
+			if (prevMin == bounces[0])
+				bounces[0] = bounces[1];
+			else
+				bounces[1] = bounces[0];
+		}
+
+		return true;
+	}
+	return false;
 }

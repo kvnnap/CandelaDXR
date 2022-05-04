@@ -22,6 +22,9 @@ struct ConstBuff
 	uint frameNumber;
 	uint specularOnly;
 	PathInteraction pathFilter;
+	uint minBounces;
+	uint maxBounces;
+	uint2 padding;
 };
 
 struct RayPayload
@@ -105,7 +108,7 @@ void rayGen()
 	int numEntries = 0;
 
 	// Path segment index
-	uint i = 0;
+	uint i = 1;
 
 	float3 localCoefficient = 1.f;
 	float3 radiance = 0.f;
@@ -139,7 +142,7 @@ void rayGen()
 		// Fresnel vars
 		float n1, n2, dissolve, coeff;
 
-		if (cBuffer.specularOnly && i == 0)
+		if (cBuffer.specularOnly && i == 1)
 		{
 			n1 = 1.f;
 			n2 = mat.RefractiveIndex;
@@ -148,6 +151,9 @@ void rayGen()
 				break;
 			
 			++i;
+			if (cBuffer.maxBounces != 0 && i > cBuffer.maxBounces)
+				break;
+
 			float fr = fresnel(-wiDot, n1, n2);
 			if (rand_next(seed) <= fr)
 			{
@@ -192,7 +198,7 @@ void rayGen()
 		else
 		{
 			// If material is emissive, add its radiance
-			if (((prevInteraction & cBuffer.pathFilter & (Light | Reflect | Refract)) != 0) && mat.EmissiveType != 1 && any(mat.Emissive))
+			if (((prevInteraction & cBuffer.pathFilter & (Light | Reflect | Refract)) != 0) && i >= cBuffer.minBounces && mat.EmissiveType != 1 && any(mat.Emissive))
 			{
 				float3 albedo = mat.Emissive;
 				if (mat.EmissiveTextureId >= 0)
@@ -207,8 +213,12 @@ void rayGen()
 			coeff = 1.f;
 		}
 
+		++i;
+		if (cBuffer.maxBounces != 0 && i > cBuffer.maxBounces)
+			break;
+
 		// Russian roulette
-		if (++i >= 3)
+		if (i >= 4)
 		{
 			const float probabilityOfContinuing = 0.5f;
 			if (rand_next(seed) > probabilityOfContinuing)
@@ -232,7 +242,7 @@ void rayGen()
 		// Diffuse?
 		if (rand_next(seed) <= dissolve)
 		{
-			if ((prevInteraction & cBuffer.pathFilter) != 0)
+			if ((prevInteraction & cBuffer.pathFilter) != 0 && i >= cBuffer.minBounces)
 			{
 				// NES - Cast a shadow ray and collect light
 				const uint lightIndex = chooseInRange(seed, 0, cBuffer.numLights - 1);

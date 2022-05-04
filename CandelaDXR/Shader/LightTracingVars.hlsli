@@ -20,7 +20,9 @@ struct ConstBuff
 	uint frameNumber;
 	float causticsRatio;
 	PathInteraction pathFilter;
-	uint3 padding;
+	uint minBounces;
+	uint maxBounces;
+	uint padding;
 };
 
 // UAVs

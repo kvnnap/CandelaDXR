@@ -470,6 +470,26 @@ void LightTracingShading::setPathFilter(uint32_t pathFilter)
 	constBuffer.pathFilter = pathFilter;
 }
 
+uint32_t LightTracingShading::getMinBounces() const
+{
+	return constBuffer.minBounces;
+}
+
+void LightTracingShading::setMinBounces(uint32_t minBounces)
+{
+	constBuffer.minBounces = minBounces;
+}
+
+uint32_t LightTracingShading::getMaxBounces() const
+{
+	return constBuffer.maxBounces;
+}
+
+void LightTracingShading::setMaxBounces(uint32_t maxBounces)
+{
+	constBuffer.maxBounces = maxBounces;
+}
+
 // Compute constants
 static float f1(float x, float y, float z, float a, float b, float c)
 {

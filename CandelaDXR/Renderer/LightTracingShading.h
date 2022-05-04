@@ -52,6 +52,11 @@ namespace candela::renderer
 		std::uint32_t getPathFilter() const;
 		void setPathFilter(std::uint32_t pathFilter);
 
+		std::uint32_t getMinBounces() const;
+		void setMinBounces(std::uint32_t minBounces);
+		std::uint32_t getMaxBounces() const;
+		void setMaxBounces(std::uint32_t maxBounces);
+
 	private:
 		void buildPipeline();
 		void createShaderResources();
@@ -87,6 +92,8 @@ namespace candela::renderer
 			std::uint32_t frameNumber;
 			float causticsRatio;
 			std::uint32_t pathFilter;
+			std::uint32_t minBounces;
+			std::uint32_t maxBounces;
 		} constBuffer;
 		mathematics::UVector2 lightSamples;
 		std::vector<wrl::ComPtr<ID3D12Resource>> constantTempBuffer;

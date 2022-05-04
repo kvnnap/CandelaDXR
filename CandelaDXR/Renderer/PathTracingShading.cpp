@@ -162,6 +162,26 @@ uint32_t PathTracingShading::getPathFilter() const
 	return constBuffer.pathFilter;
 }
 
+uint32_t PathTracingShading::getMinBounces() const
+{
+	return constBuffer.minBounces;
+}
+
+void PathTracingShading::setMinBounces(uint32_t minBounces)
+{
+	constBuffer.minBounces = minBounces;
+}
+
+uint32_t PathTracingShading::getMaxBounces() const
+{
+	return constBuffer.maxBounces;
+}
+
+void PathTracingShading::setMaxBounces(uint32_t maxBounces)
+{
+	constBuffer.maxBounces = maxBounces;
+}
+
 void PathTracingShading::buildPipeline()
 {
 	rootSignatureManager = make_shared<RootSignatureManager>();
