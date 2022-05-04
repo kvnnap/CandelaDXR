@@ -204,11 +204,29 @@ void rayGen()
 		const uint vertIndex = rayPayload.faceIndex * 3;
 
 		// Get face unit normal
-		float3 unitFaceNormal = getUnitNormal(rayPayload.bary, vertIndex, fAttr.InstanceIndex);
-		float wiDot = dot(ray.Direction, unitFaceNormal);
+		const float3 unitFaceNormal = getUnitNormal(rayPayload.bary, vertIndex, fAttr.InstanceIndex);
+		const float wiDot = dot(ray.Direction, unitFaceNormal);
 		const bool isInternal = wiDot > 0.f;
 		
 		float3 intersectionPoint = ray.Origin + rayPayload.t * ray.Direction;
+
+		// Setup Fresnel coeff
+		float n1, n2, dissolve, coeff;
+		if (isInternal)
+		{
+			n1 = mat.RefractiveIndex;
+			n2 = 1.f;
+			dissolve = 0.f;
+			coeff = -1.f;
+		}
+		else
+		{
+			n1 = 1.f;
+			n2 = mat.RefractiveIndex;
+			dissolve = mat.Dissolve;
+			coeff = 1.f;
+		}
+		const float fr = fresnel(-coeff * wiDot, n1, n2); // Reflection 
 
 		// Beer's law
 		if (isInternal)
@@ -250,7 +268,7 @@ void rayGen()
 						float3 brdfDiff = mat.Diffuse * OneOverPI;
 						if (mat.DiffuseTextureId >= 0)
 							brdfDiff *= gTextures[mat.DiffuseTextureId].SampleLevel(gSampler, getTextureLocation(rayPayload.bary, vertIndex), 0);
-						float3 contrib = (localContribution * brdfDiff) * mat.Dissolve * surfaceDot * invShadowDistance * invShadowDistance * cameraDot;
+						float3 contrib = (localContribution * brdfDiff) * ((1.f - fr) * mat.Dissolve * surfaceDot * invShadowDistance * invShadowDistance * cameraDot);
 						AddContribution(pixLaunchIndex, contrib);
 					}
 				}
@@ -266,27 +284,9 @@ void rayGen()
 			localContribution *= 1.f / probabilityOfContinuing;
 		}
 
-		// Setup Fresnel coeff
-		float n1, n2, dissolve, coeff;
-		if (isInternal)
-		{
-			n1 = mat.RefractiveIndex;
-			n2 = 1.f;
-			dissolve = 0.f;
-			coeff = -1.f;
-		}
-		else
-		{
-			n1 = 1.f;
-			n2 = mat.RefractiveIndex;
-			dissolve = mat.Dissolve;
-			coeff = 1.f;
-		}
-
 		ray.Origin = intersectionPoint;
 
 		// Compute Fresnel
-		float fr = fresnel(-coeff * wiDot, n1, n2); // Reflection 
 		if (rand_next(seed) <= fr)
 		{
 			ray.Direction = reflect(ray.Direction, coeff * unitFaceNormal);
