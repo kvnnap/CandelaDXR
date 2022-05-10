@@ -77,7 +77,6 @@ namespace candela::renderer
 		std::unique_ptr<directx::Resource> pRTV8BitBackBuffer;
 		ResPtrVec pRTVBackBuffers;
 		ResPtrVec pRTVRadBackBuffers;
-		std::vector<ComPtrVec<ID3D12Resource>> tempBuffers;
 
 		// ImGui
 		wrl::ComPtr<ID3D12DescriptorHeap> pImGuiDescriptorHeap;
@@ -103,8 +102,7 @@ namespace candela::renderer
 		wrl::ComPtr<ID3D12Resource> specularBuffer;
 		wrl::ComPtr<ID3D12Resource> matrices;
 		wrl::ComPtr<ID3D12Resource> normalMatrices;
-
-		std::vector<wrl::ComPtr<ID3D12Resource>> textures;
+		std::vector<directx::Resource> textures;
 
 		// Chain
 		std::vector<std::unique_ptr<chain::IChain>> chain;

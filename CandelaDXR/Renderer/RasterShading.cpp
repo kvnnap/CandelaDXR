@@ -40,8 +40,6 @@ void RasterShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12GraphicsComm
 	// Handle result used for errors
 	HRESULT hr;
 
-	viewport = CD3DX12_VIEWPORT(0.0f, 0.0f, static_cast<float>(rRes->winDimensions.x), static_cast<float>(rRes->winDimensions.y));
-
 	// Load shaders
 	wrl::ComPtr<ID3DBlob> pVertexShaderBlob;
 	wrl::ComPtr<ID3DBlob> pPixelShaderBlob;

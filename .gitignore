@@ -363,7 +363,10 @@ MigrationBackup/
 FodyWeavers.xsd
 
 # Allow assets
-!CandelaDXR/Assets/**
+/CandelaDXR/Assets/**
+!/CandelaDXR/Assets/config.json
+!/CandelaDXR/Assets/CornellBox-Original.obj
+!/CandelaDXR/Assets/CornellBox-Original.mtl
 
 # Ignore auto-generated version file
 /CandelaDXR/Version/AutoVersion.h

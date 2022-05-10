@@ -24,6 +24,7 @@ using candela::directx::RootSignatureManager;
 using candela::directx::DescriptorHeap;
 using candela::directx::ShadingTable;
 using candela::directx::ShadingRecordType;
+using candela::directx::Resource;
 
 using candela::sampler::ISampler;
 
@@ -56,7 +57,6 @@ void PathTracingShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12Graphic
 	rendererResources = rRes;
 
 	// Const buffer initial values
-	constantTempBuffer.resize(rRes->numBackBuffers);
 	constBuffer.numLights = static_cast<uint32_t>(rRes->scene->getLights().size());
 	constBuffer.pathFilter = 0xFFFFFFFF;
 
@@ -79,8 +79,7 @@ void PathTracingShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCom
 	// Pre-stuff
 	auto& backBuff = rendererResources->pRTVRadBackBuffers[currentBackBufferIndex];
 	backBuff->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_COPY_DEST);
-	auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(outputTexture.Get(), D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-	pCurrentCommandList->ResourceBarrier(1u, &barrier);
+	outputTexture->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
 	// Copy and update camera
 	auto cam = rendererResources->camera;
@@ -98,7 +97,7 @@ void PathTracingShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCom
 		constBuffer.frameNumber = 1;
 	else
 		++constBuffer.frameNumber;
-	DXUtil::updateDataInDefaultHeap(rendererResources->pDevice, pCurrentCommandList, constantBuffer, constantTempBuffer[currentBackBufferIndex],
+	DXUtil::updateDataInDefaultHeap(rendererResources->pDevice, pCurrentCommandList, constantBuffer, rendererResources->getTempResource(),
 		&constBuffer, sizeof(constBuffer), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
 	pCurrentCommandList->SetDescriptorHeaps(1u, descriptorHeap.GetAddressOf());
@@ -115,9 +114,8 @@ void PathTracingShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCom
 	clear = false;
 
 	// After
-	barrier = CD3DX12_RESOURCE_BARRIER::Transition(outputTexture.Get(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_SOURCE);
-	pCurrentCommandList->ResourceBarrier(1u, &barrier);
-	pCurrentCommandList->CopyResource(*backBuff, outputTexture.Get());
+	outputTexture->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_COPY_SOURCE);
+	pCurrentCommandList->CopyResource(*backBuff, *outputTexture);
 	backBuff->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);
 }
 
@@ -294,15 +292,21 @@ void PathTracingShading::createShaderResources()
 	const auto& dim = rendererResources->winDimensions;
 
 	// The output resource
-	outputTexture = DXUtil::createTextureCommittedResource(rendererResources->pDevice, D3D12_HEAP_TYPE_DEFAULT, dim.x, dim.y, D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, DXGI_FORMAT_R32G32B32A32_FLOAT);
-	outputTexture->SetName(L"Output Texture");
-	radianceTexture = DXUtil::createTextureCommittedResource(rendererResources->pDevice, D3D12_HEAP_TYPE_DEFAULT, dim.x, dim.y, D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, DXGI_FORMAT_R32G32B32A32_FLOAT);
-	radianceTexture->SetName(L"Radiance Texture");
+	outputTexture = make_unique<Resource>(Resource::createTextureCommittedResource(
+		rendererResources->pDevice, dim.x, dim.y,
+		D3D12_RESOURCE_STATE_COPY_SOURCE,
+		DXGI_FORMAT_R32G32B32A32_FLOAT, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS));
+	outputTexture->setName(L"Output Texture");
+	radianceTexture = make_unique<Resource>(Resource::createTextureCommittedResource(
+		rendererResources->pDevice, dim.x, dim.y,
+		D3D12_RESOURCE_STATE_COPY_SOURCE,
+		DXGI_FORMAT_R32G32B32A32_FLOAT, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS));
+	radianceTexture->setName(L"Radiance Texture");
 
 	D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
 	uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
-	descHeapManager.setUAV(entryNumber++, uavDesc, rendererResources->pDevice, outputTexture);
-	descHeapManager.setUAV(entryNumber++, uavDesc, rendererResources->pDevice, radianceTexture);
+	descHeapManager.setUAV(entryNumber++, uavDesc, rendererResources->pDevice, *outputTexture);
+	descHeapManager.setUAV(entryNumber++, uavDesc, rendererResources->pDevice, *radianceTexture);
 
 	// Create the SRV descriptor in second place (following same order as in root signature)
 	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};

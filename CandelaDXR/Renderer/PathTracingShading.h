@@ -14,6 +14,7 @@
 #include "DirectX/CommandQueue.h"
 #include "DirectX/RootSignatureManager.h"
 #include "DirectX/ShadingTable.h"
+#include "DirectX/Resource.h"
 #include "Scene/Scene.h"
 #include "Sampler/UniformSampler.h"
 
@@ -79,9 +80,8 @@ namespace candela::renderer
 			std::uint32_t maxBounces;
 		} constBuffer;
 
-		std::vector<wrl::ComPtr<ID3D12Resource>> constantTempBuffer;
-		wrl::ComPtr<ID3D12Resource> outputTexture;
-		wrl::ComPtr<ID3D12Resource> radianceTexture;
+		std::unique_ptr<directx::Resource> outputTexture;
+		std::unique_ptr<directx::Resource> radianceTexture;
 		wrl::ComPtr<ID3D12Resource> constantBuffer;
 		std::unique_ptr<sampler::ISampler> sampler;
 		bool clear;

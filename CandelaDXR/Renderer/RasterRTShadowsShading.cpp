@@ -25,6 +25,7 @@ using candela::directx::RootSignatureManager;
 using candela::directx::DescriptorHeap;
 using candela::directx::ShadingTable;
 using candela::directx::ShadingRecordType;
+using candela::directx::Resource;
 
 using candela::sampler::ISampler;
 
@@ -263,8 +264,11 @@ void RasterRTShadowsShading::createShaderResources()
 	const auto& dim = rendererResources->winDimensions;
 	
 	// The output resource
-	radianceTexture = DXUtil::createTextureCommittedResource(rendererResources->pDevice, D3D12_HEAP_TYPE_DEFAULT, dim.x, dim.y, D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, DXGI_FORMAT_R32G32B32A32_FLOAT);
-	radianceTexture->SetName(L"Radiance Texture");
+	radianceTexture = make_unique<Resource>(Resource::createTextureCommittedResource(
+		rendererResources->pDevice, dim.x, dim.y,
+		D3D12_RESOURCE_STATE_COPY_SOURCE,
+		DXGI_FORMAT_R32G32B32A32_FLOAT, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS));
+	radianceTexture->setName(L"Radiance Texture");
 
 	// The descriptor heap to store SRV (Shader resource View) and UAV (Unordered access view) descriptors
 	descriptorHeaps.clear();
@@ -280,7 +284,7 @@ void RasterRTShadowsShading::createShaderResources()
 		D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
 		uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
 		descHeapManager.setUAV(entryNumber++, uavDesc, rendererResources->pDevice, *rendererResources->pRTVRadBackBuffers[i]);
-		descHeapManager.setUAV(entryNumber++, uavDesc, rendererResources->pDevice, radianceTexture);
+		descHeapManager.setUAV(entryNumber++, uavDesc, rendererResources->pDevice, *radianceTexture);
 
 		// Create the SRV descriptor in second place (following same order as in root signature)
 		D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};

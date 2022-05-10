@@ -30,6 +30,7 @@ using candela::directx::RootSignatureManager;
 using candela::directx::ShadingTable;
 using candela::directx::DescriptorHeap;
 using candela::directx::ShadingRecordType;
+using candela::directx::Resource;
 
 using candela::renderer::LightTracingShading;
 using candela::renderer::RendererResources;
@@ -67,7 +68,6 @@ void LightTracingShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12Graphi
 
 	shaderPaths.emplace_back("./Shaders/LightTracingShader.cso");
 	shaderPaths.emplace_back("./Shaders/LightTracingOptimisedShader.cso");
-	constantTempBuffer.resize(rRes->numBackBuffers);
 	constBuffer.numLights = static_cast<uint32_t>(rRes->scene->getLights().size());
 	constBuffer.numSpeculars = static_cast<uint32_t>(rRes->scene->getSpeculars().size());
 	constBuffer.frameNumber = 0;
@@ -89,7 +89,6 @@ void LightTracingShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12Graphi
 	constantBuffer->SetName(L"LT Constant Buffer");
 
 	// Build shading table
-	shadingTableTempBuffers.resize(shaderPaths.size());
 	createShaderTable(pCurrentCommandList);
 }
 
@@ -99,8 +98,7 @@ void LightTracingShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> currentCom
 	auto &backBuff = rendererResources->pRTVRadBackBuffers[currentBackBufferIndex];
 	backBuff->transistionBarrier(currentCommandList, D3D12_RESOURCE_STATE_COPY_DEST);
 	
-	auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(outputTexture.Get(), D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-	currentCommandList->ResourceBarrier(1u, &barrier);
+	outputTexture->transistionBarrier(currentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
 	// Copy and update camera
 	auto cam = rendererResources->camera;
@@ -118,7 +116,7 @@ void LightTracingShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> currentCom
 		constBuffer.frameNumber = 1;
 	else
 		++constBuffer.frameNumber;
-	DXUtil::updateDataInDefaultHeap(rendererResources->pDevice, currentCommandList, constantBuffer, constantTempBuffer[currentBackBufferIndex],
+	DXUtil::updateDataInDefaultHeap(rendererResources->pDevice, currentCommandList, constantBuffer, rendererResources->getTempResource(),
 		&constBuffer, sizeof(constBuffer), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
 	currentCommandList->SetDescriptorHeaps(1u, descriptorHeap.GetAddressOf());
@@ -148,9 +146,8 @@ void LightTracingShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> currentCom
 	clear = false;
 
 	// After
-	barrier = CD3DX12_RESOURCE_BARRIER::Transition(outputTexture.Get(), D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_STATE_COPY_SOURCE);
-	currentCommandList->ResourceBarrier(1u, &barrier);
-	currentCommandList->CopyResource(*backBuff, outputTexture.Get());
+	outputTexture->transistionBarrier(currentCommandList, D3D12_RESOURCE_STATE_COPY_SOURCE);
+	currentCommandList->CopyResource(*backBuff, *outputTexture);
 	backBuff->transistionBarrier(currentCommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);
 }
 
@@ -307,16 +304,22 @@ void LightTracingShading::createShaderResources()
 	const auto &dim = rendererResources->winDimensions;
 
 	// The output resource
-	outputTexture = DXUtil::createTextureCommittedResource(rendererResources->pDevice, D3D12_HEAP_TYPE_DEFAULT, dim.x, dim.y, D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, DXGI_FORMAT_R32G32B32A32_FLOAT);
-	outputTexture->SetName(L"Output Texture");
-	irradianceTexture = DXUtil::createTextureCommittedResource(rendererResources->pDevice, D3D12_HEAP_TYPE_DEFAULT, dim.x, dim.y, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, DXGI_FORMAT_R32G32B32A32_FLOAT);
-	irradianceTexture->SetName(L"Irradiance Texture");
+	outputTexture = make_unique<Resource>(Resource::createTextureCommittedResource(
+		rendererResources->pDevice, dim.x, dim.y,
+		D3D12_RESOURCE_STATE_COPY_SOURCE,
+		DXGI_FORMAT_R32G32B32A32_FLOAT, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS));
+	outputTexture->setName(L"Output Texture");
+	irradianceTexture = make_unique<Resource>(Resource::createTextureCommittedResource(
+		rendererResources->pDevice, dim.x, dim.y,
+		D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
+		DXGI_FORMAT_R32G32B32A32_FLOAT, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS));
+	irradianceTexture->setName(L"Irradiance Texture");
 	irradianceDataStructure = DXUtil::createCommittedResource(rendererResources->pDevice, D3D12_HEAP_TYPE_DEFAULT, dim.x * dim.y * sizeof(uint32_t) * 4, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS);
 	irradianceDataStructure->SetName(L"Irradiance DS");
 
 	D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
 	uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
-	descHeapManager->setUAV(entryNumber++, uavDesc, rendererResources->pDevice, outputTexture);
+	descHeapManager->setUAV(entryNumber++, uavDesc, rendererResources->pDevice, *outputTexture);
 	D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc2 = {};
 	uavDesc2.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
 	uavDesc2.Buffer.NumElements = dim.x * dim.y;
@@ -349,9 +352,9 @@ void LightTracingShading::createShaderResources()
 
 	// Compute shader
 	auto cmpDescHeapManager = DescriptorHeap(computeRSM, "ComputeDataDescTable", "ComputeData1", rendererResources->pDevice);
-	cmpDescHeapManager.setUAV(0, uavDesc, rendererResources->pDevice, outputTexture);
+	cmpDescHeapManager.setUAV(0, uavDesc, rendererResources->pDevice, *outputTexture);
 	cmpDescHeapManager.setUAV(1, uavDesc2, rendererResources->pDevice, irradianceDataStructure);
-	cmpDescHeapManager.setUAV(2, uavDesc, rendererResources->pDevice, irradianceTexture);
+	cmpDescHeapManager.setUAV(2, uavDesc, rendererResources->pDevice, *irradianceTexture);
 	cmpDescHeapManager.setSRV(3, irrToRadSrvDesc, rendererResources->pDevice, irrToRad);
 	computeDescriptorHeap = cmpDescHeapManager.getDescriptorHeap();
 }
@@ -379,7 +382,7 @@ void LightTracingShading::createShaderTable(wrl::ComPtr<ID3D12GraphicsCommandLis
 		shadingTable->setInputForViewParameter(L"rayGen", "speculars", rendererResources->specularBuffer);
 
 		// Generate
-		shadingTable->generateShadingTable(rendererResources->pDevice, commandList, stateObjects[i], shadingTableTempBuffers[i]);
+		shadingTable->generateShadingTable(rendererResources->pDevice, commandList, stateObjects[i], rendererResources->getTempResource());
 	}
 }
 

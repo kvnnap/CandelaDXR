@@ -140,7 +140,6 @@ void Renderer::init()
 	// Allocate 
 	pRTVBackBuffers.resize(NumBackBuffers);
 	pRTVRadBackBuffers.resize(NumBackBuffers);
-	tempBuffers.resize(NumBackBuffers);
 	frameFenceValues.resize(NumBackBuffers);
 
 	// Init DirectX Debugging
@@ -178,6 +177,7 @@ void Renderer::init()
 	pRTVBackBuffers = DXUtil::createRenderTargetViewsEx(pDevice, pRTVDescriptorHeap, pSwapChain, pRTVRadBackBuffers, NumBackBuffers);
 	
 	// Upload scene resources
+	rendererResources.tempBuffers.resize(NumBackBuffers);
 	initSceneResources();
 
 	// ImGui
@@ -219,10 +219,10 @@ void Renderer::init()
 		.numBackBuffers = NumBackBuffers,
 		.scene = scene,
 		.camera = camera,
-		.accelerationStructure = nullptr
+		.accelerationStructure = nullptr,
+		.tempBuffers = rendererResources.tempBuffers,
+		.currentBackBufferIndex = 0
 	};
-
-	rendererResources.tempBuffers.resize(NumBackBuffers);
 
 	initShaders();
 	createShaderResources();
@@ -475,10 +475,9 @@ void Renderer::renderFrame()
 	GFXTHROWIFFAILED(pSwapChain->Present(vsync ? 1u : 0u, 0u));
 	ComPtr<IDXGISwapChain3> pSwapChain3;
 	GFXTHROWIFFAILED(pSwapChain.As(&pSwapChain3));
-	currentBackBufferIndex = pSwapChain3->GetCurrentBackBufferIndex();
+	rendererResources.currentBackBufferIndex = currentBackBufferIndex = pSwapChain3->GetCurrentBackBufferIndex();
 	commandQueue->waitForFenceValue(frameFenceValues[currentBackBufferIndex]);
 	rendererResources.tempBuffers[currentBackBufferIndex].clear();
-	tempBuffers[currentBackBufferIndex].clear();
 
 	// Stats
 	if (changeEvent || camera->hasChanged())
@@ -542,7 +541,7 @@ void Renderer::initSceneResources()
 	auto tempTexBuffer = texTempBuffer.begin();
 	for (const auto& texture : scene->getTextures())
 	{
-		textures.push_back(DXUtil::uploadTextureDataToDefaultHeap(
+		textures.emplace_back(DXUtil::uploadTextureDataToDefaultHeap(
 			pDevice,
 			pCurrentCommandList,
 			*tempTexBuffer++,
@@ -550,15 +549,15 @@ void Renderer::initSceneResources()
 			texture.getWidth(),
 			texture.getHeight(),
 			texture.getChannels(),
-			DXGI_FORMAT_R8G8B8A8_UNORM, flags));
-		textures.back()->SetName(L"Texture");
+			DXGI_FORMAT_R8G8B8A8_UNORM, flags), flags);
+		textures.back().setName(L"Texture");
 	}
 
 	if (textures.empty())
 	{
-		textures.push_back(DXUtil::createTextureCommittedResource(
-			pDevice, D3D12_HEAP_TYPE_DEFAULT, 1, 1, flags, D3D12_RESOURCE_FLAG_NONE, DXGI_FORMAT_R8G8B8A8_UNORM));
-		textures.back()->SetName(L"Empty Texture");
+		textures.emplace_back(DXUtil::createTextureCommittedResource(
+			pDevice, D3D12_HEAP_TYPE_DEFAULT, 1, 1, flags, D3D12_RESOURCE_FLAG_NONE, DXGI_FORMAT_R8G8B8A8_UNORM), flags);
+		textures.back().setName(L"Empty Texture");
 	}
 
 	auto fenceValue = commandQueue->executeCommandList(pCurrentCommandList);
@@ -641,7 +640,7 @@ void Renderer::resize()
 	rendererResources.pRTVRadBackBuffers.clear();
 	pRTVBackBuffers.clear();
 	pRadAccumulator.reset();
-	currentBackBufferIndex = 0;
+	rendererResources.currentBackBufferIndex = currentBackBufferIndex = 0;
 	camera->setAspectRatio(static_cast<float>(windowDimensions.x) / windowDimensions.y);
 	HRESULT hr;
 	auto flags = DXUtil::checkTearingSupport(dxgiFactory) ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING : 0;
@@ -728,7 +727,7 @@ void Renderer::refreshMaterialResources()
 
 candela::directx::DXResource& Renderer::getTempResource()
 {
-	return tempBuffers[currentBackBufferIndex].emplace_back();
+	return rendererResources.getTempResource();
 }
 
 LRESULT Renderer::wndCallback(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)

@@ -350,7 +350,7 @@ void DescriptorHeap::setUAV(size_t entryNumber, const D3D12_UNORDERED_ACCESS_VIE
 	setResource(entryNumber, resource);
 }
 
-void DescriptorHeap::setSRV(size_t entryNumber, const D3D12_SHADER_RESOURCE_VIEW_DESC& srvDescriptor, Microsoft::WRL::ComPtr<ID3D12Device> pDevice, Microsoft::WRL::ComPtr<ID3D12Resource> resource)
+void DescriptorHeap::setSRV(size_t entryNumber, const D3D12_SHADER_RESOURCE_VIEW_DESC& srvDescriptor, Microsoft::WRL::ComPtr<ID3D12Device> pDevice, const Microsoft::WRL::ComPtr<ID3D12Resource>& resource)
 {
 	if (rootSignatureManager->getDescriptorHeapRangeType(parameterName, entryNumber) != D3D12_DESCRIPTOR_RANGE_TYPE_SRV)
 		throw runtime_error("Entry " + to_string(entryNumber) + " in not of type SRV");

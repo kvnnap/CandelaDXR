@@ -6,6 +6,7 @@
 #include "Exception/Exception.h"
 
 using std::vector;
+using std::uint32_t;
 using DirectX::XMFLOAT4;
 
 using candela::directx::Resource;
@@ -31,7 +32,17 @@ void Resource::uavBarrier(DXCommandList& commandList)
 	commandList->ResourceBarrier(1u, &barrier);
 }
 
+D3D12_RESOURCE_STATES Resource::getState() const
+{
+	return state;
+}
+
 Resource::operator DXResource&()
+{
+	return resource;
+}
+
+Resource::operator const DXResource& () const
 {
 	return resource;
 }
@@ -102,6 +113,24 @@ ResourceData Resource::read(DXCommandQueue& commandQueue)
 	res.resource->Unmap(0u, &destRange);
 
 	return ResourceData{desc.Width, desc.Height, std::move(data)};
+}
+
+void Resource::resize(uint32_t width, uint32_t height)
+{
+	// Get resource info
+	DXResource& dxRes = resource;
+	auto desc = dxRes->GetDesc();
+	if (desc.Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE2D)
+		ThrowException("resize error: Resource is not Texture2D");
+
+	// Get device
+	DXDevice device;
+	dxRes->GetDevice(IID_PPV_ARGS(&device));
+
+	// Resize the resource
+	resource = Resource::createTextureCommittedResource(
+		device, width, height, state,
+		desc.Format, desc.Flags).resource;
 }
 
 void Resource::setName(const std::wstring& name)

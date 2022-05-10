@@ -14,6 +14,7 @@
 #include "DirectX/CommandQueue.h"
 #include "DirectX/RootSignatureManager.h"
 #include "DirectX/ShadingTable.h"
+#include "DirectX/Resource.h"
 #include "Scene/Scene.h"
 #include "Sampler/UniformSampler.h"
 
@@ -96,13 +97,13 @@ namespace candela::renderer
 			std::uint32_t maxBounces;
 		} constBuffer;
 		mathematics::UVector2 lightSamples;
-		std::vector<wrl::ComPtr<ID3D12Resource>> constantTempBuffer;
-		std::vector<wrl::ComPtr<ID3D12Resource>> shadingTableTempBuffers;
-		wrl::ComPtr<ID3D12Resource> outputTexture;
+
 		wrl::ComPtr<ID3D12Resource> constantBuffer;
-		wrl::ComPtr<ID3D12Resource> irrToRad;
-		wrl::ComPtr<ID3D12Resource> irradianceTexture;
 		wrl::ComPtr<ID3D12Resource> irradianceDataStructure;
+		wrl::ComPtr<ID3D12Resource> irrToRad;
+
+		std::unique_ptr<directx::Resource> outputTexture;
+		std::unique_ptr<directx::Resource> irradianceTexture;
 		std::unique_ptr<sampler::ISampler> sampler;
 		bool clear;
 

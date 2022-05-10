@@ -33,10 +33,13 @@ namespace candela::directx
 
 		void transistionBarrier(DXCommandList &commandList, D3D12_RESOURCE_STATES state);
 		void uavBarrier(DXCommandList &commandList);
-		operator DXResource&();
+		D3D12_RESOURCE_STATES getState() const;
+		operator DXResource& ();
+		operator const DXResource&() const;
 		operator ID3D12Resource*();
 
 		ResourceData read(DXCommandQueue& commandList);
+		void resize(std::uint32_t width, std::uint32_t height);
 
 		void setName(const std::wstring& name);
 		std::wstring getName() const;

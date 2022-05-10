@@ -33,7 +33,7 @@ namespace candela::renderer
 		wrl::ComPtr<ID3D12Resource> specularBuffer;
 		wrl::ComPtr<ID3D12Resource> matrices;
 		wrl::ComPtr<ID3D12Resource> normalMatrices;
-		std::vector<wrl::ComPtr<ID3D12Resource>> textures;
+		std::vector<directx::Resource> textures;
 		wrl::ComPtr<ID3D12DescriptorHeap> pRTVDescriptorHeap;
 		std::vector<std::shared_ptr<directx::Resource>> pRTVRadBackBuffers;
 		directx::CommandQueue *commandQueue;
@@ -44,6 +44,12 @@ namespace candela::renderer
 		AccelerationStructure* accelerationStructure;
 		std::vector<wrl::ComPtr<ID3D12Resource>> initTempBuffers;
 		std::vector<std::vector<wrl::ComPtr<ID3D12Resource>>> tempBuffers;
+		UINT currentBackBufferIndex;
+
+		directx::DXResource& getTempResource()
+		{
+			return tempBuffers[currentBackBufferIndex].emplace_back();
+		}
 	};
 
 	enum class ChangeEvent : std::uint32_t
