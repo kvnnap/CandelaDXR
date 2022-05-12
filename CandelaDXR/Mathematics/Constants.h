@@ -2,7 +2,6 @@
 
 #include <limits>
 
-
 namespace candela::mathematics::constants
 {
     // Math

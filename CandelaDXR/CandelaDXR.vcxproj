@@ -201,6 +201,7 @@
     <ClCompile Include="DirectX\CommandQueue.cpp" />
     <ClCompile Include="DirectX\DxUtil.cpp" />
     <ClCompile Include="DirectX\Resource.cpp" />
+    <ClCompile Include="DirectX\ResourceManager.cpp" />
     <ClCompile Include="DirectX\RootSignatureManager.cpp" />
     <ClCompile Include="DirectX\ShadingTable.cpp" />
     <ClCompile Include="Environment\Environment.cpp" />
@@ -255,8 +256,14 @@
     <ClInclude Include="DirectX\DxgiInfoManager.h" />
     <ClInclude Include="DirectX\DxUtil.h" />
     <ClInclude Include="DirectX\Resource.h" />
+    <ClInclude Include="DirectX\ResourceManager.h" />
     <ClInclude Include="DirectX\RootSignatureManager.h" />
     <ClInclude Include="DirectX\ShadingTable.h" />
+    <ClInclude Include="DirectX\Types.h" />
+    <ClInclude Include="Renderer\ChangeEvent.h" />
+    <ClInclude Include="Renderer\IResource.h" />
+    <ClInclude Include="Renderer\IVisitor.h" />
+    <ClInclude Include="Renderer\RendererResources.h" />
     <ClInclude Include="Environment\Environment.h" />
     <ClInclude Include="Exception\DxgiInfoException.h" />
     <ClInclude Include="Exception\Exception.h" />

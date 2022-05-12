@@ -1,5 +1,8 @@
 #pragma once
 
+#include <cstddef>
+#include <string>
+
 #include <DirectXMath.h>
 
 #include "Scene/Scene.h"

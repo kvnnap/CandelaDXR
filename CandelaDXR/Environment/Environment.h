@@ -4,14 +4,13 @@
 
 #include "feanor/core/environment/resource_manager.h"
 #include "feanor/core/configuration/configuration_node.h"
-
 #include "feanor/core/configuration/parser/iparser.h"
 
-#include "Scene/ISceneLoader.h"
-#include "Scene/Scene.h"
+#include "Renderer/Camera.h"
 #include "Renderer/IRenderer.h"
 #include "Renderer/IDrawable.h"
-#include "Renderer/Camera.h"
+#include "Scene/Scene.h"
+#include "Scene/ISceneLoader.h"
 
 namespace candela::environment
 {

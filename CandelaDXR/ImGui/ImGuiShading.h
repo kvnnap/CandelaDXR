@@ -2,9 +2,10 @@
 
 #include <vector>
 #include <string>
+#include <cstdint>
 
+#include "Renderer/IVisitor.h"
 #include "Renderer/IDrawable.h"
-
 #include "Mathematics/Types.h"
 
 namespace candela::renderer::imgui

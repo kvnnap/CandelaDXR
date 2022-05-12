@@ -1,12 +1,12 @@
 #pragma once
-#define NOMINMAX
 
-#include <d3d12.h>
 #include <string>
 #include <memory>
 #include <vector>
 #include <unordered_map>
 
+#include "DirectX/Types.h"
+#include "d3dx12.h"
 #include "RootSignatureManager.h"
 
 namespace candela::directx

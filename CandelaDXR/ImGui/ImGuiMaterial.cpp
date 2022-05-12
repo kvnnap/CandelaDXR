@@ -1,6 +1,6 @@
-#include "ImGuiMaterial.h"
-
 #include "imgui/imgui.h"
+
+#include "ImGuiMaterial.h"
 
 using candela::renderer::imgui::ImGuiMaterial;
 using candela::scene::Material;

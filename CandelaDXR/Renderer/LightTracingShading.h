@@ -1,14 +1,11 @@
 #pragma once
 
-#define NOMINMAX
-#include <d3d12.h>
-#include <wrl/client.h>
-
 #include <vector>
 #include <memory>
 #include <cstdint>
 #include <string>
 
+#include "DirectX/Types.h"
 #include "DirectX/DXUtil.h"
 
 #include "DirectX/CommandQueue.h"

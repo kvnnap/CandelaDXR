@@ -2,8 +2,7 @@
 
 #include <string>
 #define WIN32_LEAN_AND_MEAN      // Exclude rarely-used stuff from Windows headers
-
-#include <windows.h>
+#include "Window/WindowsDef.h"
 
 namespace candela::system
 {
@@ -15,8 +14,6 @@ namespace candela::system
 
 		DllManager(const DllManager&) = delete;
 		DllManager& operator=(const DllManager&) = delete;
-
-		
 
 		template<class T>
 		T* getFunction(const std::string& fnName)

@@ -3,6 +3,7 @@
 #include "d3dx12.h"
 #include "DxUtil.h"
 
+#include "CommandQueue.h"
 #include "Exception/Exception.h"
 
 using std::vector;

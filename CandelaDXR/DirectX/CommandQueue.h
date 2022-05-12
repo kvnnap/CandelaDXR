@@ -1,11 +1,8 @@
 #pragma once
 
-#define NOMINMAX
-#include <Windows.h>
-#include <d3d12.h>
-#include <dxgi1_6.h>
+#include "Window/WindowsDef.h"
+#include "DirectX/Types.h"
 #include <DirectXMath.h>
-#include <wrl/client.h>
 #include <cstdint>
 #include <queue>
 

@@ -1,19 +1,15 @@
 #pragma once
 
-#define NOMINMAX
-
-#include <d3d12.h>
-#include <wrl/client.h>
-
 #include <string>
 #include <unordered_map>
 
+#include "DirectX/Types.h"
 #include "d3dx12.h"
-
 
 namespace candela::directx
 {
-	struct RootSignature {
+	struct RootSignature
+	{
 		std::vector<std::string> parameterNames;
 		D3D12_STATIC_SAMPLER_DESC sampler;
 

@@ -5,7 +5,6 @@
 
 namespace candela::exception
 {
-
 	class Exception
 		: public std::exception
 	{
@@ -18,7 +17,6 @@ namespace candela::exception
 	protected:
 		std::string whatBuffer;
 	};
-
 }
 
 #define ThrowException(reason) (throw candela::exception::Exception(__FILE__, __LINE__, __func__, reason))

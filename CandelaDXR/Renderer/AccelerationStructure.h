@@ -4,9 +4,10 @@
 #include <vector>
 
 #include "IDrawable.h"
+#include "IResource.h"
 
 #include "DirectX/DxUtil.h"
-
+#include "RendererResources.h"
 
 namespace candela::renderer
 {

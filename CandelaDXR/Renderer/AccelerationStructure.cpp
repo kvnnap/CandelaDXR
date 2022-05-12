@@ -1,4 +1,5 @@
 #include "AccelerationStructure.h"
+#include "Scene/Scene.h"
 
 #include <string>
 #include <cstdint>

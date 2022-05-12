@@ -4,8 +4,10 @@
 #include <string>
 #include <memory>
 
-namespace candela::scene {
-	class Texture {
+namespace candela::scene
+{
+	class Texture
+	{
 	public:
 		Texture(const std::string& fileName);
 

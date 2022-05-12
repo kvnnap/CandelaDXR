@@ -12,6 +12,7 @@
 #include "Util/StringUtil.h"
 
 #include "AccelerationStructure.h"
+#include "RendererResources.h"
 
 using std::uint32_t;
 using std::vector;

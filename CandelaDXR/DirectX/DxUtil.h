@@ -5,11 +5,11 @@
 #include <wrl/client.h>
 #include <DirectXMath.h>
 
-#include "Resource.h"
-
 #include <vector>
 #include <cstdint>
 #include <memory>
+
+#include "Resource.h"
 
 namespace candela::directx
 {

@@ -1,5 +1,3 @@
-#include "RasterRTShadowsShading.h"
-
 #include <cstdint>
 
 #include <d3dcompiler.h>
@@ -9,8 +7,11 @@
 #include "Exception/WindowException.h"
 
 #include "AccelerationStructure.h"
+#include "RendererResources.h"
 
 #include "Util/StringUtil.h"
+
+#include "RasterRTShadowsShading.h"
 
 using std::int32_t;
 using std::uint32_t;

@@ -3,9 +3,8 @@
 #include <memory>
 #include <vector>
 
-#define NOMINMAX
-#include <d3d12.h>
-#include <wrl/client.h>
+#include "DirectX/Types.h"
+#include <dxgi1_6.h>
 
 #include "feanor/core/io/keyboard.h"
 #include "feanor/core/io/mouse.h"
@@ -24,6 +23,7 @@
 #include "ImGui/ImGuiSceneNode.h"
 #include "ImGui/ImGuiMaterial.h"
 #include "ImGui/ImGuiShading.h"
+#include "RendererResources.h"
 
 namespace candela::renderer
 {

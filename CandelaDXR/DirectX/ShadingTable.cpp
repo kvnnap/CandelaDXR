@@ -1,10 +1,9 @@
-#include "ShadingTable.h"
-
-#include "DXUtil.h"
 #include <stdexcept>
 #include <algorithm>
 #include <locale>
 
+#include "ShadingTable.h"
+#include "DXUtil.h"
 #include "Util/StringUtil.h"
 
 using std::string;

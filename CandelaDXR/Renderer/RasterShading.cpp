@@ -9,6 +9,8 @@
 
 #include "Exception/WindowException.h"
 
+#include "RendererResources.h"
+
 using candela::mathematics::Vector2;
 using candela::mathematics::Vector3;
 using candela::mathematics::UVector2;

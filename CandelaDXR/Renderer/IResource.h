@@ -1,0 +1,20 @@
+#pragma once
+
+#include <cstdint>
+
+#include "DirectX/Types.h"
+#include "RendererResources.h"
+#include "ChangeEvent.h"
+
+namespace candela::renderer
+{
+	namespace wrl = Microsoft::WRL;
+
+	class IResource
+	{
+	public:
+		virtual ~IResource() = default;
+		virtual void init(RendererResources* rendererResources, wrl::ComPtr<ID3D12GraphicsCommandList>& pCurrentCommandList) = 0;
+		virtual void onChange(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, std::uint32_t currentBackBufferIndex, ChangeEvent_t changeEvent) = 0;
+	};
+}

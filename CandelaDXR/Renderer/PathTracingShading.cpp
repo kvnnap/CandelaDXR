@@ -9,6 +9,7 @@
 #include "Exception/WindowException.h"
 
 #include "AccelerationStructure.h"
+#include "RendererResources.h"
 
 #include "Util/StringUtil.h"
 

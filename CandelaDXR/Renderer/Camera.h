@@ -4,7 +4,8 @@
 
 namespace candela::renderer
 {
-	class Camera {
+	class Camera
+	{
 	public:
 		Camera(const DirectX::XMVECTOR& position, const DirectX::XMVECTOR& direction, float nearWidth, float nearHeight, float nearZ, float farZ);
 
