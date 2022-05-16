@@ -81,13 +81,13 @@ void RasterRTShadowsShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurren
 	rasterShader.draw(pCurrentCommandList, currentBackBufferIndex);
 
 	// Pre-stuff
-	auto& backBuff = rendererResources->pRTVRadBackBuffers[currentBackBufferIndex];
+	auto& backBuff = rendererResources->pRTVRadBackBuffer;
 	backBuff->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
 	// Do we need these barriers? I think so
 	const auto c = rasterShader.getNumRenderTargets() - 1;
 	for (UINT i = 0; i < c; ++i)
-		rasterShader.getGBuffer()[currentBackBufferIndex * c + i]->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+		rasterShader.getGBuffer()[i]->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
 	// Copy and update camera
 	auto cam = rendererResources->camera;
@@ -103,7 +103,7 @@ void RasterRTShadowsShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurren
 		rendererResources->getTempResource(),
 		&constBuffer, sizeof(constBuffer), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
-	pCurrentCommandList->SetDescriptorHeaps(1u, descriptorHeaps[currentBackBufferIndex].GetAddressOf());
+	pCurrentCommandList->SetDescriptorHeaps(1u, descriptorHeap.GetAddressOf());
 	pCurrentCommandList->SetComputeRootSignature(globalEmptyRootSignature.Get());
 	HRESULT hr;
 	ComPtr<ID3D12GraphicsCommandList4> commandList4;
@@ -112,13 +112,13 @@ void RasterRTShadowsShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurren
 
 	// Launch rays
 	auto rayDimensions = rendererResources->winDimensions;
-	D3D12_DISPATCH_RAYS_DESC dispatchRaysDesc = shadingTables[currentBackBufferIndex]->getDispatchRaysDescriptor(rayDimensions.x, rayDimensions.y);
+	D3D12_DISPATCH_RAYS_DESC dispatchRaysDesc = shadingTable->getDispatchRaysDescriptor(rayDimensions.x, rayDimensions.y);
 	commandList4->DispatchRays(&dispatchRaysDesc);
 	clear = false;
 
 	// After
 	for (UINT i = 0; i < c; ++i)
-		rasterShader.getGBuffer()[currentBackBufferIndex * c + i]->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);
+		rasterShader.getGBuffer()[i]->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);
 	backBuff->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);
 }
 
@@ -245,14 +245,11 @@ void RasterRTShadowsShading::buildPipeline()
 	// Finally - Create the state
 	ComPtr<ID3D12Device5> pDevice5;
 	GFXTHROWIFFAILED(rendererResources->pDevice.As(&pDevice5));
-	shadingTables.resize(rendererResources->numBackBuffers);
-	for (size_t i = 0; i < shadingTables.size(); ++i)
-	{
-		shadingTables[i] = make_unique<ShadingTable>(rootSignatureManager);
-		shadingTables[i]->addProgram(L"rayGen", ShadingRecordType::RayGeneration, "RayGenRootSignature");
-		shadingTables[i]->addProgram(L"shadowMiss", ShadingRecordType::Miss, "EmptyRootSignature");
-	}
-	shadingTables[0]->addProgramAssociationsToSubobject(stateObjectDesc);
+	
+	shadingTable = make_unique<ShadingTable>(rootSignatureManager);
+	shadingTable->addProgram(L"rayGen", ShadingRecordType::RayGeneration, "RayGenRootSignature");
+	shadingTable->addProgram(L"shadowMiss", ShadingRecordType::Miss, "EmptyRootSignature");
+	shadingTable->addProgramAssociationsToSubobject(stateObjectDesc);
 	wrl::ComPtr<ID3DBlob> pBlob;
 	GFXTHROWIFFAILED(D3DReadFileToBlob(StringToWString("./Shaders/RTShadows.cso").c_str(), &pBlob));
 	auto shaderByteCodeDesc = CD3DX12_SHADER_BYTECODE(pBlob.Get());
@@ -271,72 +268,60 @@ void RasterRTShadowsShading::createShaderResources()
 		DXGI_FORMAT_R32G32B32A32_FLOAT, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS));
 	radianceTexture->setName(L"Radiance Texture");
 
-	// The descriptor heap to store SRV (Shader resource View) and UAV (Unordered access view) descriptors
-	descriptorHeaps.clear();
-
 	// Generate paramter instance i - switch between these later
-	for (size_t i = 0; i < shadingTables.size(); ++i)
-	{
-		size_t entryNumber = 0;
-		auto& shadingTable = shadingTables[i];
-		auto& descHeapManager = shadingTable->generateDescriptorHeap("BVHDescTable", std::to_string(i), rendererResources->pDevice);
-		descriptorHeaps.emplace_back(descHeapManager.getDescriptorHeap());
+	size_t entryNumber = 0;
+	auto& descHeapManager = shadingTable->generateDescriptorHeap("BVHDescTable", "BVH1", rendererResources->pDevice);
+	descriptorHeap = descHeapManager.getDescriptorHeap();
 
-		D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
-		uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
-		descHeapManager.setUAV(entryNumber++, uavDesc, rendererResources->pDevice, *rendererResources->pRTVRadBackBuffers[i]);
-		descHeapManager.setUAV(entryNumber++, uavDesc, rendererResources->pDevice, *radianceTexture);
+	D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
+	uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
+	descHeapManager.setUAV(entryNumber++, uavDesc, rendererResources->pDevice, *rendererResources->pRTVRadBackBuffer);
+	descHeapManager.setUAV(entryNumber++, uavDesc, rendererResources->pDevice, *radianceTexture);
 
-		// Create the SRV descriptor in second place (following same order as in root signature)
-		D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
-		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_RAYTRACING_ACCELERATION_STRUCTURE;
-		srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-		srvDesc.RaytracingAccelerationStructure.Location = rendererResources->accelerationStructure->getTopLayerBufferAddress();
-		descHeapManager.setSRV(entryNumber++, srvDesc, rendererResources->pDevice);
+	// Create the SRV descriptor in second place (following same order as in root signature)
+	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_RAYTRACING_ACCELERATION_STRUCTURE;
+	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+	srvDesc.RaytracingAccelerationStructure.Location = rendererResources->accelerationStructure->getTopLayerBufferAddress();
+	descHeapManager.setSRV(entryNumber++, srvDesc, rendererResources->pDevice);
 
-		// gBuffer
-		srvDesc = {};
-		srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-		srvDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
-		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-		srvDesc.Texture2D.MipLevels = 1;
-		const auto gBuffRenTargets = rasterShader.getNumRenderTargets() - 1;
-		for (UINT j = 0; j < gBuffRenTargets; ++j)
-			descHeapManager.setSRV(entryNumber++, srvDesc, rendererResources->pDevice, *rasterShader.getGBuffer()[i * gBuffRenTargets + j]);
+	// gBuffer
+	srvDesc = {};
+	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+	srvDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
+	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+	srvDesc.Texture2D.MipLevels = 1;
+	const auto gBuffRenTargets = rasterShader.getNumRenderTargets() - 1;
+	for (UINT j = 0; j < gBuffRenTargets; ++j)
+		descHeapManager.setSRV(entryNumber++, srvDesc, rendererResources->pDevice, *rasterShader.getGBuffer()[j]);
 
-		// Textures
-		srvDesc = {};
-		srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-		srvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-		srvDesc.Texture2D.MipLevels = 1;
-		for (const auto& texture : rendererResources->textures)
-			descHeapManager.setSRV(entryNumber++, srvDesc, rendererResources->pDevice, texture);
-	}
+	// Textures
+	srvDesc = {};
+	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+	srvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+	srvDesc.Texture2D.MipLevels = 1;
+	for (const auto& texture : rendererResources->textures)
+		descHeapManager.setSRV(entryNumber++, srvDesc, rendererResources->pDevice, texture);
 }
 
 void RasterRTShadowsShading::createShaderTable(wrl::ComPtr<ID3D12GraphicsCommandList>& commandList)
 {
-	for (size_t i = 0; i < shadingTables.size(); ++i)
-	{
-		auto shadingTable = shadingTables[i].get();
+	// Link rayGen
+	shadingTable->setInputForDescriptorTableParameter(L"rayGen", "BVHDescTable", "BVH1");
 
-		// Link rayGen
-		shadingTable->setInputForDescriptorTableParameter(L"rayGen", "BVHDescTable", std::to_string(i));
+	// TODO - setInputForViewParameter should also accept and array to apply a resource to more than one view parameter
+	shadingTable->setInputForViewParameter(L"rayGen", "ConstBuff", constantBuffer);
+	shadingTable->setInputForViewParameter(L"rayGen", "verts", rendererResources->sceneBuffer, rendererResources->scene->getVerticesOffset());
+	shadingTable->setInputForViewParameter(L"rayGen", "texVerts", rendererResources->sceneBuffer, rendererResources->scene->getTextureCoordsOffset());
+	shadingTable->setInputForViewParameter(L"rayGen", "normals", rendererResources->sceneBuffer, rendererResources->scene->getNormalsOffset());
+	shadingTable->setInputForViewParameter(L"rayGen", "indices", rendererResources->sceneBuffer, rendererResources->scene->getIndicesOffset());
+	shadingTable->setInputForViewParameter(L"rayGen", "matrices", rendererResources->matrices);
+	shadingTable->setInputForViewParameter(L"rayGen", "normalMatrices", rendererResources->normalMatrices);
+	shadingTable->setInputForViewParameter(L"rayGen", "faceAttributes", rendererResources->faceAttributeBuffer);
+	shadingTable->setInputForViewParameter(L"rayGen", "materials", rendererResources->materialBuffer);
+	shadingTable->setInputForViewParameter(L"rayGen", "lights", rendererResources->lightBuffer);
 
-		// TODO - setInputForViewParameter should also accept and array to apply a resource to more than one view parameter
-		shadingTable->setInputForViewParameter(L"rayGen", "ConstBuff", constantBuffer);
-		shadingTable->setInputForViewParameter(L"rayGen", "verts", rendererResources->sceneBuffer, rendererResources->scene->getVerticesOffset());
-		shadingTable->setInputForViewParameter(L"rayGen", "texVerts", rendererResources->sceneBuffer, rendererResources->scene->getTextureCoordsOffset());
-		shadingTable->setInputForViewParameter(L"rayGen", "normals", rendererResources->sceneBuffer, rendererResources->scene->getNormalsOffset());
-		shadingTable->setInputForViewParameter(L"rayGen", "indices", rendererResources->sceneBuffer, rendererResources->scene->getIndicesOffset());
-		shadingTable->setInputForViewParameter(L"rayGen", "matrices", rendererResources->matrices);
-		shadingTable->setInputForViewParameter(L"rayGen", "normalMatrices", rendererResources->normalMatrices);
-		shadingTable->setInputForViewParameter(L"rayGen", "faceAttributes", rendererResources->faceAttributeBuffer);
-		shadingTable->setInputForViewParameter(L"rayGen", "materials", rendererResources->materialBuffer);
-		shadingTable->setInputForViewParameter(L"rayGen", "lights", rendererResources->lightBuffer);
-
-		// Generate
-		shadingTable->generateShadingTable(rendererResources->pDevice, commandList, stateObject, rendererResources->getTempResource());
-	}
+	// Generate
+	shadingTable->generateShadingTable(rendererResources->pDevice, commandList, stateObject, rendererResources->getTempResource());
 }

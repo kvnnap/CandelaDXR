@@ -73,10 +73,10 @@ namespace candela::renderer
 		wrl::ComPtr<IDXGIFactory> dxgiFactory;
 		wrl::ComPtr<IDXGISwapChain> pSwapChain;
 		wrl::ComPtr<ID3D12DescriptorHeap> pRTVDescriptorHeap;
-		std::unique_ptr<directx::Resource> pRadAccumulator;
-		std::unique_ptr<directx::Resource> pRTV8BitBackBuffer;
-		ResPtrVec pRTVBackBuffers;
-		ResPtrVec pRTVRadBackBuffers;
+		std::shared_ptr<directx::Resource> pRTV8BitBackBuffer; // This is the 8-bit target that will then be copied to swap-chain
+		std::shared_ptr<directx::Resource> pRTVRadBackBuffer; // This is the target for drawables (32-bit)
+		std::shared_ptr<directx::Resource> pRadAccumulator; // 32-bit
+		ResPtrVec pRTVBackBuffers; // Buffers retrieved from swap-chain (these are 8-bit)
 
 		// ImGui
 		wrl::ComPtr<ID3D12DescriptorHeap> pImGuiDescriptorHeap;

@@ -55,7 +55,7 @@ namespace candela::renderer
 		D3D12_RECT scissorRect;
 		D3D12_VIEWPORT viewport;
 		UINT dsvDescriptorSize;
-		std::vector<wrl::ComPtr<ID3D12Resource>> pDepthBuffers;
+		wrl::ComPtr<ID3D12Resource> pDepthBuffer;
 
 		// G-Buffer
 		wrl::ComPtr<ID3D12DescriptorHeap> pGDescriptorHeap;

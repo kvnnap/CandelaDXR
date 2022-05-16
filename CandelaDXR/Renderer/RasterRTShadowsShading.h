@@ -52,7 +52,7 @@ namespace candela::renderer
 		RendererResources* rendererResources;
 
 		// Path tracer descriptor stuff
-		std::vector<wrl::ComPtr<ID3D12DescriptorHeap>> descriptorHeaps;
+		wrl::ComPtr<ID3D12DescriptorHeap> descriptorHeap;
 		wrl::ComPtr<ID3D12RootSignature> globalEmptyRootSignature;
 		wrl::ComPtr<ID3D12StateObject> stateObject;
 
@@ -72,7 +72,7 @@ namespace candela::renderer
 		bool clear;
 
 		// My helpers
-		std::vector<std::unique_ptr<directx::ShadingTable>> shadingTables;
+		std::unique_ptr<directx::ShadingTable> shadingTable;
 		std::shared_ptr<directx::RootSignatureManager> rootSignatureManager;
 	};
 }

@@ -99,7 +99,6 @@ namespace candela::renderer
 		wrl::ComPtr<ID3D12Resource> irradianceDataStructure;
 		directx::Resource* irrToRad;
 
-		directx::Resource* outputTexture;
 		directx::Resource* irradianceTexture;
 		std::unique_ptr<sampler::ISampler> sampler;
 		bool clear;

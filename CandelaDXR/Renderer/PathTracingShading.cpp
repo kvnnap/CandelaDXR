@@ -78,9 +78,8 @@ void PathTracingShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12Graphic
 void PathTracingShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, std::uint32_t currentBackBufferIndex)
 {
 	// Pre-stuff
-	auto& backBuff = rendererResources->pRTVRadBackBuffers[currentBackBufferIndex];
-	backBuff->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_COPY_DEST);
-	outputTexture->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+	auto& backBuff = rendererResources->pRTVRadBackBuffer;
+	backBuff->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
 	// Copy and update camera
 	auto cam = rendererResources->camera;
@@ -115,8 +114,6 @@ void PathTracingShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCom
 	clear = false;
 
 	// After
-	outputTexture->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_COPY_SOURCE);
-	pCurrentCommandList->CopyResource(*backBuff, *outputTexture);
 	backBuff->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);
 }
 
@@ -293,11 +290,6 @@ void PathTracingShading::createShaderResources()
 	const auto& dim = rendererResources->winDimensions;
 
 	// The output resource
-	outputTexture = make_unique<Resource>(Resource::createTextureCommittedResource(
-		rendererResources->pDevice, dim.x, dim.y,
-		D3D12_RESOURCE_STATE_COPY_SOURCE,
-		DXGI_FORMAT_R32G32B32A32_FLOAT, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS));
-	outputTexture->setName(L"Output Texture");
 	radianceTexture = make_unique<Resource>(Resource::createTextureCommittedResource(
 		rendererResources->pDevice, dim.x, dim.y,
 		D3D12_RESOURCE_STATE_COPY_SOURCE,
@@ -306,7 +298,7 @@ void PathTracingShading::createShaderResources()
 
 	D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
 	uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
-	descHeapManager.setUAV(entryNumber++, uavDesc, rendererResources->pDevice, *outputTexture);
+	descHeapManager.setUAV(entryNumber++, uavDesc, rendererResources->pDevice, *rendererResources->pRTVRadBackBuffer);
 	descHeapManager.setUAV(entryNumber++, uavDesc, rendererResources->pDevice, *radianceTexture);
 
 	// Create the SRV descriptor in second place (following same order as in root signature)

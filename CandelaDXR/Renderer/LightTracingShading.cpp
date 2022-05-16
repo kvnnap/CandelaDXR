@@ -78,8 +78,6 @@ void LightTracingShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12Graphi
 
 	// Testing central resources
 	const auto& dim = rendererResources->winDimensions;
-	outputTexture = &rendererResources->resourceManager->createResource(D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, dim.x, dim.y, DXGI_FORMAT_R32G32B32A32_FLOAT, true);
-	outputTexture->setName(L"Output Texture");
 	irradianceTexture = &rendererResources->resourceManager->createResource(D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, dim.x, dim.y, DXGI_FORMAT_R32G32B32A32_FLOAT, true);
 	irradianceTexture->setName(L"Irradiance Texture");
 	irrToRad = &rendererResources->resourceManager->createResource(D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_FLAG_NONE, dim.x, dim.y, DXGI_FORMAT_R32_FLOAT, true);
@@ -105,10 +103,8 @@ void LightTracingShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12Graphi
 void LightTracingShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> currentCommandList, uint32_t currentBackBufferIndex)
 {
 	// Pre-stuff
-	auto &backBuff = rendererResources->pRTVRadBackBuffers[currentBackBufferIndex];
-	backBuff->transistionBarrier(currentCommandList, D3D12_RESOURCE_STATE_COPY_DEST);
-	
-	outputTexture->transistionBarrier(currentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+	auto &backBuff = rendererResources->pRTVRadBackBuffer;
+	backBuff->transistionBarrier(currentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
 	// Copy and update camera
 	auto cam = rendererResources->camera;
@@ -156,8 +152,6 @@ void LightTracingShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> currentCom
 	clear = false;
 
 	// After
-	outputTexture->transistionBarrier(currentCommandList, D3D12_RESOURCE_STATE_COPY_SOURCE);
-	currentCommandList->CopyResource(*backBuff, *outputTexture);
 	backBuff->transistionBarrier(currentCommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);
 }
 
@@ -319,7 +313,7 @@ void LightTracingShading::createShaderResources()
 
 	D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
 	uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
-	descHeapManager->setUAV(entryNumber++, uavDesc, rendererResources->pDevice, *outputTexture);
+	descHeapManager->setUAV(entryNumber++, uavDesc, rendererResources->pDevice, *rendererResources->pRTVRadBackBuffer);
 	D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc2 = {};
 	uavDesc2.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
 	uavDesc2.Buffer.NumElements = dim.x * dim.y;
@@ -352,7 +346,7 @@ void LightTracingShading::createShaderResources()
 
 	// Compute shader
 	auto cmpDescHeapManager = DescriptorHeap(computeRSM, "ComputeDataDescTable", "ComputeData1", rendererResources->pDevice);
-	cmpDescHeapManager.setUAV(0, uavDesc, rendererResources->pDevice, *outputTexture);
+	cmpDescHeapManager.setUAV(0, uavDesc, rendererResources->pDevice, *rendererResources->pRTVRadBackBuffer);
 	cmpDescHeapManager.setUAV(1, uavDesc2, rendererResources->pDevice, irradianceDataStructure);
 	cmpDescHeapManager.setUAV(2, uavDesc, rendererResources->pDevice, *irradianceTexture);
 	cmpDescHeapManager.setSRV(3, irrToRadSrvDesc, rendererResources->pDevice, *irrToRad);

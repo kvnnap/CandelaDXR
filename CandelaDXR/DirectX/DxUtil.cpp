@@ -298,18 +298,8 @@ vector<shared_ptr<Resource>> DXUtil::createRenderTargetViewsEx(
 {
 	auto rtvDescSize = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(descriptorHeap->GetCPUDescriptorHandleForHeapStart());
-
-	{
-		UINT i = 0;
-		// Start with texture targets
-		for (auto& textureTarget : textureTargets)
-		{
-			device->CreateRenderTargetView(textureTargets[i++].Get(), nullptr, rtvHandle);
-			rtvHandle.Offset(rtvDescSize);
-		}
-	}
-
-	// Finish off with the swap chain buffers
+	
+	// Start off with the swap chain buffers
 	HRESULT hr;
 	vector<shared_ptr<Resource>> backBuffers;
 	for (UINT i = 0; i < numRTV; ++i) {
@@ -319,6 +309,16 @@ vector<shared_ptr<Resource>> DXUtil::createRenderTargetViewsEx(
 		device->CreateRenderTargetView(*backBuffers[i], nullptr, rtvHandle);
 		backBuffers[i]->setName((L"RTV Back-Buffer " + std::to_wstring(i)).c_str());
 		rtvHandle.Offset(rtvDescSize);
+	}
+
+	{
+		UINT i = 0;
+		// End with texture targets
+		for (auto& textureTarget : textureTargets)
+		{
+			device->CreateRenderTargetView(textureTargets[i++].Get(), nullptr, rtvHandle);
+			rtvHandle.Offset(rtvDescSize);
+		}
 	}
 
 	return backBuffers;

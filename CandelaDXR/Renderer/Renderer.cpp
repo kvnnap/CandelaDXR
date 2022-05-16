@@ -140,7 +140,6 @@ void Renderer::init()
 
 	// Allocate 
 	pRTVBackBuffers.resize(NumBackBuffers);
-	pRTVRadBackBuffers.resize(NumBackBuffers);
 	frameFenceValues.resize(NumBackBuffers);
 
 	// Init DirectX Debugging
@@ -169,13 +168,14 @@ void Renderer::init()
 	// Create swap chain
 	pSwapChain = DXUtil::createSwapChain(dxgiFactory, commandQueue->getCommandQueue(), window->getHandle(), NumBackBuffers);
 
-	// Create descriptor heap for render target view
-	pRTVDescriptorHeap = DXUtil::createDescriptorHeap(pDevice, NumBackBuffers * static_cast<UINT>(pRTVRadBackBuffers.size()), D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+	// Create descriptor heap for render target view - Num 8-bit normal targets, 1 32-bit and 1-32 accumulator
+	pRTVDescriptorHeap = DXUtil::createDescriptorHeap(pDevice, NumBackBuffers + 2, D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 	pRTVDescriptorHeap->SetName(L"RTV Descriptor Heap");
 
 	// Create render target Views
 	rtvDescriptorSize = pDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-	pRTVBackBuffers = DXUtil::createRenderTargetViewsEx(pDevice, pRTVDescriptorHeap, pSwapChain, pRTVRadBackBuffers, NumBackBuffers);
+	ResPtrVec otherBuffs = { pRTVRadBackBuffer };
+	pRTVBackBuffers = DXUtil::createRenderTargetViewsEx(pDevice, pRTVDescriptorHeap, pSwapChain, otherBuffs, NumBackBuffers);
 	
 	// Upload scene resources
 	rendererResources.resourceManager = make_unique<ResourceManager>(pDevice);
@@ -215,7 +215,7 @@ void Renderer::init()
 		.normalMatrices = normalMatrices,
 		.textures = textures,
 		.pRTVDescriptorHeap = pRTVDescriptorHeap,
-		.pRTVRadBackBuffers = pRTVRadBackBuffers,
+		.pRTVRadBackBuffer = pRTVRadBackBuffer,
 		.commandQueue = commandQueue.get(),
 		.winDimensions = windowDimensions,
 		.numBackBuffers = NumBackBuffers,
@@ -250,18 +250,17 @@ void Renderer::init()
 	commandQueue->waitForFenceValue(fV);
 
 	// Clear temporary buffers
-	rendererResources.getTempResource();
+	rendererResources.resourceManager->clearTemporaryBuffers(currentBackBufferIndex);
 }
 
 void Renderer::renderFrame()
 {
 	// Clear frame and start frame
-	auto &rtvRadBackBuffer = pRTVRadBackBuffers[currentBackBufferIndex];
-
 	pCurrentCommandList = commandQueue->getCommandList();
-	rtvRadBackBuffer->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);
+	pRTVBackBuffers[currentBackBufferIndex]->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);
 
-	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvDescriptorHandle(pRTVDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), currentBackBufferIndex, rtvDescriptorSize);
+	// Initially points to 32-bit RTV
+	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvDescriptorHandle(pRTVDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), NumBackBuffers, rtvDescriptorSize);
 	FLOAT color[] = { 0.f, 0.f, 0.f, 0.0f };
 
 	// ImGui
@@ -306,8 +305,7 @@ void Renderer::renderFrame()
 		ImGui::Render();
 	}
 
-	constexpr auto flags = D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE | D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE;
-
+	constexpr auto flags = D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE;
 	
 	// Update Transforms
 	if (changeEvent & static_cast<ChangeEvent_t>(ChangeEvent::Transformation))
@@ -383,7 +381,7 @@ void Renderer::renderFrame()
 		// Clear the RadRTV 
 		pCurrentCommandList->ClearRenderTargetView(rtvDescriptorHandle, color, 0, nullptr);
 		drawable->draw(pCurrentCommandList, currentBackBufferIndex);
-		rtvRadBackBuffer->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+		pRTVRadBackBuffer->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
 		// Copy - per loop - testing here
 		pCurrentCommandList->SetPipelineState(computePipelineState.Get());
@@ -391,11 +389,11 @@ void Renderer::renderFrame()
 		pCurrentCommandList->SetDescriptorHeaps(1u, computeDescriptorHeap.GetAddressOf());
 		pCurrentCommandList->SetComputeRootDescriptorTable(1u, computeDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
 		// in, out, clear, accumulate, linearToSrgb
-		uint32_t c32data[5] = { currentBackBufferIndex + 2, 1u, first == i ? 1u : 0u, 1u, !grabRadiancePressed && last == i ? 1u : 0u };
+		uint32_t c32data[5] = { 1u, 2u, first == i ? 1u : 0u, 1u, !grabRadiancePressed && last == i ? 1u : 0u };
 		pCurrentCommandList->SetComputeRoot32BitConstants(0u, 5u, &c32data[0], 0);
 		pCurrentCommandList->Dispatch(dim.x / 8 + (dim.x % 8 == 0 ? 0 : 1), dim.y / 8 + (dim.y % 8 == 0 ? 0 : 1), 1);
 
-		rtvRadBackBuffer->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);
+		pRTVRadBackBuffer->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);
 		pRadAccumulator->uavBarrier(pCurrentCommandList);
 	}
 
@@ -428,23 +426,21 @@ void Renderer::renderFrame()
 		pCurrentCommandList->SetComputeRootDescriptorTable(1u, computeDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
 
 		// Perform tone mapping
-		uint32_t c32data[5] = { 1u, 1u, 0u, 0u, 1u };
+		uint32_t c32data[5] = { 2u, 2u, 0u, 0u, 1u };
 		pCurrentCommandList->SetComputeRoot32BitConstants(0u, 5u, &c32data[0], 0);
 		pCurrentCommandList->Dispatch(dim.x / 8 + (dim.x % 8 == 0 ? 0 : 1), dim.y / 8 + (dim.y % 8 == 0 ? 0 : 1), 1);
 		pRadAccumulator->uavBarrier(pCurrentCommandList);
 	}
 
-	// Copy accumulator to 8-bit tex
-	uint32_t c32data2[5] = { 1u, 0u, 1u, 1u, 0u };
+	// Copy accumulator to 8-bit Texture
+	uint32_t c32data2[5] = { 2u, 0u, 1u, 1u, 0u };
 	pCurrentCommandList->SetComputeRoot32BitConstants(0u, 5u, &c32data2[0], 0);
 	pCurrentCommandList->Dispatch(dim.x / 8 + (dim.x % 8 == 0 ? 0 : 1), dim.y / 8 + (dim.y % 8 == 0 ? 0 : 1), 1);
 
-	rtvRadBackBuffer->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_PRESENT);
+	// Point to 8-bit swap chain buffers
+	rtvDescriptorHandle.Offset(rtvDescriptorSize* (currentBackBufferIndex - NumBackBuffers));
 
-	rtvDescriptorHandle.Offset(rtvDescriptorSize * NumBackBuffers);
-	pRTVBackBuffers[currentBackBufferIndex]->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);
-	pCurrentCommandList->ClearRenderTargetView(rtvDescriptorHandle, color, 0, nullptr);
-
+	// Copy 8-bit Texture to swap-chain 8-bit back buffer
 	if (first != -1)
 	{
 		pRTVBackBuffers[currentBackBufferIndex]->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_COPY_DEST);
@@ -452,22 +448,25 @@ void Renderer::renderFrame()
 
 		// Copy 8-bit tex to rtv
 		pCurrentCommandList->CopyResource(*pRTVBackBuffers[currentBackBufferIndex], *pRTV8BitBackBuffer);
-		
+
 		pRTV8BitBackBuffer->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 		pRTVBackBuffers[currentBackBufferIndex]->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);
+	}
+	else {
+		pCurrentCommandList->ClearRenderTargetView(rtvDescriptorHandle, color, 0, nullptr);
 	}
 
 	// ImGui Render
 	if (viewImgui)
 	{
+		// Switch over to 8-bit buffers
 		pCurrentCommandList->OMSetRenderTargets(1u, &rtvDescriptorHandle, FALSE, nullptr);
 		pCurrentCommandList->SetDescriptorHeaps(1u, pImGuiDescriptorHeap.GetAddressOf());
 		ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), pCurrentCommandList.Get());
 	}
 
-	pRTVBackBuffers[currentBackBufferIndex]->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_PRESENT);
-
 	// End frame
+	pRTVBackBuffers[currentBackBufferIndex]->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_PRESENT);
 	frameFenceValues[currentBackBufferIndex] = commandQueue->executeCommandList(pCurrentCommandList);
 	pCurrentCommandList.Reset();
 
@@ -572,7 +571,7 @@ void Renderer::initShaders()
 	// Compute shader
 	computeRSM = make_shared<RootSignatureManager>();
 	CD3DX12_ROOT_PARAMETER1 param; 
-	computeRSM->addDescriptorRange("ComputeData", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 2 * NumBackBuffers, 0)); // gOutput, gInput
+	computeRSM->addDescriptorRange("ComputeData", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 3, 0));
 	computeRSM->setDescriptorTableParameter("ComputeDataDescTable", "ComputeData");
 	param.InitAsConstants(5u, 0u);
 	computeRSM->setParameter("ComputeConstants", param); // inIndex, outInde, clear, accumulate, linearToSrgb
@@ -607,10 +606,8 @@ void Renderer::createShaderResources()
 	uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
 	auto cmpDescHeapManager = DescriptorHeap(computeRSM, "ComputeDataDescTable", "ComputeData1", pDevice);
 	cmpDescHeapManager.setUAV(0, uavDesc, pDevice, *pRTV8BitBackBuffer);
-	cmpDescHeapManager.setUAV(1, uavDesc, pDevice, *pRadAccumulator);
-	for (uint32_t i = 0; i < pRTVRadBackBuffers.size(); ++i)
-		cmpDescHeapManager.setUAV(i + 2, uavDesc, pDevice, *pRTVRadBackBuffers[i]);
-	
+	cmpDescHeapManager.setUAV(1, uavDesc, pDevice, *pRTVRadBackBuffer);
+	cmpDescHeapManager.setUAV(2, uavDesc, pDevice, *pRadAccumulator);
 	computeDescriptorHeap = cmpDescHeapManager.getDescriptorHeap();
 }
 
@@ -639,7 +636,7 @@ void Renderer::resize()
 {
 	// Wait for all GPU operations to complete
 	commandQueue->flush();
-	rendererResources.pRTVRadBackBuffers.clear();
+	rendererResources.pRTVRadBackBuffer.reset();
 	pRTVBackBuffers.clear();
 	pRadAccumulator.reset();
 	rendererResources.currentBackBufferIndex = currentBackBufferIndex = 0;
@@ -649,9 +646,10 @@ void Renderer::resize()
 	GFXTHROWIFFAILED(pSwapChain->ResizeBuffers(NumBackBuffers, windowDimensions.x, windowDimensions.y, DXGI_FORMAT_UNKNOWN, flags));
 	// Resize Float textures and 
 	resizeFloatTargetTextures();
-	rendererResources.pRTVRadBackBuffers = pRTVRadBackBuffers;
-	pRTVBackBuffers = DXUtil::createRenderTargetViewsEx(pDevice, pRTVDescriptorHeap, pSwapChain, pRTVRadBackBuffers, NumBackBuffers);
-	createShaderResources();
+	rendererResources.pRTVRadBackBuffer = pRTVRadBackBuffer;
+	ResPtrVec otherBuffs = { pRTVRadBackBuffer };
+	pRTVBackBuffers = DXUtil::createRenderTargetViewsEx(pDevice, pRTVDescriptorHeap, pSwapChain, otherBuffs, NumBackBuffers);
+	createShaderResources(); 
 	fpsCounter.resetFrameCount();
 	
 	// Resize drawables
@@ -663,28 +661,25 @@ void Renderer::resize()
 void Renderer::resizeFloatTargetTextures()
 {
 	// The resource that will be used to copy back to render target
-	pRTV8BitBackBuffer = make_unique<Resource>(Resource::createTextureCommittedResource(
+	pRTV8BitBackBuffer = make_shared<Resource>(Resource::createTextureCommittedResource(
 		pDevice, windowDimensions.x, windowDimensions.y,
 		D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
 		DXGI_FORMAT_R8G8B8A8_UNORM, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS));
 	pRTV8BitBackBuffer->setName(L"RTV Radiance 8-bit Back-Buffer");
 
+	// Create Float RTV Targets
+	pRTVRadBackBuffer = make_shared<Resource>(Resource::createTextureCommittedResource(
+		pDevice, windowDimensions.x, windowDimensions.y,
+		D3D12_RESOURCE_STATE_RENDER_TARGET, DXGI_FORMAT_R32G32B32A32_FLOAT, 
+		D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS | D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET));
+	pRTVRadBackBuffer->setName(L"RTV Radiance Back-Buffer");
+
 	// Create accumulator
-	pRadAccumulator = make_unique<Resource>(Resource::createTextureCommittedResource(
+	pRadAccumulator = make_shared<Resource>(Resource::createTextureCommittedResource(
 		pDevice, windowDimensions.x, windowDimensions.y,
 		D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
 		DXGI_FORMAT_R32G32B32A32_FLOAT, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS));
 	pRadAccumulator->setName(L"Radiance Accumulator");
-
-	// Create Float RTV Targets
-	for (uint32_t i = 0; i < NumBackBuffers; ++i)
-	{
-		pRTVRadBackBuffers[i] = make_shared<Resource>(Resource::createTextureCommittedResource(
-			pDevice, windowDimensions.x, windowDimensions.y,
-			D3D12_RESOURCE_STATE_PRESENT, DXGI_FORMAT_R32G32B32A32_FLOAT, 
-			D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS | D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET));
-		pRTVRadBackBuffers[i]->setName(L"RTV Radiance Back-Buffer " + std::to_wstring(i));
-	}
 }
 
 vector<DirectX::XMFLOAT3X4> Renderer::getMatrices()

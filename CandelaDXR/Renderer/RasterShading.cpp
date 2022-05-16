@@ -74,7 +74,7 @@ void RasterShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12GraphicsComm
 	indexView.Format = DXGI_FORMAT_R32_UINT;
 
 	// And for depth stencil view
-	pDepthDescriptorHeap = DXUtil::createDescriptorHeap(rRes->pDevice, rRes->numBackBuffers, D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
+	pDepthDescriptorHeap = DXUtil::createDescriptorHeap(rRes->pDevice, 1u, D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
 	pDepthDescriptorHeap->SetName(L"Depth Descriptor Heap");
 	dsvDescriptorSize = rRes->pDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
 
@@ -184,7 +184,7 @@ void RasterShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12GraphicsComm
 	// Init G-Buffer
 	if (computeGBuffer)
 	{
-		gBuffer.resize(rendererResources->numBackBuffers * (numRenderTargets - 1)); // gPos, gNorm, gAlb
+		gBuffer.resize(numRenderTargets - 1); // gPos, gNorm, gAlb
 		pGDescriptorHeap = DXUtil::createDescriptorHeap(rRes->pDevice, static_cast<UINT>(gBuffer.size()), D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 	}
 	onResize();
@@ -193,7 +193,7 @@ void RasterShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12GraphicsComm
 void RasterShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, uint32_t currentBackBufferIndex)
 {
 	// Clear Depth
-	CD3DX12_CPU_DESCRIPTOR_HANDLE dsvDescriptorHandle(pDepthDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), currentBackBufferIndex, dsvDescriptorSize);
+	CD3DX12_CPU_DESCRIPTOR_HANDLE dsvDescriptorHandle(pDepthDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), 0, dsvDescriptorSize);
 	pCurrentCommandList->ClearDepthStencilView(dsvDescriptorHandle, D3D12_CLEAR_FLAG_DEPTH, 1.f, 0, 0, nullptr);
 
 	pCurrentCommandList->SetPipelineState(pipelineState.Get());
@@ -208,13 +208,13 @@ void RasterShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandL
 
 	D3D12_CPU_DESCRIPTOR_HANDLE rtvDescriptorHandles[4];
 	const auto incrementSize = rendererResources->pDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-	rtvDescriptorHandles[0] = CD3DX12_CPU_DESCRIPTOR_HANDLE(rendererResources->pRTVDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), currentBackBufferIndex, incrementSize);
+	rtvDescriptorHandles[0] = CD3DX12_CPU_DESCRIPTOR_HANDLE(rendererResources->pRTVDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), rendererResources->numBackBuffers, incrementSize);
 	if (computeGBuffer)
 	{
 		FLOAT color[] = { 0.f, 0.f, 0.f, 0.0f };
 		for (UINT i = 1; i < numRenderTargets; ++i)
 		{
-			rtvDescriptorHandles[i] = CD3DX12_CPU_DESCRIPTOR_HANDLE(pGDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), currentBackBufferIndex * (numRenderTargets - 1) + (i - 1), incrementSize); // position, normal, albedo
+			rtvDescriptorHandles[i] = CD3DX12_CPU_DESCRIPTOR_HANDLE(pGDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), i - 1, incrementSize); // position, normal, albedo
 			pCurrentCommandList->ClearRenderTargetView(rtvDescriptorHandles[i], color, 0, nullptr);
 		}
 	}
@@ -265,7 +265,7 @@ void RasterShading::onChange(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentComm
 void RasterShading::onResize()
 {
 	viewport = CD3DX12_VIEWPORT(0.0f, 0.0f, static_cast<float>(rendererResources->winDimensions.x), static_cast<float>(rendererResources->winDimensions.y));
-	pDepthBuffers = DXUtil::createDepthStencilView(rendererResources->pDevice, pDepthDescriptorHeap, rendererResources->winDimensions.x, rendererResources->winDimensions.y, rendererResources->numBackBuffers);
+	pDepthBuffer = DXUtil::createDepthStencilView(rendererResources->pDevice, pDepthDescriptorHeap, rendererResources->winDimensions.x, rendererResources->winDimensions.y, 1u)[0];
 	
 	if (computeGBuffer)
 	{
