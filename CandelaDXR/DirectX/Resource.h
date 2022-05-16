@@ -20,7 +20,8 @@ namespace candela::directx
 		std::vector<DirectX::XMFLOAT4> data;
 	};
 
-	class Resource {
+	class Resource 
+	{
 	public:
 		Resource(DXResource resource, D3D12_RESOURCE_STATES state);
 
@@ -31,7 +32,8 @@ namespace candela::directx
 		operator const DXResource&() const;
 		operator ID3D12Resource*();
 
-		ResourceData read(DXCommandQueue& commandList);
+		ResourceData read(DXCommandQueue& commandQueue);
+		void write(DXCommandList& commandList, DXResource& tempResource, const void * ptData);
 		void resize(std::uint32_t width, std::uint32_t height);
 
 		void setName(const std::wstring& name);

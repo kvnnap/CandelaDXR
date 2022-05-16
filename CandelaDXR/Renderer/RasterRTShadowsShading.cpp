@@ -69,7 +69,7 @@ void RasterRTShadowsShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12Gra
 	createShaderResources();
 
 	// Constant buffer
-	constantBuffer = DXUtil::uploadDataToDefaultHeap(rRes->pDevice, pCurrentCommandList, rendererResources->initTempBuffers.emplace_back(), &constBuffer, sizeof(constBuffer), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+	constantBuffer = DXUtil::uploadDataToDefaultHeap(rRes->pDevice, pCurrentCommandList, rendererResources->getTempResource(), &constBuffer, sizeof(constBuffer), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 	constantBuffer->SetName(L"Raster ShadowsRT Constant Buffer");
 
 	// Build shading table
@@ -100,7 +100,7 @@ void RasterRTShadowsShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurren
 	else
 		++constBuffer.frameNumber;
 	DXUtil::updateDataInDefaultHeap(rendererResources->pDevice, pCurrentCommandList, constantBuffer, 
-		rendererResources->tempBuffers[currentBackBufferIndex].emplace_back(),
+		rendererResources->getTempResource(),
 		&constBuffer, sizeof(constBuffer), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
 	pCurrentCommandList->SetDescriptorHeaps(1u, descriptorHeaps[currentBackBufferIndex].GetAddressOf());
@@ -129,7 +129,7 @@ void RasterRTShadowsShading::onChange(wrl::ComPtr<ID3D12GraphicsCommandList> pCu
 	if (changeEvent & static_cast<ChangeEvent_t>(ChangeEvent::SceneChange))
 	{
 		constBuffer.numLights = static_cast<uint32_t>(rendererResources->scene->getLights().size());
-		createShaderTable(pCurrentCommandList, currentBackBufferIndex);
+		createShaderTable(pCurrentCommandList);
 	}
 	clear = true;
 }
@@ -315,7 +315,7 @@ void RasterRTShadowsShading::createShaderResources()
 	}
 }
 
-void RasterRTShadowsShading::createShaderTable(wrl::ComPtr<ID3D12GraphicsCommandList>& commandList, int32_t currentBackBufferIndex)
+void RasterRTShadowsShading::createShaderTable(wrl::ComPtr<ID3D12GraphicsCommandList>& commandList)
 {
 	for (size_t i = 0; i < shadingTables.size(); ++i)
 	{
@@ -337,9 +337,6 @@ void RasterRTShadowsShading::createShaderTable(wrl::ComPtr<ID3D12GraphicsCommand
 		shadingTable->setInputForViewParameter(L"rayGen", "lights", rendererResources->lightBuffer);
 
 		// Generate
-		shadingTable->generateShadingTable(rendererResources->pDevice, commandList, stateObject, 
-			currentBackBufferIndex == -1 ?
-			rendererResources->initTempBuffers.emplace_back() : 
-			rendererResources->tempBuffers[currentBackBufferIndex].emplace_back());
+		shadingTable->generateShadingTable(rendererResources->pDevice, commandList, stateObject, rendererResources->getTempResource());
 	}
 }

@@ -76,8 +76,17 @@ void LightTracingShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12Graphi
 	constBuffer.pathFilter = 0xFFFFFFFF;
 	auto& scene = *rRes->scene;
 
+	// Testing central resources
+	const auto& dim = rendererResources->winDimensions;
+	outputTexture = &rendererResources->resourceManager->createResource(D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, dim.x, dim.y, DXGI_FORMAT_R32G32B32A32_FLOAT, true);
+	outputTexture->setName(L"Output Texture");
+	irradianceTexture = &rendererResources->resourceManager->createResource(D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, dim.x, dim.y, DXGI_FORMAT_R32G32B32A32_FLOAT, true);
+	irradianceTexture->setName(L"Irradiance Texture");
+	irrToRad = &rendererResources->resourceManager->createResource(D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_FLAG_NONE, dim.x, dim.y, DXGI_FORMAT_R32_FLOAT, true);
+	irrToRad->setName(L"irrToRad Texture");
+
 	// Gen 
-	generateIrrToRadTexture(pCurrentCommandList, rendererResources->initTempBuffers.emplace_back());
+	generateIrrToRadTexture(pCurrentCommandList, rendererResources->getTempResource());
 
 	// Build Pipeline
 	buildPipeline();
@@ -86,7 +95,7 @@ void LightTracingShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12Graphi
 	createShaderResources();
 
 	// Constant buffer
-	constantBuffer = DXUtil::uploadDataToDefaultHeap(rRes->pDevice, pCurrentCommandList, rendererResources->initTempBuffers.emplace_back(), &constBuffer, sizeof(constBuffer), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+	constantBuffer = DXUtil::uploadDataToDefaultHeap(rRes->pDevice, pCurrentCommandList, rendererResources->getTempResource(), &constBuffer, sizeof(constBuffer), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 	constantBuffer->SetName(L"LT Constant Buffer");
 
 	// Build shading table
@@ -305,16 +314,6 @@ void LightTracingShading::createShaderResources()
 	const auto &dim = rendererResources->winDimensions;
 
 	// The output resource
-	outputTexture = make_unique<Resource>(Resource::createTextureCommittedResource(
-		rendererResources->pDevice, dim.x, dim.y,
-		D3D12_RESOURCE_STATE_COPY_SOURCE,
-		DXGI_FORMAT_R32G32B32A32_FLOAT, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS));
-	outputTexture->setName(L"Output Texture");
-	irradianceTexture = make_unique<Resource>(Resource::createTextureCommittedResource(
-		rendererResources->pDevice, dim.x, dim.y,
-		D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
-		DXGI_FORMAT_R32G32B32A32_FLOAT, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS));
-	irradianceTexture->setName(L"Irradiance Texture");
 	irradianceDataStructure = DXUtil::createCommittedResource(rendererResources->pDevice, D3D12_HEAP_TYPE_DEFAULT, dim.x * dim.y * sizeof(uint32_t) * 4, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS);
 	irradianceDataStructure->SetName(L"Irradiance DS");
 
@@ -340,7 +339,7 @@ void LightTracingShading::createShaderResources()
 	irrToRadSrvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
 	irrToRadSrvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 	irrToRadSrvDesc.Texture2D.MipLevels = 1;
-	descHeapManager->setSRV(entryNumber++, irrToRadSrvDesc, rendererResources->pDevice, irrToRad);
+	descHeapManager->setSRV(entryNumber++, irrToRadSrvDesc, rendererResources->pDevice, *irrToRad);
 
 	// Textures
 	srvDesc = {};
@@ -356,7 +355,7 @@ void LightTracingShading::createShaderResources()
 	cmpDescHeapManager.setUAV(0, uavDesc, rendererResources->pDevice, *outputTexture);
 	cmpDescHeapManager.setUAV(1, uavDesc2, rendererResources->pDevice, irradianceDataStructure);
 	cmpDescHeapManager.setUAV(2, uavDesc, rendererResources->pDevice, *irradianceTexture);
-	cmpDescHeapManager.setSRV(3, irrToRadSrvDesc, rendererResources->pDevice, irrToRad);
+	cmpDescHeapManager.setSRV(3, irrToRadSrvDesc, rendererResources->pDevice, *irrToRad);
 	computeDescriptorHeap = cmpDescHeapManager.getDescriptorHeap();
 }
 
@@ -396,9 +395,7 @@ void LightTracingShading::generateIrrToRadTexture(wrl::ComPtr<ID3D12GraphicsComm
 	for (uint32_t y = 0; y < dim.y; ++y)
 		for (uint32_t x = 0; x < dim.x; ++x)
 			irradianceToRadianceConstants.push_back(1.f / cosIntegral(x, y));
-	irrToRad = DXUtil::uploadTextureDataToDefaultHeap(rendererResources->pDevice, commandList, tempResource, irradianceToRadianceConstants.data(),
-		dim.x, dim.y, sizeof(float), DXGI_FORMAT_R32_FLOAT, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-	irrToRad->SetName(L"Irr-to-rad Texture");
+	irrToRad->write(commandList, tempResource, irradianceToRadianceConstants.data());
 }
 
 void LightTracingShading::onChange(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, uint32_t currentBackBufferIndex, ChangeEvent_t changeEvent)

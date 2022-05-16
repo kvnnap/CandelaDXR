@@ -175,7 +175,7 @@ void RasterShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12GraphicsComm
 	constantBuffer = DXUtil::uploadDataToDefaultHeap(
 		rRes->pDevice,
 		pCurrentCommandList,
-		rendererResources->initTempBuffers.emplace_back(),
+		rendererResources->getTempResource(),
 		&constBuffer,
 		sizeof(constBuffer),
 		D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
@@ -227,7 +227,7 @@ void RasterShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandL
 		rendererResources->pDevice,
 		pCurrentCommandList,
 		constantBuffer,
-		rendererResources->tempBuffers[currentBackBufferIndex].emplace_back(),
+		rendererResources->getTempResource(),
 		&constBuffer,
 		sizeof(constBuffer),
 		D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER,

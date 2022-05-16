@@ -49,6 +49,7 @@ using candela::directx::CommandQueue;
 using candela::directx::RootSignatureManager;
 using candela::directx::DescriptorHeap;
 using candela::directx::Resource;
+using candela::directx::ResourceManager;
 
 using candela::mathematics::Vector2;
 using candela::mathematics::UVector2;
@@ -177,7 +178,8 @@ void Renderer::init()
 	pRTVBackBuffers = DXUtil::createRenderTargetViewsEx(pDevice, pRTVDescriptorHeap, pSwapChain, pRTVRadBackBuffers, NumBackBuffers);
 	
 	// Upload scene resources
-	rendererResources.tempBuffers.resize(NumBackBuffers);
+	rendererResources.resourceManager = make_unique<ResourceManager>(pDevice);
+	rendererResources.resourceManager->setTempBufferSlots(NumBackBuffers);
 	initSceneResources();
 
 	// ImGui
@@ -220,8 +222,8 @@ void Renderer::init()
 		.scene = scene,
 		.camera = camera,
 		.accelerationStructure = nullptr,
-		.tempBuffers = rendererResources.tempBuffers,
-		.currentBackBufferIndex = 0
+		.currentBackBufferIndex = 0,
+		.resourceManager = std::move(rendererResources.resourceManager)
 	};
 
 	initShaders();
@@ -248,7 +250,7 @@ void Renderer::init()
 	commandQueue->waitForFenceValue(fV);
 
 	// Clear temporary buffers
-	rendererResources.initTempBuffers.clear();
+	rendererResources.getTempResource();
 }
 
 void Renderer::renderFrame()
@@ -477,7 +479,7 @@ void Renderer::renderFrame()
 	GFXTHROWIFFAILED(pSwapChain.As(&pSwapChain3));
 	rendererResources.currentBackBufferIndex = currentBackBufferIndex = pSwapChain3->GetCurrentBackBufferIndex();
 	commandQueue->waitForFenceValue(frameFenceValues[currentBackBufferIndex]);
-	rendererResources.tempBuffers[currentBackBufferIndex].clear();
+	rendererResources.resourceManager->clearTemporaryBuffers(currentBackBufferIndex);
 
 	// Stats
 	if (changeEvent || camera->hasChanged())
@@ -653,6 +655,7 @@ void Renderer::resize()
 	fpsCounter.resetFrameCount();
 	
 	// Resize drawables
+	rendererResources.resourceManager->resize(windowDimensions.x, windowDimensions.y);
 	for (IDrawable* drawable : drawables)
 		drawable->onResize();
 }

@@ -68,11 +68,11 @@ void PathTracingShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12Graphic
 	createShaderResources();
 
 	// Constant buffer
-	constantBuffer = DXUtil::uploadDataToDefaultHeap(rRes->pDevice, pCurrentCommandList, rendererResources->initTempBuffers.emplace_back(), &constBuffer, sizeof(constBuffer), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+	constantBuffer = DXUtil::uploadDataToDefaultHeap(rRes->pDevice, pCurrentCommandList, rendererResources->getTempResource(), &constBuffer, sizeof(constBuffer), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 	constantBuffer->SetName(L"PT Constant Buffer");
 
 	// Build shading table
-	createShaderTable(pCurrentCommandList, rendererResources->initTempBuffers.emplace_back());
+	createShaderTable(pCurrentCommandList, rendererResources->getTempResource());
 }
 
 void PathTracingShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, std::uint32_t currentBackBufferIndex)
@@ -125,7 +125,7 @@ void PathTracingShading::onChange(wrl::ComPtr<ID3D12GraphicsCommandList> pCurren
 	if (changeEvent & static_cast<ChangeEvent_t>(ChangeEvent::SceneChange))
 	{
 		constBuffer.numLights = static_cast<uint32_t>(rendererResources->scene->getLights().size());
-		createShaderTable(pCurrentCommandList, rendererResources->tempBuffers[currentBackBufferIndex].emplace_back());
+		createShaderTable(pCurrentCommandList, rendererResources->getTempResource());
 	}
 	clear = true;
 }

@@ -43,7 +43,7 @@ namespace candela::renderer
 	private:
 		void buildPipeline();
 		void createShaderResources();
-		void createShaderTable(wrl::ComPtr<ID3D12GraphicsCommandList>& commandList, std::int32_t currentBackBufferIndex = -1);
+		void createShaderTable(wrl::ComPtr<ID3D12GraphicsCommandList>& commandList);
 
 		// Raster Shader
 		RasterShading rasterShader;

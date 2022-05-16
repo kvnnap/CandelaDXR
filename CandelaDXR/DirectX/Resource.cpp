@@ -116,6 +116,30 @@ ResourceData Resource::read(DXCommandQueue& commandQueue)
 	return ResourceData{desc.Width, desc.Height, std::move(data)};
 }
 
+void Resource::write(DXCommandList& commandList, DXResource& tempResource, const void* ptData)
+{
+	// Get device
+	DXDevice device;
+	resource->GetDevice(IID_PPV_ARGS(&device));
+
+	// Get resource info
+	auto desc = resource->GetDesc();
+
+	UINT64 rowSizeInBytes, totalSize;
+	device->GetCopyableFootprints(&desc, 0u, 1u, 0u, nullptr, nullptr, &rowSizeInBytes, &totalSize);
+
+	tempResource = DXUtil::createCommittedResource(device, D3D12_HEAP_TYPE_UPLOAD, totalSize, D3D12_RESOURCE_STATE_GENERIC_READ);
+	D3D12_SUBRESOURCE_DATA subresourceData = {};
+	subresourceData.pData = ptData;
+	subresourceData.RowPitch = rowSizeInBytes;
+	subresourceData.SlicePitch = subresourceData.RowPitch * desc.Height;
+
+	auto prevState = getState();
+	transistionBarrier(commandList, D3D12_RESOURCE_STATE_COPY_DEST);
+	UpdateSubresources(commandList.Get(), *this, tempResource.Get(), 0, 0, 1, &subresourceData);
+	transistionBarrier(commandList, prevState);
+}
+
 void Resource::resize(uint32_t width, uint32_t height)
 {
 	// Get resource info
@@ -129,9 +153,11 @@ void Resource::resize(uint32_t width, uint32_t height)
 	dxRes->GetDevice(IID_PPV_ARGS(&device));
 
 	// Resize the resource
+	auto name = getName();
 	resource = Resource::createTextureCommittedResource(
 		device, width, height, state,
 		desc.Format, desc.Flags).resource;
+	setName(name);
 }
 
 void Resource::setName(const std::wstring& name)

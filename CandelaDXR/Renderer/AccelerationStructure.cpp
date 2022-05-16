@@ -55,7 +55,7 @@ void AccelerationStructure::init(RendererResources* rendererResources, wrl::ComP
 	}
 
 	// Build Top-Layer
-	DXUtil::buildTopLevelAS(rendererResources->pDevice, pCurrentCommandList, tlasInstanceData, rendererResources->initTempBuffers.emplace_back(), false, tlasBuffers);
+	DXUtil::buildTopLevelAS(rendererResources->pDevice, pCurrentCommandList, tlasInstanceData, rendererResources->getTempResource(), false, tlasBuffers);
 }
 
 void candela::renderer::AccelerationStructure::onChange(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, std::uint32_t currentBackBufferIndex, ChangeEvent_t changeEvent)

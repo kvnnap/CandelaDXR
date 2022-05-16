@@ -5,6 +5,7 @@
 
 #include "DirectX/Types.h"
 #include "DirectX/Resource.h"
+#include "DirectX/ResourceManager.h"
 #include "Scene/Scene.h"
 #include "Mathematics/Types.h"
 #include "Camera.h"
@@ -34,13 +35,12 @@ namespace candela::renderer
 		scene::Scene* scene;
 		Camera* camera;
 		AccelerationStructure* accelerationStructure;
-		std::vector<wrl::ComPtr<ID3D12Resource>> initTempBuffers;
-		std::vector<std::vector<wrl::ComPtr<ID3D12Resource>>> tempBuffers;
 		UINT currentBackBufferIndex;
+		std::unique_ptr<directx::ResourceManager> resourceManager;
 
 		directx::DXResource& getTempResource()
 		{
-			return tempBuffers[currentBackBufferIndex].emplace_back();
+			return resourceManager->getTempResource(currentBackBufferIndex);
 		}
 	};
 }
