@@ -36,11 +36,16 @@ namespace candela::directx
 		void write(DXCommandList& commandList, DXResource& tempResource, const void * ptData);
 		void resize(std::uint32_t width, std::uint32_t height);
 
+		void createShaderResourceView(D3D12_CPU_DESCRIPTOR_HANDLE heapSrvCpuDesc);
+
+		float getAspectRatio();
+		void setResource(DXResource resource, D3D12_RESOURCE_STATES state);
+
 		void setName(const std::wstring& name);
 		std::wstring getName() const;
 
-		static Resource createTextureCommittedResource(DXDevice& device, UINT64 width, UINT height, D3D12_RESOURCE_STATES resourceState, DXGI_FORMAT format = DXGI_FORMAT_R8G8B8A8_UNORM, D3D12_RESOURCE_FLAGS resourceFlags = D3D12_RESOURCE_FLAG_NONE, D3D12_HEAP_TYPE heapType = D3D12_HEAP_TYPE_DEFAULT);
-		static Resource createCommittedResource(DXDevice &device, UINT64 size, D3D12_RESOURCE_STATES resourceState, D3D12_RESOURCE_FLAGS resourceFlags = D3D12_RESOURCE_FLAG_NONE, D3D12_HEAP_TYPE heapType = D3D12_HEAP_TYPE_DEFAULT);
+		static Resource createTextureCommittedResource(DXDevice& device, UINT64 width, UINT height, D3D12_RESOURCE_STATES resourceState, DXGI_FORMAT format = DXGI_FORMAT_R8G8B8A8_UNORM, D3D12_RESOURCE_FLAGS resourceFlags = D3D12_RESOURCE_FLAG_NONE, D3D12_HEAP_TYPE heapType = D3D12_HEAP_TYPE_DEFAULT, D3D12_CLEAR_VALUE* clearValue = nullptr);
+		static Resource createCommittedResource(DXDevice &device, UINT64 size, D3D12_RESOURCE_STATES resourceState, D3D12_RESOURCE_FLAGS resourceFlags = D3D12_RESOURCE_FLAG_NONE, D3D12_HEAP_TYPE heapType = D3D12_HEAP_TYPE_DEFAULT, D3D12_CLEAR_VALUE* clearValue = nullptr);
 	private:
 		DXResource resource;
 		D3D12_RESOURCE_STATES state;

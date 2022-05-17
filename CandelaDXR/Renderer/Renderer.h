@@ -20,7 +20,7 @@
 #include "Camera.h"
 #include "Chain/IChain.h"
 
-#include "ImGui/ImGuiDrawable.h"
+#include "ImGui/ImGuiManager.h"
 #include "RendererResources.h"
 
 namespace candela::renderer
@@ -76,8 +76,8 @@ namespace candela::renderer
 		std::shared_ptr<directx::Resource> pRadAccumulator; // 32-bit
 		ResPtrVec pRTVBackBuffers; // Buffers retrieved from swap-chain (these are 8-bit)
 
-		// ImGui
-		imgui::ImGuiDrawable imguiDrawable;
+		// ImGui Manager - is also a drawable
+		imgui::ImGuiManager imguiManager;
 
 		// Constants and integral values
 		UINT rtvDescriptorSize;

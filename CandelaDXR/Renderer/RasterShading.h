@@ -20,7 +20,7 @@ namespace candela::renderer
 {
 	namespace wrl = Microsoft::WRL;
 
-	using ResPtrVec = std::vector<std::shared_ptr<directx::Resource>>;
+	using ResPtrVec = std::vector<directx::Resource*>;
 
 	class RasterShading
 		: public Drawable
@@ -55,7 +55,7 @@ namespace candela::renderer
 		D3D12_RECT scissorRect;
 		D3D12_VIEWPORT viewport;
 		UINT dsvDescriptorSize;
-		wrl::ComPtr<ID3D12Resource> pDepthBuffer;
+		directx::Resource* pDepthBuffer;
 
 		// G-Buffer
 		wrl::ComPtr<ID3D12DescriptorHeap> pGDescriptorHeap;

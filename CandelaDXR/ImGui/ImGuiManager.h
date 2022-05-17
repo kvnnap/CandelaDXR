@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <string>
+#include <memory>
 
 #include <DirectXMath.h>
 
@@ -9,15 +10,15 @@
 #include "ImGuiSceneNode.h"
 #include "ImGuiMaterial.h"
 #include "ImGuiShading.h"
+#include "ImGuiResourceManager.h"
 
 namespace candela::renderer::imgui
 {
-	class ImGuiDrawable
+	class ImGuiManager
 		: public Drawable
 	{
 	public:
-		ImGuiDrawable();
-		~ImGuiDrawable();
+		~ImGuiManager();
 
 		ChangeEvent_t processChangeEvent();
 
@@ -30,9 +31,10 @@ namespace candela::renderer::imgui
 	private:
 		// ImGui
 		wrl::ComPtr<ID3D12DescriptorHeap> pImGuiDescriptorHeap;
-		std::vector<imgui::ImGuiSceneNode> imguiSceneNodes;
-		std::vector<imgui::ImGuiMaterial> imguiMaterials;
-		std::vector<imgui::ImGuiShading> imguiShaders;
+		std::vector<ImGuiSceneNode> imguiSceneNodes;
+		std::vector<ImGuiMaterial> imguiMaterials;
+		std::vector<ImGuiShading> imguiShaders;
+		std::unique_ptr<ImGuiResourceManager> imguiResourceManager;
 
 		RendererResources* rendererResources;
 	};

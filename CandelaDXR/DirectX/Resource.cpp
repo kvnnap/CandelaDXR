@@ -160,6 +160,51 @@ void Resource::resize(uint32_t width, uint32_t height)
 	setName(name);
 }
 
+void Resource::createShaderResourceView(D3D12_CPU_DESCRIPTOR_HANDLE heapSrvCpuDesc)
+{
+	// Get resource info
+	DXResource& dxRes = resource;
+	auto desc = dxRes->GetDesc();
+	if (desc.Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE2D)
+		ThrowException("createShaderResourceView error: Resource is not Texture2D");
+
+	// Get device
+	DXDevice device;
+	dxRes->GetDevice(IID_PPV_ARGS(&device));
+
+	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
+	if (desc.Format == DXGI_FORMAT_D32_FLOAT)
+	{
+		srvDesc.Shader4ComponentMapping = D3D12_ENCODE_SHADER_4_COMPONENT_MAPPING(0, 0, 0, 5);
+		srvDesc.Format = DXGI_FORMAT_R32_FLOAT;
+	}
+	else
+	{
+		srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+		srvDesc.Format = desc.Format;
+	}
+	
+	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+	srvDesc.Texture2D.MipLevels = desc.MipLevels;
+
+	device->CreateShaderResourceView(*this, &srvDesc, heapSrvCpuDesc);
+}
+
+float Resource::getAspectRatio()
+{
+	DXResource& dxRes = resource;
+	auto desc = dxRes->GetDesc();
+	if (desc.Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE2D)
+		ThrowException("createShaderResourceView error: Resource is not Texture2D");
+	return static_cast<float>(desc.Width) / static_cast<float>(desc.Height);
+}
+
+void Resource::setResource(DXResource p_resource, D3D12_RESOURCE_STATES p_state)
+{
+	resource = p_resource;
+	state = p_state;
+}
+
 void Resource::setName(const std::wstring& name)
 {
 	resource->SetName(name.c_str());
@@ -175,13 +220,13 @@ std::wstring Resource::getName() const
 }
 
 // Factories
-Resource Resource::createTextureCommittedResource(DXDevice& device, UINT64 width, UINT height, D3D12_RESOURCE_STATES resourceState, DXGI_FORMAT format, D3D12_RESOURCE_FLAGS resourceFlags, D3D12_HEAP_TYPE heapType)
+Resource Resource::createTextureCommittedResource(DXDevice& device, UINT64 width, UINT height, D3D12_RESOURCE_STATES resourceState, DXGI_FORMAT format, D3D12_RESOURCE_FLAGS resourceFlags, D3D12_HEAP_TYPE heapType, D3D12_CLEAR_VALUE* clearValue)
 {
-	return Resource(DXUtil::createTextureCommittedResource(device, heapType, width, height, resourceState, resourceFlags, format), resourceState);
+	return Resource(DXUtil::createTextureCommittedResource(device, heapType, width, height, resourceState, resourceFlags, format, clearValue), resourceState);
 }
 
-Resource Resource::createCommittedResource(DXDevice& device, UINT64 size, D3D12_RESOURCE_STATES resourceState, D3D12_RESOURCE_FLAGS resourceFlags, D3D12_HEAP_TYPE heapType)
+Resource Resource::createCommittedResource(DXDevice& device, UINT64 size, D3D12_RESOURCE_STATES resourceState, D3D12_RESOURCE_FLAGS resourceFlags, D3D12_HEAP_TYPE heapType, D3D12_CLEAR_VALUE* clearValue)
 {
-	return Resource(DXUtil::createCommittedResource(device, heapType, size, resourceState, resourceFlags), resourceState);
+	return Resource(DXUtil::createCommittedResource(device, heapType, size, resourceState, resourceFlags, clearValue), resourceState);
 }
 

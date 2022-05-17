@@ -1,5 +1,6 @@
 #include <d3dcompiler.h>
 #include <vector>
+#include <array>
 
 #include "RasterShading.h"
 #include "DirectX/d3dx12.h"
@@ -27,6 +28,7 @@ using DirectX::XMMATRIX;
 using std::make_shared;
 using std::uint32_t;
 using std::size_t;
+using std::array;
 using std::vector;
 using Microsoft::WRL::ComPtr;
 
@@ -184,9 +186,18 @@ void RasterShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12GraphicsComm
 	// Init G-Buffer
 	if (computeGBuffer)
 	{
-		gBuffer.resize(numRenderTargets - 1); // gPos, gNorm, gAlb
+		std::array<std::string, 3> names = { "gPos", "gNorm", "gAlb" };
+		for (const auto& name : names)
+			gBuffer.emplace_back(&rendererResources->resourceManager->createResource(
+				D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET,
+				rendererResources->winDimensions.x, rendererResources->winDimensions.y, 
+				DXGI_FORMAT_R32G32B32A32_FLOAT, true, name));
 		pGDescriptorHeap = DXUtil::createDescriptorHeap(rRes->pDevice, static_cast<UINT>(gBuffer.size()), D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 	}
+
+	auto temp = DXUtil::createDepthStencilView(rendererResources->pDevice, pDepthDescriptorHeap, rendererResources->winDimensions.x, rendererResources->winDimensions.y, 1u)[0];
+	pDepthBuffer = &rendererResources->resourceManager->addExistingResource(temp, D3D12_RESOURCE_STATE_DEPTH_WRITE, "gDepth");
+
 	onResize();
 }
 
@@ -265,21 +276,15 @@ void RasterShading::onChange(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentComm
 void RasterShading::onResize()
 {
 	viewport = CD3DX12_VIEWPORT(0.0f, 0.0f, static_cast<float>(rendererResources->winDimensions.x), static_cast<float>(rendererResources->winDimensions.y));
-	pDepthBuffer = DXUtil::createDepthStencilView(rendererResources->pDevice, pDepthDescriptorHeap, rendererResources->winDimensions.x, rendererResources->winDimensions.y, 1u)[0];
-	
+	auto temp = DXUtil::createDepthStencilView(rendererResources->pDevice, pDepthDescriptorHeap, rendererResources->winDimensions.x, rendererResources->winDimensions.y, 1u)[0];
+	pDepthBuffer->setResource(temp, D3D12_RESOURCE_STATE_DEPTH_WRITE);
+
 	if (computeGBuffer)
 	{
 		const auto rtvDescSize = rendererResources->pDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 		CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(pGDescriptorHeap->GetCPUDescriptorHandleForHeapStart());
-
 		for (UINT i = 0; i < gBuffer.size(); ++i)
 		{
-			gBuffer[i] = make_shared<Resource>(Resource::createTextureCommittedResource(
-				rendererResources->pDevice, rendererResources->winDimensions.x, rendererResources->winDimensions.y,
-				D3D12_RESOURCE_STATE_RENDER_TARGET, DXGI_FORMAT_R32G32B32A32_FLOAT,
-				D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET)
-			);
-			
 			rendererResources->pDevice->CreateRenderTargetView(*gBuffer[i], nullptr, rtvHandle);
 			rtvHandle.Offset(rtvDescSize);
 		}

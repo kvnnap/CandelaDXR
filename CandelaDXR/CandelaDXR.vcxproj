@@ -213,8 +213,9 @@
     <ClCompile Include="Factory\RendererFactory.cpp" />
     <ClCompile Include="Factory\UniformSamplerFactory.cpp" />
     <ClCompile Include="Factory\VectorFactory.cpp" />
-    <ClCompile Include="ImGui\ImGuiDrawable.cpp" />
+    <ClCompile Include="ImGui\ImGuiManager.cpp" />
     <ClCompile Include="ImGui\ImGuiMaterial.cpp" />
+    <ClCompile Include="ImGui\ImGuiResourceManager.cpp" />
     <ClCompile Include="ImGui\ImGuiSceneNode.cpp" />
     <ClCompile Include="ImGui\Backend\imgui_impl_dx12.cpp" />
     <ClCompile Include="ImGui\Backend\imgui_impl_win32.cpp" />
@@ -262,7 +263,8 @@
     <ClInclude Include="DirectX\RootSignatureManager.h" />
     <ClInclude Include="DirectX\ShadingTable.h" />
     <ClInclude Include="DirectX\Types.h" />
-    <ClInclude Include="ImGui\ImGuiDrawable.h" />
+    <ClInclude Include="ImGui\ImGuiManager.h" />
+    <ClInclude Include="ImGui\ImGuiResourceManager.h" />
     <ClInclude Include="Renderer\ChangeEvent.h" />
     <ClInclude Include="Renderer\Drawable.h" />
     <ClInclude Include="Renderer\IResource.h" />

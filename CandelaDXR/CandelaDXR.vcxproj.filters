@@ -165,10 +165,13 @@
     <ClCompile Include="DirectX\ResourceManager.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="ImGui\ImGuiDrawable.cpp">
+    <ClCompile Include="ImGui\ImGuiManager.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Renderer\Drawable.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ImGui\ImGuiResourceManager.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -368,10 +371,13 @@
     <ClInclude Include="DirectX\Types.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="ImGui\ImGuiDrawable.h">
+    <ClInclude Include="ImGui\ImGuiManager.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Renderer\Drawable.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ImGui\ImGuiResourceManager.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

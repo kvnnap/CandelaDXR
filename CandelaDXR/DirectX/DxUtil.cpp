@@ -369,7 +369,7 @@ std::vector<ComPtr<ID3D12Resource>> DXUtil::createDepthStencilView(
 	return depthBuffers;
 }
 
-ComPtr<ID3D12Resource> DXUtil::createCommittedResource(ComPtr<ID3D12Device> device, D3D12_HEAP_TYPE heapType, UINT64 size, D3D12_RESOURCE_STATES resourceState, D3D12_RESOURCE_FLAGS resourceFlags)
+ComPtr<ID3D12Resource> DXUtil::createCommittedResource(ComPtr<ID3D12Device> device, D3D12_HEAP_TYPE heapType, UINT64 size, D3D12_RESOURCE_STATES resourceState, D3D12_RESOURCE_FLAGS resourceFlags, D3D12_CLEAR_VALUE* clearValue)
 {
 	ComPtr<ID3D12Resource> buffer;
 
@@ -381,14 +381,14 @@ ComPtr<ID3D12Resource> DXUtil::createCommittedResource(ComPtr<ID3D12Device> devi
 		D3D12_HEAP_FLAG_NONE,
 		&resBuffDesc,
 		resourceState,
-		nullptr,
+		clearValue,
 		IID_PPV_ARGS(&buffer)
 	));
 
 	return buffer;
 }
 
-ComPtr<ID3D12Resource> DXUtil::createTextureCommittedResource(ComPtr<ID3D12Device> device, D3D12_HEAP_TYPE heapType, UINT64 width, UINT height, D3D12_RESOURCE_STATES resourceState, D3D12_RESOURCE_FLAGS resourceFlags, DXGI_FORMAT format)
+ComPtr<ID3D12Resource> DXUtil::createTextureCommittedResource(ComPtr<ID3D12Device> device, D3D12_HEAP_TYPE heapType, UINT64 width, UINT height, D3D12_RESOURCE_STATES resourceState, D3D12_RESOURCE_FLAGS resourceFlags, DXGI_FORMAT format, D3D12_CLEAR_VALUE* clearValue)
 {
 	ComPtr<ID3D12Resource> buffer;
 
@@ -401,7 +401,7 @@ ComPtr<ID3D12Resource> DXUtil::createTextureCommittedResource(ComPtr<ID3D12Devic
 		D3D12_HEAP_FLAG_NONE,
 		&tex2DDesc,
 		resourceState,
-		nullptr,
+		clearValue,
 		IID_PPV_ARGS(&buffer)
 	));
 

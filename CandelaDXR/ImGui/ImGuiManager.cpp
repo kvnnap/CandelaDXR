@@ -5,26 +5,26 @@
 #include "DirectX/d3dx12.h"
 #include "DirectX/DxUtil.h"
 
-#include "ImGuiDrawable.h"
+#include "ImGuiManager.h"
+
+using std::make_unique;
 
 using candela::directx::DXUtil;
-using candela::renderer::imgui::ImGuiDrawable;
+
+using candela::renderer::imgui::ImGuiResourceManager;
+using candela::renderer::imgui::ImGuiManager;
 using candela::renderer::ChangeEvent_t;
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
-ImGuiDrawable::ImGuiDrawable()
-{
-}
-
-ImGuiDrawable::~ImGuiDrawable()
+ImGuiManager::~ImGuiManager()
 {
 	// Cleanup ImGui
 	ImGui_ImplDX12_Shutdown();
 	ImGui_ImplWin32_Shutdown();
 }
 
-ChangeEvent_t ImGuiDrawable::processChangeEvent()
+ChangeEvent_t ImGuiManager::processChangeEvent()
 {
 	ChangeEvent_t changeEvent{};
 	if (!isEnabled())
@@ -62,17 +62,23 @@ ChangeEvent_t ImGuiDrawable::processChangeEvent()
 			changeEvent |= static_cast<ChangeEvent_t>(ChangeEvent::Statistics);
 	}
 	ImGui::End();
+
+	ImGui::Begin("Resource Manager");
+	imguiResourceManager->drawUi();
+	ImGui::End();
+
 	ImGui::Render();
 
 	return changeEvent;
 }
 
-void ImGuiDrawable::init(RendererResources* rRes, wrl::ComPtr<ID3D12GraphicsCommandList>& pCurrentCommandList, ResourceRegFunction& resRegFn)
+void ImGuiManager::init(RendererResources* rRes, wrl::ComPtr<ID3D12GraphicsCommandList>& pCurrentCommandList, ResourceRegFunction& resRegFn)
 {
 	rendererResources = rRes;
 
 	// ImGui
-	pImGuiDescriptorHeap = DXUtil::createDescriptorHeap(rRes->pDevice, 1u, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, true);
+	constexpr auto numEntries = 1u + ImGuiResourceManager::MaxDisplayableResources;
+	pImGuiDescriptorHeap = DXUtil::createDescriptorHeap(rRes->pDevice, numEntries, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, true);
 	pImGuiDescriptorHeap->SetName(L"ImGui Descriptor Heap");
 	ImGui::CreateContext();
 	ImGui_ImplWin32_Init(rRes->window->getHandle());
@@ -91,9 +97,11 @@ void ImGuiDrawable::init(RendererResources* rRes, wrl::ComPtr<ID3D12GraphicsComm
 	}
 	for (auto drawable : *rRes->drawables)
 		imguiShaders.emplace_back(drawable);
+
+	imguiResourceManager = make_unique<ImGuiResourceManager>(rRes, pImGuiDescriptorHeap.Get());
 }
 
-void ImGuiDrawable::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, std::uint32_t currentBackBufferIndex)
+void ImGuiManager::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, std::uint32_t currentBackBufferIndex)
 {
 	if (!isEnabled())
 		return;
@@ -105,14 +113,15 @@ void ImGuiDrawable::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandL
 	ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), pCurrentCommandList.Get());
 }
 
-void ImGuiDrawable::accept(IVisitor* visitor)
+void ImGuiManager::accept(IVisitor* visitor)
 {
 }
 
-void ImGuiDrawable::onChange(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, std::uint32_t currentBackBufferIndex, ChangeEvent_t changeEvent)
+void ImGuiManager::onChange(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, std::uint32_t currentBackBufferIndex, ChangeEvent_t changeEvent)
 {
 }
 
-void ImGuiDrawable::onResize()
+void ImGuiManager::onResize()
 {
+	imguiResourceManager->resize(rendererResources->winDimensions.x, rendererResources->winDimensions.y);
 }

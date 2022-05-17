@@ -56,8 +56,8 @@ namespace candela::directx
 			UINT winWidth, UINT winHeight,
 			UINT numDSV);
 
-		static Microsoft::WRL::ComPtr<ID3D12Resource> createCommittedResource(Microsoft::WRL::ComPtr<ID3D12Device> device, D3D12_HEAP_TYPE heapType, UINT64 size, D3D12_RESOURCE_STATES resourceState, D3D12_RESOURCE_FLAGS resourceFlags = D3D12_RESOURCE_FLAG_NONE);
-		static Microsoft::WRL::ComPtr<ID3D12Resource> createTextureCommittedResource(Microsoft::WRL::ComPtr<ID3D12Device> device, D3D12_HEAP_TYPE heapType, UINT64 width, UINT height, D3D12_RESOURCE_STATES resourceState, D3D12_RESOURCE_FLAGS resourceFlags = D3D12_RESOURCE_FLAG_NONE, DXGI_FORMAT format = DXGI_FORMAT_R8G8B8A8_UNORM);
+		static Microsoft::WRL::ComPtr<ID3D12Resource> createCommittedResource(Microsoft::WRL::ComPtr<ID3D12Device> device, D3D12_HEAP_TYPE heapType, UINT64 size, D3D12_RESOURCE_STATES resourceState, D3D12_RESOURCE_FLAGS resourceFlags = D3D12_RESOURCE_FLAG_NONE, D3D12_CLEAR_VALUE* clearValue = nullptr);
+		static Microsoft::WRL::ComPtr<ID3D12Resource> createTextureCommittedResource(Microsoft::WRL::ComPtr<ID3D12Device> device, D3D12_HEAP_TYPE heapType, UINT64 width, UINT height, D3D12_RESOURCE_STATES resourceState, D3D12_RESOURCE_FLAGS resourceFlags = D3D12_RESOURCE_FLAG_NONE, DXGI_FORMAT format = DXGI_FORMAT_R8G8B8A8_UNORM, D3D12_CLEAR_VALUE* clearValue = nullptr);
 
 		static Microsoft::WRL::ComPtr<ID3D12Resource> uploadDataToDefaultHeap(Microsoft::WRL::ComPtr<ID3D12Device> device, Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> pCommandList, Microsoft::WRL::ComPtr<ID3D12Resource>& tempResource, const void* ptData, std::size_t dataSize, D3D12_RESOURCE_STATES finalState);
 		static Microsoft::WRL::ComPtr<ID3D12Resource> uploadTextureDataToDefaultHeap(Microsoft::WRL::ComPtr<ID3D12Device> device, Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> pCommandList, Microsoft::WRL::ComPtr<ID3D12Resource>& tempResource, const void* ptData, std::size_t width, std::size_t height, std::size_t sizePerPixel, DXGI_FORMAT format, D3D12_RESOURCE_STATES finalState);

@@ -213,9 +213,9 @@ void Renderer::init()
 	};
 
 	// Init drawables
-	imguiDrawable.init(&rendererResources, pCurrentCommandList, resourceFn);
 	for (IDrawable* drawable : drawables)
 		drawable->init(&rendererResources, pCurrentCommandList, resourceFn);
+	imguiManager.init(&rendererResources, pCurrentCommandList, resourceFn);
 
 	// Wait
 	auto fV = commandQueue->executeCommandList(pCurrentCommandList);
@@ -237,8 +237,8 @@ void Renderer::renderFrame()
 
 	// ImGui
 	if (keyboard.hasKeyChanged('Q') && keyboard.isKeyPressed('Q'))
-		imguiDrawable.setEnabled(!imguiDrawable.isEnabled());
-	ChangeEvent_t changeEvent = imguiDrawable.processChangeEvent();
+		imguiManager.setEnabled(!imguiManager.isEnabled());
+	ChangeEvent_t changeEvent = imguiManager.processChangeEvent();
 
 	constexpr auto flags = D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE;
 	
@@ -274,7 +274,6 @@ void Renderer::renderFrame()
 		DXUtil::updateDataInDefaultHeap(pDevice, pCurrentCommandList, materialBuffer,
 			getTempResource(), scene->getMaterials().data(),
 			sizeof(Material) * scene->getMaterials().size(), flags, flags);
-		
 	}
 
 	// On Scene change need to update lights, specs and face attributes
@@ -392,7 +391,7 @@ void Renderer::renderFrame()
 	}
 
 	// ImGui Render
-	imguiDrawable.draw(pCurrentCommandList, currentBackBufferIndex);
+	imguiManager.draw(pCurrentCommandList, currentBackBufferIndex);
 
 	// End frame
 	pRTVBackBuffers[currentBackBufferIndex]->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_PRESENT);
@@ -585,6 +584,7 @@ void Renderer::resize()
 	rendererResources.resourceManager->resize(windowDimensions.x, windowDimensions.y);
 	for (IDrawable* drawable : drawables)
 		drawable->onResize();
+	imguiManager.onResize();
 }
 
 void Renderer::resizeFloatTargetTextures()
