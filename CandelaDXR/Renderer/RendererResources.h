@@ -9,12 +9,14 @@
 #include "Scene/Scene.h"
 #include "Mathematics/Types.h"
 #include "Camera.h"
+#include "Window/Window.h"
 
 namespace candela::renderer
 {
 	namespace wrl = Microsoft::WRL;
 
 	class AccelerationStructure;
+	class IDrawable;
 
 	struct RendererResources
 	{
@@ -37,6 +39,8 @@ namespace candela::renderer
 		AccelerationStructure* accelerationStructure;
 		UINT currentBackBufferIndex;
 		std::unique_ptr<directx::ResourceManager> resourceManager;
+		ui::Window* window;
+		std::vector<IDrawable*> *drawables;
 
 		directx::DXResource& getTempResource()
 		{

@@ -20,9 +20,7 @@
 #include "Camera.h"
 #include "Chain/IChain.h"
 
-#include "ImGui/ImGuiSceneNode.h"
-#include "ImGui/ImGuiMaterial.h"
-#include "ImGui/ImGuiShading.h"
+#include "ImGui/ImGuiDrawable.h"
 #include "RendererResources.h"
 
 namespace candela::renderer
@@ -79,10 +77,7 @@ namespace candela::renderer
 		ResPtrVec pRTVBackBuffers; // Buffers retrieved from swap-chain (these are 8-bit)
 
 		// ImGui
-		wrl::ComPtr<ID3D12DescriptorHeap> pImGuiDescriptorHeap;
-		std::vector<imgui::ImGuiSceneNode> imguiSceneNodes;
-		std::vector<imgui::ImGuiMaterial> imguiMaterials;
-		std::vector<imgui::ImGuiShading> imguiShaders;
+		imgui::ImGuiDrawable imguiDrawable;
 
 		// Constants and integral values
 		UINT rtvDescriptorSize;

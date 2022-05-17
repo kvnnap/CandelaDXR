@@ -15,10 +15,6 @@
 
 #include "System/DllManager.h"
 
-#include "imgui/imgui.h"
-#include "ImGui/Backend/imgui_impl_win32.h"
-#include "ImGui/Backend/imgui_impl_dx12.h"
-
 #include "Chain/ToneMapping.h"
 #include "Chain/AlphaCorrection.h"
 #include "Chain/FileOutput.h"
@@ -67,11 +63,8 @@ using candela::renderer::Camera;
 using candela::renderer::IDrawable;
 using candela::renderer::ChangeEvent;
 using candela::renderer::ChangeEvent_t;
-using candela::renderer::imgui::ImGuiSceneNode;
 
 using DirectX::XMVectorSet;
-
-extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 Renderer::Renderer(Scene *scene, Camera *camera, const UVector2 &windowDimensions, vector<IDrawable*> p_drawables, uint32_t adapterIndex, bool debugEnabled, bool breakEnabled, bool vsync)
 	: windowDimensions(windowDimensions),
@@ -96,10 +89,6 @@ Renderer::~Renderer()
 
 	// Cannot destroy swapchain in full screen mode
 	pSwapChain->SetFullscreenState(false, nullptr);
-	
-	// Cleanup ImGui
-	ImGui_ImplDX12_Shutdown();
-	ImGui_ImplWin32_Shutdown();
 	
 	// Uncomment to analyse resources
 	//if (debugEnabled)
@@ -182,26 +171,6 @@ void Renderer::init()
 	rendererResources.resourceManager->setTempBufferSlots(NumBackBuffers);
 	initSceneResources();
 
-	// ImGui
-	pImGuiDescriptorHeap = DXUtil::createDescriptorHeap(pDevice, 1u, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, true);
-	pImGuiDescriptorHeap->SetName(L"ImGui Descriptor Heap");
-	ImGui::CreateContext();
-	ImGui_ImplWin32_Init(window->getHandle());
-	ImGui_ImplDX12_Init(pDevice.Get(), NumBackBuffers, DXGI_FORMAT_R8G8B8A8_UNORM, pImGuiDescriptorHeap.Get(),
-		pImGuiDescriptorHeap->GetCPUDescriptorHandleForHeapStart(),
-		pImGuiDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
-	ImGui::StyleColorsDark();
-	window->addWndProcCallback(ImGui_ImplWin32_WndProcHandler, TRUE);
-	for (auto& child : scene->getSceneGraph().Children)
-		imguiSceneNodes.emplace_back(child, *scene);
-	for (size_t i = 0; i < scene->getMaterials().size(); ++i)
-	{
-		auto& mat = scene->getMaterials()[i];
-		imguiMaterials.emplace_back(mat, i, scene->getMaterialName(i));
-	}
-	for (auto& drawable : drawables)
-		imguiShaders.emplace_back(drawable);
-
 	// Prepare struct to share with drawables
 	rendererResources = RendererResources
 	{
@@ -223,7 +192,9 @@ void Renderer::init()
 		.camera = camera,
 		.accelerationStructure = nullptr,
 		.currentBackBufferIndex = 0,
-		.resourceManager = std::move(rendererResources.resourceManager)
+		.resourceManager = std::move(rendererResources.resourceManager),
+		.window = window.get(),
+		.drawables = &drawables
 	};
 
 	initShaders();
@@ -242,6 +213,7 @@ void Renderer::init()
 	};
 
 	// Init drawables
+	imguiDrawable.init(&rendererResources, pCurrentCommandList, resourceFn);
 	for (IDrawable* drawable : drawables)
 		drawable->init(&rendererResources, pCurrentCommandList, resourceFn);
 
@@ -265,45 +237,8 @@ void Renderer::renderFrame()
 
 	// ImGui
 	if (keyboard.hasKeyChanged('Q') && keyboard.isKeyPressed('Q'))
-		viewImgui = !viewImgui;
-	ChangeEvent_t changeEvent{};
-	if (viewImgui)
-	{
-		ImGui_ImplDX12_NewFrame();
-		ImGui_ImplWin32_NewFrame();
-		ImGui::NewFrame();
-
-		ImGui::Begin("Transforms");
-		for (auto& imguiSceneNode : imguiSceneNodes)
-		{
-			imguiSceneNode.drawUi();
-			if (imguiSceneNode.hasChanged())
-				changeEvent |= static_cast<ChangeEvent_t>(ChangeEvent::Transformation);
-		}
-		ImGui::End();
-
-		ImGui::Begin("Materials");
-		for (auto& imguiMaterial : imguiMaterials)
-		{
-			imguiMaterial.drawUi();
-			if(imguiMaterial.hasChanged())
-				changeEvent |= static_cast<ChangeEvent_t>(ChangeEvent::SceneUpdate);
-			if(imguiMaterial.hasMajorChange())
-				changeEvent |= static_cast<ChangeEvent_t>(ChangeEvent::SceneChange);
-		}
-		ImGui::End();
-
-		ImGui::Begin("Shaders");
-		for (auto& imguiShader : imguiShaders)
-		{
-			imguiShader.drawUi();
-			if (imguiShader.hasChanged())
-				changeEvent |= static_cast<ChangeEvent_t>(ChangeEvent::Statistics);
-		}
-		ImGui::End();
-
-		ImGui::Render();
-	}
+		imguiDrawable.setEnabled(!imguiDrawable.isEnabled());
+	ChangeEvent_t changeEvent = imguiDrawable.processChangeEvent();
 
 	constexpr auto flags = D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE;
 	
@@ -360,7 +295,7 @@ void Renderer::renderFrame()
 	int32_t first = -1, last = -1;
 	for (int32_t i = 0; i < static_cast<int>(drawables.size()); ++i)
 	{
-		if (!imguiShaders[i].isEnabled()) continue;
+		if (!drawables[i]->isEnabled()) continue;
 		if (first == -1)
 			first = i;
 		if (i > last)
@@ -375,7 +310,7 @@ void Renderer::renderFrame()
 		auto drawable = drawables[i];
 		if (changeEvent)
 			drawable->onChange(pCurrentCommandList, currentBackBufferIndex, changeEvent);
-		if (!imguiShaders[i].isEnabled())
+		if (!drawables[i]->isEnabled())
 			continue;
 		
 		// Clear the RadRTV 
@@ -457,13 +392,7 @@ void Renderer::renderFrame()
 	}
 
 	// ImGui Render
-	if (viewImgui)
-	{
-		// Switch over to 8-bit buffers
-		pCurrentCommandList->OMSetRenderTargets(1u, &rtvDescriptorHandle, FALSE, nullptr);
-		pCurrentCommandList->SetDescriptorHeaps(1u, pImGuiDescriptorHeap.GetAddressOf());
-		ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), pCurrentCommandList.Get());
-	}
+	imguiDrawable.draw(pCurrentCommandList, currentBackBufferIndex);
 
 	// End frame
 	pRTVBackBuffers[currentBackBufferIndex]->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_PRESENT);

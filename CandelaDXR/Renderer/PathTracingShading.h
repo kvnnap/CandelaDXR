@@ -18,14 +18,14 @@
 
 #include "Camera.h"
 
-#include "IDrawable.h"
+#include "Drawable.h"
 
 namespace candela::renderer
 {
 	namespace wrl = Microsoft::WRL;
 
 	class PathTracingShading
-		: public IDrawable
+		: public Drawable
 	{
 	public:
 		PathTracingShading(std::unique_ptr<sampler::ISampler> sampler, bool specularOnly);

@@ -27,5 +27,9 @@ namespace candela::renderer
 
 		// On window resize
 		virtual void onResize() = 0;
+
+		// Is enabled?
+		virtual bool isEnabled() const = 0;
+		virtual void setEnabled(bool p_enabled) = 0;
 	};
 }

@@ -14,7 +14,7 @@
 
 #include "Camera.h"
 
-#include "IDrawable.h"
+#include "Drawable.h"
 
 namespace candela::renderer
 {
@@ -23,7 +23,7 @@ namespace candela::renderer
 	using ResPtrVec = std::vector<std::shared_ptr<directx::Resource>>;
 
 	class RasterShading
-		: public IDrawable
+		: public Drawable
 	{
 	public:
 		

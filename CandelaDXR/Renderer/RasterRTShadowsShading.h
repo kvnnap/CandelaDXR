@@ -18,7 +18,7 @@
 
 #include "Camera.h"
 
-#include "IDrawable.h"
+#include "Drawable.h"
 
 #include "RasterShading.h"
 
@@ -27,7 +27,7 @@ namespace candela::renderer
 	namespace wrl = Microsoft::WRL;
 
 	class RasterRTShadowsShading
-		: public IDrawable
+		: public Drawable
 	{
 	public:
 		RasterRTShadowsShading(std::unique_ptr<sampler::ISampler> sampler);

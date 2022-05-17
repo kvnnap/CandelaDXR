@@ -20,7 +20,7 @@ using candela::renderer::RasterRTShadowsShading;
 using candela::renderer::imgui::ImGuiShading;
 
 ImGuiShading::ImGuiShading(IDrawable* drawable)
-	: drawable(drawable), initialised(), changed(), enabled(true)
+	: drawable(drawable), initialised(), changed(), enabled(drawable->isEnabled())
 {
 }
 
@@ -30,6 +30,7 @@ void ImGuiShading::drawUi()
 	ImGui::PushID(drawable);
 	drawable->accept(this); // Calls the appropriate visit method
 	changed |= ImGui::Checkbox("Enabled", &enabled);
+	drawable->setEnabled(enabled);
 	ImGui::PopID();
 	initialised = true;
 }

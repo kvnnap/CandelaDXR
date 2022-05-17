@@ -19,14 +19,14 @@
 
 #include "Camera.h"
 
-#include "IDrawable.h"
+#include "Drawable.h"
 
 namespace candela::renderer
 {
 	namespace wrl = Microsoft::WRL;
 
 	class LightTracingShading
-		: public IDrawable
+		: public Drawable
 	{
 	public:
 		LightTracingShading(std::unique_ptr<sampler::ISampler> sampler, mathematics::UVector2 lightSamples);

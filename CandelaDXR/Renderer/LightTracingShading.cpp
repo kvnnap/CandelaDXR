@@ -262,7 +262,7 @@ void LightTracingShading::buildPipeline()
 		dxilSubObject.SetDXILLibrary(&shaderByteCodeDesc);
 		GFXTHROWIFFAILED(pDevice5->CreateStateObject(stateObjectDesc, IID_PPV_ARGS(&stateObjects.emplace_back())));
 	}
-
+	
 	// Compute shader
 	computeRSM = make_shared<RootSignatureManager>();
 	computeRSM->addDescriptorRange("ComputeData", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 3, 0)); // gOutput, gIrradianceDataStructure, gIrradiance
