@@ -21,6 +21,7 @@ namespace candela::renderer::imgui
 		~ImGuiManager();
 
 		ChangeEvent_t processChangeEvent();
+		directx::Resource* getResourceToSave() const;
 
 		// IDrawable interface
 		void init(RendererResources* rendererResources, wrl::ComPtr<ID3D12GraphicsCommandList>& pCurrentCommandList, ResourceRegFunction& resRegFn) override;

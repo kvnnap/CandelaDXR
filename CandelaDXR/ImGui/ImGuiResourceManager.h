@@ -15,6 +15,8 @@ namespace candela::renderer::imgui
 		void drawUi();
 		void resize(UINT width, UINT height);
 
+		directx::Resource* getResourceToSave() const;
+
 		// Constants
 		static constexpr unsigned int MaxDisplayableResources = 4;
 	private:
@@ -30,5 +32,6 @@ namespace candela::renderer::imgui
 		};
 
 		std::vector<Item> resourceList;
+		directx::Resource* resourceToSave;
 	};
 }

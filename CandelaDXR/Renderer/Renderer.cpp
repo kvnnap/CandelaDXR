@@ -77,8 +77,7 @@ Renderer::Renderer(Scene *scene, Camera *camera, const UVector2 &windowDimension
 	  drawables(std::move(p_drawables)),
 	  debugEnabled(debugEnabled),
 	  breakEnabled(breakEnabled),
-	  vsync(vsync),
-	  viewImgui()
+	  vsync(vsync)
 {
 }
 
@@ -397,6 +396,18 @@ void Renderer::renderFrame()
 	pRTVBackBuffers[currentBackBufferIndex]->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_PRESENT);
 	frameFenceValues[currentBackBufferIndex] = commandQueue->executeCommandList(pCurrentCommandList);
 	pCurrentCommandList.Reset();
+
+	// Process any other resource dumps here (synch) TODO: do it async
+	auto resourceToSave = imguiManager.getResourceToSave();
+	if (resourceToSave)
+	{
+		// Will cause synchronous behaviour (blocking)
+		RadianceBuffer radBuffer = resourceToSave->read(commandQueue);
+
+		// Execute Chain to output data
+		for (auto& chainItem : chain)
+			chainItem->process(radBuffer);
+	}
 
 	HRESULT hr;
 	// Present may wait on or execute the message pump when mode changes (fullscreen to windowed, etc)

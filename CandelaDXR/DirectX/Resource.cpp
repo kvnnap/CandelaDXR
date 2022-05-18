@@ -91,7 +91,6 @@ ResourceData Resource::read(DXCommandQueue& commandQueue)
 	commandQueue->waitForFenceValue(fenceValue);
 
 	// Can now read data
-
 	D3D12_RANGE destRange{ 0u, totalSize };
 	vector<XMFLOAT4> data;
 	auto floatsPerRow = rowSizeInBytes / sizeof(float); // decltype(data)::value_type
@@ -100,12 +99,25 @@ ResourceData Resource::read(DXCommandQueue& commandQueue)
 	res.resource->Map(0u, &destRange, reinterpret_cast<void**>(&values));
 
 	auto skipAmount = rowPitchSizeInBytes / sizeof(float);
+	
+	// Select the pixel component mapping
+	auto floatsPerPixel = floatsPerRow / desc.Width;
+	UINT compSel[4] = { 0, 1, 2, 3 };
+	if (floatsPerPixel == 1)
+		compSel[1] = compSel[2] = compSel[3] = 0;
+	else if (floatsPerPixel == 2)
+	{
+		compSel[2] = 0;
+		compSel[3] = 1;
+	}
+	else if (floatsPerPixel == 3)
+		compSel[3] = 0;
 
 	// Copy it to our own buffer
 	for (UINT r = 0; r < numRows; ++r)
 	{
-		for (UINT64 c = 0; c < floatsPerRow; c += 4)
-			data.emplace_back(values[c], values[c + 1], values[c + 2], values[c + 3]);
+		for (UINT64 c = 0; c < floatsPerRow; c += floatsPerPixel)
+			data.emplace_back(values[c + compSel[0]], values[c + compSel[1]], values[c + compSel[2]], values[c + compSel[3]]);
 		values += skipAmount;
 	}
 

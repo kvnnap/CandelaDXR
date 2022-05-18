@@ -3,10 +3,11 @@
 #include "ImGuiResourceManager.h"
 
 using candela::directx::ResourceManager;
+using candela::directx::Resource;
 using candela::renderer::imgui::ImGuiResourceManager;
 
 ImGuiResourceManager::ImGuiResourceManager(RendererResources* rRes, ID3D12DescriptorHeap* heap)
-	: resourceManager(rRes->resourceManager.get()), heap(heap)
+	: resourceManager(rRes->resourceManager.get()), heap(heap), resourceToSave()
 {
 	descriptorSize = rRes->pDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 	for (const auto& res : resourceManager->getNamedResources())
@@ -22,12 +23,20 @@ void ImGuiResourceManager::drawUi()
 	UINT activeCount{};
 	UINT displayCount{};
 	bool changed{};
+	resourceToSave = nullptr;
 
 	// First pass
 	for (auto& res : resourceList)
 	{
 		if (ImGui::Checkbox(res.name.c_str(), &res.active))
 			changed = true;
+		ImGui::SameLine();
+
+		ImGui::PushID(res.resource);
+		if (ImGui::Button("Save"))
+			resourceToSave = res.resource;
+		ImGui::PopID();
+
 		if (res.active)
 			++activeCount;
 		if (activeCount > ImGuiResourceManager::MaxDisplayableResources)
@@ -76,4 +85,9 @@ void ImGuiResourceManager::resize(UINT width, UINT height)
 		// Update heap only if it changed
 		res.resource->createShaderResourceView(cpuHandle);
 	}
+}
+
+Resource* ImGuiResourceManager::getResourceToSave() const
+{
+	return resourceToSave;
 }

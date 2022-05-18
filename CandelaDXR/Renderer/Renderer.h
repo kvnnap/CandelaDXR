@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <vector>
+#include <string>
 
 #include "DirectX/Types.h"
 #include <dxgi1_6.h>
@@ -36,7 +37,7 @@ namespace candela::renderer
 
 		void init() override;
 		void renderFrame() override;
-
+	
 	private:
 		template<class T>
 		using ComPtrVec = std::vector<wrl::ComPtr<T>>;
@@ -122,6 +123,5 @@ namespace candela::renderer
 		// otherwise on DX error, program calls abort/exit
 		const bool breakEnabled;
 		const bool vsync;
-		bool viewImgui;
 	};
 }

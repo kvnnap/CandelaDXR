@@ -10,6 +10,7 @@
 using std::make_unique;
 
 using candela::directx::DXUtil;
+using candela::directx::Resource;
 
 using candela::renderer::imgui::ImGuiResourceManager;
 using candela::renderer::imgui::ImGuiManager;
@@ -70,6 +71,11 @@ ChangeEvent_t ImGuiManager::processChangeEvent()
 	ImGui::Render();
 
 	return changeEvent;
+}
+
+Resource* ImGuiManager::getResourceToSave() const
+{
+	return imguiResourceManager->getResourceToSave();
 }
 
 void ImGuiManager::init(RendererResources* rRes, wrl::ComPtr<ID3D12GraphicsCommandList>& pCurrentCommandList, ResourceRegFunction& resRegFn)
