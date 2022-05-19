@@ -25,7 +25,7 @@ Resource& ResourceManager::createResource(D3D12_RESOURCE_STATES resourceState, D
 
 	res->resizeOnResize = resizeOnResize;
 	if (!globalName.empty())
-		namedResources[globalName] = &res->resource;
+		namedResources.emplace(globalName, &res->resource);
 	return resources.emplace_back(std::move(res))->resource;
 }
 
@@ -33,7 +33,7 @@ Resource& ResourceManager::addExistingResource(DXResource resource, D3D12_RESOUR
 {
 	auto res = make_unique<ResourceItem>(Resource(resource, resourceState));
 	if (!globalName.empty())
-		namedResources[globalName] = &res->resource;
+		namedResources.emplace(globalName, &res->resource);
 	return resources.emplace_back(std::move(res))->resource;
 }
 

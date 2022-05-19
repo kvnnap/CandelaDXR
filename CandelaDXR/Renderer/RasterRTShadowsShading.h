@@ -66,7 +66,7 @@ namespace candela::renderer
 			std::uint32_t lightType;
 		} constBuffer;
 
-		std::unique_ptr<directx::Resource> radianceTexture;
+		directx::Resource *radianceTexture;
 		wrl::ComPtr<ID3D12Resource> constantBuffer;
 		std::unique_ptr<sampler::ISampler> sampler;
 		bool clear;

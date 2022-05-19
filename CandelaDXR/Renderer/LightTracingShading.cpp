@@ -78,7 +78,7 @@ void LightTracingShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12Graphi
 
 	// Testing central resources
 	const auto& dim = rendererResources->winDimensions;
-	irradianceTexture = &rendererResources->resourceManager->createResource(D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, dim.x, dim.y, DXGI_FORMAT_R32G32B32A32_FLOAT, true);
+	irradianceTexture = &rendererResources->resourceManager->createResource(D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, dim.x, dim.y, DXGI_FORMAT_R32G32B32A32_FLOAT, true, "lt_irr");
 	irradianceTexture->setName(L"Irradiance Texture");
 	irrToRad = &rendererResources->resourceManager->createResource(D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_FLAG_NONE, dim.x, dim.y, DXGI_FORMAT_R32_FLOAT, true);
 	irrToRad->setName(L"irrToRad Texture");

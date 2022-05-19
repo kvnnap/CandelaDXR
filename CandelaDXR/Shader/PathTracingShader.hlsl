@@ -380,7 +380,7 @@ void rayGen()
 
 	// Using this resource as a RADIANCE accumulator
 	if (cBuffer.frameNumber == 1)
-		gRadiance[launchIndex] = float4(0.f, 0.f, 0.f, 0.f);
+		gRadiance[launchIndex] = float4(0.f, 0.f, 0.f, 1.f);
 	gRadiance[launchIndex] += float4(radiance, 0.f);
 	gOutput[launchIndex] = float4(gRadiance[launchIndex].xyz / cBuffer.frameNumber, 1.f);
 }

@@ -64,6 +64,11 @@ void PathTracingShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12Graphic
 	// Build Pipeline
 	buildPipeline();
 
+	// The output resource
+	radianceTexture = &rRes->resourceManager->createResource(D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
+		rRes->winDimensions.x, rRes->winDimensions.y, DXGI_FORMAT_R32G32B32A32_FLOAT, true, "pt_rad");
+	radianceTexture->setName(L"Radiance Texture");
+
 	// Create Shader resources
 	createShaderResources();
 
@@ -288,13 +293,6 @@ void PathTracingShading::createShaderResources()
 	auto &descHeapManager = shadingTable->generateDescriptorHeap("BVHDescTable", "BVH1", rendererResources->pDevice);
 	descriptorHeap = descHeapManager.getDescriptorHeap();
 	const auto& dim = rendererResources->winDimensions;
-
-	// The output resource
-	radianceTexture = make_unique<Resource>(Resource::createTextureCommittedResource(
-		rendererResources->pDevice, dim.x, dim.y,
-		D3D12_RESOURCE_STATE_COPY_SOURCE,
-		DXGI_FORMAT_R32G32B32A32_FLOAT, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS));
-	radianceTexture->setName(L"Radiance Texture");
 
 	D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
 	uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;

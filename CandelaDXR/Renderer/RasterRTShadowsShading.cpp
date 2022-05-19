@@ -65,6 +65,11 @@ void RasterRTShadowsShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12Gra
 	// Build Pipeline
 	buildPipeline();
 
+	// The output resource
+	radianceTexture = &rRes->resourceManager->createResource(D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
+		rRes->winDimensions.x, rRes->winDimensions.y, DXGI_FORMAT_R32G32B32A32_FLOAT, true, "rt_shad_rad");
+	radianceTexture->setName(L"RasterRT Radiance Texture");
+
 	// Create Shader resources
 	createShaderResources();
 
@@ -260,13 +265,6 @@ void RasterRTShadowsShading::buildPipeline()
 void RasterRTShadowsShading::createShaderResources()
 {
 	const auto& dim = rendererResources->winDimensions;
-	
-	// The output resource
-	radianceTexture = make_unique<Resource>(Resource::createTextureCommittedResource(
-		rendererResources->pDevice, dim.x, dim.y,
-		D3D12_RESOURCE_STATE_COPY_SOURCE,
-		DXGI_FORMAT_R32G32B32A32_FLOAT, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS));
-	radianceTexture->setName(L"Radiance Texture");
 
 	// Generate paramter instance i - switch between these later
 	size_t entryNumber = 0;
