@@ -203,21 +203,8 @@ void RasterRTShadowsShading::buildPipeline()
 	param.InitAsShaderResourceView(7); rootSignatureManager->setParameter("materials", param);
 	param.InitAsShaderResourceView(8); rootSignatureManager->setParameter("lights", param);
 
-	D3D12_STATIC_SAMPLER_DESC sampler = {};
-	sampler.Filter = D3D12_FILTER_MIN_MAG_MIP_POINT;
-	sampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-	sampler.AddressV = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-	sampler.AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-	sampler.ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER;
-	sampler.BorderColor = D3D12_STATIC_BORDER_COLOR_TRANSPARENT_BLACK;
-	sampler.MinLOD = 0.0f;
-	sampler.MaxLOD = D3D12_FLOAT32_MAX;
-	sampler.ShaderRegister = 0;
-	sampler.RegisterSpace = 0;
-	sampler.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-
 	rootSignatureManager->addParametersToRootSignature("RayGenRootSignature", { "BVHDescTable", "ConstBuff", "verts", "texVerts", "normals", "indices", "matrices", "normalMatrices", "faceAttributes", "materials", "lights" });
-	rootSignatureManager->setSamplerForRootSignature("RayGenRootSignature", sampler);
+	rootSignatureManager->setSamplerForRootSignature("RayGenRootSignature", DXUtil::getDefaultSamplerDesc());
 	rootSignatureManager->generateRootSignature("RayGenRootSignature", rendererResources->pDevice);
 
 	rootSignatureManager->addRootSignature("EmptyRootSignature");

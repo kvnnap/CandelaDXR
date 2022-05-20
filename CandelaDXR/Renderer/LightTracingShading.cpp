@@ -177,6 +177,8 @@ void LightTracingShading::buildPipeline()
 	hitSubObject.SetHitGroupExport(L"HitGroup");
 
 	// Third - Local Root Signature for Ray Gen shader
+	
+
 	rootSignatureManager->addDescriptorRange("BVH", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 2, 0)); //gOutput, gIrradiance
 	rootSignatureManager->addDescriptorRange("BVH", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 2, 10)); //gRtScene, gIrrToRad
 	if (!rendererResources->textures.empty())
@@ -198,21 +200,8 @@ void LightTracingShading::buildPipeline()
 	param.InitAsShaderResourceView(8); rootSignatureManager->setParameter("lights", param);
 	param.InitAsShaderResourceView(9); rootSignatureManager->setParameter("speculars", param);
 
-	D3D12_STATIC_SAMPLER_DESC sampler = {};
-	sampler.Filter = D3D12_FILTER_MIN_MAG_MIP_POINT;
-	sampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-	sampler.AddressV = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-	sampler.AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-	sampler.ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER;
-	sampler.BorderColor = D3D12_STATIC_BORDER_COLOR_TRANSPARENT_BLACK;
-	sampler.MinLOD = 0.0f;
-	sampler.MaxLOD = D3D12_FLOAT32_MAX;
-	sampler.ShaderRegister = 0;
-	sampler.RegisterSpace = 0;
-	sampler.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-
 	rootSignatureManager->addParametersToRootSignature("RayGenRootSignature", { "BVHDescTable", "ConstBuff", "verts", "texVerts", "normals", "indices", "matrices", "normalMatrices", "faceAttributes", "materials", "lights", "speculars"});
-	rootSignatureManager->setSamplerForRootSignature("RayGenRootSignature", sampler);
+	rootSignatureManager->setSamplerForRootSignature("RayGenRootSignature", DXUtil::getDefaultSamplerDesc());
 	rootSignatureManager->generateRootSignature("RayGenRootSignature", rendererResources->pDevice);
 	
 	rootSignatureManager->addRootSignature("EmptyRootSignature");

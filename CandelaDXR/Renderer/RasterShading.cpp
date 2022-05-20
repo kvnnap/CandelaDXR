@@ -89,18 +89,6 @@ void RasterShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12GraphicsComm
 		//| D3D12_ROOT_SIGNATURE_FLAG_DENY_PIXEL_SHADER_ROOT_ACCESS
 		;
 
-	D3D12_STATIC_SAMPLER_DESC sampler = {};
-	sampler.Filter = D3D12_FILTER_MIN_MAG_MIP_POINT;
-	sampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-	sampler.AddressV = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-	sampler.AddressW = D3D12_TEXTURE_ADDRESS_MODE_WRAP;
-	sampler.ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER;
-	sampler.BorderColor = D3D12_STATIC_BORDER_COLOR_TRANSPARENT_BLACK;
-	sampler.MinLOD = 0.0f;
-	sampler.MaxLOD = D3D12_FLOAT32_MAX;
-	sampler.ShaderRegister = 0;
-	sampler.RegisterSpace = 0;
-	sampler.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 	CD3DX12_ROOT_PARAMETER1 param;
 	rootSignatureManager = make_shared<RootSignatureManager>();
 	param.InitAsShaderResourceView(0u); rootSignatureManager->setParameter("Material", param);
@@ -117,7 +105,7 @@ void RasterShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12GraphicsComm
 	param.InitAsConstantBufferView(0u); rootSignatureManager->setParameter("CBV", param);
 	param.InitAsConstants(2u, 1u); rootSignatureManager->setParameter("Constants", param);
 	rootSignatureManager->addParametersToRootSignature("RasterRootSignature", { "CBV", "Constants", "Material", "Face", "Light", "Vertices", "TexUV", "Normals", "Indices", "Matrices", "NormalMatrices", "TexturesDescTable"});
-	rootSignatureManager->setSamplerForRootSignature("RasterRootSignature", sampler);
+	rootSignatureManager->setSamplerForRootSignature("RasterRootSignature", DXUtil::getDefaultSamplerDesc());
 	rootSignature = rootSignatureManager->generateRootSignature("RasterRootSignature", rendererResources->pDevice, rootSignatureFlags);
 
 	auto descHeapManager = DescriptorHeap(rootSignatureManager, "TexturesDescTable", "Textures1", rendererResources->pDevice);

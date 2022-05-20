@@ -108,5 +108,7 @@ namespace candela::directx
 			Microsoft::WRL::ComPtr<ID3D12Resource>& tlasTempBuffer,
 			bool update,
 			AccelerationStructureBuffers& tlasBuffers);
+
+		static D3D12_STATIC_SAMPLER_DESC getDefaultSamplerDesc();
 	};
 }
