@@ -28,9 +28,8 @@ struct ConstBuff
 // UAVs
 
 // Output texture
-RWTexture2D<float4> gOutput : register(u0);
 RWStructuredBuffer<IrradianceItem> gIrradianceDS : register(u1);
-RWStructuredBuffer<IrradianceItemFloat> gIrradianceDSFloat : register(u1);
+//RWStructuredBuffer<IrradianceItemFloat> gIrradianceDSFloat : register(u1);
 
 // SRVs
 StructuredBuffer<float3> verts : register(t0);
@@ -46,7 +45,7 @@ StructuredBuffer<SpecularPrimitive> speculars : register(t9);
 
 RaytracingAccelerationStructure gRtScene : register(t10);
 
-Texture2D<float> gIrrToRad : register(t11);
+//Texture2D<float> gIrrToRad : register(t11);
 Texture2D<float3> gTextures[]: register(t12);
 
 // Sampler

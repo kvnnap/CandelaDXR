@@ -179,8 +179,8 @@ void LightTracingShading::buildPipeline()
 	// Third - Local Root Signature for Ray Gen shader
 	
 
-	rootSignatureManager->addDescriptorRange("BVH", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 2, 0)); //gOutput, gIrradiance
-	rootSignatureManager->addDescriptorRange("BVH", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 2, 10)); //gRtScene, gIrrToRad
+	rootSignatureManager->addDescriptorRange("BVH", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, 1)); //gOutput, gIrradianceDS
+	rootSignatureManager->addDescriptorRange("BVH", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 10)); //gRtScene, gIrrToRad
 	if (!rendererResources->textures.empty())
 		rootSignatureManager->addDescriptorRange("BVH", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, static_cast<UINT>(rendererResources->textures.size()), 12));
 	
@@ -300,9 +300,6 @@ void LightTracingShading::createShaderResources()
 	irradianceDataStructure = DXUtil::createCommittedResource(rendererResources->pDevice, D3D12_HEAP_TYPE_DEFAULT, dim.x * dim.y * sizeof(uint32_t) * 4, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS);
 	irradianceDataStructure->SetName(L"Irradiance DS");
 
-	D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
-	uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
-	descHeapManager->setUAV(entryNumber++, uavDesc, rendererResources->pDevice, *rendererResources->pRTVRadBackBuffer);
 	D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc2 = {};
 	uavDesc2.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
 	uavDesc2.Buffer.NumElements = dim.x * dim.y;
@@ -316,14 +313,6 @@ void LightTracingShading::createShaderResources()
 	srvDesc.RaytracingAccelerationStructure.Location = rendererResources->accelerationStructure->getTopLayerBufferAddress();
 	descHeapManager->setSRV(entryNumber++, srvDesc, rendererResources->pDevice);
 
-	// Irr to Rad?
-	D3D12_SHADER_RESOURCE_VIEW_DESC irrToRadSrvDesc = {};
-	irrToRadSrvDesc.Format = DXGI_FORMAT_R32_FLOAT;
-	irrToRadSrvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-	irrToRadSrvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-	irrToRadSrvDesc.Texture2D.MipLevels = 1;
-	descHeapManager->setSRV(entryNumber++, irrToRadSrvDesc, rendererResources->pDevice, *irrToRad);
-
 	// Textures
 	srvDesc = {};
 	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
@@ -332,6 +321,17 @@ void LightTracingShading::createShaderResources()
 	srvDesc.Texture2D.MipLevels = 1;
 	for (const auto& texture : rendererResources->textures)
 		descHeapManager->setSRV(entryNumber++, srvDesc, rendererResources->pDevice, texture);
+
+	// Uav Desc 
+	D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
+	uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
+
+	// Irr to Rad
+	D3D12_SHADER_RESOURCE_VIEW_DESC irrToRadSrvDesc = {};
+	irrToRadSrvDesc.Format = DXGI_FORMAT_R32_FLOAT;
+	irrToRadSrvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+	irrToRadSrvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+	irrToRadSrvDesc.Texture2D.MipLevels = 1;
 
 	// Compute shader
 	auto cmpDescHeapManager = DescriptorHeap(computeRSM, "ComputeDataDescTable", "ComputeData1", rendererResources->pDevice);
