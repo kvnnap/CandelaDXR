@@ -72,7 +72,6 @@ namespace candela::renderer
 		std::vector<std::string> shaderPaths;
 
 		// Light tracer descriptor stuff
-		wrl::ComPtr<ID3D12DescriptorHeap> descriptorHeap;
 		wrl::ComPtr<ID3D12RootSignature> globalEmptyRootSignature;
 		std::vector<wrl::ComPtr<ID3D12StateObject>> stateObjects;
 
@@ -109,6 +108,7 @@ namespace candela::renderer
 		wrl::ComPtr<ID3D12PipelineState> computePipelineState;
 
 		// My helpers
+		std::shared_ptr<directx::DescriptorHeap> descHeapManager;
 		std::vector<std::unique_ptr<directx::ShadingTable>> shadingTables;
 		std::shared_ptr<directx::RootSignatureManager> rootSignatureManager;
 		std::shared_ptr<directx::RootSignatureManager> computeRSM;

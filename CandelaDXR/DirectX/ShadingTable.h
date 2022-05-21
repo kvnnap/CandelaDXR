@@ -81,8 +81,11 @@ namespace candela::directx
 		// 
 		void addProgram(const std::wstring& programName, ShadingRecordType shadingRecordType, const std::string& rootSignatureName);
 
-		DescriptorHeap& generateDescriptorHeap(const std::string& parameterName, const std::string& instanceName, Microsoft::WRL::ComPtr<ID3D12Device> pDevice);
-		void addDescriptorHeap(std::shared_ptr<DescriptorHeap> descriptorHeap);
+		// Generates a new descriptor heap if there isn't one with the same name already
+		DescriptorHeap& generateDescriptorHeapIfNotExists(const std::string& parameterName, const std::string& instanceName, Microsoft::WRL::ComPtr<ID3D12Device> pDevice);
+
+		// Sets the descriptor heap if one with the same name does not exist already
+		void setDescriptorHeapIfNotExists(std::shared_ptr<DescriptorHeap> descriptorHeap);
 
 		//void setInputForDescriptorTableParameter(const std::wstring& programName, const std::string& parameterName, Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> descriptorHeap);
 		void setInputForDescriptorTableParameter(const std::wstring& programName, const std::string& parameterName, const std::string& instanceName);

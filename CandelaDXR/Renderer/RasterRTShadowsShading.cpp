@@ -108,7 +108,7 @@ void RasterRTShadowsShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurren
 		rendererResources->getTempResource(),
 		&constBuffer, sizeof(constBuffer), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
-	pCurrentCommandList->SetDescriptorHeaps(1u, descriptorHeap.GetAddressOf());
+	pCurrentCommandList->SetDescriptorHeaps(1u, descHeapManager->getDescriptorHeap().GetAddressOf());
 	pCurrentCommandList->SetComputeRootSignature(globalEmptyRootSignature.Get());
 	HRESULT hr;
 	ComPtr<ID3D12GraphicsCommandList4> commandList4;
@@ -255,20 +255,23 @@ void RasterRTShadowsShading::createShaderResources()
 
 	// Generate paramter instance i - switch between these later
 	size_t entryNumber = 0;
-	auto& descHeapManager = shadingTable->generateDescriptorHeap("BVHDescTable", "BVH1", rendererResources->pDevice);
-	descriptorHeap = descHeapManager.getDescriptorHeap();
+	if (!descHeapManager)
+	{
+		descHeapManager = make_shared<DescriptorHeap>(rootSignatureManager, "BVHDescTable", "BVH1", rendererResources->pDevice);
+		shadingTable->setDescriptorHeapIfNotExists(descHeapManager);
+	}
 
 	D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
 	uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
-	descHeapManager.setUAV(entryNumber++, uavDesc, rendererResources->pDevice, *rendererResources->pRTVRadBackBuffer);
-	descHeapManager.setUAV(entryNumber++, uavDesc, rendererResources->pDevice, *radianceTexture);
+	descHeapManager->setUAV(entryNumber++, uavDesc, rendererResources->pDevice, *rendererResources->pRTVRadBackBuffer);
+	descHeapManager->setUAV(entryNumber++, uavDesc, rendererResources->pDevice, *radianceTexture);
 
 	// Create the SRV descriptor in second place (following same order as in root signature)
 	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
 	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_RAYTRACING_ACCELERATION_STRUCTURE;
 	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 	srvDesc.RaytracingAccelerationStructure.Location = rendererResources->accelerationStructure->getTopLayerBufferAddress();
-	descHeapManager.setSRV(entryNumber++, srvDesc, rendererResources->pDevice);
+	descHeapManager->setSRV(entryNumber++, srvDesc, rendererResources->pDevice);
 
 	// gBuffer
 	srvDesc = {};
@@ -278,7 +281,7 @@ void RasterRTShadowsShading::createShaderResources()
 	srvDesc.Texture2D.MipLevels = 1;
 	const auto gBuffRenTargets = rasterShader.getNumRenderTargets() - 1;
 	for (UINT j = 0; j < gBuffRenTargets; ++j)
-		descHeapManager.setSRV(entryNumber++, srvDesc, rendererResources->pDevice, *rasterShader.getGBuffer()[j]);
+		descHeapManager->setSRV(entryNumber++, srvDesc, rendererResources->pDevice, *rasterShader.getGBuffer()[j]);
 
 	// Textures
 	srvDesc = {};
@@ -287,7 +290,7 @@ void RasterRTShadowsShading::createShaderResources()
 	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
 	srvDesc.Texture2D.MipLevels = 1;
 	for (const auto& texture : rendererResources->textures)
-		descHeapManager.setSRV(entryNumber++, srvDesc, rendererResources->pDevice, texture);
+		descHeapManager->setSRV(entryNumber++, srvDesc, rendererResources->pDevice, texture);
 }
 
 void RasterRTShadowsShading::createShaderTable(wrl::ComPtr<ID3D12GraphicsCommandList>& commandList)

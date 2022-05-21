@@ -36,12 +36,12 @@ void ShadingTable::addProgram(const wstring& programName, ShadingRecordType shad
 	shadingRecords.push_back({ programName, rootSignatureName, shadingRecordType });
 }
 
-DescriptorHeap& ShadingTable::generateDescriptorHeap(const std::string& parameterName, const std::string& instanceName, Microsoft::WRL::ComPtr<ID3D12Device> pDevice)
+DescriptorHeap& ShadingTable::generateDescriptorHeapIfNotExists(const std::string& parameterName, const std::string& instanceName, Microsoft::WRL::ComPtr<ID3D12Device> pDevice)
 {
 	return *descriptorHeaps.emplace(instanceName, make_shared<DescriptorHeap>(rootSignatureManager, parameterName, instanceName, pDevice)).first->second;
 }
 
-void ShadingTable::addDescriptorHeap(std::shared_ptr<DescriptorHeap> descriptorHeap)
+void ShadingTable::setDescriptorHeapIfNotExists(std::shared_ptr<DescriptorHeap> descriptorHeap)
 {
 	if (rootSignatureManager != descriptorHeap->getRootSignatureManager())
 		throw runtime_error("Descriptor Heap has a different root signature than this shading table");

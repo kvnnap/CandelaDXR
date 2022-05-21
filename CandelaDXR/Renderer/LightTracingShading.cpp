@@ -125,7 +125,7 @@ void LightTracingShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> currentCom
 	DXUtil::updateDataInDefaultHeap(rendererResources->pDevice, currentCommandList, constantBuffer, rendererResources->getTempResource(),
 		&constBuffer, sizeof(constBuffer), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
-	currentCommandList->SetDescriptorHeaps(1u, descriptorHeap.GetAddressOf());
+	currentCommandList->SetDescriptorHeaps(1u, descHeapManager->getDescriptorHeap().GetAddressOf());
 	currentCommandList->SetComputeRootSignature(globalEmptyRootSignature.Get());
 	HRESULT hr;
 	ComPtr<ID3D12GraphicsCommandList4> commandList4;
@@ -283,18 +283,19 @@ void LightTracingShading::buildPipeline()
 
 void LightTracingShading::createShaderResources()
 {
+	const auto& dim = rendererResources->winDimensions;
 	size_t entryNumber = 0;
 
-	// The descriptor heap to store SRV (Shader resource View) and UAV (Unordered access view) descriptors
-	auto descHeapManager = make_shared<DescriptorHeap>(rootSignatureManager, "BVHDescTable", "BVH1", rendererResources->pDevice);
+	// If heap already exists, do not recreate and do not modify shading tables
+	if (!descHeapManager)
+	{
+		// The descriptor heap to store SRV (Shader resource View) and UAV (Unordered access view) descriptors
+		descHeapManager = make_shared<DescriptorHeap>(rootSignatureManager, "BVHDescTable", "BVH1", rendererResources->pDevice);
 
-	// Add to shading tables
-	for (auto& shadingTable : shadingTables)
-		shadingTable->addDescriptorHeap(descHeapManager);
-
-	descriptorHeap = descHeapManager->getDescriptorHeap();
-
-	const auto &dim = rendererResources->winDimensions;
+		// Add to shading tables
+		for (auto& shadingTable : shadingTables)
+			shadingTable->setDescriptorHeapIfNotExists(descHeapManager);
+	}
 
 	// The output resource
 	irradianceDataStructure = DXUtil::createCommittedResource(rendererResources->pDevice, D3D12_HEAP_TYPE_DEFAULT, dim.x * dim.y * sizeof(uint32_t) * 4, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS);
