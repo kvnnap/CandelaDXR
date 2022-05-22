@@ -33,13 +33,14 @@ using std::vector;
 using Microsoft::WRL::ComPtr;
 
 RasterShading::RasterShading(bool computeGBuffer)
-	: constBuffer{}, scissorRect(CD3DX12_RECT(0, 0, LONG_MAX, LONG_MAX)), computeGBuffer(computeGBuffer), numRenderTargets(computeGBuffer ? 4u : 1u)
+	: constBuffer{}, scissorRect(CD3DX12_RECT(0, 0, LONG_MAX, LONG_MAX)), computeGBuffer(computeGBuffer), numRenderTargets(computeGBuffer ? 4u : 1u), camera{}
 {
 }
 
 void RasterShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12GraphicsCommandList>& pCurrentCommandList, ResourceRegFunction& resRegFn)
 {
 	this->rendererResources = rRes;
+	camera = rRes->camera;
 
 	// Handle result used for errors
 	HRESULT hr;
@@ -179,12 +180,12 @@ void RasterShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12GraphicsComm
 			gBuffer.emplace_back(&rendererResources->resourceManager->createResource(
 				D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET,
 				rendererResources->winDimensions.x, rendererResources->winDimensions.y, 
-				DXGI_FORMAT_R32G32B32A32_FLOAT, true, name));
+				DXGI_FORMAT_R32G32B32A32_FLOAT, true, globalPrefix + name));
 		pGDescriptorHeap = DXUtil::createDescriptorHeap(rRes->pDevice, static_cast<UINT>(gBuffer.size()), D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 	}
 
 	auto temp = DXUtil::createDepthStencilView(rendererResources->pDevice, pDepthDescriptorHeap, rendererResources->winDimensions.x, rendererResources->winDimensions.y, 1u)[0];
-	pDepthBuffer = &rendererResources->resourceManager->addExistingResource(temp, D3D12_RESOURCE_STATE_DEPTH_WRITE, "gDepth");
+	pDepthBuffer = &rendererResources->resourceManager->addExistingResource(temp, D3D12_RESOURCE_STATE_DEPTH_WRITE, globalPrefix + "gDepth");
 
 	onResize();
 }
@@ -220,8 +221,8 @@ void RasterShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandL
 	pCurrentCommandList->OMSetRenderTargets(numRenderTargets, &rtvDescriptorHandles[0], FALSE, &dsvDescriptorHandle);
 
 	// Update the MVP matrix
-	constBuffer.ViewPerspective = rendererResources->camera->getViewPerspectiveMatrixColMajor();
-	constBuffer.CameraPosition = rendererResources->camera->getPosition();
+	constBuffer.ViewPerspective = camera->getViewPerspectiveMatrixColMajor();
+	constBuffer.CameraPosition = camera->getPosition();
 	DXUtil::updateDataInDefaultHeap(
 		rendererResources->pDevice,
 		pCurrentCommandList,
@@ -302,5 +303,15 @@ uint32_t RasterShading::getComputeRadiance() const
 void RasterShading::setComputeRadiance(uint32_t cType)
 {
 	constBuffer.computeRadiance = cType;
+}
+
+void RasterShading::setGlobaResourcePrefix(const std::string& prefix)
+{
+	globalPrefix = prefix;
+}
+
+void RasterShading::setCamera(Camera *p_camera)
+{
+	camera = p_camera;
 }
 

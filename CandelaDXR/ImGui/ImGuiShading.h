@@ -23,6 +23,8 @@ namespace candela::renderer::imgui
 
 		void visit(RasterShading*) override;
 		void visit(LightTracingShading*) override;
+		void visit(LTOptimisedComponent*) override;
+		void visit(LTRasterGuidedShading*) override;
 		void visit(PathTracingShading*) override;
 		void visit(RasterRTShadowsShading*) override;
 

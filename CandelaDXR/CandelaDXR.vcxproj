@@ -229,6 +229,8 @@
     <ClCompile Include="Renderer\Drawable.cpp" />
     <ClCompile Include="Renderer\FpsCounter.cpp" />
     <ClCompile Include="Renderer\LightTracingShading.cpp" />
+    <ClCompile Include="Renderer\LTOptimisedComponent.cpp" />
+    <ClCompile Include="Renderer\LTRasterGuidedShading.cpp" />
     <ClCompile Include="Renderer\PathTracingShading.cpp" />
     <ClCompile Include="Renderer\RadianceBuffer.cpp" />
     <ClCompile Include="Renderer\RasterRTShadowsShading.cpp" />
@@ -267,8 +269,11 @@
     <ClInclude Include="ImGui\ImGuiResourceManager.h" />
     <ClInclude Include="Renderer\ChangeEvent.h" />
     <ClInclude Include="Renderer\Drawable.h" />
+    <ClInclude Include="Renderer\ILightTracingComponent.h" />
     <ClInclude Include="Renderer\IResource.h" />
     <ClInclude Include="Renderer\IVisitor.h" />
+    <ClInclude Include="Renderer\LTOptimisedComponent.h" />
+    <ClInclude Include="Renderer\LTRasterGuidedShading.h" />
     <ClInclude Include="Renderer\RendererResources.h" />
     <ClInclude Include="Environment\Environment.h" />
     <ClInclude Include="Exception\DxgiInfoException.h" />

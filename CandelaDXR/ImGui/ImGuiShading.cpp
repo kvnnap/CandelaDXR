@@ -4,6 +4,7 @@
 
 #include "Renderer/RasterShading.h"
 #include "Renderer/LightTracingShading.h"
+#include "Renderer/LTOptimisedComponent.h"
 #include "Renderer/PathTracingShading.h"
 #include "Renderer/RasterRTShadowsShading.h"
 
@@ -72,7 +73,7 @@ void ImGuiShading::visit(LightTracingShading* lightTracingShader)
 		bounces[0] = static_cast<int>(lightTracingShader->getMinBounces());
 		bounces[1] = static_cast<int>(lightTracingShader->getMaxBounces());
 		shaderIndex = static_cast<int>(lightTracingShader->getCurrentShaderIndex());
-		causticsRatio = lightTracingShader->getCausticsRatio();
+		causticsRatio = -1.f;
 		memset(lightPathFlags, true, sizeof(lightPathFlags));
 		for (const auto& shaderName : lightTracingShader->getShaderPaths())
 			shaderStrNames.push_back(path(shaderName).filename().replace_extension().string());
@@ -102,11 +103,8 @@ void ImGuiShading::visit(LightTracingShading* lightTracingShader)
 		changed = true;
 	}
 
-	if (shaderIndex == 1 && ImGui::DragFloat("Caustics Ratio", &causticsRatio, 0.01f, 0.f, 1.f))
-	{
-		lightTracingShader->setCausticsRatio(causticsRatio);
-		changed = true;
-	}
+	for (auto component : lightTracingShader->getComponents())
+		component->accept(this);
 
 	uint32_t pathFlags;
 	if (processPathFilter(pathFlags, lightPathFlags))
@@ -114,6 +112,23 @@ void ImGuiShading::visit(LightTracingShading* lightTracingShader)
 		lightTracingShader->setPathFilter(pathFlags);
 		changed = true;
 	}
+}
+
+void ImGuiShading::visit(LTOptimisedComponent* ltComponent)
+{
+	if (causticsRatio == -1.f)
+		causticsRatio = ltComponent->getCausticsRatio();
+
+	if (shaderIndex == 1 && ImGui::DragFloat("Caustics Ratio", &causticsRatio, 0.01f, 0.f, 1.f))
+	{
+		ltComponent->setCausticsRatio(causticsRatio);
+		changed = true;
+	}
+}
+
+void ImGuiShading::visit(LTRasterGuidedShading* ltRasterComponent)
+{
+	ImGui::Text("LTRasterGuidedShading");
 }
 
 void ImGuiShading::visit(PathTracingShading* pathTracingShader)

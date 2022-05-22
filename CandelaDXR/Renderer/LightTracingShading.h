@@ -20,6 +20,7 @@
 #include "Camera.h"
 
 #include "Drawable.h"
+#include "ILightTracingComponent.h"
 
 namespace candela::renderer
 {
@@ -44,9 +45,6 @@ namespace candela::renderer
 		void setCurrentShaderIndex(std::uint32_t currentShaderIndex);
 		std::uint32_t getCurrentShaderIndex() const;
 
-		void setCausticsRatio(float p_causticsRatio);
-		float getCausticsRatio() const;
-
 		std::uint32_t getPathFilter() const;
 		void setPathFilter(std::uint32_t pathFilter);
 
@@ -54,6 +52,8 @@ namespace candela::renderer
 		void setMinBounces(std::uint32_t minBounces);
 		std::uint32_t getMaxBounces() const;
 		void setMaxBounces(std::uint32_t maxBounces);
+
+		const std::vector<ILightTracingComponent*>& getComponents() const;
 
 	private:
 		void buildPipeline();
@@ -69,11 +69,21 @@ namespace candela::renderer
 		RendererResources* rendererResources;
 		
 		// Shader paths
+		struct LTShader
+		{
+			std::string shaderPath;
+			std::unique_ptr<ILightTracingComponent> component;
+			std::unique_ptr<directx::ShadingTable> shadingTable;
+			std::shared_ptr<directx::DescriptorHeap> descHeapManager;
+			std::shared_ptr<directx::RootSignatureManager> rootSignatureManager;
+			wrl::ComPtr<ID3D12StateObject> stateObject;
+		};
+		std::vector<LTShader> ltShaders;
 		std::vector<std::string> shaderPaths;
+		std::vector<ILightTracingComponent*> components;
 
 		// Light tracer descriptor stuff
 		wrl::ComPtr<ID3D12RootSignature> globalEmptyRootSignature;
-		std::vector<wrl::ComPtr<ID3D12StateObject>> stateObjects;
 
 		// Light tracing shader resources
 		struct alignas(16) ConstBuff
@@ -85,9 +95,7 @@ namespace candela::renderer
 			std::uint32_t seeds[2];
 			mathematics::UVector2 winDimensions;
 			std::uint32_t numLights;
-			std::uint32_t numSpeculars;
 			std::uint32_t frameNumber;
-			float causticsRatio;
 			std::uint32_t pathFilter;
 			std::uint32_t minBounces;
 			std::uint32_t maxBounces;
@@ -107,10 +115,10 @@ namespace candela::renderer
 		wrl::ComPtr<ID3D12RootSignature> computeRootSignature;
 		wrl::ComPtr<ID3D12PipelineState> computePipelineState;
 
+		// Component for pre-pass
+		//std::vector<std::unique_ptr<ILightTracingComponent>> ltComponents;
+
 		// My helpers
-		std::shared_ptr<directx::DescriptorHeap> descHeapManager;
-		std::vector<std::unique_ptr<directx::ShadingTable>> shadingTables;
-		std::shared_ptr<directx::RootSignatureManager> rootSignatureManager;
 		std::shared_ptr<directx::RootSignatureManager> computeRSM;
 		std::uint32_t currentShader;
 	};

@@ -44,6 +44,7 @@ RasterRTShadowsShading::RasterRTShadowsShading(unique_ptr<ISampler> sampler)
 
 void RasterRTShadowsShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12GraphicsCommandList>& pCurrentCommandList, ResourceRegFunction& resRegFn)
 {
+	rasterShader.setGlobaResourcePrefix("rrt_");
 	rasterShader.init(rRes, pCurrentCommandList, resRegFn);
 
 	if (!DXUtil::checkDeviceRTSupport(rRes->pDevice))

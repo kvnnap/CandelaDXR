@@ -26,7 +26,6 @@ namespace candela::renderer
 		: public Drawable
 	{
 	public:
-		
 		RasterShading(bool computeGBuffer = false);
 
 		void init(RendererResources* rendererResources, wrl::ComPtr<ID3D12GraphicsCommandList>& pCurrentCommandList, ResourceRegFunction& resRegFn) override;
@@ -38,6 +37,8 @@ namespace candela::renderer
 		UINT getNumRenderTargets() const;
 		std::uint32_t getComputeRadiance() const;
 		void setComputeRadiance(std::uint32_t cType);
+		void setGlobaResourcePrefix(const std::string& prefix);
+		void setCamera(Camera* p_camera);
 	private:
 
 		RendererResources* rendererResources;
@@ -71,5 +72,7 @@ namespace candela::renderer
 		wrl::ComPtr<ID3D12DescriptorHeap> rootDescriptorHeap;
 		wrl::ComPtr<ID3D12RootSignature> rootSignature;
 
+		std::string globalPrefix;
+		Camera* camera;
 	};
 }

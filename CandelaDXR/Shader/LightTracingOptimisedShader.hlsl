@@ -3,6 +3,17 @@
 #include "IrradianceItem.hlsli"
 #include "LightTracingVars.hlsli"
 
+struct OptimisedConstBuff
+{
+	uint numSpeculars;
+	float causticsRatio;
+};
+
+cbuffer CB2 : register(b1)
+{
+	OptimisedConstBuff cOptBuffer;
+}
+
 struct RayPayload
 {
 	float2 bary;
@@ -19,21 +30,21 @@ struct ShadowPayload
 bool sampleDiffuse(inout uint seed, inout RayDesc ray, inout float3 localContribution, inout bool causticsPath, inout uint specularPrimitiveId, float3 unitNormal)
 {
 	float localCR;
-	if (cBuffer.numSpeculars == 0)
+	if (cOptBuffer.numSpeculars == 0)
 	{
 		localCR = 0.f;
 		causticsPath = false;
 	}
 	else 
 	{
-		localCR = cBuffer.causticsRatio;
+		localCR = cOptBuffer.causticsRatio;
 		causticsPath = rand_next(seed) <= localCR;
 	}
 	
 	if (causticsPath)
 	{
 		// Choose a primitive
-		const uint specularIndex = chooseInRange(seed, 0, cBuffer.numSpeculars - 1);
+		const uint specularIndex = chooseInRange(seed, 0, cOptBuffer.numSpeculars - 1);
 		SpecularPrimitive specularPrimitive = speculars[specularIndex];
 		const uint specularIndexId = specularPrimitive.PrimitiveId * 3;
 		specularPrimitiveId = specularPrimitive.PrimitiveId;
@@ -56,7 +67,7 @@ bool sampleDiffuse(inout uint seed, inout RayDesc ray, inout float3 localContrib
 
 		if (surfaceDot < 0.f || causticsDot < 0.f)
 			return false;
-		localContribution *= getTriangleArea(lv) * cBuffer.numSpeculars * surfaceDot * causticsDot * invDistance * invDistance / localCR;
+		localContribution *= getTriangleArea(lv) * cOptBuffer.numSpeculars * surfaceDot * causticsDot * invDistance * invDistance / localCR;
 	}
 	else
 	{

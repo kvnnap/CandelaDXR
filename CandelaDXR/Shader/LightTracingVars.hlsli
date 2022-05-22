@@ -16,13 +16,11 @@ struct ConstBuff
 	uint2 seeds;
 	uint2 winDim;
 	uint numLights;
-	uint numSpeculars;
 	uint frameNumber;
-	float causticsRatio;
 	PathInteraction pathFilter;
 	uint minBounces;
 	uint maxBounces;
-	uint padding;
+	uint3 padding;
 };
 
 // UAVs
