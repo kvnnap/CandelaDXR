@@ -180,6 +180,9 @@
     <ClCompile Include="Renderer\LTOptimisedComponent.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Renderer\SingleIOComputeShader.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Exception\GeneralException.h">
@@ -395,6 +398,9 @@
     <ClInclude Include="Renderer\LTOptimisedComponent.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Renderer\SingleIOComputeShader.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Shader\PixelShader.hlsl" />
@@ -405,6 +411,8 @@
     <FxCompile Include="Shader\PathTracingShader.hlsl" />
     <FxCompile Include="Shader\AccumulatorShader.hlsl" />
     <FxCompile Include="Shader\RTShadows.hlsl" />
+    <FxCompile Include="Shader\PrefixSumComputeShader.hlsl" />
+    <FxCompile Include="Shader\DistanceComputeShader.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Shader\Utils.hlsli" />

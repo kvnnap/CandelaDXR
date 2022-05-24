@@ -24,16 +24,14 @@ Resource& ResourceManager::createResource(D3D12_RESOURCE_STATES resourceState, D
 		res = make_unique<ResourceItem>(Resource::createTextureCommittedResource(device, width, height, resourceState, format, resourceFlags, heapType, clearValue));
 
 	res->resizeOnResize = resizeOnResize;
-	if (!globalName.empty())
-		namedResources.emplace(globalName, &res->resource);
+	addToNamed(&res->resource, globalName);
 	return resources.emplace_back(std::move(res))->resource;
 }
 
 Resource& ResourceManager::addExistingResource(DXResource resource, D3D12_RESOURCE_STATES resourceState, std::string globalName)
 {
 	auto res = make_unique<ResourceItem>(Resource(resource, resourceState));
-	if (!globalName.empty())
-		namedResources.emplace(globalName, &res->resource);
+	addToNamed(&res->resource, globalName);
 	return resources.emplace_back(std::move(res))->resource;
 }
 
@@ -55,6 +53,15 @@ Resource* ResourceManager::getNamedResource(const string& resourceName)
 const NamedResType& ResourceManager::getNamedResources() const
 {
 	return namedResources;
+}
+
+void ResourceManager::addToNamed(Resource* resource, const std::string& globalName)
+{
+	if (globalName.empty())
+		return;
+	namedResources.emplace(globalName, resource);
+	if (resource->getName().length() == 0)
+		resource->setName(globalName);
 }
 
 // Temporary Buffers

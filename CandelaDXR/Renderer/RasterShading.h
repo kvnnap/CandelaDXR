@@ -39,6 +39,7 @@ namespace candela::renderer
 		void setComputeRadiance(std::uint32_t cType);
 		void setGlobaResourcePrefix(const std::string& prefix);
 		void setCamera(Camera* p_camera);
+		void resize(const mathematics::UVector2* winDimensions);
 	private:
 
 		RendererResources* rendererResources;
@@ -74,5 +75,6 @@ namespace candela::renderer
 
 		std::string globalPrefix;
 		Camera* camera;
+		const mathematics::UVector2* winDimensions;
 	};
 }

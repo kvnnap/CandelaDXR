@@ -5,10 +5,13 @@
 
 #include "CommandQueue.h"
 #include "Exception/Exception.h"
+#include "Util/StringUtil.h"
 
 using std::vector;
 using std::uint32_t;
 using DirectX::XMFLOAT4;
+
+using candela::mathematics::UVector2;
 
 using candela::directx::Resource;
 using candela::directx::ResourceData;
@@ -185,7 +188,7 @@ void Resource::createShaderResourceView(D3D12_CPU_DESCRIPTOR_HANDLE heapSrvCpuDe
 	dxRes->GetDevice(IID_PPV_ARGS(&device));
 
 	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
-	if (desc.Format == DXGI_FORMAT_D32_FLOAT)
+	if (desc.Format == DXGI_FORMAT_D32_FLOAT || desc.Format == DXGI_FORMAT_R32_FLOAT)
 	{
 		srvDesc.Shader4ComponentMapping = D3D12_ENCODE_SHADER_4_COMPONENT_MAPPING(0, 0, 0, 5);
 		srvDesc.Format = DXGI_FORMAT_R32_FLOAT;
@@ -211,6 +214,15 @@ float Resource::getAspectRatio()
 	return static_cast<float>(desc.Width) / static_cast<float>(desc.Height);
 }
 
+UVector2 Resource::getDimensions()
+{
+	DXResource& dxRes = resource;
+	auto desc = dxRes->GetDesc();
+	if (desc.Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE2D)
+		ThrowException("createShaderResourceView error: Resource is not Texture2D");
+	return mathematics::UVector2(static_cast<UINT>(desc.Width), desc.Height);
+}
+
 void Resource::setResource(DXResource p_resource, D3D12_RESOURCE_STATES p_state)
 {
 	resource = p_resource;
@@ -220,6 +232,11 @@ void Resource::setResource(DXResource p_resource, D3D12_RESOURCE_STATES p_state)
 void Resource::setName(const std::wstring& name)
 {
 	resource->SetName(name.c_str());
+}
+
+void Resource::setName(const std::string& name)
+{
+	setName(util::StringToWString(name));
 }
 
 std::wstring Resource::getName() const

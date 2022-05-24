@@ -33,14 +33,17 @@ using std::vector;
 using Microsoft::WRL::ComPtr;
 
 RasterShading::RasterShading(bool computeGBuffer)
-	: constBuffer{}, scissorRect(CD3DX12_RECT(0, 0, LONG_MAX, LONG_MAX)), computeGBuffer(computeGBuffer), numRenderTargets(computeGBuffer ? 4u : 1u), camera{}
+	: constBuffer{}, scissorRect(CD3DX12_RECT(0, 0, LONG_MAX, LONG_MAX)), computeGBuffer(computeGBuffer), numRenderTargets(computeGBuffer ? 4u : 1u), camera(), winDimensions()
 {
 }
 
 void RasterShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12GraphicsCommandList>& pCurrentCommandList, ResourceRegFunction& resRegFn)
 {
 	this->rendererResources = rRes;
-	camera = rRes->camera;
+	if (!camera)
+		camera = rRes->camera;
+	if (!winDimensions)
+		winDimensions = &rRes->winDimensions;
 
 	// Handle result used for errors
 	HRESULT hr;
@@ -175,19 +178,19 @@ void RasterShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12GraphicsComm
 	// Init G-Buffer
 	if (computeGBuffer)
 	{
-		std::array<std::string, 3> names = { "gPos", "gNorm", "gAlb" };
+		std::array<std::string, 4> names = { "gPos", "gNorm", "gAlb", "gOut"};
 		for (const auto& name : names)
 			gBuffer.emplace_back(&rendererResources->resourceManager->createResource(
 				D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET,
-				rendererResources->winDimensions.x, rendererResources->winDimensions.y, 
-				DXGI_FORMAT_R32G32B32A32_FLOAT, true, globalPrefix + name));
+				winDimensions->x, winDimensions->y, 
+				DXGI_FORMAT_R32G32B32A32_FLOAT, false, globalPrefix + name));
 		pGDescriptorHeap = DXUtil::createDescriptorHeap(rRes->pDevice, static_cast<UINT>(gBuffer.size()), D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 	}
 
-	auto temp = DXUtil::createDepthStencilView(rendererResources->pDevice, pDepthDescriptorHeap, rendererResources->winDimensions.x, rendererResources->winDimensions.y, 1u)[0];
+	auto temp = DXUtil::createDepthStencilView(rendererResources->pDevice, pDepthDescriptorHeap, winDimensions->x, winDimensions->y, 1u)[0];
 	pDepthBuffer = &rendererResources->resourceManager->addExistingResource(temp, D3D12_RESOURCE_STATE_DEPTH_WRITE, globalPrefix + "gDepth");
 
-	onResize();
+	resize(winDimensions);
 }
 
 void RasterShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, uint32_t currentBackBufferIndex)
@@ -209,9 +212,16 @@ void RasterShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandL
 	D3D12_CPU_DESCRIPTOR_HANDLE rtvDescriptorHandles[4];
 	const auto incrementSize = rendererResources->pDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 	rtvDescriptorHandles[0] = CD3DX12_CPU_DESCRIPTOR_HANDLE(rendererResources->pRTVDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), rendererResources->numBackBuffers, incrementSize);
+
 	if (computeGBuffer)
 	{
 		FLOAT color[] = { 0.f, 0.f, 0.f, 0.0f };
+
+		if (winDimensions != &rendererResources->winDimensions)
+		{
+			rtvDescriptorHandles[0] = CD3DX12_CPU_DESCRIPTOR_HANDLE(pGDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), numRenderTargets - 1, incrementSize); // position, normal, albedo
+			pCurrentCommandList->ClearRenderTargetView(rtvDescriptorHandles[0], color, 0, nullptr);
+		}
 		for (UINT i = 1; i < numRenderTargets; ++i)
 		{
 			rtvDescriptorHandles[i] = CD3DX12_CPU_DESCRIPTOR_HANDLE(pGDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), i - 1, incrementSize); // position, normal, albedo
@@ -264,8 +274,24 @@ void RasterShading::onChange(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentComm
 
 void RasterShading::onResize()
 {
-	viewport = CD3DX12_VIEWPORT(0.0f, 0.0f, static_cast<float>(rendererResources->winDimensions.x), static_cast<float>(rendererResources->winDimensions.y));
-	auto temp = DXUtil::createDepthStencilView(rendererResources->pDevice, pDepthDescriptorHeap, rendererResources->winDimensions.x, rendererResources->winDimensions.y, 1u)[0];
+	if (winDimensions == &rendererResources->winDimensions)
+		resize(winDimensions);
+}
+
+void RasterShading::resize(const UVector2* p_winDimensions)
+{
+	if (p_winDimensions == nullptr)
+		return;
+
+	auto prevWinDimensions = winDimensions;
+	winDimensions = p_winDimensions;
+
+	// Did we call init first?
+	if (prevWinDimensions == nullptr)
+		return;
+
+	viewport = CD3DX12_VIEWPORT(0.0f, 0.0f, static_cast<float>(winDimensions->x), static_cast<float>(winDimensions->y));
+	auto temp = DXUtil::createDepthStencilView(rendererResources->pDevice, pDepthDescriptorHeap, winDimensions->x, winDimensions->y, 1u)[0];
 	pDepthBuffer->setResource(temp, D3D12_RESOURCE_STATE_DEPTH_WRITE);
 
 	if (computeGBuffer)
@@ -274,6 +300,7 @@ void RasterShading::onResize()
 		CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(pGDescriptorHeap->GetCPUDescriptorHandleForHeapStart());
 		for (UINT i = 0; i < gBuffer.size(); ++i)
 		{
+			gBuffer[i]->resize(winDimensions->x, winDimensions->y);
 			rendererResources->pDevice->CreateRenderTargetView(*gBuffer[i], nullptr, rtvHandle);
 			rtvHandle.Offset(rtvDescSize);
 		}
@@ -314,4 +341,3 @@ void RasterShading::setCamera(Camera *p_camera)
 {
 	camera = p_camera;
 }
-

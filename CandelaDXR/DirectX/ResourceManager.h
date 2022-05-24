@@ -37,6 +37,8 @@ namespace candela::directx
 		void setTempBufferSlots(UINT numOfSlots);
 
 	private:
+		void addToNamed(Resource *resource, const std::string& globalName);
+
 		DXDevice& device;
 		std::vector<std::unique_ptr<ResourceItem>> resources;
 		NamedResType namedResources;

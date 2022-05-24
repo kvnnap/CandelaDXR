@@ -1,8 +1,13 @@
 #pragma once
 
+#include "DirectX/Resource.h"
+
+#include "Mathematics/Types.h"
+
 #include "ILightTracingComponent.h"
 
 #include "RasterShading.h"
+#include "SingleIOComputeShader.h"
 
 namespace candela::renderer
 {
@@ -32,7 +37,11 @@ namespace candela::renderer
 		virtual void appendToDescHeapManager(directx::DescriptorHeap* descriptorHeap) override;
 	private:
 		RendererResources *rendererResources;
-		// Raster Shader
+
+		mathematics::UVector2 cdfSize;
+		directx::Resource *cumulativeDistributionTexture;
 		RasterShading rasterShader;
+		DistanceComputeShader distanceComputerShader;
+		PrefixSumComputeShader prefixSumComputeShader;
 	};
 }
