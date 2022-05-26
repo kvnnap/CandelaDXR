@@ -414,6 +414,7 @@
     <FxCompile Include="Shader\PrefixSumComputeShader.hlsl" />
     <FxCompile Include="Shader\DistanceComputeShader.hlsl" />
     <FxCompile Include="Shader\NormalisationComputeShader.hlsl" />
+    <FxCompile Include="Shader\LightTracingImportanceShader.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Shader\Utils.hlsli" />
