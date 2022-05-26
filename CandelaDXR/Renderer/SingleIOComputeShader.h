@@ -5,6 +5,7 @@
 
 #include "DirectX/Resource.h"
 #include "DirectX/ResourceManager.h"
+#include "DirectX/RootSignatureManager.h"
 #include "DirectX/ShadingTable.h"
 
 #include "Mathematics/Types.h"
@@ -33,8 +34,10 @@ namespace candela::renderer
 		static constexpr auto ThreadGroupDim = 8u;
 	protected:
 		virtual mathematics::UVector2 getLaunchDimensions(const mathematics::UVector2& originalDimensions) const;
-
-	private:
+		virtual void addAdditionalResources(directx::RootSignatureManager* rsm, const std::string& rangeName);
+		virtual void bindAdditionalResources(UINT baseIndex);
+		virtual void dispatch(wrl::ComPtr<ID3D12GraphicsCommandList> currentCommandList);
+	//private:
 		const std::string shaderPath;
 		const bool launchAsFlatArray;
 
@@ -62,15 +65,15 @@ namespace candela::renderer
 		: public SingleIOComputeShader
 	{
 	public:
-		PrefixSumComputeShader() : SingleIOComputeShader("./Shaders/PrefixSumComputeShader.cso", true) {}
+		PrefixSumComputeShader();
+
+		static constexpr auto ThreadGroupDim = 1024u;
 	protected:
-		mathematics::UVector2 getLaunchDimensions(const mathematics::UVector2& dim) const override
-		{
-			constexpr auto threadGroupDimSq = SingleIOComputeShader::ThreadGroupDim * SingleIOComputeShader::ThreadGroupDim;
-			auto totalSize = dim.x * dim.y;
-			totalSize = totalSize / 2u + (totalSize % 2u == 0u ? 0u : 1u);
-			return mathematics::UVector2(totalSize / threadGroupDimSq + (totalSize % threadGroupDimSq == 0u ? 0u : 1u), 1u);
-			//return mathematics::UVector2(2047, 1);
-		}
+		mathematics::UVector2 getLaunchDimensions(const mathematics::UVector2& dim) const override;
+		void addAdditionalResources(directx::RootSignatureManager* rsm, const std::string& rangeName) override;
+		void bindAdditionalResources(UINT baseIndex) override;
+		void dispatch(wrl::ComPtr<ID3D12GraphicsCommandList> currentCommandList) override;
+	private:
+		directx::Resource* scratchResource;
 	};
 }
