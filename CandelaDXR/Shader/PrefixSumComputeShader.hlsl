@@ -28,7 +28,7 @@ struct Input
 {
 	uint3 DTid : SV_DispatchThreadID;
 	uint3 GTid : SV_GroupThreadID;
-	uint GroupId : SV_GroupIndex;
+	uint3 GroupId : SV_GroupID;
 };
 
 // Assign additional space to avoid bank conflicts
@@ -40,16 +40,8 @@ groupshared uint groupId;
 [numthreads(BlOCK_SIZE, 1, 1)]
 void main(const Input input)
 {
-	uint totalSize = ScreenDim.x * ScreenDim.y;
-	
-	uint gIdPrev = input.GTid.x * 2;
-	uint gId = gIdPrev + 1;
-
 	uint dIdPrev = input.DTid.x * 2;
 	uint dId = dIdPrev + 1;
-
-	if (input.GTid.x == 0)
-		groupId = input.GroupId;
 
 	// We can assume that out of bounds reads return 0 and 
 	// writes do nothing (noop). We do not need manual checking.
@@ -57,6 +49,10 @@ void main(const Input input)
 
 	if (PassNumber == 0 || PassNumber == 1)
 	{
+		uint totalSize = ScreenDim.x * ScreenDim.y;
+		uint gIdPrev = input.GTid.x * 2;
+		uint gId = gIdPrev + 1;
+
 		if (PassNumber == 0)
 		{
 			// Copy input to group shared memory
@@ -70,6 +66,9 @@ void main(const Input input)
 			temp[CONFLICT_FREE_ID(gId)] = scratch[dId];
 			totalSize = totalSize / ARRAY_SIZE + (totalSize % ARRAY_SIZE == 0 ? 0 : 1);
 		}
+
+		if (input.GTid.x == 0)
+			groupId = input.GroupId.x;
 
 		GroupMemoryBarrierWithGroupSync();
 
@@ -122,8 +121,8 @@ void main(const Input input)
 		// Left shift and Add lastItem
 		GroupMemoryBarrierWithGroupSync();
 
-		float t1 = lastItemIndex == gId ? temp[CONFLICT_FREE_ID(gIdPrev)] + lastItem : temp[CONFLICT_FREE_ID(gId)];
-		float t2 = lastItemIndex == (gId + 1) ? temp[CONFLICT_FREE_ID(gId)] + lastItem : temp[CONFLICT_FREE_ID(gId + 1)];
+		float t1 = lastItemIndex == gIdPrev ? temp[CONFLICT_FREE_ID(gIdPrev)] + lastItem : temp[CONFLICT_FREE_ID(gId)];
+		float t2 = lastItemIndex == gId ? temp[CONFLICT_FREE_ID(gId)] + lastItem : temp[CONFLICT_FREE_ID(gId + 1)];
 
 		if (PassNumber == 0)
 		{
@@ -132,21 +131,18 @@ void main(const Input input)
 
 			// Populate Scratch
 			if (input.GTid.x == (lastItemIndex >> 1))
-				scratch[groupId] = lastItemIndex == gId ? t1 : t2;
+				scratch[groupId] = lastItemIndex == gIdPrev ? t1 : t2;
 		}
 		else
 		{
 			scratch[dIdPrev] = t1;
-			scratch[dId] = t1;
+			scratch[dId] = t2;
 		}
 	}
 	else if (PassNumber == 2)
 	{
-		// Add scratch to respective arrays
-		if (groupId > 0)
-		{
-			output[getIndex(dIdPrev)] += scratch[groupId - 1];
-			output[getIndex(dId)] += scratch[groupId - 1];
-		}
+		// Add scratch to respective arrays - Pass 2 is started with one less block, so we must offset
+		output[getIndex(ARRAY_SIZE + dIdPrev)] += scratch[input.GroupId.x];
+		output[getIndex(ARRAY_SIZE + dId)] += scratch[input.GroupId.x];
 	}
 }

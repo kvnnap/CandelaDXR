@@ -413,6 +413,7 @@
     <FxCompile Include="Shader\RTShadows.hlsl" />
     <FxCompile Include="Shader\PrefixSumComputeShader.hlsl" />
     <FxCompile Include="Shader\DistanceComputeShader.hlsl" />
+    <FxCompile Include="Shader\NormalisationComputeShader.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Shader\Utils.hlsli" />

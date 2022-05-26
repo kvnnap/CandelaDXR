@@ -19,5 +19,5 @@ void main( uint3 DTid : SV_DispatchThreadID )
 	if (DTid.x >= ScreenDim.x || DTid.y >= ScreenDim.y)
 		return;
 
-	output[DTid.xy] = length(input[DTid.xy].xyz - Position);
+	output[DTid.xy] = input[DTid.xy].w == 1.f ? length(input[DTid.xy].xyz - Position) : 0.f;
 }

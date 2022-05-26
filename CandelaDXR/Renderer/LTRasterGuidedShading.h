@@ -43,5 +43,7 @@ namespace candela::renderer
 		RasterShading rasterShader;
 		DistanceComputeShader distanceComputerShader;
 		PrefixSumComputeShader prefixSumComputeShader;
+		NormalisationComputeShader normalisationComputeShader;
+
 	};
 }

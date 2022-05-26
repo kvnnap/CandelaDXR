@@ -26,6 +26,10 @@ void LTRasterGuidedShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12Grap
 	prefixSumComputeShader.init(rRes, pCurrentCommandList);
 	prefixSumComputeShader.setInputTexture("ltr_gPos");
 	prefixSumComputeShader.setOutputTexture(cumulativeDistributionTexture);
+
+	normalisationComputeShader.init(rRes, pCurrentCommandList);
+	normalisationComputeShader.setInputTexture("ltr_gPos");
+	normalisationComputeShader.setOutputTexture(cumulativeDistributionTexture);
 }
 
 void LTRasterGuidedShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, std::uint32_t currentBackBufferIndex)
@@ -33,6 +37,7 @@ void LTRasterGuidedShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrent
 	rasterShader.draw(pCurrentCommandList, currentBackBufferIndex);
 	distanceComputerShader.compute(pCurrentCommandList);
 	prefixSumComputeShader.compute(pCurrentCommandList);
+	normalisationComputeShader.compute(pCurrentCommandList);
 }
 
 void LTRasterGuidedShading::accept(IVisitor* visitor)

@@ -76,4 +76,11 @@ namespace candela::renderer
 	private:
 		directx::Resource* scratchResource;
 	};
+
+	class NormalisationComputeShader
+		: public SingleIOComputeShader
+	{
+	public:
+		NormalisationComputeShader() : SingleIOComputeShader("./Shaders/NormalisationComputeShader.cso") {}
+	};
 }
