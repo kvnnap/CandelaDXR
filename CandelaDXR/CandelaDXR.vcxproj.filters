@@ -183,6 +183,9 @@
     <ClCompile Include="Renderer\SingleIOComputeShader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Mathematics\Utils.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Exception\GeneralException.h">
@@ -401,6 +404,9 @@
     <ClInclude Include="Renderer\SingleIOComputeShader.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Mathematics\Utils.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Shader\PixelShader.hlsl" />
@@ -415,6 +421,7 @@
     <FxCompile Include="Shader\DistanceComputeShader.hlsl" />
     <FxCompile Include="Shader\NormalisationComputeShader.hlsl" />
     <FxCompile Include="Shader\LightTracingImportanceShader.hlsl" />
+    <FxCompile Include="Shader\NormalisationPass2ComputeShader.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Shader\Utils.hlsli" />

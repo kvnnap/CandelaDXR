@@ -3,6 +3,27 @@
 #include "IrradianceItem.hlsli"
 #include "LightTracingVars.hlsli"
 
+struct ConstBuff2
+{
+	// Light Camera
+	float3 u, v, w;
+	float3 position;
+	float3 direction;
+	float3 plane; // sensor dimensions (z contains distance to sensor plane)
+
+	// Other
+	uint2 lightCamDim;
+	uint lightIndex;
+};
+
+// CBVs
+cbuffer CB2 : register(b0, space1)
+{
+	ConstBuff2 lBuff;
+}
+
+Texture2D<float> cdf : register(t0, space1);
+
 struct RayPayload
 {
 	float2 bary;
@@ -15,17 +36,58 @@ struct ShadowPayload
 	bool occluded;
 };
 
+uint2 getLightTexIndex(uint id)
+{
+	return uint2(id % lBuff.lightCamDim.x, id / lBuff.lightCamDim.x);
+}
+
+uint2 sampleImportanceMap(inout uint seed, out float pdf)
+{
+	pdf = 0.f;
+
+	if (cdf[lBuff.lightCamDim - 1] != 1.f) // 0 means nothing in view
+		return lBuff.lightCamDim;
+
+	// Ensure r <= 1.f
+	float r = rand_next(seed) * 0.999999940395355224609375f; // 0x3f7fffff 
+
+	// Binary Search with Duplicates - https://jsfiddle.net/kvnnap/j7as6un3
+	const uint size = lBuff.lightCamDim.x * lBuff.lightCamDim.y;
+	uint min = 0;
+	uint max = size;
+
+	while (min < max)
+	{
+		uint mid = (min + max) >> 1;
+		if (r >= cdf[getLightTexIndex(mid)])
+			min = mid + 1;
+		else
+			max = mid;
+	}
+
+	if (min == size) // Should be an impossible case now
+		return lBuff.lightCamDim;
+
+	// Min contains result
+	uint2 uv = getLightTexIndex(min);
+	pdf = cdf[uv] - (min == 0 ? 0.f : cdf[getLightTexIndex(min - 1)]);
+
+	return uv;
+}
+
 // Kernels
 
 [shader("raygeneration")]
 void rayGen()
 {
-	return;
 	// Work item index - current x, y point
 	const uint2 launchIndex = DispatchRaysIndex().xy;
 
 	// Dimensions - the previous x,y point is contained within these dimensions
 	const uint2 launchDim = DispatchRaysDimensions().xy;
+
+	AddContribution(launchIndex.y * cBuffer.winDim.x + launchIndex.x, float3(cdf[launchIndex], cdf[launchIndex], cdf[launchIndex]));
+	return;
 
 	// Early-exit checks
 	if (cBuffer.numLights == 0)

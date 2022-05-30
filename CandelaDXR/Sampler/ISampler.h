@@ -23,6 +23,8 @@ namespace candela::sampler
         virtual std::uint32_t nextUInt32() = 0;
 
         virtual std::uint32_t getSeed() const = 0;
+
+        virtual std::size_t chooseInRange(size_t a, size_t b) = 0;
     };
 }
 

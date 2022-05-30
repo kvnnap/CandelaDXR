@@ -34,17 +34,29 @@ XMVECTOR Camera::getCrossVector() const
 	return XMVector3Normalize(XMVector3Cross(up, direction));
 }
 
-void Camera::lookTo(const DirectX::XMVECTOR& p_direction, const DirectX::XMVECTOR& p_up)
+void Camera::lookTo(const XMVECTOR& p_direction, const XMVECTOR& p_up)
 {
 	up = XMVector3Normalize(p_up);
 	direction = XMVector3Normalize(p_direction);
 	recalculateViewMatrix();
 }
 
+void Camera::lookTo(const XMVECTOR& p_pos, const XMVECTOR& p_dir, const XMVECTOR& up)
+{
+	position = p_pos;
+	lookTo(p_dir, up);
+}
+
 void Camera::setAspectRatio(float aspectRatio)
 {
 	nearWidth = aspectRatio * nearHeight;
 	perspectiveMatrix = XMMatrixPerspectiveRH(nearWidth, nearHeight, nearZ, farZ);
+}
+
+void Camera::setPosition(const XMVECTOR& p_pos)
+{
+	position = p_pos;
+	recalculateViewMatrix();
 }
 
 void Camera::incrementPosition(const XMVECTOR& deltaPosition)

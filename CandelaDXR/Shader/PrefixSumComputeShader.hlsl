@@ -73,8 +73,12 @@ void main(const Input input)
 		GroupMemoryBarrierWithGroupSync();
 
 		// Find last item in this block
-		uint lastItemIndex = (groupId + 1) * ARRAY_SIZE - 1;
-		lastItemIndex = lastItemIndex < totalSize ? ARRAY_SIZE - 1 : (totalSize - 1) % ARRAY_SIZE;
+
+		uint lastItemIndex = (groupId + 1) * ARRAY_SIZE;
+		lastItemIndex = lastItemIndex <= totalSize ? ARRAY_SIZE : 2 << max(0, firstbithigh(ARRAY_SIZE - (lastItemIndex - totalSize) - 1));
+		--lastItemIndex;
+		// Or simply use the following
+		// lastItemIndex = ARRAY_SIZE - 1;
 		// The if condition ensures that the same thread that wrote to temp reads the same index
 		// And avoids one barrier
 		if (input.GTid.x == (lastItemIndex >> 1))
@@ -121,7 +125,7 @@ void main(const Input input)
 		// Left shift and Add lastItem
 		GroupMemoryBarrierWithGroupSync();
 
-		float t1 = lastItemIndex == gIdPrev ? temp[CONFLICT_FREE_ID(gIdPrev)] + lastItem : temp[CONFLICT_FREE_ID(gId)];
+		float t1 = temp[CONFLICT_FREE_ID(gId)];
 		float t2 = lastItemIndex == gId ? temp[CONFLICT_FREE_ID(gId)] + lastItem : temp[CONFLICT_FREE_ID(gId + 1)];
 
 		if (PassNumber == 0)
@@ -131,7 +135,7 @@ void main(const Input input)
 
 			// Populate Scratch
 			if (input.GTid.x == (lastItemIndex >> 1))
-				scratch[groupId] = lastItemIndex == gIdPrev ? t1 : t2;
+				scratch[groupId] = t2;
 		}
 		else
 		{

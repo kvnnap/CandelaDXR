@@ -34,6 +34,8 @@ namespace candela::directx
 		const std::string& getInstanceName() const;
 		const std::shared_ptr<RootSignatureManager>& getRootSignatureManager() const;
 		Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> getDescriptorHeap() const;
+
+		std::size_t getSetResourcesSize() const;
 	private:
 		D3D12_CPU_DESCRIPTOR_HANDLE getCpuDescHandle(size_t entryNumber, Microsoft::WRL::ComPtr<ID3D12Device> pDevice) const;
 		void setResource(size_t entryNumber, Microsoft::WRL::ComPtr<ID3D12Resource> resource = {});

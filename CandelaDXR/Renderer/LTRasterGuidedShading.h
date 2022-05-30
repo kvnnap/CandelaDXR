@@ -1,13 +1,18 @@
 #pragma once
 
+#include <memory>
+
 #include "DirectX/Resource.h"
 
 #include "Mathematics/Types.h"
+
+#include "Sampler/ISampler.h"
 
 #include "ILightTracingComponent.h"
 
 #include "RasterShading.h"
 #include "SingleIOComputeShader.h"
+#include "Camera.h"
 
 namespace candela::renderer
 {
@@ -15,7 +20,18 @@ namespace candela::renderer
 		: public ILightTracingComponent
 	{
 	public:
-		LTRasterGuidedShading();
+		LTRasterGuidedShading(sampler::ISampler* sampler);
+
+		struct alignas(16) ConstBuff
+		{
+			DirectX::XMVECTOR u, v, w;
+			DirectX::XMVECTOR position;
+			DirectX::XMVECTOR direction;
+			DirectX::XMVECTOR plane; // x, y and z (distance from point to plane)
+
+			mathematics::UVector2 lightCamDim;
+			std::uint32_t lightIndex;
+		} constBuffer;
 
 		// IDrawable
 		virtual void init(RendererResources* rendererResources, wrl::ComPtr<ID3D12GraphicsCommandList>& pCurrentCommandList, ResourceRegFunction& resRegFn) override;
@@ -36,14 +52,20 @@ namespace candela::renderer
 		virtual void appendToShaderTable(directx::ShadingTable* shadingTable) override;
 		virtual void appendToDescHeapManager(directx::DescriptorHeap* descriptorHeap) override;
 	private:
+		sampler::ISampler* sampler;
+
 		RendererResources *rendererResources;
+		wrl::ComPtr<ID3D12Resource> constantBuffer;
 
 		mathematics::UVector2 cdfSize;
 		directx::Resource *cumulativeDistributionTexture;
+		std::unique_ptr<Camera> lightCamera;
+
 		RasterShading rasterShader;
 		DistanceComputeShader distanceComputerShader;
 		PrefixSumComputeShader prefixSumComputeShader;
 		NormalisationComputeShader normalisationComputeShader;
+		NormalisationPass2ComputeShader normalisationPass2ComputeShader;
 
 	};
 }

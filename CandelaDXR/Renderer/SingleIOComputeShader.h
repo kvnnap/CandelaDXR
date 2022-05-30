@@ -83,4 +83,16 @@ namespace candela::renderer
 	public:
 		NormalisationComputeShader() : SingleIOComputeShader("./Shaders/NormalisationComputeShader.cso") {}
 	};
+
+	class NormalisationPass2ComputeShader
+		: public SingleIOComputeShader
+	{
+	public:
+		NormalisationPass2ComputeShader() : SingleIOComputeShader("./Shaders/NormalisationPass2ComputeShader.cso") {}
+
+		void dispatch(wrl::ComPtr<ID3D12GraphicsCommandList> currentCommandList) override
+		{
+			currentCommandList->Dispatch(1u, 1u, 1u);
+		}
+	};
 }

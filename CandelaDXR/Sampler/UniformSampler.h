@@ -30,8 +30,8 @@ namespace candela::sampler
         std::vector<float> nextSamples(size_t p_numSamples) override;
         std::uint32_t getSeed() const override;
 
-        // Our
-        std::size_t chooseInRange(size_t a, size_t b);
+        // Generates integer [min, max]
+        std::size_t chooseInRange(size_t a, size_t b) override;
     private:
         std::uint32_t seed;
         std::mt19937 mt;

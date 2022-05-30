@@ -380,6 +380,11 @@ Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> DescriptorHeap::getDescriptorHeap()
 	return descriptorHeap;
 }
 
+size_t DescriptorHeap::getSetResourcesSize() const
+{
+	return resources.size();
+}
+
 D3D12_CPU_DESCRIPTOR_HANDLE DescriptorHeap::getCpuDescHandle(size_t entryNumber, Microsoft::WRL::ComPtr<ID3D12Device> pDevice) const
 {
 	D3D12_CPU_DESCRIPTOR_HANDLE cpuDescHandle = descriptorHeap->GetCPUDescriptorHandleForHeapStart();

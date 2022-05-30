@@ -11,9 +11,11 @@ namespace candela::renderer
 
 		// Methods
 		void lookTo(const DirectX::XMVECTOR& direction, const DirectX::XMVECTOR& up = DirectX::XMVectorSet(0.f, 1.f, 0.f, 0.f));
+		void lookTo(const DirectX::XMVECTOR& position, const DirectX::XMVECTOR& direction, const DirectX::XMVECTOR& up);
 
 		// This method will vary the width of the sensor and keep its height intact
 		void setAspectRatio(float aspectRatio);
+		void setPosition(const DirectX::XMVECTOR& p_pos);
 		void incrementPosition(const DirectX::XMVECTOR& deltaPosition);
 		void incrementPosition(float dx, float dy, float dz);
 		void incrementPositionAlongDirection(float dx, float dy);
