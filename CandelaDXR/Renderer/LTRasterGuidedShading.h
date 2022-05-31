@@ -31,6 +31,7 @@ namespace candela::renderer
 
 			mathematics::UVector2 lightCamDim;
 			std::uint32_t lightIndex;
+			float lightCamPdf;
 		} constBuffer;
 
 		// IDrawable

@@ -1,5 +1,6 @@
 #include "LTRasterGuidedShading.h"
 #include "Mathematics/Utils.h"
+#include "Mathematics/Constants.h"
 
 #include "DirectX/DxUtil.h"
 
@@ -11,6 +12,8 @@ using candela::sampler::ISampler;
 using candela::mathematics::SamplePointOnTriangle;
 using candela::mathematics::InterpolateVertices;
 using candela::mathematics::GeneratePerpendicularVector;
+using candela::mathematics::f1Definite;
+using candela::mathematics::f2Definite;
 using candela::renderer::LTRasterGuidedShading;
 
 LTRasterGuidedShading::LTRasterGuidedShading(ISampler* sampler)
@@ -21,7 +24,9 @@ LTRasterGuidedShading::LTRasterGuidedShading(ISampler* sampler)
 void LTRasterGuidedShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12GraphicsCommandList>& pCurrentCommandList, ResourceRegFunction& resRegFn)
 {
 	rendererResources = rRes;
-	lightCamera = std::make_unique<Camera>(*rRes->camera);
+	//lightCamera = std::make_unique<Camera>(*rRes->camera);
+	lightCamera = std::make_unique<Camera>(DirectX::XMVECTOR{}, DirectX::XMVECTOR{0.f, 0.f, 1.f, 0.f}, 0.125f, 0.125f, 0.015625f, 1000.f);
+	lightCamera->setAspectRatio(static_cast<float>(cdfSize.x) / cdfSize.y);
 
 	rasterShader.setCamera(lightCamera.get());
 	rasterShader.setGlobaResourcePrefix("ltr_");
@@ -51,6 +56,11 @@ void LTRasterGuidedShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12Grap
 	normalisationPass2ComputeShader.setOutputTexture(cumulativeDistributionTexture);
 
 	// Constant buffer
+	auto sensorDim = lightCamera->getNearPlaneDimensions();
+	float x = sensorDim.m128_f32[0] * 0.5f;
+	float y = sensorDim.m128_f32[1] * 0.5f;
+	constBuffer.lightCamPdf = f1Definite(-x, x, -y, y, sensorDim.m128_f32[2]) * candela::mathematics::constants::OneOverPi;
+	float hemiSphericalCoverAreaPercent = f2Definite(-x, x, -y, y, sensorDim.m128_f32[2]) * candela::mathematics::constants::OneOverTwoPi;
 	constantBuffer = DXUtil::uploadDataToDefaultHeap(rendererResources->pDevice, pCurrentCommandList, rendererResources->getTempResource(), &constBuffer, sizeof(constBuffer), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 	constantBuffer->SetName(L"LT Raster Guided Constant Buffer");
 }

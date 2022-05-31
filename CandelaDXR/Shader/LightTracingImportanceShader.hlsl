@@ -14,6 +14,7 @@ struct ConstBuff2
 	// Other
 	uint2 lightCamDim;
 	uint lightIndex;
+	float lightCamPdf;
 };
 
 // CBVs
@@ -75,6 +76,51 @@ uint2 sampleImportanceMap(inout uint seed, out float pdf)
 	return uv;
 }
 
+bool sampleImpMapWithCosCDF(inout uint seed, inout RayDesc ray, inout float pdf, out float coeff)
+{
+	// Check if ray intersects light camera raster square
+		// compute denominator
+	const float den = dot(lBuff.w, ray.Direction);
+	coeff = 1.f;
+
+	// make this check or else risk of division by zero..
+	if (den == 0.f)
+		return false;
+
+	const float3 posPlane = ray.Origin + lBuff.w * lBuff.plane.z;
+	const float t = dot(lBuff.w, (posPlane - ray.Origin)) / den;
+	if (t < ray.TMin || t > ray.TMax)
+		return false;
+
+	const float3 R = ray.Origin + ray.Direction * t - posPlane;
+	float2 pt = float2(dot(R, lBuff.u), dot(R, lBuff.v));
+
+	// Check if point is in bounds or not
+	float2 halfPlane = lBuff.plane.xy * 0.5f;
+	if (any(pt > halfPlane) || any(pt < -halfPlane))
+		return false;
+
+	// Ok in bounds, sample texel in texture
+	float localPdf;
+	uint2 texel = sampleImportanceMap(seed, localPdf);
+	if (localPdf == 0.f)
+		return false;
+
+	float2 ratio = lBuff.plane.xy / lBuff.lightCamDim;
+	float texelArea = ratio.x * ratio.y;
+	ratio.y = -ratio.y;
+
+	// Convert texel boundary coordinates to world space 
+	float2 planePt = float2(-halfPlane.x, halfPlane.y) + ratio * (texel + float2(rand_next(seed), rand_next(seed)));
+	float3 worldPt = planePt.x * lBuff.u + planePt.y * lBuff.v + lBuff.plane.z * lBuff.w;
+	ray.Direction = worldPt - ray.Origin;
+
+	float invDistance = length(ray.Direction);
+	coeff /= invDistance * invDistance;
+	pdf = localPdf * lBuff.lightCamPdf / texelArea;
+	return true;
+}
+
 // Kernels
 
 [shader("raygeneration")]
@@ -86,8 +132,8 @@ void rayGen()
 	// Dimensions - the previous x,y point is contained within these dimensions
 	const uint2 launchDim = DispatchRaysDimensions().xy;
 
-	AddContribution(launchIndex.y * cBuffer.winDim.x + launchIndex.x, float3(cdf[launchIndex], cdf[launchIndex], cdf[launchIndex]));
-	return;
+	//AddContribution(launchIndex.y * cBuffer.winDim.x + launchIndex.x, cdf[launchIndex]);
+	//return;
 
 	// Early-exit checks
 	if (cBuffer.numLights == 0)
@@ -99,7 +145,7 @@ void rayGen()
 		cBuffer.seeds.y + launchDim.y * (cBuffer.frameNumber + 0) + launchIndex.y);
 
 	// Choose light source
-	const uint lightIndex = chooseInRange(seed, 0, cBuffer.numLights - 1);
+	const uint lightIndex = lBuff.lightIndex;
 	const uint lightIndexId = lights[lightIndex].PrimitiveId * 3;
 	AreaLight areaLight = lights[lightIndex];
 	Material lightMat = materials[areaLight.MaterialId];
@@ -180,7 +226,13 @@ void rayGen()
 	if (!lightDirectional)
 	{
 		ray.Direction = randomRayLobe(seed, unitLightNormal, 1, pdf);
-		localContribution *= dot(unitLightNormal, ray.Direction) / pdf;
+
+		float coeff;
+
+		// If this succeeds, ray.Direction, coeff and pdf will be updated
+		sampleImpMapWithCosCDF(seed, ray, pdf, coeff);
+
+		localContribution *= dot(unitLightNormal, ray.Direction) * coeff / pdf;
 	}
 
 	// Number of entries in transmissive materials
