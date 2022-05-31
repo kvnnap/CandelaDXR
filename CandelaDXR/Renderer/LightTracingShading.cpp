@@ -12,6 +12,7 @@
 #include "Exception/WindowException.h"
 
 #include "Util/StringUtil.h"
+#include "Mathematics/Utils.h"
 
 #include "AccelerationStructure.h"
 #include "RendererResources.h"
@@ -517,32 +518,6 @@ const vector<ILightTracingComponent*>& LightTracingShading::getComponents() cons
 }
 
 // Compute constants
-static float f1(float x, float y, float z, float a, float b, float c)
-{
-	float xMinA = x - a;
-	float yMinB = y - b;
-	float zMinC = z - c;
-
-	float xMinASq = xMinA * xMinA;
-	float yMinBSq = yMinB * yMinB;
-	float zMinCSq = zMinC * zMinC;
-
-	float r1 = 1.f / sqrt(yMinBSq + zMinCSq);
-	float r2 = 1.f / sqrt(xMinASq + zMinCSq);
-
-	return 0.5f * (
-		yMinB * atan(xMinA * r1) * r1 +
-		xMinA * atan(yMinB * r2) * r2);
-}
-
-static float f(float x0, float x1, float y0, float y1, float z, float a, float b, float c)
-{
-	return f1(x1, y1, z, a, b, c)
-		 + f1(x0, y0, z, a, b, c)
-		 - f1(x1, y0, z, a, b, c)
-		 - f1(x0, y1, z, a, b, c);
-}
-
 Vector2 LightTracingShading::toSensorSpace(uint32_t x, uint32_t y) const
 {
 	UVector2 &screenDimensions = rendererResources->winDimensions;
@@ -564,5 +539,5 @@ float LightTracingShading::cosIntegral(uint32_t x, uint32_t y) const
 	auto pt0 = toSensorSpace(x, y + 1); // Min
 	auto pt1 = toSensorSpace(x + 1, y); // Max
 
-	return f(pt0.x, pt1.x, pt0.y, pt1.y, rendererResources->camera->getNearPlaneDimensions().m128_f32[2], 0.f, 0.f, 0.f);
+	return candela::mathematics::f1Definite(pt0.x, pt1.x, pt0.y, pt1.y, rendererResources->camera->getNearPlaneDimensions().m128_f32[2]);
 }
