@@ -112,7 +112,7 @@ bool sampleImpMapWithCosCDF(inout uint seed, inout RayDesc ray, inout float pdf,
 
 	// Convert texel boundary coordinates to world space 
 	float2 planePt = float2(-halfPlane.x, halfPlane.y) + ratio * (texel + float2(rand_next(seed), rand_next(seed)));
-	float3 worldPt = planePt.x * lBuff.u + planePt.y * lBuff.v + lBuff.plane.z * lBuff.w;
+	float3 worldPt = posPlane + planePt.x * lBuff.u + planePt.y * lBuff.v;
 	ray.Direction = worldPt - ray.Origin;
 
 	float invDistance = length(ray.Direction);
