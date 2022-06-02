@@ -115,8 +115,8 @@ bool sampleImpMapWithCosCDF(inout uint seed, inout RayDesc ray, inout float pdf,
 	float3 worldPt = posPlane + planePt.x * lBuff.u + planePt.y * lBuff.v;
 	ray.Direction = worldPt - ray.Origin;
 
-	float invDistance = length(ray.Direction);
-	coeff /= invDistance * invDistance;
+	float invDistance = 1.f / length(ray.Direction);
+	coeff = dot(lBuff.w, (ray.Direction * invDistance)) * invDistance * invDistance;
 	pdf = localPdf * lBuff.lightCamPdf / texelArea;
 	return true;
 }
@@ -227,7 +227,7 @@ void rayGen()
 	{
 		ray.Direction = randomRayLobe(seed, unitLightNormal, 1, pdf);
 
-		float coeff;
+		float coeff = 1.f;
 
 		// If this succeeds, ray.Direction, coeff and pdf will be updated
 		sampleImpMapWithCosCDF(seed, ray, pdf, coeff);
