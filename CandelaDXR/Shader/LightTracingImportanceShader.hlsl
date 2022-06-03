@@ -116,7 +116,8 @@ bool sampleImpMapWithCosCDF(inout uint seed, inout RayDesc ray, inout float pdf,
 	ray.Direction = worldPt - ray.Origin;
 
 	float invDistance = 1.f / length(ray.Direction);
-	coeff = dot(lBuff.w, (ray.Direction * invDistance)) * invDistance * invDistance;
+	ray.Direction *= invDistance;
+	coeff = dot(lBuff.w, ray.Direction) * invDistance * invDistance;
 	pdf = localPdf * lBuff.lightCamPdf / texelArea;
 	return true;
 }
