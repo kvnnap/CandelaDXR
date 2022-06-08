@@ -49,7 +49,7 @@ void LTRasterGuidedShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12Grap
 	const uint32_t inputIndex = static_cast<uint32_t>(resources.size() - 1);
 	const uint32_t numOutputs = static_cast<uint32_t>(cdfs.size());
 
-	distanceComputerShader.setAdditionalConstantBuffer(&lightCamera->getPosition(), sizeof(float) * 3);
+	distanceComputerShader.setAdditionalConstantBuffer(&distConstBuffer, sizeof(distConstBuffer));
 	distanceComputerShader.init(rRes, pCurrentCommandList, &resources, numOutputs);
 	distanceComputerShader.setInputTexture(inputIndex);
 
@@ -117,6 +117,8 @@ void LTRasterGuidedShading::generateCDF(wrl::ComPtr<ID3D12GraphicsCommandList> p
 
 	// Alter Camera
 	lightCamera->lookTo(pos, nor, up);
+	distConstBuffer.position = lightCamera->getPosition();
+	distConstBuffer.unitDirection = lightCamera->getDirection();
 
 	// Generate CDF
 	rasterShader.draw(pCurrentCommandList, currentBackBufferIndex);

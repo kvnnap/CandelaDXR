@@ -31,6 +31,12 @@ namespace candela::renderer
 			float lightCamPdf;
 		} constBuffer;
 
+		struct alignas(16) DistConstBuff
+		{
+			DirectX::XMVECTOR position;
+			DirectX::XMVECTOR unitDirection;
+		} distConstBuffer;
+
 		// IDrawable
 		virtual void init(RendererResources* rendererResources, wrl::ComPtr<ID3D12GraphicsCommandList>& pCurrentCommandList, ResourceRegFunction& resRegFn) override;
 		virtual void draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, std::uint32_t currentBackBufferIndex) override;

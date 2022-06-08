@@ -8,6 +8,7 @@ cbuffer CB1 : register(b0)
 cbuffer CB1 : register(b1)
 {
 	float3 Position;
+	float3 UnitDirection;
 }
 
 Texture2D<float4> input[] : register(t0);
@@ -21,5 +22,14 @@ void main( uint3 DTid : SV_DispatchThreadID )
 	if (DTid.x >= ScreenDim.x || DTid.y >= ScreenDim.y)
 		return;
 	const float4 inData = input[InputIndex][DTid.xy];
-	output[OutputIndex][DTid.xy] = inData.w == 1.f ? length(inData.xyz - Position) : 0.125f;
+	const float3 dir = inData.xyz - Position;
+	const float lenDir = length(dir);
+
+	// Experimental emptiness weighting using radial distance
+	const float2 halfDim = 0.5f * ScreenDim;
+	const float maxRad = length(halfDim);
+	const float rad = length(DTid.xy - halfDim);
+
+	float result = inData.w == 1.f ? /*lenDir * */dot(dir/* * (1.f / lenDir)*/, UnitDirection) : 0.015625f * cos(1.5625f * (rad / maxRad));
+	output[OutputIndex][DTid.xy] = result;
 }
