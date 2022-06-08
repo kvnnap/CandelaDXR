@@ -125,11 +125,16 @@ float3 linearToSrgbGamma(float3 c)
 	return float3(pow(c.x, kInvGamma), pow(c.y, kInvGamma), pow(c.z, kInvGamma));
 }
 
+float3 createPerpendicularVector(float3 unitVec)
+{
+	return unitVec.y != 0.f || unitVec.x != 0.f ?
+		normalize(float3(unitVec.y, -unitVec.x, 0.f)) :
+		float3(unitVec.z, 0.f, 0.f);
+}
+
 float3 transformPointToBasis(float3 unitNormal, float3 pt) {
 	// Create first vector perpendicular to the normal
-	const float3 u = unitNormal.y != 0.f || unitNormal.x != 0.f ?
-		normalize(float3(unitNormal.y, -unitNormal.x, 0.f)) :
-		float3(unitNormal.z, 0.f, 0.f);
+	const float3 u = createPerpendicularVector(unitNormal);
 
 	// Create second vector perpendicular to the normal
 	const float3 w = normalize(cross(u, unitNormal));

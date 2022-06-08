@@ -2,6 +2,7 @@
 
 #include <string>
 #include <memory>
+#include <vector>
 
 #include "DirectX/Resource.h"
 #include "DirectX/ResourceManager.h"
@@ -22,11 +23,10 @@ namespace candela::renderer
 		SingleIOComputeShader(const std::string& shaderPath, bool launchAsFlatArray = false);
 		virtual ~SingleIOComputeShader() = default;
 
-		void init(RendererResources* rendererResources, wrl::ComPtr<ID3D12GraphicsCommandList>& pCurrentCommandList);
+		void init(RendererResources* rendererResources, wrl::ComPtr<ID3D12GraphicsCommandList>& pCurrentCommandList, std::vector<directx::Resource*>* res, std::uint32_t numOutputs = 1u, std::uint32_t numInputs = 1u);
 
-		void setInputTexture(directx::Resource* inputTexture);
-		void setInputTexture(const std::string& inputTextureName);
-		void setOutputTexture(directx::Resource* outputTexture);
+		void setInputTexture(std::uint32_t inputIndex);
+		void setOutputTexture(std::uint32_t outputIndex);
 		void setAdditionalConstantBuffer(const void* p_cbData, std::size_t p_cbSize);
 
 		void compute(wrl::ComPtr<ID3D12GraphicsCommandList> currentCommandList);
@@ -40,10 +40,15 @@ namespace candela::renderer
 	//private:
 		const std::string shaderPath;
 		const bool launchAsFlatArray;
+		std::uint32_t numInputs;
+		std::uint32_t numOutputs;
+		directx::ResourceManager* resourceManager;
 
-		directx::Resource *inputTexture;
-		directx::Resource *outputTexture;
-		directx::ResourceManager *resourceManager;
+		std::vector<directx::Resource*>* resources;
+		std::uint32_t inputTextureIndex;
+		std::uint32_t outputTextureIndex;
+		directx::Resource* inputTexture;
+		directx::Resource* outputTexture;
 		ID3D12Device* pDevice;
 		const void* cbData;
 		std::size_t cbSize;

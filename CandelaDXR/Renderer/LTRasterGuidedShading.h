@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <vector>
 
 #include "DirectX/Resource.h"
 
@@ -20,15 +21,11 @@ namespace candela::renderer
 		: public ILightTracingComponent
 	{
 	public:
-		LTRasterGuidedShading(sampler::ISampler* sampler);
+		LTRasterGuidedShading(sampler::ISampler* sampler, bool storePerLightCDF);
 
 		struct alignas(16) ConstBuff
 		{
-			DirectX::XMVECTOR u, v, w;
-			DirectX::XMVECTOR position;
-			DirectX::XMVECTOR direction;
 			DirectX::XMVECTOR plane; // x, y and z (distance from point to plane)
-
 			mathematics::UVector2 lightCamDim;
 			std::uint32_t lightIndex;
 			float lightCamPdf;
@@ -53,13 +50,18 @@ namespace candela::renderer
 		virtual void appendToShaderTable(directx::ShadingTable* shadingTable) override;
 		virtual void appendToDescHeapManager(directx::DescriptorHeap* descriptorHeap) override;
 	private:
+		void generateCDF(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, std::uint32_t currentBackBufferIndex, std::uint32_t lightIndex);
+		void regenerateCDFs(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, std::uint32_t currentBackBufferIndex);
+
 		sampler::ISampler* sampler;
 
 		RendererResources *rendererResources;
 		wrl::ComPtr<ID3D12Resource> constantBuffer;
 
 		mathematics::UVector2 cdfSize;
-		directx::Resource *cumulativeDistributionTexture;
+		directx::Resource* cumulativeDistributionTexture;
+		std::vector<directx::Resource*> resources;
+		std::vector<directx::Resource *> cdfs;
 		std::unique_ptr<Camera> lightCamera;
 
 		RasterShading rasterShader;
@@ -68,5 +70,6 @@ namespace candela::renderer
 		NormalisationComputeShader normalisationComputeShader;
 		NormalisationPass2ComputeShader normalisationPass2ComputeShader;
 
+		bool storePerLightCDF;
 	};
 }

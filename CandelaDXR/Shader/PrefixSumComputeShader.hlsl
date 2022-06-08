@@ -1,6 +1,8 @@
 cbuffer CB1 : register(b0)
 {
 	uint2 ScreenDim;
+	uint InputIndex;
+	uint OutputIndex;
 }
 
 cbuffer CB2 : register(b1)
@@ -8,9 +10,9 @@ cbuffer CB2 : register(b1)
 	uint PassNumber;
 }
 
-Texture2D<float> input : register(t0);
-RWTexture2D<float> output : register(u0);
-RWStructuredBuffer<float> scratch : register(u1);
+Texture2D<float> input[] : register(t0);
+RWTexture2D<float> output[] : register(u0);
+RWStructuredBuffer<float> scratch : register(u0, space1);
 
 uint2 getIndex(uint id)
 {
@@ -56,8 +58,8 @@ void main(const Input input)
 		if (PassNumber == 0)
 		{
 			// Copy input to group shared memory
-			temp[CONFLICT_FREE_ID(gIdPrev)] = output[getIndex(dIdPrev)];
-			temp[CONFLICT_FREE_ID(gId)] = output[getIndex(dId)];
+			temp[CONFLICT_FREE_ID(gIdPrev)] = output[OutputIndex][getIndex(dIdPrev)];
+			temp[CONFLICT_FREE_ID(gId)] = output[OutputIndex][getIndex(dId)];
 		}
 		else
 		{
@@ -130,8 +132,8 @@ void main(const Input input)
 
 		if (PassNumber == 0)
 		{
-			output[getIndex(dIdPrev)] = t1;
-			output[getIndex(dId)] = t2;
+			output[OutputIndex][getIndex(dIdPrev)] = t1;
+			output[OutputIndex][getIndex(dId)] = t2;
 
 			// Populate Scratch
 			if (input.GTid.x == (lastItemIndex >> 1))
@@ -146,7 +148,7 @@ void main(const Input input)
 	else if (PassNumber == 2)
 	{
 		// Add scratch to respective arrays - Pass 2 is started with one less block, so we must offset
-		output[getIndex(ARRAY_SIZE + dIdPrev)] += scratch[input.GroupId.x];
-		output[getIndex(ARRAY_SIZE + dId)] += scratch[input.GroupId.x];
+		output[OutputIndex][getIndex(ARRAY_SIZE + dIdPrev)] += scratch[input.GroupId.x];
+		output[OutputIndex][getIndex(ARRAY_SIZE + dId)] += scratch[input.GroupId.x];
 	}
 }

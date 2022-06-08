@@ -7,36 +7,62 @@
 
 #include "SingleIOComputeShader.h"
 
+using std::string;
+using std::uint32_t;
+
 using candela::mathematics::UVector2;
 
 using candela::directx::DescriptorHeap;
 using candela::directx::RootSignatureManager;
 using candela::renderer::SingleIOComputeShader;
 
-SingleIOComputeShader::SingleIOComputeShader(const std::string& shaderPath, bool launchAsFlatArray)
-	: shaderPath(shaderPath), launchAsFlatArray(launchAsFlatArray), inputTexture(), outputTexture(), resourceManager(), pDevice(), cbData(), cbSize()
+SingleIOComputeShader::SingleIOComputeShader(const string& shaderPath, bool launchAsFlatArray)
+	: shaderPath(shaderPath), launchAsFlatArray(launchAsFlatArray), resources(), numInputs(), numOutputs(), inputTextureIndex(), outputTextureIndex(), resourceManager(), pDevice(), cbData(), cbSize()
 {
 }
 
-void SingleIOComputeShader::init(RendererResources* rendererResources, wrl::ComPtr<ID3D12GraphicsCommandList>& pCurrentCommandList)
+void SingleIOComputeShader::init(RendererResources* rendererResources, wrl::ComPtr<ID3D12GraphicsCommandList>& pCurrentCommandList, std::vector<directx::Resource*>* res, uint32_t numOutputs, uint32_t numInputs)
 {
 	resourceManager = rendererResources->resourceManager.get();
 	pDevice = rendererResources->pDevice.Get();
+	resources = res;
+	this->numInputs = numInputs;
+	this->numOutputs = numOutputs;
 
 	// First need to generate Root Signature
 	auto rsm = std::make_shared<RootSignatureManager>();
 	CD3DX12_ROOT_PARAMETER1 param;
-	rsm->addDescriptorRange("IORange", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1u, 0u));
-	rsm->addDescriptorRange("IORange", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1u, 0u));
+	rsm->addDescriptorRange("IORange", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, numInputs, 0u));
+	rsm->addDescriptorRange("IORange", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, numOutputs, 0u));
 	addAdditionalResources(rsm.get(), "IORange");
 	rsm->setDescriptorTableParameter("IODescTable", "IORange");
-	param.InitAsConstants(2u, 0u); rsm->setParameter("Constants", param);
+	param.InitAsConstants(4u, 0u); rsm->setParameter("Constants", param);
 	param.InitAsConstants(static_cast<UINT>(cbSize / 4), 1u); rsm->setParameter("Constants1", param);
 	rsm->addParametersToRootSignature("ComputeRootSignature", { "Constants", "Constants1", "IODescTable" });
 	computeRootSignature = rsm->generateRootSignature("ComputeRootSignature", pDevice);
 
 	// Create descriptor heap
 	descHeapManager = std::make_unique<DescriptorHeap>(rsm, "IODescTable", "IO1", pDevice);
+
+	// Bind resources
+	uint32_t entryNum{};
+	{
+		D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
+		srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+		//srvDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
+		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+		srvDesc.Texture2D.MipLevels = 1u;
+		for (uint32_t i = numOutputs; i < numInputs + numOutputs; ++i)
+			descHeapManager->setSRV(entryNum++, srvDesc, pDevice, *(*resources)[i]);
+	}
+
+	{
+		D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc{};
+		uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
+		uavDesc.Format = DXGI_FORMAT_R32_FLOAT;
+		for (uint32_t i = 0; i < numOutputs; ++i)
+			descHeapManager->setUAV(entryNum++, uavDesc, pDevice, *(*resources)[i]);
+	}
 
 	// Load Shader
 	HRESULT hr;
@@ -69,7 +95,9 @@ void SingleIOComputeShader::compute(wrl::ComPtr<ID3D12GraphicsCommandList> curre
 
 	ID3D12Resource* inputTextureResource = *inputTexture;
 	ID3D12Resource* outputTextureResource = *outputTexture;
-	std::array<UINT, 2> constants = { dim.x, dim.y };
+	if (outputTexture->getState() != D3D12_RESOURCE_STATE_UNORDERED_ACCESS)
+		ThrowException("Output Texture not in UAV state");
+	std::array<UINT, 4> constants = { dim.x, dim.y, inputTextureIndex, outputTextureIndex };
 	auto prevState = inputTexture->getState();
 	inputTexture->transistionBarrier(currentCommandList, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 	currentCommandList->SetComputeRootSignature(computeRootSignature.Get());
@@ -84,31 +112,18 @@ void SingleIOComputeShader::compute(wrl::ComPtr<ID3D12GraphicsCommandList> curre
 	outputTexture->uavBarrier(currentCommandList);
 }
 
-void SingleIOComputeShader::setInputTexture(directx::Resource* p_inputTexture)
+void SingleIOComputeShader::setInputTexture(uint32_t inputIndex)
 {
-	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
-	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-	//srvDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
-	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-	srvDesc.Texture2D.MipLevels = 1u;
+	inputTextureIndex = inputIndex;
+	inputTexture = (*resources)[inputTextureIndex];
 
-	inputTexture = p_inputTexture;
-	descHeapManager->setSRV(0u, srvDesc, pDevice, *inputTexture);
-	bindAdditionalResources(2u);
+	bindAdditionalResources(numInputs + numOutputs);
 }
 
-void SingleIOComputeShader::setInputTexture(const std::string& inputTextureName)
+void SingleIOComputeShader::setOutputTexture(uint32_t outputIndex)
 {
-	setInputTexture(resourceManager ? resourceManager->getNamedResource(inputTextureName) : nullptr);
-}
-
-void SingleIOComputeShader::setOutputTexture(directx::Resource* p_outputTexture)
-{
-	D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc{};
-	uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
-	uavDesc.Format = DXGI_FORMAT_R32_FLOAT;
-	outputTexture = p_outputTexture;
-	descHeapManager->setUAV(1u, uavDesc, pDevice, *outputTexture);
+	outputTextureIndex = outputIndex;
+	outputTexture = (*resources)[outputTextureIndex];
 }
 
 void SingleIOComputeShader::setAdditionalConstantBuffer(const void* p_cbData, std::size_t p_cbSize)
@@ -164,7 +179,7 @@ UVector2 PrefixSumComputeShader::getLaunchDimensions(const UVector2& dim) const
 
 void PrefixSumComputeShader::addAdditionalResources(RootSignatureManager* rsm, const std::string& rangeName)
 {
-	rsm->addDescriptorRange(rangeName, CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1u, 1u));
+	rsm->addDescriptorRange(rangeName, CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1u, 0u, 1u));
 }
 
 void PrefixSumComputeShader::bindAdditionalResources(UINT baseIndex)

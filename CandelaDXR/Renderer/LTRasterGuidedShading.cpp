@@ -14,10 +14,11 @@ using candela::mathematics::InterpolateVertices;
 using candela::mathematics::GeneratePerpendicularVector;
 using candela::mathematics::f1Definite;
 using candela::mathematics::f2Definite;
+using candela::mathematics::Vector2;
 using candela::renderer::LTRasterGuidedShading;
 
-LTRasterGuidedShading::LTRasterGuidedShading(ISampler* sampler)
-	: sampler(sampler), constBuffer(), rendererResources(), cdfSize(512, 512), cumulativeDistributionTexture(), rasterShader(true)
+LTRasterGuidedShading::LTRasterGuidedShading(ISampler* sampler, bool storePerLightCDF)
+	: sampler(sampler), constBuffer(), rendererResources(), cdfSize(512, 512), cumulativeDistributionTexture(), rasterShader(true), storePerLightCDF(storePerLightCDF)
 {
 }
 
@@ -33,27 +34,35 @@ void LTRasterGuidedShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12Grap
 	rasterShader.resize(&cdfSize);
 	rasterShader.init(rRes, pCurrentCommandList, resRegFn);
 	rasterShader.setComputeRadiance(false); // Set this after init!
-	cumulativeDistributionTexture = &rendererResources->resourceManager->createResource(
-		D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
-		cdfSize.x, cdfSize.y,
-		DXGI_FORMAT_R32_FLOAT, false, "cdf");
 
-	distanceComputerShader.setAdditionalConstantBuffer(&rRes->camera->getPosition(), sizeof(float) * 3);
-	distanceComputerShader.init(rRes, pCurrentCommandList);
-	distanceComputerShader.setInputTexture("ltr_gPos");
-	distanceComputerShader.setOutputTexture(cumulativeDistributionTexture);
+	cdfs.resize(storePerLightCDF ? rendererResources->scene->getLights().size() : 1);
+	resources.resize(cdfs.size());
+	for (std::size_t i = 0; i < cdfs.size(); ++i)
+		cdfs[i] = resources[i] = & rendererResources->resourceManager->createResource(
+			D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
+			cdfSize.x, cdfSize.y,
+			DXGI_FORMAT_R32_FLOAT, false, "cdf_" + std::to_string(i));
 
-	prefixSumComputeShader.init(rRes, pCurrentCommandList);
-	prefixSumComputeShader.setInputTexture("ltr_gPos");
-	prefixSumComputeShader.setOutputTexture(cumulativeDistributionTexture);
+	auto posTex = rendererResources->resourceManager->getNamedResource("ltr_gPos");
 
-	normalisationComputeShader.init(rRes, pCurrentCommandList);
-	normalisationComputeShader.setInputTexture("ltr_gPos");
-	normalisationComputeShader.setOutputTexture(cumulativeDistributionTexture);
+	resources.push_back(posTex);
+	const uint32_t inputIndex = static_cast<uint32_t>(resources.size() - 1);
+	const uint32_t numOutputs = static_cast<uint32_t>(cdfs.size());
 
-	normalisationPass2ComputeShader.init(rRes, pCurrentCommandList);
-	normalisationPass2ComputeShader.setInputTexture("ltr_gPos");
-	normalisationPass2ComputeShader.setOutputTexture(cumulativeDistributionTexture);
+	distanceComputerShader.setAdditionalConstantBuffer(&lightCamera->getPosition(), sizeof(float) * 3);
+	distanceComputerShader.init(rRes, pCurrentCommandList, &resources, numOutputs);
+	distanceComputerShader.setInputTexture(inputIndex);
+
+	prefixSumComputeShader.init(rRes, pCurrentCommandList, &resources, numOutputs);
+	prefixSumComputeShader.setInputTexture(inputIndex); // dummy
+
+	normalisationComputeShader.init(rRes, pCurrentCommandList, &resources, numOutputs);
+	normalisationComputeShader.setInputTexture(inputIndex); // dummy
+
+	normalisationPass2ComputeShader.init(rRes, pCurrentCommandList, &resources, numOutputs);
+	normalisationPass2ComputeShader.setInputTexture(inputIndex); // dummy
+
+	regenerateCDFs(pCurrentCommandList, 0);
 
 	// Constant buffer
 	auto sensorDim = lightCamera->getNearPlaneDimensions();
@@ -61,41 +70,46 @@ void LTRasterGuidedShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12Grap
 	float y = sensorDim.m128_f32[1] * 0.5f;
 	constBuffer.lightCamPdf = f1Definite(-x, x, -y, y, sensorDim.m128_f32[2]) * candela::mathematics::constants::OneOverPi;
 	float hemiSphericalCoverAreaPercent = f2Definite(-x, x, -y, y, sensorDim.m128_f32[2]) * candela::mathematics::constants::OneOverTwoPi;
+	constBuffer.plane = lightCamera->getNearPlaneDimensions();
+	constBuffer.lightCamDim = cdfSize;
 	constantBuffer = DXUtil::uploadDataToDefaultHeap(rendererResources->pDevice, pCurrentCommandList, rendererResources->getTempResource(), &constBuffer, sizeof(constBuffer), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 	constantBuffer->SetName(L"LT Raster Guided Constant Buffer");
 }
 
-void LTRasterGuidedShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, uint32_t currentBackBufferIndex)
+void LTRasterGuidedShading::generateCDF(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, uint32_t currentBackBufferIndex, uint32_t lightIndex)
 {
 	// Logic for choosing light and setting up camera from light
 	auto scene = rendererResources->scene;
+	auto& indices = scene->getIndices();
+	auto& vertices = scene->getVertices();
+	auto& normals = scene->getNormals();
 
 	// Choose light
 	auto& lights = scene->getLights();
-	auto& light = lights[constBuffer.lightIndex = static_cast<uint32_t>(sampler->chooseInRange(0, lights.size() - 1))]; // lights[0]
+	auto& light = lights[lightIndex]; // lights[0]
 	auto lightIndexId = light.PrimitiveId * 3;
-	auto i0 = scene->getIndices()[lightIndexId + 0];
-	auto i1 = scene->getIndices()[lightIndexId + 1];
-	auto i2 = scene->getIndices()[lightIndexId + 2];
+	auto i0 = indices[lightIndexId + 0];
+	auto i1 = indices[lightIndexId + 1];
+	auto i2 = indices[lightIndexId + 2];
 
-	auto uv = SamplePointOnTriangle(*sampler);
-	//uv.x = uv.y = 1.f / 3.f;
-	
+	Vector2 uv;//  = SamplePointOnTriangle(*sampler);
+	uv.x = uv.y = 1.f / 3.f;
+
 	DirectX::XMVECTOR pos = InterpolateVertices(uv,
-		DirectX::XMLoadFloat3(&scene->getVertices()[i0]),
-		DirectX::XMLoadFloat3(&scene->getVertices()[i1]),
-		DirectX::XMLoadFloat3(&scene->getVertices()[i2]));
+		DirectX::XMLoadFloat3(&vertices[i0]),
+		DirectX::XMLoadFloat3(&vertices[i1]),
+		DirectX::XMLoadFloat3(&vertices[i2]));
 	pos.m128_f32[3] = 1.f;
 
 	DirectX::XMVECTOR nor = InterpolateVertices(uv,
-		DirectX::XMLoadFloat3(&scene->getNormals()[i0]),
-		DirectX::XMLoadFloat3(&scene->getNormals()[i1]),
-		DirectX::XMLoadFloat3(&scene->getNormals()[i2]));
+		DirectX::XMLoadFloat3(&normals[i0]),
+		DirectX::XMLoadFloat3(&normals[i1]),
+		DirectX::XMLoadFloat3(&normals[i2]));
 
 	auto& sceneNode = scene->getSceneGraph();
 	const auto& lightTransform = sceneNode.Children[light.InstanceIndex].Transform;
 	const auto normalTransform = DirectX::XMMatrixTranspose(DirectX::XMMatrixInverse(nullptr, lightTransform));
-	
+
 	// Apply necessary transforms
 	pos = DirectX::XMVector4Transform(pos, lightTransform);
 	nor = DirectX::XMVector4Transform(nor, normalTransform);
@@ -103,18 +117,6 @@ void LTRasterGuidedShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrent
 
 	// Alter Camera
 	lightCamera->lookTo(pos, nor, up);
-
-	// Update Constant Buffer
-	constBuffer.w = DirectX::XMVector3Normalize(lightCamera->getDirection());
-	constBuffer.u = DirectX::XMVectorNegate(DirectX::XMVector3Normalize(DirectX::XMVector3Cross(lightCamera->getUp(), lightCamera->getDirection())));
-	constBuffer.v = DirectX::XMVectorNegate(DirectX::XMVector3Normalize(DirectX::XMVector3Cross(constBuffer.w, constBuffer.u)));
-	constBuffer.position = lightCamera->getPosition();
-	constBuffer.direction = lightCamera->getDirection();
-	constBuffer.plane = lightCamera->getNearPlaneDimensions();
-	constBuffer.lightCamDim = cdfSize;
-
-	DXUtil::updateDataInDefaultHeap(rendererResources->pDevice, pCurrentCommandList, constantBuffer, rendererResources->getTempResource(),
-		&constBuffer, sizeof(constBuffer), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
 	// Generate CDF
 	rasterShader.draw(pCurrentCommandList, currentBackBufferIndex);
@@ -125,8 +127,30 @@ void LTRasterGuidedShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrent
 	normalisationComputeShader.compute(pCurrentCommandList);
 	normalisationPass2ComputeShader.compute(pCurrentCommandList);
 	cumulativeDistributionTexture->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+}
 
-	// Anything else?
+void LTRasterGuidedShading::regenerateCDFs(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, uint32_t currentBackBufferIndex)
+{
+	for (uint32_t i = 0; i < cdfs.size(); ++i)
+	{
+		cumulativeDistributionTexture = cdfs[i];
+		distanceComputerShader.setOutputTexture(i);
+		prefixSumComputeShader.setOutputTexture(i);
+		normalisationComputeShader.setOutputTexture(i);
+		normalisationPass2ComputeShader.setOutputTexture(i);
+		generateCDF(pCurrentCommandList, currentBackBufferIndex, i);
+	}
+}
+
+void LTRasterGuidedShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, uint32_t currentBackBufferIndex)
+{
+	constBuffer.lightIndex = storePerLightCDF ? UINT_MAX : static_cast<uint32_t>(sampler->chooseInRange(0, rendererResources->scene->getLights().size() - 1));
+	DXUtil::updateDataInDefaultHeap(rendererResources->pDevice, pCurrentCommandList, constantBuffer, rendererResources->getTempResource(),
+		&constBuffer, sizeof(constBuffer), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+
+	if (storePerLightCDF)
+		return;
+	generateCDF(pCurrentCommandList, currentBackBufferIndex, constBuffer.lightIndex);
 }
 
 void LTRasterGuidedShading::accept(IVisitor* visitor)
@@ -137,6 +161,10 @@ void LTRasterGuidedShading::accept(IVisitor* visitor)
 void LTRasterGuidedShading::onChange(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, uint32_t currentBackBufferIndex, ChangeEvent_t changeEvent)
 {
 	rasterShader.onChange(pCurrentCommandList, currentBackBufferIndex, changeEvent);
+	if (!storePerLightCDF)
+		return;
+	if (changeEvent & (static_cast<ChangeEvent_t>(ChangeEvent::Transformation) | static_cast<ChangeEvent_t>(ChangeEvent::SceneChange)))
+		regenerateCDFs(pCurrentCommandList, currentBackBufferIndex);
 }
 
 void LTRasterGuidedShading::onResize()
@@ -158,7 +186,8 @@ void LTRasterGuidedShading::appendToPipeline(directx::RootSignatureManager* root
 	CD3DX12_ROOT_PARAMETER1 param;
 	param.InitAsConstantBufferView(0u, 1u); rootSignatureManager->setParameter("SecondConstBuff", param);
 	rootSignatureManager->addParameterToRootSignature("RayGenRootSignature", "SecondConstBuff");
-	rootSignatureManager->addDescriptorRange("BVH", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1u, 0u, 1u)); // gCDF
+	auto numLights = static_cast<uint32_t>(rendererResources->scene->getLights().size());
+	rootSignatureManager->addDescriptorRange("BVH", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, static_cast<uint32_t>(cdfs.size()), 0u, 1u)); // gCDF
 	rootSignatureManager->setDescriptorTableParameter("BVHDescTable", "BVH");
 }
 
@@ -175,5 +204,7 @@ void LTRasterGuidedShading::appendToDescHeapManager(directx::DescriptorHeap* des
 	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
 	srvDesc.Texture2D.MipLevels = 1u;
 
-	descriptorHeap->setSRV(descriptorHeap->getSetResourcesSize() - 1, srvDesc, rendererResources->pDevice, *cumulativeDistributionTexture);
+	auto entryNumber = descriptorHeap->getSetResourcesSize() - cdfs.size();
+	for (uint32_t i = 0; i < cdfs.size(); ++i)
+		descriptorHeap->setSRV(entryNumber++, srvDesc, rendererResources->pDevice, *cdfs[i]);
 }

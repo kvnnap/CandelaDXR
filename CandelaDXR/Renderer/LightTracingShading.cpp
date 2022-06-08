@@ -74,7 +74,7 @@ void LightTracingShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12Graphi
 
 	ltShaders.emplace_back(LTShader{ "./Shaders/LightTracingShader.cso" });
 	ltShaders.emplace_back(LTShader{ "./Shaders/LightTracingOptimisedShader.cso", make_unique<LTOptimisedComponent>()});
-	ltShaders.emplace_back(LTShader{ "./Shaders/LightTracingImportanceShader.cso", make_unique<LTRasterGuidedShading>(sampler.get())});
+	ltShaders.emplace_back(LTShader{ "./Shaders/LightTracingImportanceShader.cso", make_unique<LTRasterGuidedShading>(sampler.get(), true)});
 	constBuffer.numLights = static_cast<uint32_t>(rRes->scene->getLights().size());
 	constBuffer.frameNumber = 0;
 	constBuffer.pathFilter = 0xFFFFFFFF;

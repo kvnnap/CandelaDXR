@@ -3,12 +3,11 @@
 #include "IrradianceItem.hlsli"
 #include "LightTracingVars.hlsli"
 
+#define UINT_MAX 0xFFFFFFFF
+
 struct ConstBuff2
 {
 	// Light Camera
-	float3 u, v, w;
-	float3 position;
-	float3 direction;
 	float3 plane; // sensor dimensions (z contains distance to sensor plane)
 
 	// Other
@@ -23,7 +22,7 @@ cbuffer CB2 : register(b0, space1)
 	ConstBuff2 lBuff;
 }
 
-Texture2D<float> cdf : register(t0, space1);
+Texture2D<float> cdf[] : register(t0, space1);
 
 struct RayPayload
 {
@@ -42,11 +41,11 @@ uint2 getLightTexIndex(uint id)
 	return uint2(id % lBuff.lightCamDim.x, id / lBuff.lightCamDim.x);
 }
 
-uint2 sampleImportanceMap(inout uint seed, out float pdf)
+uint2 sampleImportanceMap(inout uint seed, out float pdf, uint cdfIndex)
 {
 	pdf = 0.f;
 
-	if (cdf[lBuff.lightCamDim - 1] != 1.f) // 0 means nothing in view
+	if (cdf[cdfIndex][lBuff.lightCamDim - 1] != 1.f) // 0 means nothing in view
 		return lBuff.lightCamDim;
 
 	// Ensure r <= 1.f
@@ -60,7 +59,7 @@ uint2 sampleImportanceMap(inout uint seed, out float pdf)
 	while (min < max)
 	{
 		uint mid = (min + max) >> 1;
-		if (r >= cdf[getLightTexIndex(mid)])
+		if (r >= cdf[cdfIndex][getLightTexIndex(mid)])
 			min = mid + 1;
 		else
 			max = mid;
@@ -71,29 +70,34 @@ uint2 sampleImportanceMap(inout uint seed, out float pdf)
 
 	// Min contains result
 	uint2 uv = getLightTexIndex(min);
-	pdf = cdf[uv] - (min == 0 ? 0.f : cdf[getLightTexIndex(min - 1)]);
+	pdf = cdf[cdfIndex][uv] - (min == 0 ? 0.f : cdf[cdfIndex][getLightTexIndex(min - 1)]);
 
 	return uv;
 }
 
-bool sampleImpMapWithCosCDF(inout uint seed, inout RayDesc ray, inout float pdf, out float coeff)
+bool sampleImpMapWithCosCDF(inout uint seed, inout RayDesc ray, inout float pdf, out float coeff, float3 unitLightNormal, uint cdfIndex)
 {
+	// Light Camera basis
+	float3 w = unitLightNormal;
+	float3 u = cross(w, createPerpendicularVector(w));
+	float3 v = cross(u, w);
+
 	// Check if ray intersects light camera raster square
 		// compute denominator
-	const float den = dot(lBuff.w, ray.Direction);
+	const float den = dot(w, ray.Direction);
 	coeff = 1.f;
 
 	// make this check or else risk of division by zero..
 	if (den == 0.f)
 		return false;
 
-	const float3 posPlane = ray.Origin + lBuff.w * lBuff.plane.z;
-	const float t = dot(lBuff.w, (posPlane - ray.Origin)) / den;
+	const float3 posPlane = ray.Origin + w * lBuff.plane.z;
+	const float t = dot(w, (posPlane - ray.Origin)) / den;
 	if (t < ray.TMin || t > ray.TMax)
 		return false;
 
 	const float3 R = ray.Origin + ray.Direction * t - posPlane;
-	float2 pt = float2(dot(R, lBuff.u), dot(R, lBuff.v));
+	float2 pt = float2(dot(R, u), dot(R, v));
 
 	// Check if point is in bounds or not
 	float2 halfPlane = lBuff.plane.xy * 0.5f;
@@ -102,7 +106,7 @@ bool sampleImpMapWithCosCDF(inout uint seed, inout RayDesc ray, inout float pdf,
 
 	// Ok in bounds, sample texel in texture
 	float localPdf;
-	uint2 texel = sampleImportanceMap(seed, localPdf);
+	uint2 texel = sampleImportanceMap(seed, localPdf, cdfIndex);
 	if (localPdf == 0.f)
 		return false;
 
@@ -112,12 +116,12 @@ bool sampleImpMapWithCosCDF(inout uint seed, inout RayDesc ray, inout float pdf,
 
 	// Convert texel boundary coordinates to world space 
 	float2 planePt = float2(-halfPlane.x, halfPlane.y) + ratio * (texel + float2(rand_next(seed), rand_next(seed)));
-	float3 worldPt = posPlane + planePt.x * lBuff.u + planePt.y * lBuff.v;
+	float3 worldPt = posPlane + planePt.x * u + planePt.y * v;
 	ray.Direction = worldPt - ray.Origin;
 
 	float invDistance = 1.f / length(ray.Direction);
 	ray.Direction *= invDistance;
-	coeff = dot(lBuff.w, ray.Direction) * invDistance * invDistance;
+	coeff = dot(w, ray.Direction) * invDistance * invDistance;
 	pdf = localPdf * lBuff.lightCamPdf / texelArea;
 	return true;
 }
@@ -146,7 +150,7 @@ void rayGen()
 		cBuffer.seeds.y + launchDim.y * (cBuffer.frameNumber + 0) + launchIndex.y);
 
 	// Choose light source
-	const uint lightIndex = lBuff.lightIndex;
+	const uint lightIndex = lBuff.lightIndex == UINT_MAX ? chooseInRange(seed, 0, cBuffer.numLights - 1) : lBuff.lightIndex;
 	const uint lightIndexId = lights[lightIndex].PrimitiveId * 3;
 	AreaLight areaLight = lights[lightIndex];
 	Material lightMat = materials[areaLight.MaterialId];
@@ -231,7 +235,7 @@ void rayGen()
 		float coeff = 1.f;
 
 		// If this succeeds, ray.Direction, coeff and pdf will be updated
-		sampleImpMapWithCosCDF(seed, ray, pdf, coeff);
+		sampleImpMapWithCosCDF(seed, ray, pdf, coeff, unitLightNormal, lBuff.lightIndex == UINT_MAX ? lightIndex : 0);
 
 		localContribution *= dot(unitLightNormal, ray.Direction) * coeff / pdf;
 	}
