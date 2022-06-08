@@ -20,6 +20,6 @@ void main( uint3 DTid : SV_DispatchThreadID )
 {
 	if (DTid.x >= ScreenDim.x || DTid.y >= ScreenDim.y)
 		return;
-
-	output[OutputIndex][DTid.xy] = input[InputIndex][DTid.xy].w == 1.f ? length(input[InputIndex][DTid.xy].xyz - Position) : 0.125f;
+	const float4 inData = input[InputIndex][DTid.xy];
+	output[OutputIndex][DTid.xy] = inData.w == 1.f ? length(inData.xyz - Position) : 0.125f;
 }

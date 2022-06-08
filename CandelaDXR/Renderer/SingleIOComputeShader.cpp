@@ -97,7 +97,7 @@ void SingleIOComputeShader::compute(wrl::ComPtr<ID3D12GraphicsCommandList> curre
 	ID3D12Resource* outputTextureResource = *outputTexture;
 	if (outputTexture->getState() != D3D12_RESOURCE_STATE_UNORDERED_ACCESS)
 		ThrowException("Output Texture not in UAV state");
-	std::array<UINT, 4> constants = { dim.x, dim.y, inputTextureIndex, outputTextureIndex };
+	std::array<UINT, 4> constants = { dim.x, dim.y, inputTextureIndex - numOutputs, outputTextureIndex };
 	auto prevState = inputTexture->getState();
 	inputTexture->transistionBarrier(currentCommandList, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 	currentCommandList->SetComputeRootSignature(computeRootSignature.Get());

@@ -65,12 +65,12 @@ void LTRasterGuidedShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12Grap
 	regenerateCDFs(pCurrentCommandList, 0);
 
 	// Constant buffer
-	auto sensorDim = lightCamera->getNearPlaneDimensions();
+	const auto sensorDim = lightCamera->getNearPlaneDimensions();
 	float x = sensorDim.m128_f32[0] * 0.5f;
 	float y = sensorDim.m128_f32[1] * 0.5f;
 	constBuffer.lightCamPdf = f1Definite(-x, x, -y, y, sensorDim.m128_f32[2]) * candela::mathematics::constants::OneOverPi;
 	float hemiSphericalCoverAreaPercent = f2Definite(-x, x, -y, y, sensorDim.m128_f32[2]) * candela::mathematics::constants::OneOverTwoPi;
-	constBuffer.plane = lightCamera->getNearPlaneDimensions();
+	constBuffer.plane = DirectX::XMVectorScale(sensorDim, 1 / sensorDim.m128_f32[2]);
 	constBuffer.lightCamDim = cdfSize;
 	constantBuffer = DXUtil::uploadDataToDefaultHeap(rendererResources->pDevice, pCurrentCommandList, rendererResources->getTempResource(), &constBuffer, sizeof(constBuffer), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 	constantBuffer->SetName(L"LT Raster Guided Constant Buffer");

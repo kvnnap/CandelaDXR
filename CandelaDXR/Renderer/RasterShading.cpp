@@ -200,6 +200,7 @@ void RasterShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandL
 	pCurrentCommandList->ClearDepthStencilView(dsvDescriptorHandle, D3D12_CLEAR_FLAG_DEPTH, 1.f, 0, 0, nullptr);
 
 	pCurrentCommandList->SetPipelineState(pipelineState.Get());
+	pCurrentCommandList->SetGraphicsRootSignature(nullptr); // Reset RS
 	pCurrentCommandList->SetGraphicsRootSignature(rootSignature.Get());
 
 	pCurrentCommandList->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
