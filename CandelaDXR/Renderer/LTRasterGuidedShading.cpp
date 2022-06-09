@@ -118,7 +118,7 @@ void LTRasterGuidedShading::generateCDF(wrl::ComPtr<ID3D12GraphicsCommandList> p
 	// Alter Camera
 	lightCamera->lookTo(pos, nor, up);
 	distConstBuffer.position = lightCamera->getPosition();
-	distConstBuffer.unitDirection = lightCamera->getDirection();
+	distConstBuffer.plane = lightCamera->getNearPlaneDimensions();
 
 	// Generate CDF
 	rasterShader.draw(pCurrentCommandList, currentBackBufferIndex);

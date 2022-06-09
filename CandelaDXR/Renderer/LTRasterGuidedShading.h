@@ -34,7 +34,7 @@ namespace candela::renderer
 		struct alignas(16) DistConstBuff
 		{
 			DirectX::XMVECTOR position;
-			DirectX::XMVECTOR unitDirection;
+			DirectX::XMVECTOR plane;
 		} distConstBuffer;
 
 		// IDrawable
