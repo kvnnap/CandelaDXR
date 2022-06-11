@@ -15,6 +15,7 @@ using candela::mathematics::UVector2;
 using candela::directx::DescriptorHeap;
 using candela::directx::RootSignatureManager;
 using candela::renderer::SingleIOComputeShader;
+using candela::renderer::FilterComputeShader;
 
 SingleIOComputeShader::SingleIOComputeShader(const string& shaderPath, bool launchAsFlatArray)
 	: shaderPath(shaderPath), launchAsFlatArray(launchAsFlatArray), resources(), numInputs(), numOutputs(), inputTextureIndex(), outputTextureIndex(), resourceManager(), pDevice(), cbData(), cbSize()
@@ -222,4 +223,38 @@ void PrefixSumComputeShader::dispatch(wrl::ComPtr<ID3D12GraphicsCommandList> cur
 	currentCommandList->SetComputeRoot32BitConstant(1u, 2u, 0u);
 	currentCommandList->Dispatch(launchDimensions.x - 1u, launchDimensions.y, 1u);
 	//outputTexture->uavBarrier(currentCommandList);
+}
+
+FilterComputeShader::FilterComputeShader()
+	: SingleIOComputeShader("./Shaders/FilterComputeShader.cso"), scratchResource()
+{
+}
+
+void FilterComputeShader::addAdditionalResources(RootSignatureManager* rsm, const std::string& rangeName)
+{
+	rsm->addDescriptorRange(rangeName, CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1u, 0u, 1u));
+}
+
+void FilterComputeShader::bindAdditionalResources(UINT baseIndex)
+{
+	auto dim = inputTexture->getDimensions();
+
+	// Create resouce
+	scratchResource = &resourceManager->createResource(D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, dim.x, dim.y, DXGI_FORMAT_R32_FLOAT);
+
+	// Describe resource and add to descriptor heap
+	D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc{};
+	uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
+	uavDesc.Format = DXGI_FORMAT_R32_FLOAT;
+	descHeapManager->setUAV(baseIndex, uavDesc, pDevice, *scratchResource);
+}
+
+void FilterComputeShader::dispatch(wrl::ComPtr<ID3D12GraphicsCommandList> currentCommandList)
+{
+	SingleIOComputeShader::dispatch(currentCommandList);
+	scratchResource->transistionBarrier(currentCommandList, D3D12_RESOURCE_STATE_COPY_SOURCE);
+	outputTexture->transistionBarrier(currentCommandList, D3D12_RESOURCE_STATE_COPY_DEST);
+	currentCommandList->CopyResource(*outputTexture, *scratchResource);
+	outputTexture->transistionBarrier(currentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+	scratchResource->transistionBarrier(currentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 }

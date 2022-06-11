@@ -422,6 +422,7 @@
     <FxCompile Include="Shader\NormalisationComputeShader.hlsl" />
     <FxCompile Include="Shader\LightTracingImportanceShader.hlsl" />
     <FxCompile Include="Shader\NormalisationPass2ComputeShader.hlsl" />
+    <FxCompile Include="Shader\FilterComputeShader.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Shader\Utils.hlsli" />

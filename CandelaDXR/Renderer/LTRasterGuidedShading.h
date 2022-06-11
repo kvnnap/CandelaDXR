@@ -72,6 +72,7 @@ namespace candela::renderer
 
 		RasterShading rasterShader;
 		DistanceComputeShader distanceComputerShader;
+		FilterComputeShader guassianComputerShader;
 		PrefixSumComputeShader prefixSumComputeShader;
 		NormalisationComputeShader normalisationComputeShader;
 		NormalisationPass2ComputeShader normalisationPass2ComputeShader;

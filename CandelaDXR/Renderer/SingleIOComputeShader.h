@@ -66,6 +66,18 @@ namespace candela::renderer
 		DistanceComputeShader() : SingleIOComputeShader("./Shaders/DistanceComputeShader.cso") {}
 	};
 
+	class FilterComputeShader
+		: public SingleIOComputeShader
+	{
+	public:
+		FilterComputeShader();
+		void addAdditionalResources(directx::RootSignatureManager* rsm, const std::string& rangeName) override;
+		void bindAdditionalResources(UINT baseIndex) override;
+		void dispatch(wrl::ComPtr<ID3D12GraphicsCommandList> currentCommandList) override;
+	private:
+		directx::Resource* scratchResource;
+	};
+
 	class PrefixSumComputeShader
 		: public SingleIOComputeShader
 	{

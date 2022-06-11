@@ -53,6 +53,10 @@ void LTRasterGuidedShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12Grap
 	distanceComputerShader.init(rRes, pCurrentCommandList, &resources, numOutputs);
 	distanceComputerShader.setInputTexture(inputIndex);
 
+	// multiple inputs, one output
+	guassianComputerShader.init(rRes, pCurrentCommandList, &resources, numOutputs);
+	guassianComputerShader.setInputTexture(inputIndex);
+
 	prefixSumComputeShader.init(rRes, pCurrentCommandList, &resources, numOutputs);
 	prefixSumComputeShader.setInputTexture(inputIndex); // dummy
 
@@ -125,6 +129,7 @@ void LTRasterGuidedShading::generateCDF(wrl::ComPtr<ID3D12GraphicsCommandList> p
 	if (cumulativeDistributionTexture->getState() != D3D12_RESOURCE_STATE_UNORDERED_ACCESS)
 		cumulativeDistributionTexture->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 	distanceComputerShader.compute(pCurrentCommandList);
+	guassianComputerShader.compute(pCurrentCommandList);
 	prefixSumComputeShader.compute(pCurrentCommandList);
 	normalisationComputeShader.compute(pCurrentCommandList);
 	normalisationPass2ComputeShader.compute(pCurrentCommandList);
@@ -137,6 +142,7 @@ void LTRasterGuidedShading::regenerateCDFs(wrl::ComPtr<ID3D12GraphicsCommandList
 	{
 		cumulativeDistributionTexture = cdfs[i];
 		distanceComputerShader.setOutputTexture(i);
+		guassianComputerShader.setOutputTexture(i);
 		prefixSumComputeShader.setOutputTexture(i);
 		normalisationComputeShader.setOutputTexture(i);
 		normalisationPass2ComputeShader.setOutputTexture(i);
