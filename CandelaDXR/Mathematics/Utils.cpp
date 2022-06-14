@@ -1,9 +1,13 @@
 #include "Utils.h"
 
+#include "Constants.h"
+
 #include <cmath>
 
 using std::sqrt;
 using std::atan;
+using std::exp;
+using std::erff;
 
 using candela::mathematics::Vector;
 using candela::mathematics::Vector2;
@@ -38,6 +42,19 @@ Vector candela::mathematics::GeneratePerpendicularVector(const Vector& vec)
 	return vec.m128_f32[0] != 0.f || vec.m128_f32[1] != 0.f
 		? Vector{ vec.m128_f32[1], -vec.m128_f32[0], 0.f, 0.f }
 		: Vector{ vec.m128_f32[2], 0.f, 0.f, 0.f };
+}
+
+float candela::mathematics::Gauss(float x, float stdDev)
+{
+	const float invStdDev = 1.f / stdDev;
+	const float ind = x * invStdDev;
+	return invStdDev * constants::OneOverSqrtTwoPi * exp(-0.5f * ind * ind);
+}
+
+float candela::mathematics::GaussIntegral(float a, float b, float stdDev)
+{
+	const float den = 1.f / (stdDev * constants::SqrtTwo);
+	return 0.5f * (erff(b * den) - erff(a * den));
 }
 
 // Integral cos(theta) * cos(theta_area)/r^2 dA - for special case

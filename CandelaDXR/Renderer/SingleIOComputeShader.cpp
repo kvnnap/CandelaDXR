@@ -7,23 +7,29 @@
 
 #include "SingleIOComputeShader.h"
 
+#include "Mathematics/Utils.h"
+
+#include "DirectX/DxUtil.h"
+
 using std::string;
 using std::uint32_t;
 
 using candela::mathematics::UVector2;
-
+using candela::mathematics::GaussIntegral;
+using candela::directx::DXUtil;
 using candela::directx::DescriptorHeap;
 using candela::directx::RootSignatureManager;
 using candela::renderer::SingleIOComputeShader;
 using candela::renderer::FilterComputeShader;
 
 SingleIOComputeShader::SingleIOComputeShader(const string& shaderPath, bool launchAsFlatArray)
-	: shaderPath(shaderPath), launchAsFlatArray(launchAsFlatArray), resources(), numInputs(), numOutputs(), inputTextureIndex(), outputTextureIndex(), resourceManager(), pDevice(), cbData(), cbSize()
+	: rendererResources(), shaderPath(shaderPath), launchAsFlatArray(launchAsFlatArray), resources(), numInputs(), numOutputs(), inputTextureIndex(), outputTextureIndex(), resourceManager(), pDevice(), cbData(), cbSize()
 {
 }
 
 void SingleIOComputeShader::init(RendererResources* rendererResources, wrl::ComPtr<ID3D12GraphicsCommandList>& pCurrentCommandList, std::vector<directx::Resource*>* res, uint32_t numOutputs, uint32_t numInputs)
 {
+	this->rendererResources = rendererResources;
 	resourceManager = rendererResources->resourceManager.get();
 	pDevice = rendererResources->pDevice.Get();
 	resources = res;
@@ -87,6 +93,8 @@ void SingleIOComputeShader::init(RendererResources* rendererResources, wrl::ComP
 	wrl::ComPtr<ID3D12Device5> pDevice5;
 	GFXTHROWIFFAILED(rendererResources->pDevice.As(&pDevice5));
 	GFXTHROWIFFAILED(pDevice5->CreatePipelineState(&pipelineStateStreamDesc, IID_PPV_ARGS(&computePipelineState)));
+
+	initComponent(rendererResources, pCurrentCommandList);
 }
 
 void SingleIOComputeShader::compute(wrl::ComPtr<ID3D12GraphicsCommandList> currentCommandList)
@@ -161,6 +169,10 @@ void SingleIOComputeShader::dispatch(wrl::ComPtr<ID3D12GraphicsCommandList> curr
 	currentCommandList->Dispatch(launchDimensions.x, launchDimensions.y, 1u);
 }
 
+void SingleIOComputeShader::initComponent(RendererResources* rendererResources, wrl::ComPtr<ID3D12GraphicsCommandList>& pCurrentCommandList)
+{
+}
+
 // Prefix sum
 using candela::renderer::PrefixSumComputeShader;
 
@@ -225,36 +237,78 @@ void PrefixSumComputeShader::dispatch(wrl::ComPtr<ID3D12GraphicsCommandList> cur
 	//outputTexture->uavBarrier(currentCommandList);
 }
 
-FilterComputeShader::FilterComputeShader()
-	: SingleIOComputeShader("./Shaders/FilterComputeShader.cso"), scratchResource()
+FilterComputeShader::FilterComputeShader(std::uint32_t filterSize)
+	: SingleIOComputeShader("./Shaders/FilterComputeShader.cso"), cbvResource(), scratchResource()
 {
+	setAdditionalConstantBuffer(nullptr, sizeof(std::uint32_t) * 2); // Send gausian size and pass number
+	
+	// Gaussian
+	if (filterSize % 2 == 0)
+		++filterSize;
+
+	const float halfFilterSize = 0.5f * filterSize;
+	const float stdDev = halfFilterSize / 3.f; // Working across 3 std deviations
+	float f = -halfFilterSize;
+	
+	linearFilterCoeff.resize(filterSize);
+	const float invTotalIntegral = 1.f / GaussIntegral(-halfFilterSize, halfFilterSize, stdDev);
+	for (auto& lfc : linearFilterCoeff)
+	{
+		lfc = GaussIntegral(f, f + 1.f, stdDev) * invTotalIntegral;
+		++f;
+	}
+
 }
 
 void FilterComputeShader::addAdditionalResources(RootSignatureManager* rsm, const std::string& rangeName)
 {
-	rsm->addDescriptorRange(rangeName, CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1u, 0u, 1u));
+	rsm->addDescriptorRange(rangeName, CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1u, 0u, 1u)); // Pass linear filter data
+	rsm->addDescriptorRange(rangeName, CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1u, 0u, 1u)); // Pass Scratch
 }
 
 void FilterComputeShader::bindAdditionalResources(UINT baseIndex)
 {
-	auto dim = inputTexture->getDimensions();
+	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
+	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+	srvDesc.Buffer.NumElements = static_cast<UINT>(linearFilterCoeff.size());
+	srvDesc.Buffer.StructureByteStride = sizeof(float);
+	descHeapManager->setSRV(baseIndex++, srvDesc, pDevice, *cbvResource);
 
 	// Create resouce
+	auto dim = inputTexture->getDimensions();
 	scratchResource = &resourceManager->createResource(D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, dim.x, dim.y, DXGI_FORMAT_R32_FLOAT);
 
 	// Describe resource and add to descriptor heap
 	D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc{};
 	uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
 	uavDesc.Format = DXGI_FORMAT_R32_FLOAT;
-	descHeapManager->setUAV(baseIndex, uavDesc, pDevice, *scratchResource);
+	descHeapManager->setUAV(baseIndex++, uavDesc, pDevice, *scratchResource);
 }
 
 void FilterComputeShader::dispatch(wrl::ComPtr<ID3D12GraphicsCommandList> currentCommandList)
 {
-	SingleIOComputeShader::dispatch(currentCommandList);
-	scratchResource->transistionBarrier(currentCommandList, D3D12_RESOURCE_STATE_COPY_SOURCE);
-	outputTexture->transistionBarrier(currentCommandList, D3D12_RESOURCE_STATE_COPY_DEST);
-	currentCommandList->CopyResource(*outputTexture, *scratchResource);
-	outputTexture->transistionBarrier(currentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-	scratchResource->transistionBarrier(currentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+	auto dim = inputTexture->getDimensions();
+	auto launchDimensions = getLaunchDimensions(dim);
+	constexpr uint32_t arrSize = 2;
+	uint32_t arr[arrSize] { 0u, static_cast<UINT>(linearFilterCoeff.size()) };
+
+	outputTexture->uavBarrier(currentCommandList);
+	scratchResource->uavBarrier(currentCommandList);
+
+	currentCommandList->SetComputeRoot32BitConstants(1u, arrSize, &arr[0], 0u);
+	currentCommandList->Dispatch(launchDimensions.x, launchDimensions.y, 1u);
+
+	scratchResource->uavBarrier(currentCommandList);
+	arr[0] = 1;
+
+	currentCommandList->SetComputeRoot32BitConstants(1u, arrSize, &arr[0], 0u);
+	currentCommandList->Dispatch(launchDimensions.x, launchDimensions.y, 1u);
+
+}
+
+void FilterComputeShader::initComponent(RendererResources* rendererResources, wrl::ComPtr<ID3D12GraphicsCommandList>& pCurrentCommandList)
+{
+	cbvResource = &resourceManager->createResource(D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_FLAG_NONE, static_cast<UINT>(linearFilterCoeff.size() * sizeof(float)));
+	cbvResource->write(pCurrentCommandList, rendererResources->getTempResource(), linearFilterCoeff.data());
 }

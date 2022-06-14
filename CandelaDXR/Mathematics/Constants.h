@@ -19,6 +19,9 @@ namespace candela::mathematics::constants
     constexpr float FourPi = 4 * Pi;
     constexpr float OneOverFourPi = 1 / (4 * Pi);
     constexpr float OneOverTwoPi = 1 / (2 * Pi);
+    constexpr float SqrtTwoPi = 2.506628274631000502415765284811f;
+    constexpr float OneOverSqrtTwoPi = 1 / SqrtTwoPi;
+    constexpr float SqrtTwo = 1.4142135623730950488016887242097f;
 
     // Float
     constexpr float Maximum = std::numeric_limits<float>::max();

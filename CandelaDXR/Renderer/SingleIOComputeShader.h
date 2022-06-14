@@ -37,7 +37,9 @@ namespace candela::renderer
 		virtual void addAdditionalResources(directx::RootSignatureManager* rsm, const std::string& rangeName);
 		virtual void bindAdditionalResources(UINT baseIndex);
 		virtual void dispatch(wrl::ComPtr<ID3D12GraphicsCommandList> currentCommandList);
+		virtual void initComponent(RendererResources* rendererResources, wrl::ComPtr<ID3D12GraphicsCommandList>& pCurrentCommandList);
 	//private:
+		RendererResources* rendererResources;
 		const std::string shaderPath;
 		const bool launchAsFlatArray;
 		std::uint32_t numInputs;
@@ -70,12 +72,15 @@ namespace candela::renderer
 		: public SingleIOComputeShader
 	{
 	public:
-		FilterComputeShader();
+		FilterComputeShader(std::uint32_t filterSize);
 		void addAdditionalResources(directx::RootSignatureManager* rsm, const std::string& rangeName) override;
 		void bindAdditionalResources(UINT baseIndex) override;
 		void dispatch(wrl::ComPtr<ID3D12GraphicsCommandList> currentCommandList) override;
+		void initComponent(RendererResources* rendererResources, wrl::ComPtr<ID3D12GraphicsCommandList>& pCurrentCommandList) override;
 	private:
+		directx::Resource* cbvResource;
 		directx::Resource* scratchResource;
+		std::vector<float> linearFilterCoeff;
 	};
 
 	class PrefixSumComputeShader

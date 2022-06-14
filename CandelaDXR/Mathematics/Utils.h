@@ -10,6 +10,9 @@ namespace candela::mathematics
     Vector InterpolateVertices(const Vector2& uv, const Vector& v0, const Vector& v1, const Vector& v2);
     Vector GeneratePerpendicularVector(const Vector& vec);
 
+	float Gauss(float x, float stdDev);
+	float GaussIntegral(float a, float b, float stdDev);
+
     // Integrals
 	
 	// Integral cos(theta) * cos(theta_area)/r^2 dA - for special case
