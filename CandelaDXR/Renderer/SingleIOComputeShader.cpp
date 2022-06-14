@@ -257,7 +257,6 @@ FilterComputeShader::FilterComputeShader(std::uint32_t filterSize)
 		lfc = GaussIntegral(f, f + 1.f, stdDev) * invTotalIntegral;
 		++f;
 	}
-
 }
 
 void FilterComputeShader::addAdditionalResources(RootSignatureManager* rsm, const std::string& rangeName)

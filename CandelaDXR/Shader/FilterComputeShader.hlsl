@@ -16,7 +16,7 @@ RWTexture2D<float> output[] : register(u0);
 
 // Set in subclass
 RWTexture2D<float> scratch : register(u0, space1);
-StructuredBuffer<float> filterCoeff : register(t0, space1);
+Buffer<float> filterCoeff : register(t0, space1);
 
 
 // 64 threads per group should be optimal on both NVIDIA and AMD
