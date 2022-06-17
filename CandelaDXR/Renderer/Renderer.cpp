@@ -515,7 +515,7 @@ void Renderer::initShaders()
 	param.InitAsConstants(5u, 0u);
 	computeRSM->setParameter("ComputeConstants", param); // inIndex, outInde, clear, accumulate, linearToSrgb
 	computeRSM->addParametersToRootSignature("ComputeRootSignature", { "ComputeConstants", "ComputeDataDescTable"});
-	computeRootSignature = computeRSM->generateRootSignature("ComputeRootSignature", pDevice);
+	computeRootSignature = computeRSM->generateRootSignature("ComputeRootSignature", pDevice, D3D12_ROOT_SIGNATURE_FLAG_NONE);
 
 	// Get shader
 	wrl::ComPtr<ID3DBlob> pComputeBlob;

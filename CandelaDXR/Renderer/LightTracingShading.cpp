@@ -283,7 +283,7 @@ void LightTracingShading::buildPipeline()
 	computeRSM->setDescriptorTableParameter("ComputeDataDescTable", "ComputeData");
 	param.InitAsConstants(5u, 0u); computeRSM->setParameter("ComputeConstants", param); // winDimensions (x,y), lightSamples, numFrames, clear
 	computeRSM->addParametersToRootSignature("ComputeRootSignature", { "ComputeDataDescTable", "ComputeConstants" });
-	computeRootSignature = computeRSM->generateRootSignature("ComputeRootSignature", rendererResources->pDevice);
+	computeRootSignature = computeRSM->generateRootSignature("ComputeRootSignature", rendererResources->pDevice, D3D12_ROOT_SIGNATURE_FLAG_NONE);
 
 	// Get shader
 	wrl::ComPtr<ID3DBlob> pComputeBlob;

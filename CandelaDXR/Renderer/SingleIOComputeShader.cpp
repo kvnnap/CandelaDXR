@@ -46,7 +46,7 @@ void SingleIOComputeShader::init(RendererResources* rendererResources, wrl::ComP
 	param.InitAsConstants(4u, 0u); rsm->setParameter("Constants", param);
 	param.InitAsConstants(static_cast<UINT>(cbSize / 4), 1u); rsm->setParameter("Constants1", param);
 	rsm->addParametersToRootSignature("ComputeRootSignature", { "Constants", "Constants1", "IODescTable" });
-	computeRootSignature = rsm->generateRootSignature("ComputeRootSignature", pDevice);
+	computeRootSignature = rsm->generateRootSignature("ComputeRootSignature", pDevice, D3D12_ROOT_SIGNATURE_FLAG_NONE);
 
 	// Create descriptor heap
 	descHeapManager = std::make_unique<DescriptorHeap>(rsm, "IODescTable", "IO1", pDevice);
