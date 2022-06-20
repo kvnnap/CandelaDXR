@@ -75,10 +75,15 @@ void ImGuiShading::visit(LightTracingShading* lightTracingShader)
 		shaderIndex = static_cast<int>(lightTracingShader->getCurrentShaderIndex());
 		causticsRatio = -1.f;
 		memset(lightPathFlags, true, sizeof(lightPathFlags));
-		for (const auto& shaderName : lightTracingShader->getShaderPaths())
-			shaderStrNames.push_back(path(shaderName).filename().replace_extension().string());
-		for (const auto& shaderName : shaderStrNames)
-			shaderNames.push_back(shaderName.c_str());
+		for (const auto& ltShadInfo : lightTracingShader->getLTShaderInfo())
+		{
+			auto& localLT = ltShaderInfo.emplace_back<LTShaderInfo>({});
+			localLT.shaderStrName = path(*ltShadInfo.shaderPath).filename().replace_extension().string();
+			localLT.component = ltShadInfo.component;
+			shaderNames.push_back(localLT.shaderStrName.c_str());
+		}
+
+		currentComponent = ltShaderInfo[shaderIndex].component;
 	}
 	ImGui::Text("LightTracingShading");
 	if (ImGui::DragInt2("LightSamples", &lightSamples[0], 1.f, 0, 4096))
@@ -100,11 +105,12 @@ void ImGuiShading::visit(LightTracingShading* lightTracingShader)
 	if (ImGui::ListBox("Shader", &shaderIndex, shaderNames.data(), static_cast<int>(shaderNames.size())))
 	{ 
 		lightTracingShader->setCurrentShaderIndex(static_cast<uint32_t>(shaderIndex));
+		currentComponent = ltShaderInfo[shaderIndex].component;
 		changed = true;
 	}
 
-	for (auto component : lightTracingShader->getComponents())
-		component->accept(this);
+	if (currentComponent)
+		currentComponent->accept(this);
 
 	uint32_t pathFlags;
 	if (processPathFilter(pathFlags, lightPathFlags))
@@ -119,7 +125,7 @@ void ImGuiShading::visit(LTOptimisedComponent* ltComponent)
 	if (causticsRatio == -1.f)
 		causticsRatio = ltComponent->getCausticsRatio();
 
-	if (shaderIndex == 1 && ImGui::DragFloat("Caustics Ratio", &causticsRatio, 0.01f, 0.f, 1.f))
+	if (ImGui::DragFloat("Caustics Ratio", &causticsRatio, 0.01f, 0.f, 1.f))
 	{
 		ltComponent->setCausticsRatio(causticsRatio);
 		changed = true;

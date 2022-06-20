@@ -41,7 +41,6 @@ namespace candela::renderer
 		const mathematics::UVector2& getLightSamples() const;
 		void setLightSamples(const mathematics::UVector2& lightSamples);
 
-		const std::vector<std::string>& getShaderPaths() const;
 		void setCurrentShaderIndex(std::uint32_t currentShaderIndex);
 		std::uint32_t getCurrentShaderIndex() const;
 
@@ -53,7 +52,13 @@ namespace candela::renderer
 		std::uint32_t getMaxBounces() const;
 		void setMaxBounces(std::uint32_t maxBounces);
 
-		const std::vector<ILightTracingComponent*>& getComponents() const;
+		struct LTShaderInfo
+		{
+			std::string* shaderPath;
+			ILightTracingComponent* component;
+		};
+
+		std::vector<LTShaderInfo> getLTShaderInfo();
 
 	private:
 		void buildPipeline();
@@ -79,8 +84,6 @@ namespace candela::renderer
 			wrl::ComPtr<ID3D12StateObject> stateObject;
 		};
 		std::vector<LTShader> ltShaders;
-		std::vector<std::string> shaderPaths;
-		std::vector<ILightTracingComponent*> components;
 
 		// Light tracer descriptor stuff
 		wrl::ComPtr<ID3D12RootSignature> globalEmptyRootSignature;

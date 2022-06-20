@@ -6,6 +6,7 @@
 
 #include "Renderer/IVisitor.h"
 #include "Renderer/IDrawable.h"
+#include "Renderer/ILightTracingComponent.h"
 #include "Mathematics/Types.h"
 
 namespace candela::renderer::imgui
@@ -45,7 +46,13 @@ namespace candela::renderer::imgui
 		bool changed;
 		bool enabled;
 
-		std::vector<std::string> shaderStrNames;
+		struct LTShaderInfo 
+		{
+			std::string shaderStrName;
+			ILightTracingComponent* component;
+		};
+
+		std::vector<LTShaderInfo> ltShaderInfo;
 		std::vector<const char*> shaderNames;
 
 		union {
@@ -61,6 +68,7 @@ namespace candela::renderer::imgui
 				int shaderIndex;
 				float causticsRatio; // Still unbiased
 				bool lightPathFlags[4];
+				ILightTracingComponent* currentComponent;
 			};
 
 			// Path Shading

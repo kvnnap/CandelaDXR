@@ -90,9 +90,6 @@ void LightTracingShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12Graphi
 	// Init components
 	for (auto& ltShader : ltShaders)
 	{
-		shaderPaths.emplace_back(ltShader.shaderPath);
-		if (ltShader.component)
-			components.emplace_back(ltShader.component.get());
 		if (ltShader.component)
 			ltShader.component->init(rRes, pCurrentCommandList, resRegFn);
 	}
@@ -171,6 +168,15 @@ void LightTracingShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> currentCom
 
 	// After
 	backBuff->transistionBarrier(currentCommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);
+}
+
+vector<LightTracingShading::LTShaderInfo> LightTracingShading::getLTShaderInfo()
+{
+	vector<LTShaderInfo> out;
+	std::transform(ltShaders.begin(), ltShaders.end(), std::back_inserter(out), [](LTShader& ltShader) {
+		return LTShaderInfo{ .shaderPath = &ltShader.shaderPath, .component = ltShader.component.get() };
+	});
+	return out;
 }
 
 void LightTracingShading::buildPipeline()
@@ -465,11 +471,6 @@ void LightTracingShading::setLightSamples(const UVector2& p_lightSamples)
 	lightSamples = p_lightSamples;
 }
 
-const vector<string>& LightTracingShading::getShaderPaths() const
-{
-	return shaderPaths;
-}
-
 void LightTracingShading::setCurrentShaderIndex(uint32_t currentShaderIndex)
 {
 	currentShader = currentShaderIndex;
@@ -508,11 +509,6 @@ uint32_t LightTracingShading::getMaxBounces() const
 void LightTracingShading::setMaxBounces(uint32_t maxBounces)
 {
 	constBuffer.maxBounces = maxBounces;
-}
-
-const vector<ILightTracingComponent*>& LightTracingShading::getComponents() const
-{
-	return components;
 }
 
 // Compute constants
