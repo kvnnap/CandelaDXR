@@ -97,11 +97,9 @@ void PathTracingShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCom
 	constBuffer.seeds[0] = sampler->nextUInt32();
 	constBuffer.seeds[1] = sampler->nextUInt32();
 	constBuffer.winDimensions = rendererResources->winDimensions;
-	clear |= cam->hasChanged();
 	if (clear)
-		constBuffer.frameNumber = 1;
-	else
-		++constBuffer.frameNumber;
+		constBuffer.frameNumber = 0;
+	++constBuffer.frameNumber;
 	DXUtil::updateDataInDefaultHeap(rendererResources->pDevice, pCurrentCommandList, constantBuffer, rendererResources->getTempResource(),
 		&constBuffer, sizeof(constBuffer), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 

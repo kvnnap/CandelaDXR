@@ -237,7 +237,11 @@ void Renderer::renderFrame()
 	// ImGui
 	if (keyboard.hasKeyChanged('Q') && keyboard.isKeyPressed('Q'))
 		imguiManager.setEnabled(!imguiManager.isEnabled());
-	ChangeEvent_t changeEvent = imguiManager.processChangeEvent();
+	
+	updateCamera();
+
+	ChangeEvent_t camChanged = camera->hasChanged() ? static_cast<ChangeEvent_t>(ChangeEvent::Camera) : 0;
+	ChangeEvent_t changeEvent = camChanged | imguiManager.processChangeEvent();
 
 	constexpr auto flags = D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE;
 	
@@ -288,7 +292,6 @@ void Renderer::renderFrame()
 		resource->onChange(pCurrentCommandList, currentBackBufferIndex, changeEvent);
 
 	// Draw
-	updateCamera();
 
 	int32_t first = -1, last = -1;
 	for (int32_t i = 0; i < static_cast<int>(drawables.size()); ++i)
@@ -308,7 +311,7 @@ void Renderer::renderFrame()
 		auto drawable = drawables[i];
 		if (changeEvent)
 			drawable->onChange(pCurrentCommandList, currentBackBufferIndex, changeEvent);
-		if (!drawables[i]->isEnabled())
+		if (!drawable->isEnabled())
 			continue;
 		
 		// Clear the RadRTV 
@@ -420,7 +423,7 @@ void Renderer::renderFrame()
 	rendererResources.resourceManager->clearTemporaryBuffers(currentBackBufferIndex);
 
 	// Stats
-	if (changeEvent || camera->hasChanged())
+	if (changeEvent)
 		fpsCounter.resetFrameCount();
 	if (fpsCounter.hitFrame())
 		window->setWindowName("CandelaDXR - Frames: " + to_string(fpsCounter.getFrameCount()) + " FPS: " + to_string(fpsCounter.getFramesPerSecond()));
