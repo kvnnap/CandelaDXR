@@ -5,6 +5,7 @@
 #include "Renderer/RasterShading.h"
 #include "Renderer/LightTracingShading.h"
 #include "Renderer/LTOptimisedComponent.h"
+#include "Renderer/LTRasterGuidedShading.h"
 #include "Renderer/PathTracingShading.h"
 #include "Renderer/RasterRTShadowsShading.h"
 
@@ -74,6 +75,7 @@ void ImGuiShading::visit(LightTracingShading* lightTracingShader)
 		bounces[1] = static_cast<int>(lightTracingShader->getMaxBounces());
 		shaderIndex = static_cast<int>(lightTracingShader->getCurrentShaderIndex());
 		causticsRatio = -1.f;
+		filterSize = -1;
 		memset(lightPathFlags, true, sizeof(lightPathFlags));
 		for (const auto& ltShadInfo : lightTracingShader->getLTShaderInfo())
 		{
@@ -134,7 +136,15 @@ void ImGuiShading::visit(LTOptimisedComponent* ltComponent)
 
 void ImGuiShading::visit(LTRasterGuidedShading* ltRasterComponent)
 {
-	ImGui::Text("LTRasterGuidedShading");
+	if (filterSize == -1)
+		filterSize = ltRasterComponent->getFilterSize();
+
+	if (ImGui::DragInt("Filter Size", &filterSize, 2.f, 1, FilterComputeShader::MaxSize))
+	{
+		ltRasterComponent->setFilterSize(filterSize);
+		filterSize = ltRasterComponent->getFilterSize();
+		changed = true;
+	}
 }
 
 void ImGuiShading::visit(PathTracingShading* pathTracingShader)

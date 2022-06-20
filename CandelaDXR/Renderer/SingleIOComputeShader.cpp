@@ -106,6 +106,9 @@ void SingleIOComputeShader::compute(wrl::ComPtr<ID3D12GraphicsCommandList> curre
 	ID3D12Resource* outputTextureResource = *outputTexture;
 	if (outputTexture->getState() != D3D12_RESOURCE_STATE_UNORDERED_ACCESS)
 		ThrowException("Output Texture not in UAV state");
+
+	updateData(currentCommandList);
+
 	std::array<UINT, 4> constants = { dim.x, dim.y, inputTextureIndex - numOutputs, outputTextureIndex };
 	auto prevState = inputTexture->getState();
 	inputTexture->transistionBarrier(currentCommandList, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
@@ -159,6 +162,10 @@ void SingleIOComputeShader::addAdditionalResources(RootSignatureManager* rsm, co
 }
 
 void SingleIOComputeShader::bindAdditionalResources(UINT baseIndex)
+{
+}
+
+void SingleIOComputeShader::updateData(wrl::ComPtr<ID3D12GraphicsCommandList> currentCommandList)
 {
 }
 
@@ -237,26 +244,11 @@ void PrefixSumComputeShader::dispatch(wrl::ComPtr<ID3D12GraphicsCommandList> cur
 	//outputTexture->uavBarrier(currentCommandList);
 }
 
-FilterComputeShader::FilterComputeShader(std::uint32_t filterSize)
-	: SingleIOComputeShader("./Shaders/FilterComputeShader.cso"), cbvResource(), scratchResource()
+FilterComputeShader::FilterComputeShader()
+	: SingleIOComputeShader("./Shaders/FilterComputeShader.cso"), cbvResource(), scratchResource(), changed()
 {
 	setAdditionalConstantBuffer(nullptr, sizeof(std::uint32_t) * 2); // Send gausian size and pass number
-	
-	// Gaussian
-	if (filterSize % 2 == 0)
-		++filterSize;
-
-	const float halfFilterSize = 0.5f * filterSize;
-	const float stdDev = halfFilterSize / 3.f; // Working across 3 std deviations
-	float f = -halfFilterSize;
-	
-	linearFilterCoeff.resize(filterSize);
-	const float invTotalIntegral = 1.f / GaussIntegral(-halfFilterSize, halfFilterSize, stdDev);
-	for (auto& lfc : linearFilterCoeff)
-	{
-		lfc = GaussIntegral(f, f + 1.f, stdDev) * invTotalIntegral;
-		++f;
-	}
+	setFiltersize(InitialSize);
 }
 
 void FilterComputeShader::addAdditionalResources(RootSignatureManager* rsm, const std::string& rangeName)
@@ -270,7 +262,7 @@ void FilterComputeShader::bindAdditionalResources(UINT baseIndex)
 	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
 	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
-	srvDesc.Buffer.NumElements = static_cast<UINT>(linearFilterCoeff.size());
+	srvDesc.Buffer.NumElements = MaxSize;
 	srvDesc.Buffer.StructureByteStride = sizeof(float);
 	descHeapManager->setSRV(baseIndex++, srvDesc, pDevice, *cbvResource);
 
@@ -283,6 +275,13 @@ void FilterComputeShader::bindAdditionalResources(UINT baseIndex)
 	uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
 	uavDesc.Format = DXGI_FORMAT_R32_FLOAT;
 	descHeapManager->setUAV(baseIndex++, uavDesc, pDevice, *scratchResource);
+}
+
+void FilterComputeShader::updateData(wrl::ComPtr<ID3D12GraphicsCommandList> currentCommandList)
+{
+	if (changed)
+		cbvResource->write(currentCommandList, rendererResources->getTempResource(), linearFilterCoeff.data());
+	changed = false;
 }
 
 void FilterComputeShader::dispatch(wrl::ComPtr<ID3D12GraphicsCommandList> currentCommandList)
@@ -303,11 +302,37 @@ void FilterComputeShader::dispatch(wrl::ComPtr<ID3D12GraphicsCommandList> curren
 
 	currentCommandList->SetComputeRoot32BitConstants(1u, arrSize, &arr[0], 0u);
 	currentCommandList->Dispatch(launchDimensions.x, launchDimensions.y, 1u);
-
 }
 
 void FilterComputeShader::initComponent(RendererResources* rendererResources, wrl::ComPtr<ID3D12GraphicsCommandList>& pCurrentCommandList)
 {
-	cbvResource = &resourceManager->createResource(D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_FLAG_NONE, static_cast<UINT>(linearFilterCoeff.size() * sizeof(float)));
-	cbvResource->write(pCurrentCommandList, rendererResources->getTempResource(), linearFilterCoeff.data());
+	cbvResource = &resourceManager->createResource(D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_FLAG_NONE, static_cast<UINT>(MaxSize * sizeof(float)));
+	cbvResource->setName("Gaussian Constant Data");
+	changed = true;
+}
+
+void FilterComputeShader::setFiltersize(std::uint32_t filterSize)
+{
+	// Gaussian
+	if (filterSize % 2 == 0)
+		++filterSize;
+
+	const float halfFilterSize = 0.5f * filterSize;
+	const float stdDev = halfFilterSize / StdDeviations; // Working across 3 std deviations
+	float f = -halfFilterSize;
+
+	linearFilterCoeff.resize(filterSize);
+	const float invTotalIntegral = 1.f / GaussIntegral(-halfFilterSize, halfFilterSize, stdDev);
+	for (auto& lfc : linearFilterCoeff)
+	{
+		lfc = GaussIntegral(f, f + 1.f, stdDev) * invTotalIntegral;
+		++f;
+	}
+
+	changed = true;
+}
+
+uint32_t FilterComputeShader::getFiltersize() const
+{
+	return static_cast<uint32_t>(linearFilterCoeff.size());
 }

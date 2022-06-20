@@ -55,6 +55,10 @@ namespace candela::renderer
 		virtual void appendToPipeline(directx::RootSignatureManager* rootSignatureManager) override;
 		virtual void appendToShaderTable(directx::ShadingTable* shadingTable) override;
 		virtual void appendToDescHeapManager(directx::DescriptorHeap* descriptorHeap) override;
+
+		// 
+		void setFilterSize(std::uint32_t filterSize);
+		std::uint32_t getFilterSize() const;
 	private:
 		void generateCDF(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, std::uint32_t currentBackBufferIndex, std::uint32_t lightIndex);
 		void regenerateCDFs(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, std::uint32_t currentBackBufferIndex);
@@ -78,5 +82,6 @@ namespace candela::renderer
 		NormalisationPass2ComputeShader normalisationPass2ComputeShader;
 
 		bool storePerLightCDF;
+		bool regenerateCDFFlag;
 	};
 }

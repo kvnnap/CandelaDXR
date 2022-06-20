@@ -18,7 +18,7 @@ using candela::mathematics::Vector2;
 using candela::renderer::LTRasterGuidedShading;
 
 LTRasterGuidedShading::LTRasterGuidedShading(ISampler* sampler, bool storePerLightCDF)
-	: sampler(sampler), constBuffer(), rendererResources(), cdfSize(512, 512), cumulativeDistributionTexture(), rasterShader(true), guassianComputerShader(17), storePerLightCDF(storePerLightCDF)
+	: sampler(sampler), constBuffer(), rendererResources(), cdfSize(512, 512), cumulativeDistributionTexture(), rasterShader(true), storePerLightCDF(storePerLightCDF), regenerateCDFFlag()
 {
 }
 
@@ -78,6 +78,17 @@ void LTRasterGuidedShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12Grap
 	constBuffer.lightCamDim = cdfSize;
 	constantBuffer = DXUtil::uploadDataToDefaultHeap(rendererResources->pDevice, pCurrentCommandList, rendererResources->getTempResource(), &constBuffer, sizeof(constBuffer), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 	constantBuffer->SetName(L"LT Raster Guided Constant Buffer");
+}
+
+void LTRasterGuidedShading::setFilterSize(std::uint32_t filterSize)
+{
+	guassianComputerShader.setFiltersize(filterSize);
+	regenerateCDFFlag = true;
+}
+
+uint32_t LTRasterGuidedShading::getFilterSize() const
+{
+	return guassianComputerShader.getFiltersize();
 }
 
 void LTRasterGuidedShading::generateCDF(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, uint32_t currentBackBufferIndex, uint32_t lightIndex)
@@ -157,8 +168,17 @@ void LTRasterGuidedShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrent
 		&constBuffer, sizeof(constBuffer), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
 	if (storePerLightCDF)
-		return;
-	generateCDF(pCurrentCommandList, currentBackBufferIndex, constBuffer.lightIndex);
+	{
+		if (regenerateCDFFlag)
+		{
+			regenerateCDFs(pCurrentCommandList, currentBackBufferIndex);
+			regenerateCDFFlag = false;
+		}
+	}
+	else
+	{
+		generateCDF(pCurrentCommandList, currentBackBufferIndex, constBuffer.lightIndex);
+	}
 }
 
 void LTRasterGuidedShading::accept(IVisitor* visitor)
@@ -172,7 +192,7 @@ void LTRasterGuidedShading::onChange(wrl::ComPtr<ID3D12GraphicsCommandList> pCur
 	if (!storePerLightCDF)
 		return;
 	if (changeEvent & (static_cast<ChangeEvent_t>(ChangeEvent::Transformation) | static_cast<ChangeEvent_t>(ChangeEvent::SceneChange)))
-		regenerateCDFs(pCurrentCommandList, currentBackBufferIndex);
+		regenerateCDFFlag = true;
 }
 
 void LTRasterGuidedShading::onResize()

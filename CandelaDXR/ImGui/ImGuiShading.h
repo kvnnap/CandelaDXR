@@ -69,6 +69,7 @@ namespace candela::renderer::imgui
 				float causticsRatio; // Still unbiased
 				bool lightPathFlags[4];
 				ILightTracingComponent* currentComponent;
+				int filterSize;
 			};
 
 			// Path Shading

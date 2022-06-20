@@ -36,6 +36,7 @@ namespace candela::renderer
 		virtual mathematics::UVector2 getLaunchDimensions(const mathematics::UVector2& originalDimensions) const;
 		virtual void addAdditionalResources(directx::RootSignatureManager* rsm, const std::string& rangeName);
 		virtual void bindAdditionalResources(UINT baseIndex);
+		virtual void updateData(wrl::ComPtr<ID3D12GraphicsCommandList> currentCommandList);
 		virtual void dispatch(wrl::ComPtr<ID3D12GraphicsCommandList> currentCommandList);
 		virtual void initComponent(RendererResources* rendererResources, wrl::ComPtr<ID3D12GraphicsCommandList>& pCurrentCommandList);
 	//private:
@@ -72,15 +73,25 @@ namespace candela::renderer
 		: public SingleIOComputeShader
 	{
 	public:
-		FilterComputeShader(std::uint32_t filterSize);
+		FilterComputeShader();
 		void addAdditionalResources(directx::RootSignatureManager* rsm, const std::string& rangeName) override;
 		void bindAdditionalResources(UINT baseIndex) override;
+		void updateData(wrl::ComPtr<ID3D12GraphicsCommandList> currentCommandList) override;
 		void dispatch(wrl::ComPtr<ID3D12GraphicsCommandList> currentCommandList) override;
 		void initComponent(RendererResources* rendererResources, wrl::ComPtr<ID3D12GraphicsCommandList>& pCurrentCommandList) override;
+
+		void setFiltersize(std::uint32_t filterSize);
+		std::uint32_t getFiltersize() const;
+		
+		static constexpr auto InitialSize = 17u;
+		static constexpr auto MaxSize = 1023u;
+		static constexpr auto StdDeviations = 3.f;
+
 	private:
 		directx::Resource* cbvResource;
 		directx::Resource* scratchResource;
 		std::vector<float> linearFilterCoeff;
+		bool changed;
 	};
 
 	class PrefixSumComputeShader
