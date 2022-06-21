@@ -18,7 +18,9 @@ using candela::mathematics::Vector2;
 using candela::renderer::LTRasterGuidedShading;
 
 LTRasterGuidedShading::LTRasterGuidedShading(ISampler* sampler, bool storePerLightCDF)
-	: sampler(sampler), constBuffer(), rendererResources(), cdfSize(512, 512), cumulativeDistributionTexture(), rasterShader(true), storePerLightCDF(storePerLightCDF), regenerateCDFFlag()
+	: constBuffer(), distConstBuffer(), sampler(sampler), rendererResources(),
+	  cdfSize(512, 512), cumulativeDistributionTexture(), rasterShader(true),
+	  storePerLightCDF(storePerLightCDF), regenerateCDFFlag()
 {
 }
 

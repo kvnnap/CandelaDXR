@@ -33,7 +33,7 @@ using std::vector;
 using Microsoft::WRL::ComPtr;
 
 RasterShading::RasterShading(bool computeGBuffer)
-	: constBuffer{}, scissorRect(CD3DX12_RECT(0, 0, LONG_MAX, LONG_MAX)), computeGBuffer(computeGBuffer), numRenderTargets(computeGBuffer ? 4u : 1u), camera(), winDimensions()
+	: constBuffer{}, scissorRect(CD3DX12_RECT(0, 0, LONG_MAX, LONG_MAX)), computeGBuffer(computeGBuffer), numRenderTargets(computeGBuffer ? 5u : 1u), camera(), winDimensions()
 {
 }
 
@@ -139,10 +139,12 @@ void RasterShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12GraphicsComm
 		CD3DX12_PIPELINE_STATE_STREAM_RASTERIZER Rasterizer;
 	} pipelineStateStream;
 
-	D3D12_RT_FORMAT_ARRAY rtvFormats = {};
+	D3D12_RT_FORMAT_ARRAY rtvFormats{};
 	rtvFormats.NumRenderTargets = numRenderTargets;
 	for (UINT i = 0; i < numRenderTargets; ++i)
 		rtvFormats.RTFormats[i] = DXGI_FORMAT_R32G32B32A32_FLOAT;
+	if (computeGBuffer)
+		rtvFormats.RTFormats[numRenderTargets - 1] = DXGI_FORMAT_R32_UINT;
 
 	auto rasterDesc = CD3DX12_RASTERIZER_DESC(CD3DX12_DEFAULT());
 	rasterDesc.CullMode = D3D12_CULL_MODE_NONE;
@@ -178,12 +180,12 @@ void RasterShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12GraphicsComm
 	// Init G-Buffer
 	if (computeGBuffer)
 	{
-		std::array<std::string, 4> names = { "gPos", "gNorm", "gAlb", "gOut"};
-		for (const auto& name : names)
+		std::array<std::string, 5> names = { "gPos", "gNorm", "gAlb", "gFace", "gOut"};
+		for (size_t i = 0; i < names.size(); ++i)
 			gBuffer.emplace_back(&rendererResources->resourceManager->createResource(
 				D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET,
 				winDimensions->x, winDimensions->y, 
-				DXGI_FORMAT_R32G32B32A32_FLOAT, false, globalPrefix + name));
+				rtvFormats.RTFormats[(i + 1) % numRenderTargets], false, globalPrefix + names[i]));
 		pGDescriptorHeap = DXUtil::createDescriptorHeap(rRes->pDevice, static_cast<UINT>(gBuffer.size()), D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 	}
 
@@ -210,7 +212,7 @@ void RasterShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandL
 	pCurrentCommandList->RSSetScissorRects(1u, &scissorRect);
 	pCurrentCommandList->RSSetViewports(1u, &viewport);
 
-	D3D12_CPU_DESCRIPTOR_HANDLE rtvDescriptorHandles[4];
+	D3D12_CPU_DESCRIPTOR_HANDLE rtvDescriptorHandles[5];
 	const auto incrementSize = rendererResources->pDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 	rtvDescriptorHandles[0] = CD3DX12_CPU_DESCRIPTOR_HANDLE(rendererResources->pRTVDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), rendererResources->numBackBuffers, incrementSize);
 
@@ -220,12 +222,12 @@ void RasterShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandL
 
 		if (winDimensions != &rendererResources->winDimensions)
 		{
-			rtvDescriptorHandles[0] = CD3DX12_CPU_DESCRIPTOR_HANDLE(pGDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), numRenderTargets - 1, incrementSize); // position, normal, albedo
+			rtvDescriptorHandles[0] = CD3DX12_CPU_DESCRIPTOR_HANDLE(pGDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), numRenderTargets - 1, incrementSize); // out
 			pCurrentCommandList->ClearRenderTargetView(rtvDescriptorHandles[0], color, 0, nullptr);
 		}
 		for (UINT i = 1; i < numRenderTargets; ++i)
 		{
-			rtvDescriptorHandles[i] = CD3DX12_CPU_DESCRIPTOR_HANDLE(pGDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), i - 1, incrementSize); // position, normal, albedo
+			rtvDescriptorHandles[i] = CD3DX12_CPU_DESCRIPTOR_HANDLE(pGDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), i - 1, incrementSize); // position, normal, albedo, face
 			pCurrentCommandList->ClearRenderTargetView(rtvDescriptorHandles[i], color, 0, nullptr);
 		}
 	}

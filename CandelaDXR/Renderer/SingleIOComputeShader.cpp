@@ -23,7 +23,9 @@ using candela::renderer::SingleIOComputeShader;
 using candela::renderer::FilterComputeShader;
 
 SingleIOComputeShader::SingleIOComputeShader(const string& shaderPath, bool launchAsFlatArray)
-	: rendererResources(), shaderPath(shaderPath), launchAsFlatArray(launchAsFlatArray), resources(), numInputs(), numOutputs(), inputTextureIndex(), outputTextureIndex(), resourceManager(), pDevice(), cbData(), cbSize()
+	: rendererResources(), shaderPath(shaderPath), launchAsFlatArray(launchAsFlatArray),
+	  numInputs(), numOutputs(), resourceManager(), resources(), inputTextureIndex(), outputTextureIndex(),
+	  inputTexture(), outputTexture(), pDevice(), cbData(), cbSize()
 {
 }
 

@@ -91,7 +91,7 @@ void RasterRTShadowsShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurren
 	backBuff->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
 	// Do we need these barriers? I think so
-	const auto c = rasterShader.getNumRenderTargets() - 1;
+	const auto c = 3;
 	for (UINT i = 0; i < c; ++i)
 		rasterShader.getGBuffer()[i]->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
@@ -278,7 +278,7 @@ void RasterRTShadowsShading::createShaderResources()
 	srvDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
 	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
 	srvDesc.Texture2D.MipLevels = 1;
-	const auto gBuffRenTargets = rasterShader.getNumRenderTargets() - 1;
+	const auto gBuffRenTargets = 3;
 	for (UINT j = 0; j < gBuffRenTargets; ++j)
 		descHeapManager->setSRV(entryNumber++, srvDesc, rendererResources->pDevice, *rasterShader.getGBuffer()[j]);
 
