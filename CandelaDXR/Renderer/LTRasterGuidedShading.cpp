@@ -18,7 +18,7 @@ using candela::mathematics::Vector2;
 using candela::renderer::LTRasterGuidedShading;
 
 LTRasterGuidedShading::LTRasterGuidedShading(ISampler* sampler, bool storePerLightCDF)
-	: constBuffer(), distConstBuffer(), sampler(sampler), rendererResources(),
+	: constBuffer(), sampler(sampler), rendererResources(),
 	  cdfSize(512, 512), cumulativeDistributionTexture(), rasterShader(true),
 	  storePerLightCDF(storePerLightCDF), regenerateCDFFlag()
 {
@@ -51,7 +51,6 @@ void LTRasterGuidedShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12Grap
 	const uint32_t inputIndex = static_cast<uint32_t>(resources.size() - 1);
 	const uint32_t numOutputs = static_cast<uint32_t>(cdfs.size());
 
-	distanceComputerShader.setAdditionalConstantBuffer(&distConstBuffer, sizeof(distConstBuffer));
 	distanceComputerShader.init(rRes, pCurrentCommandList, &resources, numOutputs);
 	distanceComputerShader.setInputTexture(inputIndex);
 
@@ -134,8 +133,12 @@ void LTRasterGuidedShading::generateCDF(wrl::ComPtr<ID3D12GraphicsCommandList> p
 
 	// Alter Camera
 	lightCamera->lookTo(pos, nor, up);
-	distConstBuffer.position = lightCamera->getPosition();
-	distConstBuffer.plane = lightCamera->getNearPlaneDimensions();
+	distanceComputerShader.distConstBuffer.position = lightCamera->getPosition();
+	distanceComputerShader.distConstBuffer.plane = lightCamera->getNearPlaneDimensions();
+
+	// Send user camera
+	distanceComputerShader.distConstBuffer.camPosition = rendererResources->camera->getPosition();
+	distanceComputerShader.distConstBuffer.camUnitDir = rendererResources->camera->getDirection();
 
 	// Generate CDF
 	rasterShader.draw(pCurrentCommandList, currentBackBufferIndex);

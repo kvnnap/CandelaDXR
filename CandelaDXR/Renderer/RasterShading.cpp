@@ -180,7 +180,7 @@ void RasterShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12GraphicsComm
 	// Init G-Buffer
 	if (computeGBuffer)
 	{
-		std::array<std::string, 5> names = { "gPos", "gNorm", "gAlb", "gFace", "gOut"};
+		std::array<std::string, 5> names = { "gPos", "gNorm", "gAlb", "gMat", "gOut"};
 		for (size_t i = 0; i < names.size(); ++i)
 			gBuffer.emplace_back(&rendererResources->resourceManager->createResource(
 				D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET,

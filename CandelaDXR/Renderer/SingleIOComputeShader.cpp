@@ -21,6 +21,7 @@ using candela::directx::DescriptorHeap;
 using candela::directx::RootSignatureManager;
 using candela::renderer::SingleIOComputeShader;
 using candela::renderer::FilterComputeShader;
+using candela::renderer::DistanceComputeShader;
 
 SingleIOComputeShader::SingleIOComputeShader(const string& shaderPath, bool launchAsFlatArray)
 	: rendererResources(), shaderPath(shaderPath), launchAsFlatArray(launchAsFlatArray),
@@ -337,4 +338,55 @@ void FilterComputeShader::setFiltersize(std::uint32_t filterSize)
 uint32_t FilterComputeShader::getFiltersize() const
 {
 	return static_cast<uint32_t>(linearFilterCoeff.size());
+}
+
+DistanceComputeShader::DistanceComputeShader()
+	: SingleIOComputeShader("./Shaders/DistanceComputeShader.cso"), 
+	  distConstBuffer(), faceIndexResource(), constBufferResource()
+{
+}
+
+void DistanceComputeShader::addAdditionalResources(directx::RootSignatureManager* rsm, const std::string& rangeName)
+{
+	rsm->addDescriptorRange(rangeName, CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 2u, 0u, 1u));
+	rsm->addDescriptorRange(rangeName, CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1u, 0u, 1u));
+}
+
+void DistanceComputeShader::bindAdditionalResources(UINT baseIndex)
+{
+	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
+	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+	srvDesc.Format = DXGI_FORMAT_R32_UINT;
+	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+	srvDesc.Texture2D.MipLevels = 1u;
+	faceIndexResource = resourceManager->getNamedResource("ltr_gMat");
+	constBufferResource = &resourceManager->createResource(D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER, D3D12_RESOURCE_FLAG_NONE, sizeof(distConstBuffer));
+	descHeapManager->setSRV(baseIndex++, srvDesc, pDevice, *faceIndexResource);
+
+	// Material
+	srvDesc = {};
+	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+	srvDesc.Buffer.NumElements = static_cast<UINT>(rendererResources->scene->getMaterials().size());
+	srvDesc.Buffer.StructureByteStride = sizeof(scene::Material);
+	descHeapManager->setSRV(baseIndex++, srvDesc, pDevice, rendererResources->materialBuffer);
+
+	D3D12_CONSTANT_BUFFER_VIEW_DESC cbvDesc;
+	const candela::directx::DXResource& res = *constBufferResource;
+	cbvDesc.BufferLocation = res->GetGPUVirtualAddress();
+	cbvDesc.SizeInBytes = sizeof(distConstBuffer);
+	descHeapManager->setCBV(baseIndex++, cbvDesc, pDevice, res);
+
+}
+
+void DistanceComputeShader::updateData(wrl::ComPtr<ID3D12GraphicsCommandList> currentCommandList)
+{
+	faceIndexResource->transistionBarrier(currentCommandList, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+	constBufferResource->write(currentCommandList, rendererResources->getTempResource(), &distConstBuffer);
+}
+
+void DistanceComputeShader::dispatch(wrl::ComPtr<ID3D12GraphicsCommandList> currentCommandList)
+{
+	SingleIOComputeShader::dispatch(currentCommandList);
+	faceIndexResource->transistionBarrier(currentCommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);
 }

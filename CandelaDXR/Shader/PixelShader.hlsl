@@ -77,7 +77,7 @@ struct MyOutput
 	float4 position : SV_Target1;
 	float4 normal : SV_Target2;
 	float4 albedo : SV_Target3;
-	uint faceIndex : SV_Target4;
+	uint matId : SV_Target4;
 };
 
 MyOutput main(MyInput myInput)
@@ -87,9 +87,10 @@ MyOutput main(MyInput myInput)
 	output.position = float4(myInput.position, 1.f);
 	output.normal = float4(normalize(myInput.normal), 0.f);
 	output.albedo = 0;
-	output.faceIndex = instanceId / 3 + myInput.id;
 
 	const uint matId = faceAttributes[instanceId / 3 + myInput.id].MaterialId;
+	output.matId = matId;
+
 	const Material mat = materials[matId];
 	output.radiance.xyz = mat.Emissive;
 	float3 diffTex = mat.Diffuse;

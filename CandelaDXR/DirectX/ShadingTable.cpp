@@ -333,12 +333,12 @@ DescriptorHeap::DescriptorHeap(std::shared_ptr<RootSignatureManager> rootSignatu
 	resources.resize(descriptorHeapSize);
 }
 
-void DescriptorHeap::setCBV(size_t entryNumber, const D3D12_CONSTANT_BUFFER_VIEW_DESC& cbvDescriptor, Microsoft::WRL::ComPtr<ID3D12Device> pDevice)
+void DescriptorHeap::setCBV(size_t entryNumber, const D3D12_CONSTANT_BUFFER_VIEW_DESC& cbvDescriptor, Microsoft::WRL::ComPtr<ID3D12Device> pDevice, const Microsoft::WRL::ComPtr<ID3D12Resource>& resource)
 {
 	if (rootSignatureManager->getDescriptorHeapRangeType(parameterName, entryNumber) != D3D12_DESCRIPTOR_RANGE_TYPE_CBV)
 		throw runtime_error("Entry " + to_string(entryNumber) + " in not of type CBV");
 	pDevice->CreateConstantBufferView(&cbvDescriptor, getCpuDescHandle(entryNumber, pDevice));
-	setResource(entryNumber);
+	setResource(entryNumber, resource);
 }
 
 void DescriptorHeap::setUAV(size_t entryNumber, const D3D12_UNORDERED_ACCESS_VIEW_DESC& uavDescriptor, Microsoft::WRL::ComPtr<ID3D12Device> pDevice, Microsoft::WRL::ComPtr<ID3D12Resource> resource)

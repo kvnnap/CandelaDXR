@@ -66,7 +66,22 @@ namespace candela::renderer
 		: public SingleIOComputeShader
 	{
 	public:
-		DistanceComputeShader() : SingleIOComputeShader("./Shaders/DistanceComputeShader.cso") {}
+		DistanceComputeShader();
+		void addAdditionalResources(directx::RootSignatureManager* rsm, const std::string& rangeName) override;
+		void bindAdditionalResources(UINT baseIndex) override;
+		void updateData(wrl::ComPtr<ID3D12GraphicsCommandList> currentCommandList) override;
+		void dispatch(wrl::ComPtr<ID3D12GraphicsCommandList> currentCommandList) override;
+
+		struct alignas(256) DistConstBuff
+		{
+			DirectX::XMVECTOR position;
+			DirectX::XMVECTOR plane;
+			DirectX::XMVECTOR camPosition;
+			DirectX::XMVECTOR camUnitDir;
+		} distConstBuffer;
+	private:
+		directx::Resource* faceIndexResource;
+		directx::Resource* constBufferResource;
 	};
 
 	class FilterComputeShader

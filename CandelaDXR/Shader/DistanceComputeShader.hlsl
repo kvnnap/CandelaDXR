@@ -1,3 +1,5 @@
+#include "Scene.hlsli"
+
 cbuffer CB1 : register(b0)
 {
 	uint2 ScreenDim;
@@ -5,14 +7,19 @@ cbuffer CB1 : register(b0)
 	uint OutputIndex;
 }
 
-cbuffer CB1 : register(b1)
+cbuffer CB1 : register(b0, space1)
 {
 	float3 Position;
 	float3 Plane;
+	float3 camPosition;
+	float3 camUnitDir;
 }
 
 Texture2D<float4> input[] : register(t0);
 RWTexture2D<float> output[] : register(u0);
+
+Texture2D<uint> matIds : register(t0, space1);
+StructuredBuffer<Material> materials : register(t1, space1);
 
 // 64 threads per group should be optimal on both NVIDIA and AMD
 // i.e. 2 warps per thread group or 1 depending on NVIDIA/AMD
