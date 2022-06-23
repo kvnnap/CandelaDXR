@@ -92,6 +92,16 @@ uint32_t LTRasterGuidedShading::getFilterSize() const
 	return guassianComputerShader.getFiltersize();
 }
 
+void LTRasterGuidedShading::setDistanceMetricMode(std::uint32_t mode)
+{
+	distanceComputerShader.setMode(mode);
+}
+
+uint32_t LTRasterGuidedShading::getDistanceMetricMode() const
+{
+	return distanceComputerShader.getMode();
+}
+
 void LTRasterGuidedShading::generateCDF(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, uint32_t currentBackBufferIndex, uint32_t lightIndex)
 {
 	// Logic for choosing light and setting up camera from light
@@ -196,7 +206,7 @@ void LTRasterGuidedShading::onChange(wrl::ComPtr<ID3D12GraphicsCommandList> pCur
 	rasterShader.onChange(pCurrentCommandList, currentBackBufferIndex, changeEvent);
 	if (!storePerLightCDF)
 		return;
-	if (changeEvent & (static_cast<ChangeEvent_t>(ChangeEvent::Transformation) | static_cast<ChangeEvent_t>(ChangeEvent::SceneChange)))
+	if (changeEvent)// & (static_cast<ChangeEvent_t>(ChangeEvent::Transformation) | static_cast<ChangeEvent_t>(ChangeEvent::SceneChange)))
 		regenerateCDFFlag = true;
 }
 

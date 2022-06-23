@@ -342,13 +342,13 @@ uint32_t FilterComputeShader::getFiltersize() const
 
 DistanceComputeShader::DistanceComputeShader()
 	: SingleIOComputeShader("./Shaders/DistanceComputeShader.cso"), 
-	  distConstBuffer(), faceIndexResource(), constBufferResource()
+	  distConstBuffer(), faceIndexResource(), normalResource(), constBufferResource()
 {
 }
 
 void DistanceComputeShader::addAdditionalResources(directx::RootSignatureManager* rsm, const std::string& rangeName)
 {
-	rsm->addDescriptorRange(rangeName, CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 2u, 0u, 1u));
+	rsm->addDescriptorRange(rangeName, CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 3u, 0u, 1u));
 	rsm->addDescriptorRange(rangeName, CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1u, 0u, 1u));
 }
 
@@ -362,6 +362,10 @@ void DistanceComputeShader::bindAdditionalResources(UINT baseIndex)
 	faceIndexResource = resourceManager->getNamedResource("ltr_gMat");
 	constBufferResource = &resourceManager->createResource(D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER, D3D12_RESOURCE_FLAG_NONE, sizeof(distConstBuffer));
 	descHeapManager->setSRV(baseIndex++, srvDesc, pDevice, *faceIndexResource);
+	
+	srvDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
+	normalResource = resourceManager->getNamedResource("ltr_gNorm");
+	descHeapManager->setSRV(baseIndex++, srvDesc, pDevice, *normalResource);
 
 	// Material
 	srvDesc = {};
@@ -382,6 +386,7 @@ void DistanceComputeShader::bindAdditionalResources(UINT baseIndex)
 void DistanceComputeShader::updateData(wrl::ComPtr<ID3D12GraphicsCommandList> currentCommandList)
 {
 	faceIndexResource->transistionBarrier(currentCommandList, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+	normalResource->transistionBarrier(currentCommandList, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 	constBufferResource->write(currentCommandList, rendererResources->getTempResource(), &distConstBuffer);
 }
 
@@ -389,4 +394,15 @@ void DistanceComputeShader::dispatch(wrl::ComPtr<ID3D12GraphicsCommandList> curr
 {
 	SingleIOComputeShader::dispatch(currentCommandList);
 	faceIndexResource->transistionBarrier(currentCommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);
+	normalResource->transistionBarrier(currentCommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);
+}
+
+void DistanceComputeShader::setMode(uint32_t mode)
+{
+	distConstBuffer.mode = mode;
+}
+
+uint32_t DistanceComputeShader::getMode() const
+{
+	return distConstBuffer.mode;
 }

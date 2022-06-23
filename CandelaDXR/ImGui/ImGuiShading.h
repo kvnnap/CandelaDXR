@@ -70,6 +70,7 @@ namespace candela::renderer::imgui
 				bool lightPathFlags[4];
 				ILightTracingComponent* currentComponent;
 				int filterSize;
+				int distanceMetricMode;
 			};
 
 			// Path Shading

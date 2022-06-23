@@ -9,17 +9,20 @@ cbuffer CB1 : register(b0)
 
 cbuffer CB1 : register(b0, space1)
 {
-	float3 Position;
-	float3 Plane;
-	float3 camPosition;
-	float3 camUnitDir;
+	float3 LightPosition;
+	float3 LightPlane;
+	float3 CamPosition;
+	float3 CamUnitDir;
+	uint padding;
+	uint Mode;
 }
 
 Texture2D<float4> input[] : register(t0);
 RWTexture2D<float> output[] : register(u0);
 
 Texture2D<uint> matIds : register(t0, space1);
-StructuredBuffer<Material> materials : register(t1, space1);
+Texture2D<float4> gNormals : register(t1, space1);
+StructuredBuffer<Material> materials : register(t2, space1);
 
 // 64 threads per group should be optimal on both NVIDIA and AMD
 // i.e. 2 warps per thread group or 1 depending on NVIDIA/AMD
@@ -28,28 +31,44 @@ void main( uint3 DTid : SV_DispatchThreadID )
 {
 	if (DTid.x >= ScreenDim.x || DTid.y >= ScreenDim.y)
 		return;
-	const float4 inData = input[InputIndex][DTid.xy];
-	const float3 dir = inData.xyz - Position;
-	const float lenDir = length(dir);
 
-	float2 ratio = Plane.xy / ScreenDim;
+	// Generate coefficient - can generate on the host one-time (more precise and less computation on the gpu)
+	float2 ratio = LightPlane.xy / ScreenDim;
 	ratio.y = -ratio.y;
-	float2 halfPlane = Plane.xy * 0.5f;
+	float2 halfPlane = LightPlane.xy * 0.5f;
 	float2 planePt = float2(-halfPlane.x, halfPlane.y) + ratio * DTid.xy;
-	float3 worldPt = float3(planePt, Plane.z); // Origin is (0,0,0) and normal (0,0,1)
+	float3 worldPt = float3(planePt, LightPlane.z); // Origin is (0,0,0) and normal (0,0,1)
 	float3 vecDir = worldPt;
 	float invDistance = 1.f / length(vecDir);
 	vecDir *= invDistance;
 	float coeff = vecDir.z * vecDir.z * invDistance * invDistance; // cos weighted solid angle approx
+	float result = coeff;
 
-	// Experimental emptiness weighting using radial distance
-	//const float2 halfDim = 0.5f * ScreenDim;
-	//const float maxRad = length(halfDim);
-	//const float rad = length(DTid.xy - halfDim);
-	//float result = inData.w == 1.f ? /*lenDir * */dot(dir/* * (1.f / lenDir)*/, UnitDirection) : 0.015625f * cos(1.5625f * (rad / maxRad));
+	// Load gBuffer values
+	const float4 inData = input[InputIndex][DTid.xy];
+	const float3 gPos = inData.xyz;
+	const float3 gNorm = gNormals[DTid.xy].xyz;
+	const Material gMat = materials[matIds[DTid.xy]];
+	const float3 dir = gPos - LightPosition;
+	const float lenDir = length(dir);
+	const float noValue = 0.015625f;
 
-	float result = inData.w == 1.f ? lenDir * lenDir : 0.015625f;
-	result *= coeff;
+	//
+	if (Mode == 0)
+	{
+		result *= inData.w == 1.f ? lenDir * lenDir : noValue;
+	}
+	else if (Mode == 1)
+	{
+		// Uncomment for view-direction-dependency
+		float cameraDot = 1.f; // dot(CamUnitDir, normalize(gPos - CamPosition));
+		float areaDot = dot(gNorm, normalize(CamPosition - gPos));
+		float camAreaLenInv = 1.f / length(CamPosition - gPos);
+		if (cameraDot < 0.f || (gMat.Dissolve >= 1.f && areaDot < 0.f))
+			result *= noValue;
+		else
+			result *= max(noValue, cameraDot * abs(areaDot) * camAreaLenInv * camAreaLenInv * lenDir * lenDir);
+	}
 
 	output[OutputIndex][DTid.xy] = result;
 }

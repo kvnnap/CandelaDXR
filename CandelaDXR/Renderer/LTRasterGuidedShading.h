@@ -53,6 +53,9 @@ namespace candela::renderer
 		// 
 		void setFilterSize(std::uint32_t filterSize);
 		std::uint32_t getFilterSize() const;
+		void setDistanceMetricMode(std::uint32_t mode);
+		std::uint32_t getDistanceMetricMode() const;
+
 	private:
 		void generateCDF(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, std::uint32_t currentBackBufferIndex, std::uint32_t lightIndex);
 		void regenerateCDFs(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, std::uint32_t currentBackBufferIndex);

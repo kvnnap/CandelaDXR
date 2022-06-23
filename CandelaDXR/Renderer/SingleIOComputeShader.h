@@ -71,6 +71,8 @@ namespace candela::renderer
 		void bindAdditionalResources(UINT baseIndex) override;
 		void updateData(wrl::ComPtr<ID3D12GraphicsCommandList> currentCommandList) override;
 		void dispatch(wrl::ComPtr<ID3D12GraphicsCommandList> currentCommandList) override;
+		void setMode(std::uint32_t mode);
+		std::uint32_t getMode() const;
 
 		struct alignas(256) DistConstBuff
 		{
@@ -78,9 +80,11 @@ namespace candela::renderer
 			DirectX::XMVECTOR plane;
 			DirectX::XMVECTOR camPosition;
 			DirectX::XMVECTOR camUnitDir;
+			std::uint32_t mode;
 		} distConstBuffer;
 	private:
 		directx::Resource* faceIndexResource;
+		directx::Resource* normalResource;
 		directx::Resource* constBufferResource;
 	};
 

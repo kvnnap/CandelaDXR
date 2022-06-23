@@ -137,7 +137,18 @@ void ImGuiShading::visit(LTOptimisedComponent* ltComponent)
 void ImGuiShading::visit(LTRasterGuidedShading* ltRasterComponent)
 {
 	if (filterSize == -1)
+	{
+		distanceMetricMode = ltRasterComponent->getDistanceMetricMode();
 		filterSize = ltRasterComponent->getFilterSize();
+	}
+
+	const char* arr[] = {"Distance", "Distance + Camera"};
+
+	if (ImGui::ListBox("Metric", &distanceMetricMode, &arr[0], 2))
+	{
+		ltRasterComponent->setDistanceMetricMode(distanceMetricMode);
+		changed = true;
+	}
 
 	if (ImGui::DragInt("Filter Size", &filterSize, 2.f, 1, FilterComputeShader::MaxSize))
 	{
