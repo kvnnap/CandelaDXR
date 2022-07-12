@@ -195,6 +195,7 @@
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Animation\Animation.cpp" />
     <ClCompile Include="Chain\AlphaCorrection.cpp" />
     <ClCompile Include="Chain\FileOutput.cpp" />
     <ClCompile Include="Chain\ToneMapping.cpp" />
@@ -205,6 +206,7 @@
     <ClCompile Include="DirectX\RootSignatureManager.cpp" />
     <ClCompile Include="DirectX\ShadingTable.cpp" />
     <ClCompile Include="Environment\Environment.cpp" />
+    <ClCompile Include="Factory\AnimationFactory.cpp" />
     <ClCompile Include="Factory\CameraFactory.cpp" />
     <ClCompile Include="Factory\LightTracingDrawableFactory.cpp" />
     <ClCompile Include="Factory\PathTracingDrawableFactory.cpp" />
@@ -215,6 +217,7 @@
     <ClCompile Include="Factory\VectorFactory.cpp" />
     <ClCompile Include="ImGui\ImGuiManager.cpp" />
     <ClCompile Include="ImGui\ImGuiMaterial.cpp" />
+    <ClCompile Include="ImGui\ImGuiRenderer.cpp" />
     <ClCompile Include="ImGui\ImGuiResourceManager.cpp" />
     <ClCompile Include="ImGui\ImGuiSceneNode.cpp" />
     <ClCompile Include="ImGui\Backend\imgui_impl_dx12.cpp" />
@@ -227,6 +230,7 @@
     <ClCompile Include="Exception\WindowException.cpp" />
     <ClCompile Include="Mathematics\Utils.cpp" />
     <ClCompile Include="Renderer\Camera.cpp" />
+    <ClCompile Include="Renderer\RendererTime.cpp" />
     <ClCompile Include="Renderer\SingleIOComputeShader.cpp" />
     <ClCompile Include="Renderer\Drawable.cpp" />
     <ClCompile Include="Renderer\FpsCounter.cpp" />
@@ -254,6 +258,7 @@
     <ClCompile Include="Window\WindowClass.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Animation\Animation.h" />
     <ClInclude Include="Chain\AlphaCorrection.h" />
     <ClInclude Include="Chain\IChain.h" />
     <ClInclude Include="Chain\FileOutput.h" />
@@ -267,10 +272,13 @@
     <ClInclude Include="DirectX\RootSignatureManager.h" />
     <ClInclude Include="DirectX\ShadingTable.h" />
     <ClInclude Include="DirectX\Types.h" />
+    <ClInclude Include="Factory\AnimationFactory.h" />
     <ClInclude Include="ImGui\ImGuiManager.h" />
+    <ClInclude Include="ImGui\ImGuiRenderer.h" />
     <ClInclude Include="ImGui\ImGuiResourceManager.h" />
     <ClInclude Include="Mathematics\Utils.h" />
     <ClInclude Include="Renderer\ChangeEvent.h" />
+    <ClInclude Include="Renderer\RendererTime.h" />
     <ClInclude Include="Renderer\SingleIOComputeShader.h" />
     <ClInclude Include="Renderer\Drawable.h" />
     <ClInclude Include="Renderer\ILightTracingComponent.h" />

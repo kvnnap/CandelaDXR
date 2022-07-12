@@ -11,6 +11,7 @@
 #include "Renderer/IDrawable.h"
 #include "Scene/Scene.h"
 #include "Scene/ISceneLoader.h"
+#include "Animation/Animation.h"
 
 namespace candela::environment
 {
@@ -20,6 +21,7 @@ namespace candela::environment
     using SceneLoaderManager = feanor::environment::ResourceManager<scene::ISceneLoader>;
     using RendererManager = feanor::environment::ResourceManager<renderer::IRenderer>;
     using DrawableManager = feanor::environment::ResourceManager<renderer::IDrawable>;
+    using AnimationManager = feanor::environment::ResourceManager<animation::Animation>;
 
     class Environment
     {
@@ -33,6 +35,7 @@ namespace candela::environment
         SceneManager& getSceneManager();
         RendererManager& getRendererManager();
         DrawableManager& getDrawableManager();
+        AnimationManager& getAnimationManager();
 
         static Environment& getInstance();
     private:
@@ -47,6 +50,7 @@ namespace candela::environment
         SceneManager sceneManager;
         SceneLoaderManager sceneLoaderManager;
         DrawableManager drawableManager;
+        AnimationManager animationManager;
         RendererManager rendererManager;
     };
 }

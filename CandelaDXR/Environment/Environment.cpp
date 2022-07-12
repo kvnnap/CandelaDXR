@@ -12,6 +12,7 @@
 #include "factory/LightTracingDrawableFactory.h"
 #include "factory/PathTracingDrawableFactory.h"
 #include "factory/CameraFactory.h"
+#include "factory/AnimationFactory.h"
 
 using candela::environment::Environment;
 using candela::environment::ConfigurationManager;
@@ -20,6 +21,7 @@ using candela::environment::SceneLoaderManager;
 using candela::environment::SceneManager;
 using candela::environment::RendererManager;
 using candela::environment::DrawableManager;
+using candela::environment::AnimationManager;
 
 using feanor::configuration::ObjectNode;
 using feanor::configuration::LiteralNode;
@@ -34,6 +36,7 @@ using candela::renderer::factory::RasterRTShadowsDrawableFactory;
 using candela::renderer::factory::LightTracingDrawableFactory;
 using candela::renderer::factory::PathTracingDrawableFactory;
 using candela::renderer::factory::CameraFactory;
+using candela::animation::factory::AnimationFactory;
 
 using std::string;
 using std::make_unique;
@@ -83,6 +86,14 @@ void Environment::bootstrap(const string& configPath)
     for (auto sceneLoader : sceneLoaderManager.getInstanceManager().asList())
         sceneLoader->loadScene();
 
+    // Load animations
+    animationManager.loadSection("Animations", configuration);
+
+    // Connect animations with the scenes
+    auto animations = animationManager.getInstanceManager().asList();
+    for (auto scene : sceneManager.getInstanceManager().asList())
+        scene->loadAnimations(animations);
+
     // Load Drawables - Passes
     drawableManager.loadSection("Drawables", configuration);
 
@@ -118,6 +129,9 @@ void Environment::loadCoreFactories()
 
     // Cameras
     cameraManager.getFactoryManager().registerItem<CameraFactory>("Camera");
+
+    // Animation
+    animationManager.getFactoryManager().registerItem<AnimationFactory>("Animation");
 }
 
 ConfigurationManager& Environment::getConfigurationManager() { return configurationManager; }
@@ -126,3 +140,4 @@ SceneLoaderManager& Environment::getSceneLoaderManager() { return sceneLoaderMan
 SceneManager& Environment::getSceneManager() { return sceneManager; }
 RendererManager& Environment::getRendererManager() { return rendererManager; }
 DrawableManager& Environment::getDrawableManager() { return drawableManager; }
+AnimationManager& Environment::getAnimationManager() { return animationManager; }

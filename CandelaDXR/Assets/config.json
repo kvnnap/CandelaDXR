@@ -6,6 +6,43 @@
       "FilePath": "Assets/CornellBox-Original.obj"
     }
   ],
+  "Animations": [
+    {
+      "Type": "Animation",
+      "Name": "Animation1",
+      "MeshName": "shortBox",
+      "InitialMeshState": "Initial",
+      "States": [
+        {
+          "Name": "Initial",
+          "Translation": {
+            "x": 0,
+            "y": 0.25,
+            "z": 0
+          }
+        },
+        {
+          "Name": "First",
+          "Rotation": {
+            "x": 0,
+            "y": 6.28,
+            "z": 0
+          },
+          "Translation": {
+            "x": 0,
+            "y": 0.25,
+            "z": 0
+          }
+        }
+      ],
+      "Transitions": [
+        {
+          "State": "First",
+          "Duration": 2000
+        }
+      ]
+    }
+  ],
   "Cameras": [
     {
       "Type": "Camera",

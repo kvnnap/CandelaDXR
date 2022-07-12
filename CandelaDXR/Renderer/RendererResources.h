@@ -17,9 +17,11 @@ namespace candela::renderer
 
 	class AccelerationStructure;
 	class IDrawable;
+	class Renderer;
 
 	struct RendererResources
 	{
+		Renderer* renderer;
 		wrl::ComPtr<ID3D12Device> pDevice;
 		wrl::ComPtr<ID3D12Resource> sceneBuffer;
 		wrl::ComPtr<ID3D12Resource> materialBuffer;

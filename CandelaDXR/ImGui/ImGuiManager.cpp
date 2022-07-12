@@ -13,8 +13,10 @@ using candela::directx::DXUtil;
 using candela::directx::Resource;
 
 using candela::renderer::imgui::ImGuiResourceManager;
+using candela::renderer::imgui::ImGuiRenderer;
 using candela::renderer::imgui::ImGuiManager;
 using candela::renderer::ChangeEvent_t;
+using candela::renderer::Renderer;
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
@@ -34,6 +36,12 @@ ChangeEvent_t ImGuiManager::processChangeEvent()
 	ImGui_ImplDX12_NewFrame();
 	ImGui_ImplWin32_NewFrame();
 	ImGui::NewFrame();
+
+	ImGui::Begin("Renderer");
+	imguiRenderer->drawUi();
+	if (imguiRenderer->hasChanged())
+		changeEvent |= static_cast<ChangeEvent_t>(ChangeEvent::Transformation);
+	ImGui::End();
 
 	ImGui::Begin("Transforms");
 	for (auto& imguiSceneNode : imguiSceneNodes)
@@ -105,6 +113,7 @@ void ImGuiManager::init(RendererResources* rRes, wrl::ComPtr<ID3D12GraphicsComma
 		imguiShaders.emplace_back(drawable);
 
 	imguiResourceManager = make_unique<ImGuiResourceManager>(rRes, pImGuiDescriptorHeap.Get());
+	imguiRenderer = make_unique<ImGuiRenderer>(*rRes->renderer);
 }
 
 void ImGuiManager::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, std::uint32_t currentBackBufferIndex)

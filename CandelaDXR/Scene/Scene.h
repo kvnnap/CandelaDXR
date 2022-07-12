@@ -9,6 +9,7 @@
 
 #include "Texture.h"
 #include "Mathematics/Types.h"
+#include "Animation/Animation.h"
 
 namespace candela::scene
 {
@@ -20,11 +21,15 @@ namespace candela::scene
 
 		// Data
 		mathematics::Matrix Transform;
+		DirectX::XMVECTOR CentrePosition;
 		std::string NodeName;
 		std::string GroupName;
+		animation::Animation* NodeAnimation = nullptr;
 
 		//SceneNode();
-		void addChild(const std::string& nodeName, const std::string& groupName);
+		void addChild(const std::string& nodeName, const std::string& groupName, const DirectX::XMVECTOR& centrePos);
+		void animate(std::uint32_t timeMs);
+		bool hasAnimation() const;
 	};
 
 	struct IndexedSpan
@@ -32,6 +37,7 @@ namespace candela::scene
 		std::string Name;
 		std::size_t Start;
 		std::size_t Size;
+		DirectX::XMVECTOR CentrePosition;
 	};
 
 	struct alignas(16) FaceAttributes
@@ -90,6 +96,7 @@ namespace candela::scene
 
 		// Scene graph
 		void addSceneNodeToGroupMapping(const std::string& sceneNodeName, const std::string& groupName);
+		void loadAnimations(const std::vector<animation::Animation*>& animations);
 
 		// Getters
 		const std::vector<mathematics::Vector3>& getVertices() const;
@@ -152,5 +159,6 @@ namespace candela::scene
 
 		// Temp data
 		std::string currentGroupName;
+		DirectX::XMVECTOR posAccumulator;
 	};
 }

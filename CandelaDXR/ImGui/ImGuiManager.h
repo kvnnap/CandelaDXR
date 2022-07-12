@@ -10,6 +10,7 @@
 #include "ImGuiSceneNode.h"
 #include "ImGuiMaterial.h"
 #include "ImGuiShading.h"
+#include "ImGuiRenderer.h"
 #include "ImGuiResourceManager.h"
 
 namespace candela::renderer::imgui
@@ -36,6 +37,7 @@ namespace candela::renderer::imgui
 		std::vector<ImGuiMaterial> imguiMaterials;
 		std::vector<ImGuiShading> imguiShaders;
 		std::unique_ptr<ImGuiResourceManager> imguiResourceManager;
+		std::unique_ptr<ImGuiRenderer> imguiRenderer;
 
 		RendererResources* rendererResources;
 	};

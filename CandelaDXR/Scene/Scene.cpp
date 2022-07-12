@@ -48,6 +48,7 @@ void Scene::startGroup(const string& name)
 	if (spanDataMap.find(name) != spanDataMap.end())
 		ThrowException("Scene group " + string(name) + " already exists");
 	currentGroupName = name;
+	posAccumulator = {};
 	spanDataMap.insert({ name, { name, indexData.size(), 0 } });
 }
 
@@ -77,6 +78,8 @@ void Scene::endGroup()
 	auto& index = spanDataMap[currentGroupName];
 	index.Size = indexData.size() - index.Start;
 	currentGroupName.clear();
+	const float invSize = 1.f / index.Size;
+	index.CentrePosition = DirectX::XMVectorMultiply(posAccumulator, DirectX::XMVectorSet(invSize, invSize, invSize, invSize));
 }
 
 void candela::scene::Scene::addFace(
@@ -88,6 +91,8 @@ void candela::scene::Scene::addFace(
 	// Add mesh data and vector attributes
 	for (auto i = 0; i < 3; ++i)
 	{
+		posAccumulator = DirectX::XMVectorAdd(posAccumulator, DirectX::XMLoadFloat3(&pos[i]));
+		
 		array<float, 8> arr = { pos[i].x, pos[i].y, pos[i].z, tex[i].x, tex[i].y, norm[i].x, norm[i].y, norm[i].z };
 		auto it = collisionMap.find(arr);
 		if (it == collisionMap.end())
@@ -161,9 +166,26 @@ void Scene::recalculateLightsAndFaceAttributes()
 
 void Scene::addSceneNodeToGroupMapping(const string& sceneNodeName, const string& groupName)
 {
-	if (spanDataMap.find(groupName) == spanDataMap.end())
+	auto item = spanDataMap.find(groupName);
+	if (item == spanDataMap.end())
 		return;
-	sceneGraph.addChild(sceneNodeName, groupName);
+	sceneGraph.addChild(sceneNodeName, groupName, item->second.CentrePosition);
+}
+
+void Scene::loadAnimations(const std::vector<animation::Animation*>& animations)
+{
+	// TODO: Use map to make this efficient
+	for (auto animation : animations)
+	{
+		for (auto& node : getSceneGraph().Children)
+		{
+			if (animation->getMeshName() == node.NodeName)
+			{
+				animation->setWorldCentrePosition(node.CentrePosition);
+				node.NodeAnimation = animation;
+			}
+		}
+	}
 }
 
 bool Material::isEmissive() const
@@ -176,7 +198,7 @@ bool Material::isSpecular() const
 	return Dissolve < 1.f;
 }
 
-void SceneNode::addChild(const string& nodeName, const string& groupName)
+void SceneNode::addChild(const string& nodeName, const string& groupName, const DirectX::XMVECTOR& centrePos)
 {
 	// Or throw
 	for (auto& child : Children)
@@ -187,9 +209,22 @@ void SceneNode::addChild(const string& nodeName, const string& groupName)
 	Children.emplace_back(SceneNode{
 		.Parent = this,
 		.Transform = DirectX::XMMatrixIdentity(),
+		.CentrePosition = centrePos,
 		.NodeName = nodeName,
 		.GroupName = groupName
 	});
+}
+
+void SceneNode::animate(std::uint32_t timeMs)
+{
+	if (!hasAnimation())
+		return;
+	Transform = NodeAnimation->animate(timeMs);
+}
+
+bool SceneNode::hasAnimation() const
+{
+	return NodeAnimation != nullptr;
 }
 
 // Getters

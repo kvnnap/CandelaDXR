@@ -77,7 +77,8 @@ Renderer::Renderer(Scene *scene, Camera *camera, const UVector2 &windowDimension
 	  drawables(std::move(p_drawables)),
 	  debugEnabled(debugEnabled),
 	  breakEnabled(breakEnabled),
-	  vsync(vsync)
+	  vsync(vsync),
+	  animationEnabled()
 {
 }
 
@@ -173,6 +174,7 @@ void Renderer::init()
 	// Prepare struct to share with drawables
 	rendererResources = RendererResources
 	{
+		.renderer = this,
 		.pDevice = pDevice,
 		.sceneBuffer = sceneBuffer,
 		.materialBuffer = materialBuffer,
@@ -240,8 +242,18 @@ void Renderer::renderFrame()
 	
 	updateCamera();
 
+	// Animations
+	auto animated = false;
+	if (animationEnabled)
+	{
+		auto timeMs = rendererTime.getTimeMs();
+		for (auto& child : scene->getSceneGraph().Children)
+			animated |= child.hasAnimation(), child.animate(timeMs);
+	}
+
 	ChangeEvent_t camChanged = camera->hasChanged() ? static_cast<ChangeEvent_t>(ChangeEvent::Camera) : 0;
-	ChangeEvent_t changeEvent = camChanged | imguiManager.processChangeEvent();
+	ChangeEvent_t animatedChange = animated ? static_cast<ChangeEvent_t>(ChangeEvent::Transformation) : 0;
+	ChangeEvent_t changeEvent = camChanged | animatedChange | imguiManager.processChangeEvent();
 
 	constexpr auto flags = D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE;
 	
@@ -430,6 +442,26 @@ void Renderer::renderFrame()
 
 	// Reset camera
 	camera->resetChanged();
+}
+
+void Renderer::setAnimationEnabled(bool animEnabled)
+{
+	animationEnabled = animEnabled;
+}
+
+bool Renderer::getAnimationEnabled() const
+{
+	return animationEnabled;
+}
+
+void Renderer::setRendererTime(std::uint32_t timeMs)
+{
+	rendererTime.reset(timeMs);
+}
+
+std::uint32_t Renderer::getRendererTime() const
+{
+	return rendererTime.getTimeMs();
 }
 
 void Renderer::initSceneResources()
@@ -629,7 +661,7 @@ vector<DirectX::XMFLOAT3X4> Renderer::getMatrices()
 {
 	vector<DirectX::XMFLOAT3X4> localMatrices(scene->getSceneGraph().Children.size());
 	auto ptMat = localMatrices.begin();
-	for (auto child : scene->getSceneGraph().Children)
+	for (const auto &child : scene->getSceneGraph().Children)
 		DirectX::XMStoreFloat3x4(&*ptMat++, child.Transform); // Transpose implicit since we read as 4x3 in shader
 	return localMatrices;
 }
@@ -639,7 +671,7 @@ vector<DirectX::XMFLOAT3X3> Renderer::getNormalMatrices()
 	vector<DirectX::XMFLOAT3X3> localMatrices(scene->getSceneGraph().Children.size());
 	auto ptMat = localMatrices.begin();
 	// Transpose needed for row to col major but it cancels with the tranpose we are supposed to apply
-	for (auto child : scene->getSceneGraph().Children)
+	for (const auto &child : scene->getSceneGraph().Children)
 		DirectX::XMStoreFloat3x3(&*ptMat++, DirectX::XMMatrixInverse(nullptr, child.Transform));
 	return localMatrices;
 }
