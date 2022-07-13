@@ -20,5 +20,7 @@ namespace candela::renderer::imgui
 
 		bool changed;
 		bool animating;
+
+		int timeMs;
 	};
 }

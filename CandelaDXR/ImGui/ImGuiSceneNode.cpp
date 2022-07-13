@@ -3,11 +3,12 @@
 #include "ImGuiSceneNode.h"
 
 using candela::renderer::imgui::ImGuiSceneNode;
+using candela::renderer::RendererTime;
 using candela::scene::SceneNode;
 using candela::scene::Scene;
 
-ImGuiSceneNode::ImGuiSceneNode(SceneNode &p_sceneNode, const Scene &scene)
-	: sceneNode(p_sceneNode), position{}, rotation{}, scale{ 1.f, 1.f, 1.f }, changed()
+ImGuiSceneNode::ImGuiSceneNode(SceneNode &p_sceneNode, const RendererTime& rendererTime)
+	: sceneNode(p_sceneNode), rendererTime(rendererTime), position{}, rotation{}, scale{ 1.f, 1.f, 1.f }, changed()
 {
 	XMStoreFloat3(&position, p_sceneNode.CentrePosition);
 	XMStoreFloat3(&worldPosition, DirectX::XMVectorNegate(p_sceneNode.CentrePosition));
@@ -18,7 +19,7 @@ void ImGuiSceneNode::drawUi()
 	ImGui::PushID(this);
 	ImGui::Text(sceneNode.NodeName.c_str());
 
-	if (sceneNode.hasAnimation())
+	if (sceneNode.hasAnimation() && rendererTime.isRunning())
 	{
 		ImGui::Text("Animated");
 		ImGui::PopID();

@@ -11,7 +11,8 @@ namespace candela::renderer
 		SceneUpdate = 0x02,		// Scene buffer content change but no size change
 		SceneChange = 0x04,		// Scene buffer size change (like num of lights, specs and so on)
 		Statistics = 0x08,		// Update stats only
-		Camera = 0x10			// Camera updated
+		Camera = 0x10,			// Camera updated
+		Animation = 0x20,		// Animation update
 	};
 
 	using ChangeEvent_t = std::underlying_type<ChangeEvent>::type;

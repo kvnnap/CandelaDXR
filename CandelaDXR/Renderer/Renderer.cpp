@@ -63,6 +63,7 @@ using candela::renderer::Camera;
 using candela::renderer::IDrawable;
 using candela::renderer::ChangeEvent;
 using candela::renderer::ChangeEvent_t;
+using candela::renderer::RendererTime;
 
 using DirectX::XMVectorSet;
 
@@ -77,8 +78,7 @@ Renderer::Renderer(Scene *scene, Camera *camera, const UVector2 &windowDimension
 	  drawables(std::move(p_drawables)),
 	  debugEnabled(debugEnabled),
 	  breakEnabled(breakEnabled),
-	  vsync(vsync),
-	  animationEnabled()
+	  vsync(vsync)
 {
 }
 
@@ -242,21 +242,22 @@ void Renderer::renderFrame()
 	
 	updateCamera();
 
-	// Animations
-	auto animated = false;
-	if (animationEnabled)
-	{
-		auto timeMs = rendererTime.getTimeMs();
-		for (auto& child : scene->getSceneGraph().Children)
-			animated |= child.hasAnimation(), child.animate(timeMs);
-	}
-
 	ChangeEvent_t camChanged = camera->hasChanged() ? static_cast<ChangeEvent_t>(ChangeEvent::Camera) : 0;
-	ChangeEvent_t animatedChange = animated ? static_cast<ChangeEvent_t>(ChangeEvent::Transformation) : 0;
+	ChangeEvent_t animatedChange = rendererTime.isRunning() ? static_cast<ChangeEvent_t>(ChangeEvent::Animation) : 0;
 	ChangeEvent_t changeEvent = camChanged | animatedChange | imguiManager.processChangeEvent();
 
 	constexpr auto flags = D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE;
 	
+	// Perform animations
+	if (changeEvent & static_cast<ChangeEvent_t>(ChangeEvent::Animation))
+	{
+		auto animated = false;
+		auto timeMs = rendererTime.getTimeMs();
+		for (auto& child : scene->getSceneGraph().Children)
+			animated |= child.hasAnimation(), child.animate(timeMs);
+		changeEvent |= animated ? static_cast<ChangeEvent_t>(ChangeEvent::Transformation) : 0;
+	}
+
 	// Update Transforms
 	if (changeEvent & static_cast<ChangeEvent_t>(ChangeEvent::Transformation))
 	{
@@ -444,24 +445,9 @@ void Renderer::renderFrame()
 	camera->resetChanged();
 }
 
-void Renderer::setAnimationEnabled(bool animEnabled)
+RendererTime& Renderer::getRendererTime()
 {
-	animationEnabled = animEnabled;
-}
-
-bool Renderer::getAnimationEnabled() const
-{
-	return animationEnabled;
-}
-
-void Renderer::setRendererTime(std::uint32_t timeMs)
-{
-	rendererTime.reset(timeMs);
-}
-
-std::uint32_t Renderer::getRendererTime() const
-{
-	return rendererTime.getTimeMs();
+	return rendererTime;
 }
 
 void Renderer::initSceneResources()

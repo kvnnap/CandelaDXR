@@ -1,7 +1,6 @@
 #pragma once
 
 #include <cstdint>
-#include <chrono>
 
 namespace candela::renderer
 {
@@ -9,11 +8,16 @@ namespace candela::renderer
 	{
 	public:
 		RendererTime();
-		void reset(std::uint32_t offsetMs = 0u);
-		std::uint32_t getTimeMs();
+		void start(bool resetElapsedTime);
+		void stop();
+		void setElapsedTime(std::uint32_t elapsedMs);
+
+		bool isRunning() const;
+
 		std::uint32_t getTimeMs() const;
 
 	private:
-		std::chrono::milliseconds ms;
+		std::uint32_t elapsedMs;
+		std::uint32_t startMs;
 	};
 }

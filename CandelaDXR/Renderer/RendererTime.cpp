@@ -1,3 +1,5 @@
+#include <chrono>
+
 #include "RendererTime.h"
 
 using std::uint32_t;
@@ -7,29 +9,46 @@ using std::chrono::system_clock;
 using candela::renderer::RendererTime;
 
 RendererTime::RendererTime()
-	: ms{}
+	: elapsedMs{}, startMs {}
 {
 }
 
-void RendererTime::reset(uint32_t offsetMs)
+void RendererTime::start(bool resetElapsedTime)
 {
-	ms = duration_cast<milliseconds>(system_clock::now().time_since_epoch());
-	ms -= milliseconds(offsetMs);
+	if (resetElapsedTime)
+		elapsedMs = 0;
+	startMs = static_cast<uint32_t>(duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count());
 }
 
-uint32_t RendererTime::getTimeMs()
+void RendererTime::stop()
 {
-	if (ms == milliseconds::zero())
+	elapsedMs = getTimeMs();
+	startMs = 0;
+}
+
+void RendererTime::setElapsedTime(std::uint32_t elapsedMs)
+{
+	if (isRunning())
 	{
-		reset(0u);
-		return 0u;
+		startMs = 0;
+		this->elapsedMs = elapsedMs;
+		start(false);
 	}
+	else
+	{
+		this->elapsedMs = elapsedMs;
+	}
+}
 
-	const RendererTime& rt = *this;
-	return rt.getTimeMs();
+bool RendererTime::isRunning() const
+{
+	return startMs != 0;
 }
 
 uint32_t RendererTime::getTimeMs() const
 {
-	return static_cast<uint32_t>((duration_cast<milliseconds>(system_clock::now().time_since_epoch()) - ms).count());
+	auto ret = elapsedMs;
+	if (isRunning())
+		ret += static_cast<uint32_t>((duration_cast<milliseconds>(system_clock::now().time_since_epoch()) - milliseconds(startMs)).count());
+	return ret;
 }

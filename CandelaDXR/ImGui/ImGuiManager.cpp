@@ -2,8 +2,11 @@
 #include "ImGui/Backend/imgui_impl_win32.h"
 #include "ImGui/Backend/imgui_impl_dx12.h"
 
+#define NOMINMAX
 #include "DirectX/d3dx12.h"
 #include "DirectX/DxUtil.h"
+
+#include "Renderer/Renderer.h"
 
 #include "ImGuiManager.h"
 
@@ -40,7 +43,7 @@ ChangeEvent_t ImGuiManager::processChangeEvent()
 	ImGui::Begin("Renderer");
 	imguiRenderer->drawUi();
 	if (imguiRenderer->hasChanged())
-		changeEvent |= static_cast<ChangeEvent_t>(ChangeEvent::Transformation);
+		changeEvent |= static_cast<ChangeEvent_t>(ChangeEvent::Animation);
 	ImGui::End();
 
 	ImGui::Begin("Transforms");
@@ -103,7 +106,7 @@ void ImGuiManager::init(RendererResources* rRes, wrl::ComPtr<ID3D12GraphicsComma
 	rRes->window->addWndProcCallback(ImGui_ImplWin32_WndProcHandler, TRUE);
 	auto scene = rRes->scene;
 	for (auto& child : scene->getSceneGraph().Children)
-		imguiSceneNodes.emplace_back(child, *scene);
+		imguiSceneNodes.emplace_back(child, rRes->renderer->getRendererTime());
 	for (size_t i = 0; i < scene->getMaterials().size(); ++i)
 	{
 		auto& mat = scene->getMaterials()[i];

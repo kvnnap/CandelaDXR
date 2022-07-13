@@ -40,10 +40,7 @@ namespace candela::renderer
 		void renderFrame() override;
 
 		// Promote to interface?
-		void setAnimationEnabled(bool animEnabled);
-		bool getAnimationEnabled() const;
-		void setRendererTime(std::uint32_t timeMs);
-		std::uint32_t getRendererTime() const;
+		RendererTime& getRendererTime();
 	
 	private:
 		template<class T>
@@ -131,8 +128,5 @@ namespace candela::renderer
 		// otherwise on DX error, program calls abort/exit
 		const bool breakEnabled;
 		const bool vsync;
-
-		// Animation
-		bool animationEnabled;
 	};
 }
