@@ -19,7 +19,7 @@ void ImGuiSceneNode::drawUi()
 	ImGui::PushID(this);
 	ImGui::Text(sceneNode.NodeName.c_str());
 
-	if (sceneNode.hasAnimation() && rendererTime.isRunning())
+	if (rendererTime.isRunning())
 	{
 		ImGui::Text("Animated");
 		ImGui::PopID();

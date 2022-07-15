@@ -2,9 +2,12 @@
 
 #include <DirectXMath.h>
 
+#include "ITransform.h"
+
 namespace candela::renderer
 {
 	class Camera
+		: public ITransform
 	{
 	public:
 		Camera(const DirectX::XMVECTOR& position, const DirectX::XMVECTOR& direction, float nearWidth, float nearHeight, float nearZ, float farZ);
@@ -34,6 +37,9 @@ namespace candela::renderer
 		bool hasChanged() const;
 		void resetChanged();
 
+		void transform(const mathematics::Matrix& trans) override;
+		const DirectX::XMVECTOR& getCentrePosition() const override;
+
 	private:
 		void recalculateViewMatrix();
 		DirectX::XMVECTOR getCrossVector() const;
@@ -42,6 +48,9 @@ namespace candela::renderer
 		DirectX::XMVECTOR position;
 		DirectX::XMVECTOR direction;
 		DirectX::XMVECTOR up;
+		DirectX::XMVECTOR origPosition;
+		DirectX::XMVECTOR origDirection;
+		
 		float nearWidth;
 		float nearHeight;
 		float nearZ;

@@ -64,6 +64,7 @@ using candela::renderer::IDrawable;
 using candela::renderer::ChangeEvent;
 using candela::renderer::ChangeEvent_t;
 using candela::renderer::RendererTime;
+using candela::renderer::AnimationRecord;
 
 using DirectX::XMVectorSet;
 
@@ -251,10 +252,11 @@ void Renderer::renderFrame()
 	// Perform animations
 	if (changeEvent & static_cast<ChangeEvent_t>(ChangeEvent::Animation))
 	{
-		auto animated = false;
+		auto animated = !animationRecords.empty();
 		auto timeMs = rendererTime.getTimeMs();
-		for (auto& child : scene->getSceneGraph().Children)
-			animated |= child.hasAnimation(), child.animate(timeMs);
+		for (auto& animRec : animationRecords)
+			if (animRec.enabled)
+				animRec.transform->transform(animRec.animation->animate(timeMs, animRec.transform->getCentrePosition()));
 		changeEvent |= animated ? static_cast<ChangeEvent_t>(ChangeEvent::Transformation) : 0;
 	}
 
@@ -448,6 +450,16 @@ void Renderer::renderFrame()
 RendererTime& Renderer::getRendererTime()
 {
 	return rendererTime;
+}
+
+void Renderer::setAnimationRecords(vector<AnimationRecord>&& animationRecords)
+{
+	this->animationRecords = std::move(animationRecords);
+}
+
+vector<AnimationRecord>& Renderer::getAnimationRecords()
+{
+	return animationRecords;
 }
 
 void Renderer::initSceneResources()

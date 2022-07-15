@@ -21,6 +21,8 @@ Camera::Camera(const XMVECTOR& position, const XMVECTOR& direction, float nearWi
 {
 	lookTo(direction);
 	perspectiveMatrix = XMMatrixPerspectiveRH(nearWidth, nearHeight, nearZ, farZ);
+	origPosition = position;
+	origDirection = direction;
 }
 
 void Camera::recalculateViewMatrix()
@@ -135,4 +137,17 @@ bool Camera::hasChanged() const
 void Camera::resetChanged()
 {
 	changed = false;
+}
+
+void Camera::transform(const mathematics::Matrix& trans)
+{
+	position = DirectX::XMVector3Transform(origPosition, trans);
+	auto dirTrans = DirectX::XMMatrixTranspose(DirectX::XMMatrixInverse(nullptr, trans));
+	direction = DirectX::XMVector4Transform(origDirection, dirTrans);
+	recalculateViewMatrix();
+}
+
+const DirectX::XMVECTOR& candela::renderer::Camera::getCentrePosition() const
+{
+	return origPosition;
 }

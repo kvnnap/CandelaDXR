@@ -24,10 +24,20 @@
 
 #include "ImGui/ImGuiManager.h"
 #include "RendererResources.h"
+#include "ITransform.h"
+#include "Animation/Animation.h"
 
 namespace candela::renderer
 {
 	namespace wrl = Microsoft::WRL;
+
+	struct AnimationRecord
+	{
+		ITransform* transform;
+		animation::Animation* animation;
+		std::string name;
+		bool enabled;
+	};
 
 	class Renderer
 		: public IRenderer
@@ -41,6 +51,8 @@ namespace candela::renderer
 
 		// Promote to interface?
 		RendererTime& getRendererTime();
+		void setAnimationRecords(std::vector<AnimationRecord>&& animationRecords);
+		std::vector<AnimationRecord>& getAnimationRecords();
 	
 	private:
 		template<class T>
@@ -92,6 +104,9 @@ namespace candela::renderer
 		// Stats
 		FpsCounter fpsCounter;
 		RendererTime rendererTime;
+
+		// Animation
+		std::vector<AnimationRecord> animationRecords;
 
 		// Scene
 		scene::Scene *scene;

@@ -9,7 +9,7 @@ using candela::animation::Animation;
 using candela::animation::Transition;
 using candela::animation::MeshState;
 
-Matrix Animation::animate(std::uint32_t timeMs) const
+Matrix Animation::animate(std::uint32_t timeMs, const DirectX::XMVECTOR& centreTranslation) const
 {
 	timeMs %= getTotalTimeMs();
 
@@ -44,16 +44,6 @@ uint32_t Animation::getTotalTimeMs() const
 	return transitions.back().CumulativeTimeMS;
 }
 
-void Animation::setMeshName(const std::string& meshName)
-{
-	this->meshName = meshName;
-}
-
-void Animation::setWorldCentrePosition(const DirectX::XMVECTOR& centreTranslation)
-{
-	this->centreTranslation = centreTranslation;
-}
-
 void Animation::setInitialMeshStateId(std::size_t initialMeshStateId)
 {
 	this->initialMeshStateId = initialMeshStateId;
@@ -69,10 +59,5 @@ void Animation::addTransition(const Transition& transition)
 	auto prevAccumTime = transitions.empty() ? 0u : transitions.back().CumulativeTimeMS;
 	transitions.push_back(transition);
 	transitions.back().CumulativeTimeMS = prevAccumTime + transitions.back().TimeMS;
-}
-
-const std::string& Animation::getMeshName() const
-{
-	return meshName;
 }
 

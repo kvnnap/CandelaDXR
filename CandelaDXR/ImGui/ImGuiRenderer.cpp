@@ -26,7 +26,7 @@ void ImGuiRenderer::drawUi()
 		changed = true;
 	}
 
-	if (ImGui::DragInt("time", &timeMs))
+	if (ImGui::DragInt("time", &timeMs, 1.f, 0, 2147483647))
 	{
 		renderer.getRendererTime().stop();
 		renderer.getRendererTime().setElapsedTime(timeMs);
@@ -34,6 +34,16 @@ void ImGuiRenderer::drawUi()
 	}
 
 	ImGui::Text("Time: %u", renderer.getRendererTime().getTimeMs());
+
+	for (auto& animRecord : renderer.getAnimationRecords())
+	{
+		ImGui::PushID(&animRecord);
+		if (ImGui::Checkbox("Enabled", &animRecord.enabled))
+			changed = true;
+		ImGui::SameLine();
+		ImGui::Text(animRecord.name.c_str());
+		ImGui::PopID();
+	}
 }
 
 bool ImGuiRenderer::hasChanged() const

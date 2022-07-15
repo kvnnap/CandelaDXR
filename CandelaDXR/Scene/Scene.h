@@ -9,11 +9,12 @@
 
 #include "Texture.h"
 #include "Mathematics/Types.h"
-#include "Animation/Animation.h"
+#include "Renderer/ITransform.h"
 
 namespace candela::scene
 {
 	struct SceneNode
+		: public renderer::ITransform
 	{
 		// Connectivity
 		SceneNode *Parent = nullptr;
@@ -24,12 +25,12 @@ namespace candela::scene
 		DirectX::XMVECTOR CentrePosition;
 		std::string NodeName;
 		std::string GroupName;
-		animation::Animation* NodeAnimation = nullptr;
 
 		//SceneNode();
 		void addChild(const std::string& nodeName, const std::string& groupName, const DirectX::XMVECTOR& centrePos);
-		void animate(std::uint32_t timeMs);
-		bool hasAnimation() const;
+
+		void transform(const mathematics::Matrix& trans) override;
+		const DirectX::XMVECTOR& getCentrePosition() const override;
 	};
 
 	struct IndexedSpan
@@ -96,7 +97,6 @@ namespace candela::scene
 
 		// Scene graph
 		void addSceneNodeToGroupMapping(const std::string& sceneNodeName, const std::string& groupName);
-		void loadAnimations(const std::vector<animation::Animation*>& animations);
 
 		// Getters
 		const std::vector<mathematics::Vector3>& getVertices() const;

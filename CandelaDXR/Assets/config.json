@@ -10,7 +10,6 @@
     {
       "Type": "Animation",
       "Name": "Animation1",
-      "MeshName": "shortBox",
       "InitialMeshState": "Initial",
       "States": [
         {
@@ -110,7 +109,13 @@
       "WindowDimensions": {
         "x": 900,
         "y": 600
-      }
+      },
+      "Animations": [
+        {
+          "Name": "Animation1",
+          "Targets": [ "shortBox" ]
+        }
+      ]
     }
   ]
 }

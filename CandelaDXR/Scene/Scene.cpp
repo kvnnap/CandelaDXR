@@ -172,22 +172,6 @@ void Scene::addSceneNodeToGroupMapping(const string& sceneNodeName, const string
 	sceneGraph.addChild(sceneNodeName, groupName, item->second.CentrePosition);
 }
 
-void Scene::loadAnimations(const std::vector<animation::Animation*>& animations)
-{
-	// TODO: Use map to make this efficient
-	for (auto animation : animations)
-	{
-		for (auto& node : getSceneGraph().Children)
-		{
-			if (animation->getMeshName() == node.NodeName)
-			{
-				animation->setWorldCentrePosition(node.CentrePosition);
-				node.NodeAnimation = animation;
-			}
-		}
-	}
-}
-
 bool Material::isEmissive() const
 {
 	return Emissive.x != 0.f || Emissive.y != 0.f || Emissive.z != 0.f;
@@ -206,25 +190,22 @@ void SceneNode::addChild(const string& nodeName, const string& groupName, const 
 			return;
 
 	// Add the mapping
-	Children.emplace_back(SceneNode{
-		.Parent = this,
-		.Transform = DirectX::XMMatrixIdentity(),
-		.CentrePosition = centrePos,
-		.NodeName = nodeName,
-		.GroupName = groupName
-	});
+	auto &ref = Children.emplace_back();
+	ref.Parent = this;
+	ref.Transform = DirectX::XMMatrixIdentity();
+	ref.CentrePosition = centrePos;
+	ref.NodeName = nodeName;
+	ref.GroupName = groupName;
 }
 
-void SceneNode::animate(std::uint32_t timeMs)
+void SceneNode::transform(const mathematics::Matrix& trans)
 {
-	if (!hasAnimation())
-		return;
-	Transform = NodeAnimation->animate(timeMs);
+	Transform = trans;
 }
 
-bool SceneNode::hasAnimation() const
+const DirectX::XMVECTOR& candela::scene::SceneNode::getCentrePosition() const
 {
-	return NodeAnimation != nullptr;
+	return CentrePosition;
 }
 
 // Getters

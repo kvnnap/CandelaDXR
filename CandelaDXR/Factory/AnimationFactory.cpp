@@ -26,8 +26,6 @@ unique_ptr<Animation> AnimationFactory::create(const ConfigurationNode& config) 
 {
     auto animation = create();
 
-    animation->setMeshName(config["MeshName"].read<std::string>());
-
     std::unordered_map<std::string, std::size_t> stateMap;
 
     std::size_t i{};

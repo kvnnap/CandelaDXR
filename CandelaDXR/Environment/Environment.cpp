@@ -89,11 +89,6 @@ void Environment::bootstrap(const string& configPath)
     // Load animations
     animationManager.loadSection("Animations", configuration);
 
-    // Connect animations with the scenes
-    auto animations = animationManager.getInstanceManager().asList();
-    for (auto scene : sceneManager.getInstanceManager().asList())
-        scene->loadAnimations(animations);
-
     // Load Drawables - Passes
     drawableManager.loadSection("Drawables", configuration);
 
