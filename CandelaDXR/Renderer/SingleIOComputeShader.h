@@ -86,6 +86,7 @@ namespace candela::renderer
 		directx::Resource* faceIndexResource;
 		directx::Resource* normalResource;
 		directx::Resource* constBufferResource;
+		directx::Resource* cdfMaskResource;
 	};
 
 	class FilterComputeShader

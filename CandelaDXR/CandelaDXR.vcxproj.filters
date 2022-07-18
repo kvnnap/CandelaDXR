@@ -198,6 +198,9 @@
     <ClCompile Include="ImGui\ImGuiRenderer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Renderer\RayTracingAOShading.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Exception\GeneralException.h">
@@ -434,6 +437,9 @@
     <ClInclude Include="Renderer\ITransform.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Renderer\RayTracingAOShading.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Shader\PixelShader.hlsl" />
@@ -450,6 +456,7 @@
     <FxCompile Include="Shader\LightTracingImportanceShader.hlsl" />
     <FxCompile Include="Shader\NormalisationPass2ComputeShader.hlsl" />
     <FxCompile Include="Shader\FilterComputeShader.hlsl" />
+    <FxCompile Include="Shader\RayTracingAOShader.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Shader\Utils.hlsli" />

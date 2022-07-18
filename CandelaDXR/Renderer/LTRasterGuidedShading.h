@@ -12,6 +12,7 @@
 #include "ILightTracingComponent.h"
 
 #include "RasterShading.h"
+#include "RayTracingAOShading.h"
 #include "SingleIOComputeShader.h"
 #include "Camera.h"
 
@@ -72,6 +73,7 @@ namespace candela::renderer
 		std::unique_ptr<Camera> lightCamera;
 
 		RasterShading rasterShader;
+		RayTracingAOShading rtaoShading;
 		DistanceComputeShader distanceComputerShader;
 		FilterComputeShader guassianComputerShader;
 		PrefixSumComputeShader prefixSumComputeShader;

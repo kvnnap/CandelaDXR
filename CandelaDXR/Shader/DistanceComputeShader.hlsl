@@ -22,7 +22,8 @@ RWTexture2D<float> output[] : register(u0);
 
 Texture2D<uint> matIds : register(t0, space1);
 Texture2D<float4> gNormals : register(t1, space1);
-StructuredBuffer<Material> materials : register(t2, space1);
+Texture2D<float> cdfMask : register(t2, space1);
+StructuredBuffer<Material> materials : register(t3, space1);
 
 // 64 threads per group should be optimal on both NVIDIA and AMD
 // i.e. 2 warps per thread group or 1 depending on NVIDIA/AMD
@@ -58,13 +59,13 @@ void main( uint3 DTid : SV_DispatchThreadID )
 	{
 		result *= inData.w == 1.f ? lenDir * lenDir : noValue;
 	}
-	else if (Mode == 1)
+	else if (Mode > 0)
 	{
 		// Uncomment for view-direction-dependency
 		float cameraDot = 1.f; // dot(CamUnitDir, normalize(gPos - CamPosition));
 		float areaDot = dot(gNorm, normalize(CamPosition - gPos));
 		float camAreaLenInv = 1.f / length(CamPosition - gPos);
-		if (cameraDot < 0.f || (gMat.Dissolve >= 1.f && areaDot < 0.f))
+		if (cameraDot < 0.f || (gMat.Dissolve >= 1.f && areaDot < 0.f) || (Mode == 2 && cdfMask[DTid.xy] == 0.f))
 			result *= noValue;
 		else
 			result *= max(noValue, cameraDot * abs(areaDot) * camAreaLenInv * camAreaLenInv * lenDir * lenDir);

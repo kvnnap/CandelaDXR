@@ -142,9 +142,9 @@ void ImGuiShading::visit(LTRasterGuidedShading* ltRasterComponent)
 		filterSize = ltRasterComponent->getFilterSize();
 	}
 
-	const char* arr[] = {"Distance", "Distance + Camera"};
+	const char* arr[] = { "Distance", "Distance + Camera", "Distance+Cam+RT" };
 
-	if (ImGui::ListBox("Metric", &distanceMetricMode, &arr[0], 2))
+	if (ImGui::ListBox("Metric", &distanceMetricMode, &arr[0], 3))
 	{
 		ltRasterComponent->setDistanceMetricMode(distanceMetricMode);
 		changed = true;

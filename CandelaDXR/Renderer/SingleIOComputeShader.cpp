@@ -342,13 +342,13 @@ uint32_t FilterComputeShader::getFiltersize() const
 
 DistanceComputeShader::DistanceComputeShader()
 	: SingleIOComputeShader("./Shaders/DistanceComputeShader.cso"), 
-	  distConstBuffer(), faceIndexResource(), normalResource(), constBufferResource()
+	  distConstBuffer(), faceIndexResource(), normalResource(), constBufferResource(), cdfMaskResource()
 {
 }
 
 void DistanceComputeShader::addAdditionalResources(directx::RootSignatureManager* rsm, const std::string& rangeName)
 {
-	rsm->addDescriptorRange(rangeName, CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 3u, 0u, 1u));
+	rsm->addDescriptorRange(rangeName, CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 4u, 0u, 1u));
 	rsm->addDescriptorRange(rangeName, CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_CBV, 1u, 0u, 1u));
 }
 
@@ -366,6 +366,10 @@ void DistanceComputeShader::bindAdditionalResources(UINT baseIndex)
 	srvDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
 	normalResource = resourceManager->getNamedResource("ltr_gNorm");
 	descHeapManager->setSRV(baseIndex++, srvDesc, pDevice, *normalResource);
+
+	srvDesc.Format = DXGI_FORMAT_R32_FLOAT;
+	cdfMaskResource = resourceManager->getNamedResource("ltr_cdf_mask");
+	descHeapManager->setSRV(baseIndex++, srvDesc, pDevice, *cdfMaskResource);
 
 	// Material
 	srvDesc = {};
@@ -387,6 +391,7 @@ void DistanceComputeShader::updateData(wrl::ComPtr<ID3D12GraphicsCommandList> cu
 {
 	faceIndexResource->transistionBarrier(currentCommandList, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 	normalResource->transistionBarrier(currentCommandList, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+	cdfMaskResource->transistionBarrier(currentCommandList, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 	constBufferResource->write(currentCommandList, rendererResources->getTempResource(), &distConstBuffer);
 }
 
@@ -395,6 +400,7 @@ void DistanceComputeShader::dispatch(wrl::ComPtr<ID3D12GraphicsCommandList> curr
 	SingleIOComputeShader::dispatch(currentCommandList);
 	faceIndexResource->transistionBarrier(currentCommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);
 	normalResource->transistionBarrier(currentCommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);
+	cdfMaskResource->transistionBarrier(currentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 }
 
 void DistanceComputeShader::setMode(uint32_t mode)
