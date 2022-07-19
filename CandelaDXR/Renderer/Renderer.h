@@ -53,6 +53,9 @@ namespace candela::renderer
 		RendererTime& getRendererTime();
 		void setAnimationRecords(std::vector<AnimationRecord>&& animationRecords);
 		std::vector<AnimationRecord>& getAnimationRecords();
+
+		bool isStreamingOutput() const;
+		void setStreamOutput(bool value);
 	
 	private:
 		template<class T>
@@ -143,5 +146,6 @@ namespace candela::renderer
 		// otherwise on DX error, program calls abort/exit
 		const bool breakEnabled;
 		const bool vsync;
+		bool streamOutput;
 	};
 }

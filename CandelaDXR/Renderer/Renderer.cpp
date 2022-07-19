@@ -318,7 +318,7 @@ void Renderer::renderFrame()
 			last = i;
 	}
 
-	const auto grabRadiancePressed = keyboard.hasKeyChanged('P') && keyboard.isKeyPressed('P');
+	const auto grabRadiancePressed = keyboard.hasKeyChanged('P') && keyboard.isKeyPressed('P') || streamOutput;
 	const auto& dim = windowDimensions;
 
 	for (size_t i = 0; i < drawables.size(); ++i)
@@ -460,6 +460,16 @@ void Renderer::setAnimationRecords(vector<AnimationRecord>&& animationRecords)
 vector<AnimationRecord>& Renderer::getAnimationRecords()
 {
 	return animationRecords;
+}
+
+bool Renderer::isStreamingOutput() const
+{
+	return streamOutput;
+}
+
+void Renderer::setStreamOutput(bool value)
+{
+	streamOutput = value;
 }
 
 void Renderer::initSceneResources()
