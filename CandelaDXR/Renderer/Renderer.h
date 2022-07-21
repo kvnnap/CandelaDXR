@@ -26,6 +26,7 @@
 #include "RendererResources.h"
 #include "ITransform.h"
 #include "Animation/Animation.h"
+#include "Animation/AnimationSequencer.h"
 
 namespace candela::renderer
 {
@@ -43,7 +44,9 @@ namespace candela::renderer
 		: public IRenderer
 	{
 	public:
-		Renderer(scene::Scene *scene, Camera *camera, const mathematics::UVector2& windowDimensions, std::vector<IDrawable*> drawables, std::uint32_t adapterIndex, bool debugEnabled, bool breakEnabled, bool vsync);
+		Renderer(scene::Scene *scene, Camera *camera, 
+			const mathematics::UVector2& windowDimensions, std::vector<IDrawable*> drawables, 
+			std::uint32_t adapterIndex, bool debugEnabled, bool breakEnabled, bool vsync, bool exitOnAnimCompl);
 		~Renderer();
 
 		void init() override;
@@ -54,9 +57,8 @@ namespace candela::renderer
 		void setAnimationRecords(std::vector<AnimationRecord>&& animationRecords);
 		std::vector<AnimationRecord>& getAnimationRecords();
 
-		bool isStreamingOutput() const;
-		void setStreamOutput(bool value);
-	
+		animation::AnimationSequencer& getAnimationSequencer();
+
 	private:
 		template<class T>
 		using ComPtrVec = std::vector<wrl::ComPtr<T>>;
@@ -110,6 +112,7 @@ namespace candela::renderer
 
 		// Animation
 		std::vector<AnimationRecord> animationRecords;
+		animation::AnimationSequencer animationSequencer;
 
 		// Scene
 		scene::Scene *scene;
@@ -146,6 +149,6 @@ namespace candela::renderer
 		// otherwise on DX error, program calls abort/exit
 		const bool breakEnabled;
 		const bool vsync;
-		bool streamOutput;
+		const bool exitOnAnimationCompletion;
 	};
 }

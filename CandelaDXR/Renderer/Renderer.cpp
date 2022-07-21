@@ -65,10 +65,11 @@ using candela::renderer::ChangeEvent;
 using candela::renderer::ChangeEvent_t;
 using candela::renderer::RendererTime;
 using candela::renderer::AnimationRecord;
+using candela::animation::AnimationSequencer;
 
 using DirectX::XMVectorSet;
 
-Renderer::Renderer(Scene *scene, Camera *camera, const UVector2 &windowDimensions, vector<IDrawable*> p_drawables, uint32_t adapterIndex, bool debugEnabled, bool breakEnabled, bool vsync)
+Renderer::Renderer(Scene *scene, Camera *camera, const UVector2 &windowDimensions, vector<IDrawable*> p_drawables, uint32_t adapterIndex, bool debugEnabled, bool breakEnabled, bool vsync, bool exitOnAnimCompl)
 	: windowDimensions(windowDimensions),
 	  adapterIndex(adapterIndex),
 	  rtvDescriptorSize(),
@@ -79,7 +80,8 @@ Renderer::Renderer(Scene *scene, Camera *camera, const UVector2 &windowDimension
 	  drawables(std::move(p_drawables)),
 	  debugEnabled(debugEnabled),
 	  breakEnabled(breakEnabled),
-	  vsync(vsync)
+	  vsync(vsync),
+	  exitOnAnimationCompletion(exitOnAnimCompl)
 {
 }
 
@@ -113,7 +115,7 @@ Renderer::~Renderer()
 void Renderer::init()
 {
 	camera->setAspectRatio(static_cast<float>(windowDimensions.x) / windowDimensions.y);
-	window = make_unique<Window>("CandelaDXR", windowDimensions.x, windowDimensions.y, &keyboard, &mouse);
+	window = make_unique<Window>("CandelaDXR", windowDimensions.x, windowDimensions.y, &keyboard, &mouse, !animationSequencer.isEnabled());
 	using namespace std::placeholders;
 	window->addWndProcCallback(std::bind(&Renderer::wndCallback, this, _1, _2, _3, _4), 0);
 
@@ -225,6 +227,10 @@ void Renderer::init()
 
 	// Clear temporary buffers
 	rendererResources.resourceManager->clearTemporaryBuffers(currentBackBufferIndex);
+
+	// Anim
+	if (animationSequencer.isEnabled())
+		dxgiFactory->MakeWindowAssociation(window->getHandle(), DXGI_MWA_NO_ALT_ENTER);
 }
 
 void Renderer::renderFrame()
@@ -241,23 +247,48 @@ void Renderer::renderFrame()
 	if (keyboard.hasKeyChanged('Q') && keyboard.isKeyPressed('Q'))
 		imguiManager.setEnabled(!imguiManager.isEnabled());
 	
-	updateCamera();
-
+	if (animationSequencer.isEnabled())
+		imguiManager.setEnabled(false);
+	else
+		updateCamera();
+	
 	ChangeEvent_t camChanged = camera->hasChanged() ? static_cast<ChangeEvent_t>(ChangeEvent::Camera) : 0;
-	ChangeEvent_t animatedChange = rendererTime.isRunning() ? static_cast<ChangeEvent_t>(ChangeEvent::Animation) : 0;
-	ChangeEvent_t changeEvent = camChanged | animatedChange | imguiManager.processChangeEvent();
+	ChangeEvent_t changeEvent = camChanged | imguiManager.processChangeEvent();
 
 	constexpr auto flags = D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE;
 	
 	// Perform animations
-	if (changeEvent & static_cast<ChangeEvent_t>(ChangeEvent::Animation))
+	if (rendererTime.isRunning() || animationSequencer.isEnabled() || (changeEvent & static_cast<ChangeEvent_t>(ChangeEvent::Animation)))
 	{
-		auto animated = !animationRecords.empty();
-		auto timeMs = rendererTime.getTimeMs();
-		for (auto& animRec : animationRecords)
-			if (animRec.enabled)
-				animRec.transform->transform(animRec.animation->animate(timeMs, animRec.transform->getCentrePosition()));
-		changeEvent |= animated ? static_cast<ChangeEvent_t>(ChangeEvent::Transformation) : 0;
+		bool needsAnimation{};
+		if (animationSequencer.isEnabled())
+		{
+			rendererTime.stop();
+			rendererTime.setElapsedTime(animationSequencer.getTimeMs());
+			needsAnimation = animationSequencer.isNewFrame();
+		}
+		else
+		{
+			needsAnimation = rendererTime.isRunning() || (changeEvent & static_cast<ChangeEvent_t>(ChangeEvent::Animation));
+		}
+
+		if (needsAnimation)
+		{
+			auto timeMs = rendererTime.getTimeMs();
+			for (auto& animRec : animationRecords)
+				if (animRec.enabled)
+					animRec.transform->transform(animRec.animation->animate(timeMs, animRec.transform->getCentrePosition()));
+			changeEvent |= static_cast<ChangeEvent_t>(ChangeEvent::Transformation);
+		}
+
+		if (animationSequencer.isEnabled())
+		{
+			animationSequencer.tick();
+			if (exitOnAnimationCompletion && animationSequencer.isCompleted())
+				PostQuitMessage(0);
+			if (!animationSequencer.isEnabled())
+				dxgiFactory->MakeWindowAssociation(window->getHandle(), 0);
+		}
 	}
 
 	// Update Transforms
@@ -318,7 +349,7 @@ void Renderer::renderFrame()
 			last = i;
 	}
 
-	const auto grabRadiancePressed = keyboard.hasKeyChanged('P') && keyboard.isKeyPressed('P') || streamOutput;
+	const auto grabRadiancePressed = keyboard.hasKeyChanged('P') && keyboard.isKeyPressed('P') || (animationSequencer.isEnabled() && animationSequencer.isNewFrame());
 	const auto& dim = windowDimensions;
 
 	for (size_t i = 0; i < drawables.size(); ++i)
@@ -462,14 +493,9 @@ vector<AnimationRecord>& Renderer::getAnimationRecords()
 	return animationRecords;
 }
 
-bool Renderer::isStreamingOutput() const
+AnimationSequencer& Renderer::getAnimationSequencer()
 {
-	return streamOutput;
-}
-
-void Renderer::setStreamOutput(bool value)
-{
-	streamOutput = value;
+	return animationSequencer;
 }
 
 void Renderer::initSceneResources()

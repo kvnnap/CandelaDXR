@@ -19,7 +19,7 @@ namespace candela::ui
 		using WNDCALLBACKFN2 = std::function<LRESULT(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)>;
 
 		// Constructors
-		Window(const std::string& windowName, int width, int height, feanor::io::IKeyWriter* keyboardWriter = nullptr, feanor::io::IMouseWriter* mouseWriter = nullptr);
+		Window(const std::string& windowName, int width, int height, feanor::io::IKeyWriter* keyboardWriter = nullptr, feanor::io::IMouseWriter* mouseWriter = nullptr, bool resizeable = true);
 		virtual ~Window();
 
 		// Methods

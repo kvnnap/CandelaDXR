@@ -115,7 +115,14 @@
           "Name": "Animation1",
           "Targets": [ "shortBox" ]
         }
-      ]
+      ],
+      "AnimationSequencer": {
+        "Enabled": false,
+        "FramesPerAnimation": 1000,
+        "TimeDeltaMs": 200,
+        "MaxTimeMs": 1000
+      },
+      "ExitOnAnimationCompletion": false
     }
   ]
 }

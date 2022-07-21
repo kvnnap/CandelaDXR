@@ -8,7 +8,7 @@
 using candela::renderer::imgui::ImGuiRenderer;
 
 ImGuiRenderer::ImGuiRenderer(Renderer& renderer)
-	: changed(), animating(), streamOutput(), renderer(renderer), timeMs()
+	: changed(), animating(), renderer(renderer), timeMs()
 {
 	animating = renderer.getRendererTime().isRunning();
 }
@@ -18,12 +18,6 @@ void ImGuiRenderer::drawUi()
 	changed = false;
 	auto &rTime = renderer.getRendererTime();
 	animating = rTime.isRunning();
-	streamOutput = renderer.isStreamingOutput();
-
-	if (ImGui::Checkbox("Stream Output", &streamOutput))
-	{
-		renderer.setStreamOutput(streamOutput);
-	}
 
 	if (ImGui::Checkbox("Animation", &animating))
 	{
@@ -42,6 +36,12 @@ void ImGuiRenderer::drawUi()
 	}
 
 	ImGui::Text("Time: %u", rTime.getTimeMs());
+
+	auto& animSeq = renderer.getAnimationSequencer();
+
+	ImGui::Text("FramesPerAnim: %u", animSeq.getFramesPerAnimation());
+	ImGui::Text("TimeDeltaMs: %u", animSeq.getTimeDeltaMs());
+	ImGui::Text("MaxTimeMs: %u", animSeq.getMaxTimeMs());
 
 	for (auto& animRecord : renderer.getAnimationRecords())
 	{

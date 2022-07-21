@@ -22,6 +22,7 @@ using candela::renderer::Renderer;
 using candela::renderer::AnimationRecord;
 using candela::renderer::ITransform;
 using candela::animation::Animation;
+using candela::animation::AnimationSequencer;
 using candela::renderer::factory::RendererFactory;
 using candela::mathematics::factory::UVector2Factory;
 
@@ -60,6 +61,7 @@ unique_ptr<IRenderer> RendererFactory::create(const ConfigurationNode& config) c
 	bool debugEnabled = false;
 	bool breakEnabled = false;
 	bool vsync = false;
+	bool exitOnAnimCompl = false;
 	std::uint32_t adapterIndex = 0;
 	if (config.asObject().keyExists("AdapterIndex"))
 		adapterIndex = config["AdapterIndex"].read<std::uint32_t>();
@@ -69,10 +71,28 @@ unique_ptr<IRenderer> RendererFactory::create(const ConfigurationNode& config) c
 		breakEnabled = config["Break"].read<bool>();
 	if (config.asObject().keyExists("VSync"))
 		vsync = config["VSync"].read<bool>();
+	if (config.asObject().keyExists("ExitOnAnimationCompletion"))
+		exitOnAnimCompl = config["ExitOnAnimationCompletion"].read<bool>();
 	std::vector<IDrawable*> drawables;
 	for (auto& drawableConfig : drawablesConfig)
 		drawables.push_back(&env.getDrawableManager().getInstanceManager().get(drawableConfig));
-	auto renderer = make_unique<Renderer>(scene, camera, dim, std::move(drawables), adapterIndex, debugEnabled, breakEnabled, vsync);
+	auto renderer = make_unique<Renderer>(scene, camera, dim, std::move(drawables), adapterIndex, debugEnabled, breakEnabled, vsync, exitOnAnimCompl);
 	renderer->setAnimationRecords(std::move(animationMapping));
+
+	// Animation Seq
+	if (config.asObject().keyExists("AnimationSequencer"))
+	{
+		const auto& animSeqConf = config["AnimationSequencer"].asObject();
+		auto enabled = animSeqConf["Enabled"].read<bool>();
+		auto framesPerAnimation = animSeqConf["FramesPerAnimation"].read<std::uint32_t>();
+		auto timeDeltaMs = animSeqConf["TimeDeltaMs"].read<std::uint32_t>();
+		auto maxTimeMs = animSeqConf["MaxTimeMs"].read<std::uint32_t>();
+		auto& animSeq = renderer->getAnimationSequencer();
+		animSeq.setFramesPerAnimation(framesPerAnimation);
+		animSeq.setTimeDeltaMs(timeDeltaMs);
+		animSeq.setMaxTimeMs(maxTimeMs);
+		animSeq.setEnabled(enabled);
+	}
+
 	return renderer;
 }

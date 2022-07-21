@@ -119,10 +119,10 @@ void Window::cleanup(bool destroying)
 		PostQuitMessage(0);
 }
 
-Window::Window(const string& windowName, int width, int height, feanor::io::IKeyWriter* keyboardWriter, feanor::io::IMouseWriter* mouseWriter)
+Window::Window(const string& windowName, int width, int height, feanor::io::IKeyWriter* keyboardWriter, feanor::io::IMouseWriter* mouseWriter, bool resizeable)
 	: hWnd(), keyboardWriter(keyboardWriter), mouseWriter(mouseWriter)
 {
-	auto dwClass = WS_OVERLAPPEDWINDOW;
+	auto dwClass = resizeable ? WS_OVERLAPPEDWINDOW : WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU;
 
 	RECT rect = {};
 	rect.right = width;
