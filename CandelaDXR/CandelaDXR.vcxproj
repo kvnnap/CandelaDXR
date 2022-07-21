@@ -196,6 +196,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Animation\Animation.cpp" />
+    <ClCompile Include="Animation\AnimationSequencer.cpp" />
     <ClCompile Include="Chain\AlphaCorrection.cpp" />
     <ClCompile Include="Chain\FileOutput.cpp" />
     <ClCompile Include="Chain\ToneMapping.cpp" />
@@ -260,6 +261,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Animation\Animation.h" />
+    <ClInclude Include="Animation\AnimationSequencer.h" />
     <ClInclude Include="Chain\AlphaCorrection.h" />
     <ClInclude Include="Chain\IChain.h" />
     <ClInclude Include="Chain\FileOutput.h" />
