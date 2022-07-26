@@ -260,9 +260,9 @@ void RasterShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandL
 
 	std::uint32_t i = 0;
 	std::array<std::uint32_t, 2> constants;
-	for (const auto &child : rendererResources->scene->getSceneGraph().Children)
+	for (const auto *child : rendererResources->scene->getSceneGraph().getLeafNodes())
 	{
-		auto& indexedSpan = rendererResources->scene->getMeshIndexedSpan(child.GroupName);
+		auto& indexedSpan = rendererResources->scene->getMeshIndexedSpan(child->GroupName);
 		constants = { i++, static_cast<UINT>(indexedSpan.Start) };
 		pCurrentCommandList->SetGraphicsRoot32BitConstants(1u, 2u, constants.data(), 0u);
 		pCurrentCommandList->DrawIndexedInstanced(static_cast<UINT>(indexedSpan.Size), 1u, static_cast<UINT>(indexedSpan.Start), 0u, 0u);

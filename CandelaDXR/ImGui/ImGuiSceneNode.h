@@ -18,6 +18,7 @@ namespace candela::renderer::imgui
 	private:
 		scene::SceneNode &sceneNode;
 		const RendererTime& rendererTime;
+		std::vector<ImGuiSceneNode> children;
 
 		DirectX::XMFLOAT3 worldPosition;
 		DirectX::XMFLOAT3 position;

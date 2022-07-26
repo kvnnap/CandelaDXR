@@ -13,6 +13,7 @@ using std::runtime_error;
 
 using candela::mathematics::Vector2;
 using candela::mathematics::Vector3;
+using candela::mathematics::Matrix;
 
 using candela::scene::Texture;
 using candela::scene::Material;
@@ -164,12 +165,12 @@ void Scene::recalculateLightsAndFaceAttributes()
 	}
 }
 
-void Scene::addSceneNodeToGroupMapping(const string& sceneNodeName, const string& groupName)
+void Scene::addSceneNodeToGroupMapping(SceneNode& sceneNode, const string& sceneNodeName, const string& groupName)
 {
 	auto item = spanDataMap.find(groupName);
 	if (item == spanDataMap.end())
 		return;
-	sceneGraph.addChild(sceneNodeName, groupName, item->second.CentrePosition);
+	sceneNode.addChild(sceneNodeName, groupName, item->second.CentrePosition);
 }
 
 bool Material::isEmissive() const
@@ -182,28 +183,65 @@ bool Material::isSpecular() const
 	return Dissolve < 1.f;
 }
 
-void SceneNode::addChild(const string& nodeName, const string& groupName, const DirectX::XMVECTOR& centrePos)
+bool SceneNode::isLeaf() const
+{
+	return Children.empty();
+}
+
+SceneNode& SceneNode::addChild(const string& nodeName, const string& groupName, const DirectX::XMVECTOR& centrePos)
 {
 	// Or throw
 	for (auto& child : Children)
-		if (child.NodeName == nodeName)
-			return;
+		if (child->NodeName == nodeName)
+			throw std::runtime_error("child nodeName already exists");
 
 	// Add the mapping
-	auto &ref = Children.emplace_back();
-	ref.Parent = this;
-	ref.Transform = DirectX::XMMatrixIdentity();
-	ref.CentrePosition = centrePos;
-	ref.NodeName = nodeName;
-	ref.GroupName = groupName;
+	auto &ref = Children.emplace_back(std::make_unique<SceneNode>());
+	ref->Parent = this;
+	ref->Transform = DirectX::XMMatrixIdentity();
+	ref->CentrePosition = centrePos;
+	ref->NodeName = nodeName;
+	ref->GroupName = groupName;
+	return *ref;
 }
 
-void SceneNode::transform(const mathematics::Matrix& trans)
+Matrix SceneNode::getTransform() const
+{
+	Matrix mat = Transform;
+	const SceneNode* sceneNode = Parent;
+	while (sceneNode)
+	{
+		mat *= sceneNode->Transform;
+		sceneNode = sceneNode->Parent;
+	}
+	return mat;
+}
+
+void SceneNode::getLeafNodes(vector<SceneNode*>& leafs)
+{
+	if (isLeaf())
+	{
+		leafs.push_back(this);
+		return;
+	}
+
+	for (auto& child : Children)
+		child->getLeafNodes(leafs);
+}
+
+vector<SceneNode*> SceneNode::getLeafNodes()
+{
+	vector<SceneNode*> leafs;
+	getLeafNodes(leafs);
+	return leafs;
+}
+
+void SceneNode::transform(const Matrix& trans)
 {
 	Transform = trans;
 }
 
-const DirectX::XMVECTOR& candela::scene::SceneNode::getCentrePosition() const
+const DirectX::XMVECTOR& SceneNode::getCentrePosition() const
 {
 	return CentrePosition;
 }

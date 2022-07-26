@@ -2,6 +2,8 @@
 
 #include "ImGuiSceneNode.h"
 
+#include <algorithm>
+
 using candela::renderer::imgui::ImGuiSceneNode;
 using candela::renderer::RendererTime;
 using candela::scene::SceneNode;
@@ -12,13 +14,14 @@ ImGuiSceneNode::ImGuiSceneNode(SceneNode &p_sceneNode, const RendererTime& rende
 {
 	XMStoreFloat3(&position, p_sceneNode.CentrePosition);
 	XMStoreFloat3(&worldPosition, DirectX::XMVectorNegate(p_sceneNode.CentrePosition));
+
+	for (auto& sceneChild : p_sceneNode.Children)
+		children.emplace_back(*sceneChild, rendererTime);
 }
 
 void ImGuiSceneNode::drawUi()
 {
 	ImGui::PushID(this);
-	ImGui::Text(sceneNode.NodeName.c_str());
-
 	if (rendererTime.isRunning())
 	{
 		ImGui::Text("Animated");
@@ -26,9 +29,20 @@ void ImGuiSceneNode::drawUi()
 		return;
 	}
 
-	changed  = ImGui::DragFloat3("Position", &position.x, 0.01f);
-	changed |= ImGui::DragFloat3("Rotation", &rotation.x, 0.01f);
-	changed |= ImGui::DragFloat3("Scale", &scale.x, 0.01f, 0.f, 1000.f);
+	if (sceneNode.isLeaf() || ImGui::TreeNode(sceneNode.NodeName.c_str()))
+	{
+		if (sceneNode.isLeaf())
+			ImGui::Text(sceneNode.NodeName.c_str());
+
+		changed = ImGui::DragFloat3("Position", &position.x, 0.01f);
+		changed |= ImGui::DragFloat3("Rotation", &rotation.x, 0.01f);
+		changed |= ImGui::DragFloat3("Scale", &scale.x, 0.01f, 0.f, 1000.f);
+		
+		for (auto& nodeChild : children)
+			nodeChild.drawUi();
+		if (!sceneNode.isLeaf())
+			ImGui::TreePop();
+	}
 
 	ImGui::PopID();
 
@@ -45,5 +59,5 @@ void ImGuiSceneNode::drawUi()
 
 bool ImGuiSceneNode::hasChanged() const
 {
-	return changed;
+	return changed || std::any_of(children.begin(), children.end(), [](const ImGuiSceneNode& s) { return s.hasChanged(); });
 }

@@ -47,12 +47,9 @@ ChangeEvent_t ImGuiManager::processChangeEvent()
 	ImGui::End();
 
 	ImGui::Begin("Transforms");
-	for (auto& imguiSceneNode : imguiSceneNodes)
-	{
-		imguiSceneNode.drawUi();
-		if (imguiSceneNode.hasChanged())
-			changeEvent |= static_cast<ChangeEvent_t>(ChangeEvent::Transformation);
-	}
+	imguiRootSceneNode->drawUi();
+	if (imguiRootSceneNode->hasChanged())
+		changeEvent |= static_cast<ChangeEvent_t>(ChangeEvent::Transformation);
 	ImGui::End();
 
 	ImGui::Begin("Materials");
@@ -105,8 +102,7 @@ void ImGuiManager::init(RendererResources* rRes, wrl::ComPtr<ID3D12GraphicsComma
 	ImGui::StyleColorsDark();
 	rRes->window->addWndProcCallback(ImGui_ImplWin32_WndProcHandler, TRUE);
 	auto scene = rRes->scene;
-	for (auto& child : scene->getSceneGraph().Children)
-		imguiSceneNodes.emplace_back(child, rRes->renderer->getRendererTime());
+	imguiRootSceneNode = make_unique<ImGuiSceneNode>(scene->getSceneGraph(), rRes->renderer->getRendererTime());
 	for (size_t i = 0; i < scene->getMaterials().size(); ++i)
 	{
 		auto& mat = scene->getMaterials()[i];

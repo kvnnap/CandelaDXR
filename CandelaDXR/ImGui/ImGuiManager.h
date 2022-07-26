@@ -33,7 +33,7 @@ namespace candela::renderer::imgui
 	private:
 		// ImGui
 		wrl::ComPtr<ID3D12DescriptorHeap> pImGuiDescriptorHeap;
-		std::vector<ImGuiSceneNode> imguiSceneNodes;
+		std::unique_ptr<ImGuiSceneNode> imguiRootSceneNode;
 		std::vector<ImGuiMaterial> imguiMaterials;
 		std::vector<ImGuiShading> imguiShaders;
 		std::unique_ptr<ImGuiResourceManager> imguiResourceManager;

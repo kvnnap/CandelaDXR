@@ -44,14 +44,14 @@ void AccelerationStructure::init(RendererResources* rendererResources, wrl::ComP
 		blasBuffers.push_back(DXUtil::createBottomLevelAS(rendererResources->pDevice, pCurrentCommandList, { blasData }, 3 * sizeof(float)));
 	}
 
-	for (const auto& child : scene->getSceneGraph().Children)
+	for (const auto* child : scene->getSceneGraph().getLeafNodes())
 	{
-		auto& indexedSpan = scene->getMeshIndexedSpan(child.GroupName);
+		auto& indexedSpan = scene->getMeshIndexedSpan(child->GroupName);
 		auto& ref = tlasInstanceData.emplace_back(DXUtil::TopLevelAccelerationData{
 			.instanceId = indexedSpan.Start,
-			.blasBuffer = blasBuffers[bufferMap.at(child.GroupName)]
+			.blasBuffer = blasBuffers[bufferMap.at(child->GroupName)]
 			});
-		XMStoreFloat3x4(&ref.transform, child.Transform);
+		XMStoreFloat3x4(&ref.transform, child->getTransform());
 	}
 
 	// Build Top-Layer
@@ -68,8 +68,8 @@ void AccelerationStructure::buildTlas(wrl::ComPtr<ID3D12GraphicsCommandList>& co
 {
 	// Warning, we are assuming order - will not be the case when instancing in the future
 	auto tlas = tlasInstanceData.begin();
-	for (const auto& child : rendererResources->scene->getSceneGraph().Children)
-		XMStoreFloat3x4(&(tlas++)->transform, child.Transform);
+	for (const auto* child : rendererResources->scene->getSceneGraph().getLeafNodes())
+		XMStoreFloat3x4(&(tlas++)->transform, child->getTransform());
 
 	DXUtil::buildTopLevelAS(rendererResources->pDevice, commandList, tlasInstanceData, tempResource, true, tlasBuffers);
 }

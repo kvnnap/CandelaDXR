@@ -82,6 +82,9 @@ void WavefrontSceneLoader::loadScene()
         }, tinyMat.name);
     }
 
+    auto objName = path(filePath).filename().string();
+    auto& sceneNode = scene->getSceneGraph().addChild(objName, {}, {});
+
     // Grouping - for each mesh group
     for (const auto& shape : shapes)
     {
@@ -147,7 +150,7 @@ void WavefrontSceneLoader::loadScene()
         scene->endGroup();
 
         // Add to scene graph
-        scene->addSceneNodeToGroupMapping(shape.name, shape.name);
+        scene->addSceneNodeToGroupMapping(sceneNode, shape.name, shape.name);
     }
 }
 

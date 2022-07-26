@@ -693,20 +693,24 @@ void Renderer::resizeFloatTargetTextures()
 
 vector<DirectX::XMFLOAT3X4> Renderer::getMatrices()
 {
-	vector<DirectX::XMFLOAT3X4> localMatrices(scene->getSceneGraph().Children.size());
+	vector<scene::SceneNode*> leafs;
+	scene->getSceneGraph().getLeafNodes(leafs);
+	vector<DirectX::XMFLOAT3X4> localMatrices(leafs.size());
 	auto ptMat = localMatrices.begin();
-	for (const auto &child : scene->getSceneGraph().Children)
-		DirectX::XMStoreFloat3x4(&*ptMat++, child.Transform); // Transpose implicit since we read as 4x3 in shader
+	for (const auto* child : leafs)
+		DirectX::XMStoreFloat3x4(&*ptMat++, child->getTransform()); // Transpose implicit since we read as 4x3 in shader
 	return localMatrices;
 }
 
 vector<DirectX::XMFLOAT3X3> Renderer::getNormalMatrices()
 {
-	vector<DirectX::XMFLOAT3X3> localMatrices(scene->getSceneGraph().Children.size());
+	vector<scene::SceneNode*> leafs;
+	scene->getSceneGraph().getLeafNodes(leafs);
+	vector<DirectX::XMFLOAT3X3> localMatrices(leafs.size());
 	auto ptMat = localMatrices.begin();
 	// Transpose needed for row to col major but it cancels with the tranpose we are supposed to apply
-	for (const auto &child : scene->getSceneGraph().Children)
-		DirectX::XMStoreFloat3x3(&*ptMat++, DirectX::XMMatrixInverse(nullptr, child.Transform));
+	for (const auto* child : leafs)
+		DirectX::XMStoreFloat3x3(&*ptMat++, DirectX::XMMatrixInverse(nullptr, child->getTransform()));
 	return localMatrices;
 }
 

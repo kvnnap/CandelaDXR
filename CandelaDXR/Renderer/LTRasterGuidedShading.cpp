@@ -136,7 +136,7 @@ void LTRasterGuidedShading::generateCDF(wrl::ComPtr<ID3D12GraphicsCommandList> p
 		DirectX::XMLoadFloat3(&normals[i2]));
 
 	auto& sceneNode = scene->getSceneGraph();
-	const auto& lightTransform = sceneNode.Children[light.InstanceIndex].Transform;
+	const auto& lightTransform = sceneNode.getLeafNodes()[light.InstanceIndex]->getTransform();
 	const auto normalTransform = DirectX::XMMatrixTranspose(DirectX::XMMatrixInverse(nullptr, lightTransform));
 
 	// Apply necessary transforms

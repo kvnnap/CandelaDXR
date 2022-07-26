@@ -5,6 +5,7 @@
 #include <string>
 #include <array>
 #include <map>
+#include <memory>
 #include <unordered_map>
 
 #include "Texture.h"
@@ -18,7 +19,7 @@ namespace candela::scene
 	{
 		// Connectivity
 		SceneNode *Parent = nullptr;
-		std::vector<SceneNode> Children;
+		std::vector<std::unique_ptr<SceneNode>> Children;
 
 		// Data
 		mathematics::Matrix Transform;
@@ -27,7 +28,12 @@ namespace candela::scene
 		std::string GroupName;
 
 		//SceneNode();
-		void addChild(const std::string& nodeName, const std::string& groupName, const DirectX::XMVECTOR& centrePos);
+		SceneNode& addChild(const std::string& nodeName, const std::string& groupName, const DirectX::XMVECTOR& centrePos);
+		bool isLeaf() const;
+		mathematics::Matrix getTransform() const;
+
+		void getLeafNodes(std::vector<SceneNode*>& leafs);
+		std::vector<SceneNode*> getLeafNodes();
 
 		void transform(const mathematics::Matrix& trans) override;
 		const DirectX::XMVECTOR& getCentrePosition() const override;
@@ -96,7 +102,7 @@ namespace candela::scene
 		void recalculateLightsAndFaceAttributes();
 
 		// Scene graph
-		void addSceneNodeToGroupMapping(const std::string& sceneNodeName, const std::string& groupName);
+		void addSceneNodeToGroupMapping(SceneNode& sceneNode, const std::string& sceneNodeName, const std::string& groupName);
 
 		// Getters
 		const std::vector<mathematics::Vector3>& getVertices() const;
