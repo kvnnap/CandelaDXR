@@ -204,6 +204,12 @@
     <ClCompile Include="Animation\AnimationSequencer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Renderer\DenoiserShading.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Factory\DenoiserDrawableFactory.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Exception\GeneralException.h">
@@ -444,6 +450,18 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Animation\AnimationSequencer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="NVIDIA\NRDIntegration.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="NVIDIA\NRDIntegration.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Renderer\DenoiserShading.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Factory\DenoiserDrawableFactory.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

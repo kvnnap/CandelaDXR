@@ -89,13 +89,13 @@
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>.;$(FEANOR_ROOT)\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>.;$(FEANOR_ROOT)\include;C:\Users\kvnna\source\repos\RayTracingDenoiser\_NRD_SDK\Include;C:\Users\kvnna\source\repos\NRI\_NRI_SDK\Include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);dxguid.lib;d3d12.lib;dxgi.lib;d3dcompiler.lib;wininet.lib;Core_d.lib;stb_d.lib;tinyobjloader_d.lib;imgui_d.lib</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(FEANOR_ROOT)\lib</AdditionalLibraryDirectories>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);dxguid.lib;d3d12.lib;dxgi.lib;d3dcompiler.lib;wininet.lib;NRD.lib;NRI.lib;Core_d.lib;stb_d.lib;tinyobjloader_d.lib;imgui_d.lib</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(FEANOR_ROOT)\lib;C:\Users\kvnna\source\repos\RayTracingDenoiser\_NRD_SDK\Lib\Debug;C:\Users\kvnna\source\repos\NRI\_NRI_SDK\Lib\Debug</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
       <Command>xcopy "$(ProjectDir)Assets" "$(OutDir)Assets\" /E /Y</Command>
@@ -117,15 +117,15 @@
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>.;$(FEANOR_ROOT)\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>.;$(FEANOR_ROOT)\include;C:\Users\kvnna\source\repos\RayTracingDenoiser\_NRD_SDK\Include;C:\Users\kvnna\source\repos\NRI\_NRI_SDK\Include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);dxguid.lib;d3d12.lib;dxgi.lib;d3dcompiler.lib;wininet.lib;Core.lib;stb.lib;tinyobjloader.lib;imgui.lib</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(FEANOR_ROOT)\lib</AdditionalLibraryDirectories>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);dxguid.lib;d3d12.lib;dxgi.lib;d3dcompiler.lib;wininet.lib;NRD.lib;NRI.lib;Core.lib;stb.lib;tinyobjloader.lib;imgui.lib</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(FEANOR_ROOT)\lib;C:\Users\kvnna\source\repos\RayTracingDenoiser\_NRD_SDK\Lib\Release;C:\Users\kvnna\source\repos\NRI\_NRI_SDK\Lib\Release</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
       <Command>xcopy "$(ProjectDir)Assets" "$(OutDir)Assets\" /E /Y</Command>
@@ -145,13 +145,13 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>.;$(FEANOR_ROOT)\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>.;$(FEANOR_ROOT)\include;C:\Users\kvnna\source\repos\RayTracingDenoiser\_NRD_SDK\Include;C:\Users\kvnna\source\repos\NRI\_NRI_SDK\Include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);dxguid.lib;d3d12.lib;dxgi.lib;d3dcompiler.lib;wininet.lib;Core_d.lib;stb_d.lib;tinyobjloader_d.lib;imgui_d.lib</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(FEANOR_ROOT)\lib</AdditionalLibraryDirectories>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);dxguid.lib;d3d12.lib;dxgi.lib;d3dcompiler.lib;wininet.lib;NRD.lib;NRI.lib;Core_d.lib;stb_d.lib;tinyobjloader_d.lib;imgui_d.lib</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(FEANOR_ROOT)\lib;C:\Users\kvnna\source\repos\RayTracingDenoiser\_NRD_SDK\Lib\Debug;C:\Users\kvnna\source\repos\NRI\_NRI_SDK\Lib\Debug</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
       <Command>xcopy "$(ProjectDir)Assets" "$(OutDir)Assets\" /E /Y</Command>
@@ -173,15 +173,15 @@
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>.;$(FEANOR_ROOT)\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>.;$(FEANOR_ROOT)\include;C:\Users\kvnna\source\repos\RayTracingDenoiser\_NRD_SDK\Include;C:\Users\kvnna\source\repos\NRI\_NRI_SDK\Include</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);dxguid.lib;d3d12.lib;dxgi.lib;d3dcompiler.lib;wininet.lib;Core.lib;stb.lib;tinyobjloader.lib;imgui.lib</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(FEANOR_ROOT)\lib</AdditionalLibraryDirectories>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);dxguid.lib;d3d12.lib;dxgi.lib;d3dcompiler.lib;wininet.lib;NRD.lib;NRI.lib;Core.lib;stb.lib;tinyobjloader.lib;imgui.lib</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(FEANOR_ROOT)\lib;C:\Users\kvnna\source\repos\RayTracingDenoiser\_NRD_SDK\Lib\Release;C:\Users\kvnna\source\repos\NRI\_NRI_SDK\Lib\Release</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
       <Command>xcopy "$(ProjectDir)Assets" "$(OutDir)Assets\" /E /Y</Command>
@@ -209,6 +209,7 @@
     <ClCompile Include="Environment\Environment.cpp" />
     <ClCompile Include="Factory\AnimationFactory.cpp" />
     <ClCompile Include="Factory\CameraFactory.cpp" />
+    <ClCompile Include="Factory\DenoiserDrawableFactory.cpp" />
     <ClCompile Include="Factory\LightTracingDrawableFactory.cpp" />
     <ClCompile Include="Factory\PathTracingDrawableFactory.cpp" />
     <ClCompile Include="Factory\RasterDrawableFactory.cpp" />
@@ -231,6 +232,7 @@
     <ClCompile Include="Exception\WindowException.cpp" />
     <ClCompile Include="Mathematics\Utils.cpp" />
     <ClCompile Include="Renderer\Camera.cpp" />
+    <ClCompile Include="Renderer\DenoiserShading.cpp" />
     <ClCompile Include="Renderer\RayTracingAOShading.cpp" />
     <ClCompile Include="Renderer\RendererTime.cpp" />
     <ClCompile Include="Renderer\SingleIOComputeShader.cpp" />
@@ -276,11 +278,15 @@
     <ClInclude Include="DirectX\ShadingTable.h" />
     <ClInclude Include="DirectX\Types.h" />
     <ClInclude Include="Factory\AnimationFactory.h" />
+    <ClInclude Include="Factory\DenoiserDrawableFactory.h" />
     <ClInclude Include="ImGui\ImGuiManager.h" />
     <ClInclude Include="ImGui\ImGuiRenderer.h" />
     <ClInclude Include="ImGui\ImGuiResourceManager.h" />
     <ClInclude Include="Mathematics\Utils.h" />
+    <ClInclude Include="NVIDIA\NRDIntegration.h" />
+    <ClInclude Include="NVIDIA\NRDIntegration.hpp" />
     <ClInclude Include="Renderer\ChangeEvent.h" />
+    <ClInclude Include="Renderer\DenoiserShading.h" />
     <ClInclude Include="Renderer\ITransform.h" />
     <ClInclude Include="Renderer\RayTracingAOShading.h" />
     <ClInclude Include="Renderer\RendererTime.h" />

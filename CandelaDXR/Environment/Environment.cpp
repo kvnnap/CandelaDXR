@@ -11,6 +11,7 @@
 #include "factory/RasterRTShadowsDrawableFactory.h"
 #include "factory/LightTracingDrawableFactory.h"
 #include "factory/PathTracingDrawableFactory.h"
+#include "factory/DenoiserDrawableFactory.h"
 #include "factory/CameraFactory.h"
 #include "factory/AnimationFactory.h"
 
@@ -35,6 +36,7 @@ using candela::renderer::factory::RasterDrawableFactory;
 using candela::renderer::factory::RasterRTShadowsDrawableFactory;
 using candela::renderer::factory::LightTracingDrawableFactory;
 using candela::renderer::factory::PathTracingDrawableFactory;
+using candela::renderer::factory::DenoiserDrawableFactory;
 using candela::renderer::factory::CameraFactory;
 using candela::animation::factory::AnimationFactory;
 
@@ -121,6 +123,7 @@ void Environment::loadCoreFactories()
     drawableManager.getFactoryManager().registerItem<RasterRTShadowsDrawableFactory>("RasterRTShadowsDrawable");
     drawableManager.getFactoryManager().registerItem<LightTracingDrawableFactory>("LightTracingDrawable");
     drawableManager.getFactoryManager().registerItem<PathTracingDrawableFactory>("PathTracingDrawable");
+    drawableManager.getFactoryManager().registerItem<DenoiserDrawableFactory>("DenoiserDrawable");
 
     // Cameras
     cameraManager.getFactoryManager().registerItem<CameraFactory>("Camera");

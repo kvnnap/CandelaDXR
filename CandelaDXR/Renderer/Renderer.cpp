@@ -186,6 +186,7 @@ void Renderer::init()
 		.specularBuffer = specularBuffer,
 		.matrices = matrices,
 		.normalMatrices = normalMatrices,
+		.adapter = adapter,
 		.textures = textures,
 		.pRTVDescriptorHeap = pRTVDescriptorHeap,
 		.pRTVRadBackBuffer = pRTVRadBackBuffer,

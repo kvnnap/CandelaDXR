@@ -6,6 +6,7 @@
 #include "DirectX/Types.h"
 #include "DirectX/Resource.h"
 #include "DirectX/ResourceManager.h"
+#include <dxgi1_6.h>
 #include "Scene/Scene.h"
 #include "Mathematics/Types.h"
 #include "Camera.h"
@@ -30,6 +31,7 @@ namespace candela::renderer
 		wrl::ComPtr<ID3D12Resource> specularBuffer;
 		wrl::ComPtr<ID3D12Resource> matrices;
 		wrl::ComPtr<ID3D12Resource> normalMatrices;
+		wrl::ComPtr<IDXGIAdapter> adapter;
 		std::vector<directx::Resource> textures;
 		wrl::ComPtr<ID3D12DescriptorHeap> pRTVDescriptorHeap;
 		std::shared_ptr<directx::Resource> pRTVRadBackBuffer;
