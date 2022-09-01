@@ -371,9 +371,10 @@ void Renderer::renderFrame()
 		pCurrentCommandList->SetComputeRootSignature(computeRootSignature.Get());
 		pCurrentCommandList->SetDescriptorHeaps(1u, computeDescriptorHeap.GetAddressOf());
 		pCurrentCommandList->SetComputeRootDescriptorTable(1u, computeDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
-		// in, out, clear, accumulate, linearToSrgb
-		uint32_t c32data[5] = { 1u, 2u, first == i ? 1u : 0u, 1u, !grabRadiancePressed && last == i ? 1u : 0u };
-		pCurrentCommandList->SetComputeRoot32BitConstants(0u, 5u, &c32data[0], 0);
+		// in, out, clear, accumulate, toneMap, ToSrgb
+		uint32_t tM = !grabRadiancePressed && last == i ? 1u : 0u;
+		uint32_t c32data[6] = { 1u, 2u, first == i ? 1u : 0u, 1u, tM, tM };
+		pCurrentCommandList->SetComputeRoot32BitConstants(0u, 6u, &c32data[0], 0);
 		pCurrentCommandList->Dispatch(dim.x / 8 + (dim.x % 8 == 0 ? 0 : 1), dim.y / 8 + (dim.y % 8 == 0 ? 0 : 1), 1);
 
 		pRTVRadBackBuffer->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);
@@ -409,15 +410,15 @@ void Renderer::renderFrame()
 		pCurrentCommandList->SetComputeRootDescriptorTable(1u, computeDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
 
 		// Perform tone mapping
-		uint32_t c32data[5] = { 2u, 2u, 0u, 0u, 1u };
-		pCurrentCommandList->SetComputeRoot32BitConstants(0u, 5u, &c32data[0], 0);
+		uint32_t c32data[6] = { 2u, 2u, 0u, 0u, 1u, 1u };
+		pCurrentCommandList->SetComputeRoot32BitConstants(0u, 6u, &c32data[0], 0);
 		pCurrentCommandList->Dispatch(dim.x / 8 + (dim.x % 8 == 0 ? 0 : 1), dim.y / 8 + (dim.y % 8 == 0 ? 0 : 1), 1);
 		pRadAccumulator->uavBarrier(pCurrentCommandList);
 	}
 
 	// Copy accumulator to 8-bit Texture
-	uint32_t c32data2[5] = { 2u, 0u, 1u, 1u, 0u };
-	pCurrentCommandList->SetComputeRoot32BitConstants(0u, 5u, &c32data2[0], 0);
+	uint32_t c32data2[6] = { 2u, 0u, 1u, 1u, 0u, 0u };
+	pCurrentCommandList->SetComputeRoot32BitConstants(0u, 6u, &c32data2[0], 0);
 	pCurrentCommandList->Dispatch(dim.x / 8 + (dim.x % 8 == 0 ? 0 : 1), dim.y / 8 + (dim.y % 8 == 0 ? 0 : 1), 1);
 
 	// Point to 8-bit swap chain buffers
@@ -582,7 +583,7 @@ void Renderer::initShaders()
 	CD3DX12_ROOT_PARAMETER1 param; 
 	computeRSM->addDescriptorRange("ComputeData", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 3, 0));
 	computeRSM->setDescriptorTableParameter("ComputeDataDescTable", "ComputeData");
-	param.InitAsConstants(5u, 0u);
+	param.InitAsConstants(6u, 0u);
 	computeRSM->setParameter("ComputeConstants", param); // inIndex, outInde, clear, accumulate, linearToSrgb
 	computeRSM->addParametersToRootSignature("ComputeRootSignature", { "ComputeConstants", "ComputeDataDescTable"});
 	computeRootSignature = computeRSM->generateRootSignature("ComputeRootSignature", pDevice, D3D12_ROOT_SIGNATURE_FLAG_NONE);
@@ -607,6 +608,9 @@ void Renderer::initShaders()
 	ComPtr<ID3D12Device5> pDevice5;
 	GFXTHROWIFFAILED(pDevice.As(&pDevice5));
 	GFXTHROWIFFAILED(pDevice5->CreatePipelineState(&pipelineStateStreamDesc, IID_PPV_ARGS(&computePipelineState)));
+
+	pRadAccumulator = &rendererResources.resourceManager->createResource(D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
+		windowDimensions.x, windowDimensions.y, DXGI_FORMAT_R32G32B32A32_FLOAT, true, "rad_accumulator");
 }
 
 void Renderer::createShaderResources()
@@ -647,7 +651,6 @@ void Renderer::resize()
 	commandQueue->flush();
 	rendererResources.pRTVRadBackBuffer.reset();
 	pRTVBackBuffers.clear();
-	pRadAccumulator.reset();
 	rendererResources.currentBackBufferIndex = currentBackBufferIndex = 0;
 	camera->setAspectRatio(static_cast<float>(windowDimensions.x) / windowDimensions.y);
 	HRESULT hr;
@@ -658,11 +661,11 @@ void Renderer::resize()
 	rendererResources.pRTVRadBackBuffer = pRTVRadBackBuffer;
 	ResPtrVec otherBuffs = { pRTVRadBackBuffer };
 	pRTVBackBuffers = DXUtil::createRenderTargetViewsEx(pDevice, pRTVDescriptorHeap, pSwapChain, otherBuffs, NumBackBuffers);
-	createShaderResources(); 
 	fpsCounter.resetFrameCount();
 	
 	// Resize drawables
 	rendererResources.resourceManager->resize(windowDimensions.x, windowDimensions.y);
+	createShaderResources(); // some resources used in renderer depend on resizing
 	for (IDrawable* drawable : drawables)
 		drawable->onResize();
 	imguiManager.onResize();
@@ -683,13 +686,6 @@ void Renderer::resizeFloatTargetTextures()
 		D3D12_RESOURCE_STATE_RENDER_TARGET, DXGI_FORMAT_R32G32B32A32_FLOAT, 
 		D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS | D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET));
 	pRTVRadBackBuffer->setName(L"RTV Radiance Back-Buffer");
-
-	// Create accumulator
-	pRadAccumulator = make_shared<Resource>(Resource::createTextureCommittedResource(
-		pDevice, windowDimensions.x, windowDimensions.y,
-		D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
-		DXGI_FORMAT_R32G32B32A32_FLOAT, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS));
-	pRadAccumulator->setName(L"Radiance Accumulator");
 }
 
 vector<DirectX::XMFLOAT3X4> Renderer::getMatrices()

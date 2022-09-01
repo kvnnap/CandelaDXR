@@ -105,7 +105,7 @@ const XMVECTOR& Camera::getUp() const
 
 XMVECTOR Camera::getNearPlaneDimensions() const
 {
-	return XMVectorSet(nearWidth, nearHeight, nearZ, 0.f);
+	return XMVectorSet(nearWidth, nearHeight, nearZ, farZ);
 }
 
 

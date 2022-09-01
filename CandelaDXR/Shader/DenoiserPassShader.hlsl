@@ -1,0 +1,49 @@
+#include "Utils.hlsli"
+
+cbuffer CB1 : register(b0)
+{
+	float near;
+	float far;
+	uint mode;
+}
+
+Texture2D<float4> radAccumulator : register(t0);
+Texture2D<float4> albedo : register(t1);
+Texture2D<float4> normal : register(t2);
+Texture2D<float> depth : register(t3);
+
+RWTexture2D<float4> in_mv : register(u0);
+RWTexture2D<float4> in_normal_roughness : register(u1);
+RWTexture2D<float> in_view_z : register(u2);
+RWTexture2D<float4> in_diff_radiance_hitdist : register(u3);
+RWTexture2D<float4> out_diff_radiance_hitdist : register(u4);
+
+
+[numthreads(8, 8, 1)]
+void main(uint3 DTid : SV_DispatchThreadID)
+{
+	if (mode == 0)
+	{
+		in_view_z[DTid.xy] = 0.f;
+		in_normal_roughness[DTid.xy] = float4(normal[DTid.xy].xyz, 0.f);
+
+		float ndc = depth[DTid.xy] * 2.f - 1.f;
+		float res = (2.f * near * far) / (far + near - ndc * (far - near));
+		in_view_z[DTid.xy] = (res - near) / (far - near);
+
+		float3 rad = albedo[DTid.xy].xyz;
+		if (rad.x > 0)
+			rad.x = radAccumulator[DTid.xy].x / rad.x;
+		if (rad.y > 0)
+			rad.y = radAccumulator[DTid.xy].y / rad.y;
+		if (rad.z > 0)
+			rad.z = radAccumulator[DTid.xy].z / rad.z;
+
+		in_diff_radiance_hitdist[DTid.xy] = float4(rad, 1.f);
+	}
+	else if (mode == 1)
+	{
+		out_diff_radiance_hitdist[DTid.xy] *= float4(albedo[DTid.xy].xyz, 1.f);
+	}
+}
+

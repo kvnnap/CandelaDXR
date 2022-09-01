@@ -6,6 +6,7 @@ cbuffer CB1 : register(b0)
 	uint OutIndex;
 	uint Clear;
 	uint Accumulate;
+	uint ToneMap;
 	uint LinearToSRGB;
 }
 
@@ -18,7 +19,9 @@ void main( uint3 DTid : SV_DispatchThreadID )
 		gArr[OutIndex][DTid.xy] = float4(0.f, 0.f, 0.f, 0.f);
 	if (Accumulate)
 		gArr[OutIndex][DTid.xy] += gArr[InIndex][DTid.xy];
+	if (ToneMap)
+		gArr[OutIndex][DTid.xy] = float4(toneMap(gArr[OutIndex][DTid.xy].xyz), 1.f);
 	if (LinearToSRGB)
-		gArr[OutIndex][DTid.xy] = float4(linearToSrgb(toneMap(gArr[OutIndex][DTid.xy].xyz)), 1.f);
+		gArr[OutIndex][DTid.xy] = float4(linearToSrgb(gArr[OutIndex][DTid.xy].xyz), 1.f);
 }
 

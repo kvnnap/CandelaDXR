@@ -95,7 +95,7 @@ namespace candela::renderer
 		wrl::ComPtr<ID3D12DescriptorHeap> pRTVDescriptorHeap;
 		std::shared_ptr<directx::Resource> pRTV8BitBackBuffer; // This is the 8-bit target that will then be copied to swap-chain
 		std::shared_ptr<directx::Resource> pRTVRadBackBuffer; // This is the target for drawables (32-bit)
-		std::shared_ptr<directx::Resource> pRadAccumulator; // 32-bit
+		directx::Resource * pRadAccumulator; // 32-bit
 		ResPtrVec pRTVBackBuffers; // Buffers retrieved from swap-chain (these are 8-bit)
 
 		// ImGui Manager - is also a drawable

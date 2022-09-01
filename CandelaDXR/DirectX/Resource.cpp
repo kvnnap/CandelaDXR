@@ -19,15 +19,27 @@ using candela::directx::DXResource;
 using candela::directx::DXUtil;
 
 Resource::Resource(DXResource resource, D3D12_RESOURCE_STATES state)
-	: resource(resource), state(state)
+	: resource(resource), state(state), prevState(state)
 {
+}
+
+void Resource::rewriteState(D3D12_RESOURCE_STATES currentState)
+{
+	prevState = state;
+	state = currentState;
 }
 
 void Resource::transistionBarrier(DXCommandList& commandList, D3D12_RESOURCE_STATES nextState)
 {
 	auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(resource.Get(), state, nextState);
 	commandList->ResourceBarrier(1u, &barrier);
+	prevState = state;
 	state = nextState;
+}
+
+void Resource::transitionToPrevBarrier(DXCommandList& commandList)
+{
+	transistionBarrier(commandList, prevState);
 }
 
 void Resource::uavBarrier(DXCommandList& commandList)

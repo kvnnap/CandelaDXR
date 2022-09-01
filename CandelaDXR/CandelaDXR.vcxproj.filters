@@ -481,6 +481,7 @@
     <FxCompile Include="Shader\NormalisationPass2ComputeShader.hlsl" />
     <FxCompile Include="Shader\FilterComputeShader.hlsl" />
     <FxCompile Include="Shader\RayTracingAOShader.hlsl" />
+    <FxCompile Include="Shader\DenoiserPassShader.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Shader\Utils.hlsli" />

@@ -26,7 +26,10 @@ namespace candela::directx
 	public:
 		Resource(DXResource resource, D3D12_RESOURCE_STATES state);
 
-		void transistionBarrier(DXCommandList &commandList, D3D12_RESOURCE_STATES state);
+		// Use when external api's modify the state - DOES NOT emit a barrier
+		void rewriteState(D3D12_RESOURCE_STATES currentState);
+		void transistionBarrier(DXCommandList& commandList, D3D12_RESOURCE_STATES state);
+		void transitionToPrevBarrier(DXCommandList &commandList);
 		void uavBarrier(DXCommandList &commandList);
 		D3D12_RESOURCE_STATES getState() const;
 		operator DXResource& ();
@@ -51,6 +54,6 @@ namespace candela::directx
 		static Resource createCommittedResource(DXDevice &device, UINT64 size, D3D12_RESOURCE_STATES resourceState, D3D12_RESOURCE_FLAGS resourceFlags = D3D12_RESOURCE_FLAG_NONE, D3D12_HEAP_TYPE heapType = D3D12_HEAP_TYPE_DEFAULT, D3D12_CLEAR_VALUE* clearValue = nullptr);
 	private:
 		DXResource resource;
-		D3D12_RESOURCE_STATES state;
+		D3D12_RESOURCE_STATES state, prevState;
 	};
 }

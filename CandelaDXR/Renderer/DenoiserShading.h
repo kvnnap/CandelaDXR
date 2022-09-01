@@ -19,6 +19,7 @@
 #include "Camera.h"
 
 #include "Drawable.h"
+#include "RasterShading.h"
 
 class NrdIntegration;
 
@@ -48,11 +49,39 @@ namespace candela::renderer
 		void onResize() override;
 		void accept(IVisitor* visitor) override;
 
+		void compute(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, std::uint32_t mode);
+
 	private:
 		// Common renderer resources
 		RendererResources* rendererResources;
 		std::unique_ptr<NrdIntegration> NRD;
 		nri::Device *nriDevice;
 		std::unique_ptr<NriInterface> NRI;
+
+		// Shader stuff
+		RasterShading rasterShader;
+
+		// Compute Shader
+		// Compute shader
+		std::unique_ptr<directx::DescriptorHeap> descHeapManager;
+		wrl::ComPtr<ID3D12RootSignature> computeRootSignature;
+		wrl::ComPtr<ID3D12PipelineState> computePipelineState;
+
+		// Inputs
+		/*
+		*  diffuse - get from main radiance signal - tone map before feeding to denoiser
+		*  specular - 0
+		*  motion vectors - 0
+		*  normal - use from normal texture
+		*/
+		directx::Resource* radAccumulator;
+		directx::Resource* albedo; // need to radAccum/albedo --> IN_DIFF_RADIANCE_HITDIST 
+		directx::Resource* normal; // Produce (normal, 0.f)  --> IN_NORMAL_ROUGHNESS
+		directx::Resource* depth; // 
+		directx::Resource* in_mv; // Produce (0,0,0)  --> IN_MV
+		directx::Resource* in_normal_roughness;
+		directx::Resource* in_view_z; // need to linearize from g_buffer
+		directx::Resource* in_diff_radiance_hitdist;
+		directx::Resource* out_diff_radiance_hitdist;
 	};
 }

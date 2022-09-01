@@ -73,10 +73,7 @@ std::uint64_t CommandQueue::executeCommandList(wrl::ComPtr<ID3D12GraphicsCommand
 	GFXTHROWIFFAILED(commandList->Close());
 
 	// Get command allocator from list
-	ID3D12CommandAllocator* pCommandAllocator;
-	UINT pointerSize = sizeof(pCommandAllocator);
-	commandList->GetPrivateData(__uuidof(ID3D12CommandAllocator), &pointerSize, &pCommandAllocator);
-
+	ID3D12CommandAllocator* pCommandAllocator = getCommandAllocator(commandList);
 	ID3D12CommandList* const commandLists[] = {
 		commandList.Get()
 	};
@@ -91,6 +88,14 @@ std::uint64_t CommandQueue::executeCommandList(wrl::ComPtr<ID3D12GraphicsCommand
 	pCommandAllocator->Release();
 
 	return fV;
+}
+
+ID3D12CommandAllocator* CommandQueue::getCommandAllocator(Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> commandList)
+{
+	ID3D12CommandAllocator* pCommandAllocator;
+	UINT pointerSize = sizeof(pCommandAllocator);
+	commandList->GetPrivateData(__uuidof(ID3D12CommandAllocator), &pointerSize, &pCommandAllocator);
+	return pCommandAllocator;
 }
 
 std::uint64_t CommandQueue::signal()
