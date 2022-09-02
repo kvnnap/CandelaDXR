@@ -106,7 +106,10 @@ MyOutput main(MyInput myInput)
 	float3 total = 0.f;
 
 	if (!cBuffer.computeRadiance)
+	{
+		output.radiance = float4(0.f, 0.f, 0.f, 1.f);
 		return output;
+	}
 
 	// Calculate lights
 	for (uint i = 0; i < cBuffer.numLights; ++i)

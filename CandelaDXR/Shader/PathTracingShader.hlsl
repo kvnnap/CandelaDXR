@@ -115,6 +115,8 @@ void rayGen()
 	
 	PathInteraction prevInteraction = Light;
 
+	float denoiserHitT = 0.f;
+
 	RayPayload rayPayload;
 	while (TraceRay(
 		gRtScene,	// Acceleration Structure
@@ -126,6 +128,10 @@ void rayGen()
 		ray,
 		rayPayload), rayPayload.t != 0.f)
 	{
+		// Second bounce for denoiser
+		if (i == 2)
+			denoiserHitT = rayPayload.t;
+
 		// Get Face attributes
 		const FaceAttributes fAttr = faceAttributes[rayPayload.faceIndex];
 		const Material mat = materials[fAttr.MaterialId];
@@ -382,6 +388,7 @@ void rayGen()
 	if (cBuffer.frameNumber == 1)
 		gRadiance[launchIndex] = float4(0.f, 0.f, 0.f, 1.f);
 	gRadiance[launchIndex] += float4(radiance, 0.f);
+	gRadiance[launchIndex].w = denoiserHitT;
 	gOutput[launchIndex] = float4(gRadiance[launchIndex].xyz / cBuffer.frameNumber, 1.f);
 }
 

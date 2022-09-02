@@ -20,8 +20,11 @@ using std::make_shared;
 
 using candela::renderer::DenoiserShading;
 using candela::directx::RootSignatureManager;
+using candela::directx::Resource;
 using candela::directx::DescriptorHeap;
 using candela::mathematics::UVector2;
+
+//extern D3D12_RESOURCE_STATES GetResourceStates(nri::AccessBits accessMask);
 
 namespace candela::renderer
 {
@@ -43,6 +46,38 @@ DenoiserShading::~DenoiserShading()
 		NRD->Destroy();
 }
 
+struct DenoiserResource
+{
+	Resource* resource;
+	D3D12_RESOURCE_STATES requiredState;
+	nrd::ResourceType resourceType;
+	nri::Format format;
+};
+
+D3D12_RESOURCE_STATES GetResourceState(nri::AccessBits accessBits)
+{
+	D3D12_RESOURCE_STATES result{};
+	if (accessBits & nri::AccessBits::SHADER_RESOURCE)
+		result |= D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE;
+	if (accessBits & nri::AccessBits::SHADER_RESOURCE_STORAGE)
+		result |= D3D12_RESOURCE_STATE_UNORDERED_ACCESS;
+	if (result == 0)
+		throw std::runtime_error("Cannot convert nri::AccessBits");
+	return result;
+}
+
+nri::AccessBits GetResourceState(D3D12_RESOURCE_STATES d3dResourceState)
+{
+	nri::AccessBits result{};
+	if (d3dResourceState & D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE)
+		result |= nri::AccessBits::SHADER_RESOURCE;
+	if (d3dResourceState & D3D12_RESOURCE_STATE_UNORDERED_ACCESS)
+		result |= nri::AccessBits::SHADER_RESOURCE_STORAGE;
+	if (result == nri::AccessBits::UNKNOWN)
+		throw std::runtime_error("Cannot convert D3D12_RESOURCE_STATES");
+	return result;
+}
+
 void DenoiserShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12GraphicsCommandList>& pCurrentCommandList, ResourceRegFunction& resRegFn)
 {
 	rendererResources = rRes;
@@ -58,7 +93,8 @@ void DenoiserShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12GraphicsCo
 	albedo = rRes->resourceManager->getNamedResource("den_gAlb");
 	normal = rRes->resourceManager->getNamedResource("den_gNorm");
 	depth = rRes->resourceManager->getNamedResource("den_gDepth");
-	
+	pt_rad = rRes->resourceManager->getNamedResource("pt_rad");
+
 	in_mv = &rRes->resourceManager->createResource(D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, dim.x, dim.y, DXGI_FORMAT_R32G32B32A32_FLOAT, true, "in_mv");
 	in_normal_roughness = &rRes->resourceManager->createResource(D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, dim.x, dim.y, DXGI_FORMAT_R32G32B32A32_FLOAT, true, "in_normal_roughness");
 	in_view_z = &rRes->resourceManager->createResource(D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, dim.x, dim.y, DXGI_FORMAT_R32_FLOAT, true, "in_view_z");
@@ -68,7 +104,7 @@ void DenoiserShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12GraphicsCo
 	// Setup compute shader RS
 	auto rsm = make_shared<RootSignatureManager>();
 	CD3DX12_ROOT_PARAMETER1 param;
-	rsm->addDescriptorRange("IORange", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 4u, 0u));
+	rsm->addDescriptorRange("IORange", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 5u, 0u));
 	rsm->addDescriptorRange("IORange", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 5u, 0u));
 	rsm->setDescriptorTableParameter("IODescTable", "IORange");
 	param.InitAsConstants(3u, 0u); rsm->setParameter("Constants", param);
@@ -90,6 +126,8 @@ void DenoiserShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12GraphicsCo
 	descHeapManager->setSRV(entryNum++, srvDesc, rRes->pDevice, *normal);
 	srvDesc.Format = DXGI_FORMAT_R32_FLOAT;
 	descHeapManager->setSRV(entryNum++, srvDesc, rRes->pDevice, *depth);
+	srvDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
+	descHeapManager->setSRV(entryNum++, srvDesc, rRes->pDevice, *pt_rad);
 
 	D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc{};
 	uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
@@ -180,17 +218,18 @@ void DenoiserShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentComman
 	rasterShader.draw(pCurrentCommandList, currentBackBufferIndex);
 
 	// Compute pre-pass
-	radAccumulator->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-	albedo->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-	normal->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-	depth->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+	radAccumulator->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
+	albedo->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
+	normal->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
+	depth->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
+	pt_rad->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
 
 	compute(pCurrentCommandList, 0);
 
-	in_mv->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-	in_normal_roughness->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-	in_view_z->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-	in_diff_radiance_hitdist->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+	in_mv->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
+	in_normal_roughness->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
+	in_view_z->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
+	in_diff_radiance_hitdist->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
 
 	//static int test = 0;
 	//if (test++ > 0)
@@ -222,40 +261,27 @@ void DenoiserShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentComman
 	constexpr int N = 5;
 	nri::TextureTransitionBarrierDesc entryDescs[N] = {};
 	nri::Format entryFormat[N] = {};
+	DenoiserResource denoiserResources[N] = {
+		{ in_mv,                     D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE, nrd::ResourceType::IN_MV,                     nri::Format::RGBA32_SFLOAT },
+		{ in_normal_roughness,       D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE, nrd::ResourceType::IN_NORMAL_ROUGHNESS,       nri::Format::RGBA32_SFLOAT },
+		{ in_view_z,                 D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE, nrd::ResourceType::IN_VIEWZ,                  nri::Format::R32_SFLOAT    },
+		{ in_diff_radiance_hitdist,  D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE, nrd::ResourceType::IN_DIFF_RADIANCE_HITDIST,  nri::Format::RGBA32_SFLOAT },
+		{ out_diff_radiance_hitdist, D3D12_RESOURCE_STATE_UNORDERED_ACCESS,    nrd::ResourceType::OUT_DIFF_RADIANCE_HITDIST, nri::Format::RGBA32_SFLOAT }
+	};
 
-	//for (uint32_t i = 0; i < N; i++)
+	for (uint32_t i = 0; i < N; i++)
 	{
 		// You need to specify the current state of the resource here, after denoising NRD can modify
 		// this state. Application must continue state tracking from this point.
 		// Useful information:
 		//    SRV = nri::AccessBits::SHADER_RESOURCE, nri::TextureLayout::SHADER_RESOURCE
 		//    UAV = nri::AccessBits::SHADER_RESOURCE_STORAGE, nri::TextureLayout::GENERAL
+		auto& denResource = denoiserResources[i];
 		nri::TextureD3D12Desc textureDesc = {};
-
-		textureDesc.d3d12Resource = *in_mv;
-		NRI->CreateTextureD3D12(*nriDevice, textureDesc, (nri::Texture*&)entryDescs[0].texture);
-		entryDescs[0].nextAccess = nri::AccessBits::SHADER_RESOURCE;
-		entryDescs[0].nextLayout = nri::TextureLayout::SHADER_RESOURCE;
-
-		textureDesc.d3d12Resource = *in_normal_roughness;
-		NRI->CreateTextureD3D12(*nriDevice, textureDesc, (nri::Texture*&)entryDescs[1].texture);
-		entryDescs[1].nextAccess = nri::AccessBits::SHADER_RESOURCE;
-		entryDescs[1].nextLayout = nri::TextureLayout::SHADER_RESOURCE;
-
-		textureDesc.d3d12Resource = *in_view_z;
-		NRI->CreateTextureD3D12(*nriDevice, textureDesc, (nri::Texture*&)entryDescs[2].texture);
-		entryDescs[2].nextAccess = nri::AccessBits::SHADER_RESOURCE;
-		entryDescs[2].nextLayout = nri::TextureLayout::SHADER_RESOURCE;
-
-		textureDesc.d3d12Resource = *in_diff_radiance_hitdist;
-		NRI->CreateTextureD3D12(*nriDevice, textureDesc, (nri::Texture*&)entryDescs[3].texture);
-		entryDescs[3].nextAccess = nri::AccessBits::SHADER_RESOURCE;
-		entryDescs[3].nextLayout = nri::TextureLayout::SHADER_RESOURCE;
-
-		textureDesc.d3d12Resource = *out_diff_radiance_hitdist;
-		NRI->CreateTextureD3D12(*nriDevice, textureDesc, (nri::Texture*&)entryDescs[4].texture);
-		entryDescs[4].nextAccess = nri::AccessBits::SHADER_RESOURCE_STORAGE;
-		entryDescs[4].nextLayout = nri::TextureLayout::GENERAL;
+		textureDesc.d3d12Resource = *denResource.resource;
+		NRI->CreateTextureD3D12(*nriDevice, textureDesc, (nri::Texture*&)entryDescs[i].texture);
+		entryDescs[i].nextAccess = GetResourceState(denResource.requiredState);
+		entryDescs[i].nextLayout = entryDescs[i].nextAccess == nri::AccessBits::SHADER_RESOURCE ? nri::TextureLayout::SHADER_RESOURCE : nri::TextureLayout::GENERAL;
 	}
 
 	nrd::CommonSettings commonSettings{};
@@ -264,54 +290,47 @@ void DenoiserShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentComman
 	memcpy(&commonSettings.worldToViewMatrixPrev, &camera->getViewMatrix(), sizeof(commonSettings.worldToViewMatrixPrev));
 	memcpy(&commonSettings.viewToClipMatrix, &camera->getPerspectiveMatrix(), sizeof(commonSettings.viewToClipMatrix));
 	memcpy(&commonSettings.viewToClipMatrixPrev, &camera->getPerspectiveMatrix(), sizeof(commonSettings.viewToClipMatrixPrev));
+	
 	nrd::ReblurSettings settings{};
 	settings.enableReferenceAccumulation = true;
-	nrd::RelaxDiffuseSettings settings2{};
 
 	NRD->SetMethodSettings(nrd::Method::REBLUR_DIFFUSE, &settings);
-	//NRD->SetMethodSettings(nrd::Method::RELAX_DIFFUSE, &settings2);
-	// Fill up the user pool
+	
+	// Populate the user pool
 	NrdUserPool userPool = {};
-
+	for (uint32_t i = 0; i < N; i++)
 	{
+		auto& denResource = denoiserResources[i];
 		NrdIntegrationTexture tex{};
-		tex.format = nri::Format::RGBA32_SFLOAT;
-		tex.subresourceStates = &entryDescs[0];
-		NrdIntegration_SetResource(userPool, nrd::ResourceType::IN_MV, tex);
-
-		tex.subresourceStates = &entryDescs[1];
-		NrdIntegration_SetResource(userPool, nrd::ResourceType::IN_NORMAL_ROUGHNESS, tex);
-
-		tex.subresourceStates = &entryDescs[2];
-		tex.format = nri::Format::R32_SFLOAT;
-		NrdIntegration_SetResource(userPool, nrd::ResourceType::IN_VIEWZ, tex);
-
-		tex.subresourceStates = &entryDescs[3];
-		tex.format = nri::Format::RGBA32_SFLOAT;
-		NrdIntegration_SetResource(userPool, nrd::ResourceType::IN_DIFF_RADIANCE_HITDIST, tex);
-
-		tex.subresourceStates = &entryDescs[4];
-		NrdIntegration_SetResource(userPool, nrd::ResourceType::OUT_DIFF_RADIANCE_HITDIST, tex);
+		tex.format = denResource.format;
+		tex.subresourceStates = &entryDescs[i];
+		NrdIntegration_SetResource(userPool, denResource.resourceType, tex);
 	}
 	
-	bool isUAV = pDbgCmdList->AssertResourceState(*out_diff_radiance_hitdist, 0, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+	//bool isUAV = pDbgCmdList->AssertResourceState(*out_diff_radiance_hitdist, 0, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 	NRD->Denoise(currentBackBufferIndex, *cmdBuffer, commonSettings, userPool);
-	isUAV = pDbgCmdList->AssertResourceState(*out_diff_radiance_hitdist, 0, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+	//isUAV = pDbgCmdList->AssertResourceState(*out_diff_radiance_hitdist, 0, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+	
 	// Sync states
-	if (entryDescs[4].nextAccess != nri::AccessBits::SHADER_RESOURCE_STORAGE)
+	for (uint32_t i = 0; i < N; i++)
 	{
-		out_diff_radiance_hitdist->rewriteState(D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-		out_diff_radiance_hitdist->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+		auto& denResource = denoiserResources[i];
+		auto reqState = GetResourceState(denResource.requiredState);
+		auto reqLayout = reqState == nri::AccessBits::SHADER_RESOURCE ? nri::TextureLayout::SHADER_RESOURCE : nri::TextureLayout::GENERAL;
+		if (entryDescs[i].nextAccess != reqState || entryDescs[i].nextLayout != reqLayout)
+		{
+			denResource.resource->rewriteState(GetResourceState(entryDescs[i].nextAccess));
+			denResource.resource->transistionBarrier(pCurrentCommandList, denResource.requiredState);
+		}
 	}
 
 	//bool isUAV = pDbgCmdList->AssertResourceState(*out_diff_radiance_hitdist, 0, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-
 	for (uint32_t i = 0; i < N; i++)
 		NRI->DestroyTexture(*(nri::Texture*&)entryDescs[i].texture);
 
 	NRI->DestroyCommandBuffer(*cmdBuffer);
 	/////////////////////////////////////////////////////////////////
-
+	
 	// Post pass
 	in_mv->transitionToPrevBarrier(pCurrentCommandList);
 	in_normal_roughness->transitionToPrevBarrier(pCurrentCommandList);
@@ -323,6 +342,7 @@ void DenoiserShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentComman
 	albedo->transitionToPrevBarrier(pCurrentCommandList);
 	normal->transitionToPrevBarrier(pCurrentCommandList);
 	depth->transitionToPrevBarrier(pCurrentCommandList);
+	pt_rad->transitionToPrevBarrier(pCurrentCommandList);
 }
 
 void DenoiserShading::onChange(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, std::uint32_t currentBackBufferIndex, ChangeEvent_t changeEvent)

@@ -11,6 +11,7 @@ Texture2D<float4> radAccumulator : register(t0);
 Texture2D<float4> albedo : register(t1);
 Texture2D<float4> normal : register(t2);
 Texture2D<float> depth : register(t3);
+Texture2D<float4> pt_rad_hitt : register(t4);
 
 RWTexture2D<float4> in_mv : register(u0);
 RWTexture2D<float4> in_normal_roughness : register(u1);
@@ -24,6 +25,7 @@ void main(uint3 DTid : SV_DispatchThreadID)
 {
 	if (mode == 0)
 	{
+		in_mv[DTid.xy] = 0.f;
 		in_view_z[DTid.xy] = 0.f;
 		in_normal_roughness[DTid.xy] = float4(normal[DTid.xy].xyz, 0.f);
 
@@ -39,7 +41,7 @@ void main(uint3 DTid : SV_DispatchThreadID)
 		if (rad.z > 0)
 			rad.z = radAccumulator[DTid.xy].z / rad.z;
 
-		in_diff_radiance_hitdist[DTid.xy] = float4(rad, 1.f);
+		in_diff_radiance_hitdist[DTid.xy] = float4(rad, pt_rad_hitt[DTid.xy].w);
 	}
 	else if (mode == 1)
 	{
