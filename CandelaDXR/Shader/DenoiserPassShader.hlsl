@@ -27,11 +27,17 @@ void main(uint3 DTid : SV_DispatchThreadID)
 	{
 		in_mv[DTid.xy] = 0.f;
 		in_view_z[DTid.xy] = 0.f;
-		in_normal_roughness[DTid.xy] = float4(normal[DTid.xy].xyz, 0.f);
+		in_normal_roughness[DTid.xy] = float4((normal[DTid.xy].xyz + 1.f) * 0.5f, 1.f);
 
 		float ndc = depth[DTid.xy] * 2.f - 1.f;
 		float res = (2.f * near * far) / (far + near - ndc * (far - near));
 		in_view_z[DTid.xy] = (res - near) / (far - near);
+
+		// Kevin - simplified above
+		//in_view_z[DTid.xy] = near * (1.f + ndc) / (near + far - ndc * (far - near));
+
+		// Mark
+		//in_view_z[DTid.xy] = (2.0f * near) / (far + near - ndc * (far - near));
 
 		float3 rad = albedo[DTid.xy].xyz;
 		if (rad.x > 0)

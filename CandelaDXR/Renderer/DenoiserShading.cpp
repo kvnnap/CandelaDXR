@@ -206,10 +206,6 @@ void DenoiserShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentComman
 	static int x = 0;
 	++x;
 
-	//wrl::ComPtr<ID3D12GraphicsCommandList> graph;
-	//pCurrentCommandList.As(&graph);
-	//auto myptr = graph.Get();
-
 	wrl::ComPtr<ID3D12DebugCommandList> pDbgCmdList;
 	pCurrentCommandList.As(&pDbgCmdList);
 	//pDbgCmdList->SetFeatureMask(D3D12_DEBUG_FEATURE_ALLOW_BEHAVIOR_CHANGING_DEBUG_AIDS);
@@ -230,20 +226,6 @@ void DenoiserShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentComman
 	in_normal_roughness->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
 	in_view_z->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
 	in_diff_radiance_hitdist->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
-
-	//static int test = 0;
-	//if (test++ > 0)
-	//{
-	//	radAccumulator->transitionToPrevBarrier(pCurrentCommandList);
-	//	albedo->transitionToPrevBarrier(pCurrentCommandList);
-	//	normal->transitionToPrevBarrier(pCurrentCommandList);
-	//	depth->transitionToPrevBarrier(pCurrentCommandList);
-	//	in_mv->transitionToPrevBarrier(pCurrentCommandList);
-	//	in_normal_roughness->transitionToPrevBarrier(pCurrentCommandList);
-	//	in_view_z->transitionToPrevBarrier(pCurrentCommandList);
-	//	in_diff_radiance_hitdist->transitionToPrevBarrier(pCurrentCommandList);
-	//	return;
-	//}
 
 	/// Pass to convert radiance without albedo - compute shader required
 
@@ -290,9 +272,16 @@ void DenoiserShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentComman
 	memcpy(&commonSettings.worldToViewMatrixPrev, &camera->getViewMatrix(), sizeof(commonSettings.worldToViewMatrixPrev));
 	memcpy(&commonSettings.viewToClipMatrix, &camera->getPerspectiveMatrix(), sizeof(commonSettings.viewToClipMatrix));
 	memcpy(&commonSettings.viewToClipMatrixPrev, &camera->getPerspectiveMatrix(), sizeof(commonSettings.viewToClipMatrixPrev));
+	commonSettings.frameIndex = x - 1;
+	commonSettings.isMotionVectorInWorldSpace = true;
 	
 	nrd::ReblurSettings settings{};
-	settings.enableReferenceAccumulation = true;
+	//settings.checkerboardMode = nrd::CheckerboardMode::WHITE;
+	//settings.diffusePrepassBlurRadius = 1.f;
+	//settings.blurRadius = .5f;
+	//settings.stabilizationStrength = 0.1f;
+	//settings.enableReferenceAccumulation = true;
+	//settings.historyFixStrength = 0;
 
 	NRD->SetMethodSettings(nrd::Method::REBLUR_DIFFUSE, &settings);
 	
@@ -307,9 +296,7 @@ void DenoiserShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentComman
 		NrdIntegration_SetResource(userPool, denResource.resourceType, tex);
 	}
 	
-	//bool isUAV = pDbgCmdList->AssertResourceState(*out_diff_radiance_hitdist, 0, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-	NRD->Denoise(currentBackBufferIndex, *cmdBuffer, commonSettings, userPool);
-	//isUAV = pDbgCmdList->AssertResourceState(*out_diff_radiance_hitdist, 0, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+	NRD->Denoise(currentBackBufferIndex, *cmdBuffer, commonSettings, userPool, false);
 	
 	// Sync states
 	for (uint32_t i = 0; i < N; i++)
