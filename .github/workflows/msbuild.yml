@@ -147,7 +147,7 @@ jobs:
 
     - name: Extract Microsoft DXC Zip Asset
       if: steps.cache-nrd.outputs.cache-hit != 'true'
-      run: 7z e -y msdxc.zip -o dxc
+      run: 7z e -y msdxc.zip -odxc
 
     - name: Get NVIDIA NRD
       if: steps.cache-nrd.outputs.cache-hit != 'true'

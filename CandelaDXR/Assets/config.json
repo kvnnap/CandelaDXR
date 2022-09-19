@@ -90,25 +90,23 @@
     {
       "Type": "PathTracingDrawable",
       "Name": "PT",
-      "SpecularOnly": true
+      "SpecularOnly": false
     },
     {
       "Type": "DenoiserDrawable",
-      "Name": "Den",
-      "SpecularOnly": true
+      "Name": "Den"
     }
   ],
   "Renderers": [
     {
       "Type": "Renderer",
       "AdapterIndex": 0,
-      "Debug": false,
-      "Break": false,
+      "Debug": true,
+      "Break": true,
       "VSync": false,
       "Scene": "Scene",
       "Camera": "Camera",
       "Drawables": [
-        "LT",
         "PT",
         "Den"
       ],
