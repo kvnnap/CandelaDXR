@@ -150,12 +150,13 @@ jobs:
       if: steps.cache-nrd.outputs.cache-hit != 'true'
       run: 7z x msdxc.zip -odxc
 
+    # For static add -DNRD_STATIC_LIBRARY:BOOL=ON 
     - name: Get NVIDIA NRD
       if: steps.cache-nrd.outputs.cache-hit != 'true'
       run: |
         git clone --recurse-submodules https://github.com/NVIDIAGameWorks/RayTracingDenoiser
         cd RayTracingDenoiser
-        cmake -B _Compiler -DNRD_STATIC_LIBRARY:BOOL=ON -DNRD_INTERPROCEDURAL_OPTIMIZATION:BOOL=ON -DNRD_DXC_SPIRV_PATH:FILEPATH="${{github.workspace}}\dxc\bin\x64\dxc.exe"
+        cmake -B _Compiler -DNRD_INTERPROCEDURAL_OPTIMIZATION:BOOL=ON -DNRD_DXC_SPIRV_PATH:FILEPATH="${{github.workspace}}\dxc\bin\x64\dxc.exe"
         cmake --build _Compiler --parallel --config Release
         & ".\3-Prepare NRD SDK.bat" --no-pause --no-shaders --no-integration
         cd ..
@@ -189,8 +190,10 @@ jobs:
       # See https://docs.microsoft.com/visualstudio/msbuild/msbuild-command-line-reference
       run: msbuild /m /p:Configuration=${{env.BUILD_CONFIGURATION}} /p:ForceImportBeforeCppTargets=${{github.workspace}}\MyProps.props /p:OutDir=${{github.workspace}}\${{env.OUT_DIR}}\ ${{env.SOLUTION_FILE_PATH}}
       
-    - name: Copy NRI DLL
-      run: Copy-Item ".\NRI\_NRI_SDK\Lib\Release\NRI.dll" -Destination "${{github.workspace}}\${{env.OUT_DIR}}\"
+    - name: Copy NRI and NRD DLL
+      run: |
+        Copy-Item ".\NRI\_NRI_SDK\Lib\Release\NRI.dll" -Destination "${{github.workspace}}\${{env.OUT_DIR}}\"
+        Copy-Item ".\RayTracingDenoiser\_NRD_SDK\Lib\Release\NRD.dll" -Destination "${{github.workspace}}\${{env.OUT_DIR}}\"
 
     - uses: actions/upload-artifact@v2
       with:
