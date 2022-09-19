@@ -119,7 +119,7 @@ jobs:
         cd NRI
         cmake -B _Compiler -DNRI_STATIC_LIBRARY:BOOL=ON
         cmake --build _Compiler --parallel --config Release
-        "3-Prepare NRI SDK.bat"
+        & ".\3-Prepare NRI SDK.bat"
         cd ..
 
     # NRD Section (Includes retrieving DXC)
@@ -156,7 +156,7 @@ jobs:
         cd RayTracingDenoiser
         cmake -B _Compiler -DNRD_STATIC_LIBRARY:BOOL=ON -DNRD_INTERPROCEDURAL_OPTIMIZATION:BOOL=ON -DNRD_DXC_SPIRV_PATH:FILEPATH="${{github.workspace}}\dxc\bin\x64\dxc.exe"
         cmake --build _Compiler --parallel --config Release
-        "3-Prepare NRD SDK.bat" --no-pause --no-shaders --no-integration
+        & ".\3-Prepare NRD SDK.bat" --no-pause --no-shaders --no-integration
         cd ..
 
     # Merge dirs
