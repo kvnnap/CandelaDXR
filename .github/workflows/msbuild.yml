@@ -112,12 +112,13 @@ jobs:
         path: NRI\_NRI_SDK
         key: nvidia-nri-${{ fromJson(steps.read-nri-json.outputs.content).sha }}
 
+    # Static lib is broken - Add "-DNRI_STATIC_LIBRARY:BOOL=ON" to try again
     - name: Get NVIDIA NRI
       if: steps.cache-nri.outputs.cache-hit != 'true'
       run: |
         git clone --recurse-submodules https://github.com/NVIDIAGameWorks/NRI
         cd NRI
-        cmake -B _Compiler -DNRI_STATIC_LIBRARY:BOOL=ON
+        cmake -B _Compiler
         cmake --build _Compiler --parallel --config Release
         & ".\3-Prepare NRI SDK.bat"
         cd ..
@@ -188,6 +189,9 @@ jobs:
       # See https://docs.microsoft.com/visualstudio/msbuild/msbuild-command-line-reference
       run: msbuild /m /p:Configuration=${{env.BUILD_CONFIGURATION}} /p:ForceImportBeforeCppTargets=${{github.workspace}}\MyProps.props /p:OutDir=${{github.workspace}}\${{env.OUT_DIR}}\ ${{env.SOLUTION_FILE_PATH}}
       
+    - name: Copy NRI DLL
+      run: Copy-Item ".\NRI\_NRI_SDK\Lib\Release\NRI.dll" -Destination "${{github.workspace}}\${{env.OUT_DIR}}\"
+
     - uses: actions/upload-artifact@v2
       with:
         name: CandelaDXR
