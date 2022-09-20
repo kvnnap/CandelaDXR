@@ -45,6 +45,7 @@ namespace candela::renderer
 		std::unique_ptr<directx::ResourceManager> resourceManager;
 		ui::Window* window;
 		std::vector<IDrawable*> *drawables;
+		std::uint64_t frameNumber;
 
 		directx::DXResource& getTempResource()
 		{

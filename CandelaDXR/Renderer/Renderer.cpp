@@ -199,7 +199,8 @@ void Renderer::init()
 		.currentBackBufferIndex = 0,
 		.resourceManager = std::move(rendererResources.resourceManager),
 		.window = window.get(),
-		.drawables = &drawables
+		.drawables = &drawables,
+		.frameNumber = 0
 	};
 
 	initShaders();
@@ -478,6 +479,7 @@ void Renderer::renderFrame()
 
 	// Reset camera
 	camera->resetChanged();
+	++rendererResources.frameNumber;
 }
 
 RendererTime& Renderer::getRendererTime()

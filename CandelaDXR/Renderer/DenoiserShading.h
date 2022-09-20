@@ -49,6 +49,9 @@ namespace candela::renderer
 		void accept(IVisitor* visitor) override;
 
 		void compute(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, std::uint32_t mode);
+		void createShaderResources();
+		void setupDenoiser();
+		void destroyDenoiser();
 
 	private:
 		// Common renderer resources

@@ -17,6 +17,8 @@
 
 using std::make_unique;
 using std::make_shared;
+using std::uint32_t;
+using std::uint16_t;
 
 using candela::renderer::DenoiserShading;
 using candela::directx::RootSignatureManager;
@@ -36,14 +38,16 @@ namespace candela::renderer
 }
 
 DenoiserShading::DenoiserShading()
-	: rendererResources(), nriDevice(), rasterShader(true)
+	: rendererResources(), nriDevice(), rasterShader(true),
+	  radAccumulator(), albedo(), normal(), depth(), pt_rad(),
+	  in_mv(), in_normal_roughness(), in_view_z(),
+	  in_diff_radiance_hitdist(), out_diff_radiance_hitdist()
 {
 }
 
 DenoiserShading::~DenoiserShading()
 {
-	if (NRD)
-		NRD->Destroy();
+	destroyDenoiser();
 }
 
 struct DenoiserResource
@@ -113,35 +117,8 @@ void DenoiserShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12GraphicsCo
 
 	// Heap
 	descHeapManager = make_unique<DescriptorHeap>(rsm, "IODescTable", "IO1", rRes->pDevice);
-
-	// Bind res
-	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
-	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-	srvDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
-	srvDesc.Texture2D.MipLevels = 1u;
-	uint32_t entryNum{};
-	descHeapManager->setSRV(entryNum++, srvDesc, rRes->pDevice, *radAccumulator);
-	descHeapManager->setSRV(entryNum++, srvDesc, rRes->pDevice, *albedo);
-	descHeapManager->setSRV(entryNum++, srvDesc, rRes->pDevice, *normal);
-	srvDesc.Format = DXGI_FORMAT_R32_FLOAT;
-	descHeapManager->setSRV(entryNum++, srvDesc, rRes->pDevice, *depth);
-	srvDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
-	descHeapManager->setSRV(entryNum++, srvDesc, rRes->pDevice, *pt_rad);
-
-	D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc{};
-	uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
-	uavDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
-	descHeapManager->setUAV(entryNum++, uavDesc, rRes->pDevice, *in_mv);
-	descHeapManager->setUAV(entryNum++, uavDesc, rRes->pDevice, *in_normal_roughness);
-
-	uavDesc.Format = DXGI_FORMAT_R32_FLOAT;
-	descHeapManager->setUAV(entryNum++, uavDesc, rRes->pDevice, *in_view_z);
+	createShaderResources();
 	
-	uavDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
-	descHeapManager->setUAV(entryNum++, uavDesc, rRes->pDevice, *in_diff_radiance_hitdist);
-	descHeapManager->setUAV(entryNum++, uavDesc, rRes->pDevice, *out_diff_radiance_hitdist);
-
 	// CS Pipeline
 	// Load Shader
 	HRESULT hr;
@@ -167,7 +144,6 @@ void DenoiserShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12GraphicsCo
 	GFXTHROWIFFAILED(pDevice5->CreatePipelineState(&pipelineStateStreamDesc, IID_PPV_ARGS(&computePipelineState)));
 
 	// NVIDIA stuff
-	NRD = make_unique<NrdIntegration>(rendererResources->numBackBuffers);
 	NRI = make_unique<NriInterface>();
 
 	// --- NVIDIA Wrap device
@@ -187,25 +163,12 @@ void DenoiserShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12GraphicsCo
 	// Get needed "wrapper" extension, XXX - can be D3D11, D3D12 or VULKAN
 	result = nri::GetInterface(*nriDevice, NRI_INTERFACE(nri::WrapperD3D12Interface), (nri::WrapperD3D12Interface*)NRI.get());
 
-	const nrd::MethodDesc methodDescs[] =
-	{
-		// put neeeded methods here, like:
-		{ nrd::Method::REBLUR_DIFFUSE, rRes->winDimensions.x, rRes->winDimensions.y },
-	};
-
-	nrd::DenoiserCreationDesc denoiserCreationDesc = {};
-	denoiserCreationDesc.requestedMethods = methodDescs;
-	denoiserCreationDesc.requestedMethodNum = 1;
-
-	bool res = NRD->Initialize(*nriDevice, *NRI, *NRI, denoiserCreationDesc);
+	setupDenoiser();
 	// --- END NVIDIA Wrap device
 }
 
-void DenoiserShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, std::uint32_t currentBackBufferIndex)
+void DenoiserShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, uint32_t currentBackBufferIndex)
 {
-	static int x = 0;
-	++x;
-
 	wrl::ComPtr<ID3D12DebugCommandList> pDbgCmdList;
 	pCurrentCommandList.As(&pDbgCmdList);
 	//pDbgCmdList->SetFeatureMask(D3D12_DEBUG_FEATURE_ALLOW_BEHAVIOR_CHANGING_DEBUG_AIDS);
@@ -272,7 +235,7 @@ void DenoiserShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentComman
 	memcpy(&commonSettings.worldToViewMatrixPrev, &camera->getViewMatrix(), sizeof(commonSettings.worldToViewMatrixPrev));
 	memcpy(&commonSettings.viewToClipMatrix, &camera->getPerspectiveMatrix(), sizeof(commonSettings.viewToClipMatrix));
 	memcpy(&commonSettings.viewToClipMatrixPrev, &camera->getPerspectiveMatrix(), sizeof(commonSettings.viewToClipMatrixPrev));
-	commonSettings.frameIndex = x - 1;
+	commonSettings.frameIndex = static_cast<uint32_t>(rendererResources->frameNumber);
 	commonSettings.isMotionVectorInWorldSpace = true;
 	
 	nrd::ReblurSettings settings{};
@@ -311,10 +274,8 @@ void DenoiserShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentComman
 		}
 	}
 
-	//bool isUAV = pDbgCmdList->AssertResourceState(*out_diff_radiance_hitdist, 0, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 	for (uint32_t i = 0; i < N; i++)
 		NRI->DestroyTexture(*(nri::Texture*&)entryDescs[i].texture);
-
 	NRI->DestroyCommandBuffer(*cmdBuffer);
 	/////////////////////////////////////////////////////////////////
 	
@@ -332,19 +293,23 @@ void DenoiserShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentComman
 	pt_rad->transitionToPrevBarrier(pCurrentCommandList);
 }
 
-void DenoiserShading::onChange(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, std::uint32_t currentBackBufferIndex, ChangeEvent_t changeEvent)
+void DenoiserShading::onChange(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, uint32_t currentBackBufferIndex, ChangeEvent_t changeEvent)
 {
+	rasterShader.onChange(pCurrentCommandList, currentBackBufferIndex, changeEvent);
 }
 
 void DenoiserShading::onResize()
 {
+	rasterShader.onResize();
+	createShaderResources();
+	setupDenoiser();
 }
 
 void DenoiserShading::accept(IVisitor* visitor)
 {
 }
 
-void DenoiserShading::compute(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, std::uint32_t mode)
+void DenoiserShading::compute(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, uint32_t mode)
 {
 	if (mode == 1)
 		out_diff_radiance_hitdist->uavBarrier(pCurrentCommandList);
@@ -363,4 +328,65 @@ void DenoiserShading::compute(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCom
 
 	if (mode == 1)
 		out_diff_radiance_hitdist->uavBarrier(pCurrentCommandList);
+}
+
+void DenoiserShading::createShaderResources()
+{
+	auto rRes = rendererResources;
+
+	// Bind res
+	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
+	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+	srvDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
+	srvDesc.Texture2D.MipLevels = 1u;
+	uint32_t entryNum{};
+	descHeapManager->setSRV(entryNum++, srvDesc, rRes->pDevice, *radAccumulator);
+	descHeapManager->setSRV(entryNum++, srvDesc, rRes->pDevice, *albedo);
+	descHeapManager->setSRV(entryNum++, srvDesc, rRes->pDevice, *normal);
+	srvDesc.Format = DXGI_FORMAT_R32_FLOAT;
+	descHeapManager->setSRV(entryNum++, srvDesc, rRes->pDevice, *depth);
+	srvDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
+	descHeapManager->setSRV(entryNum++, srvDesc, rRes->pDevice, *pt_rad);
+
+	D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc{};
+	uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
+	uavDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
+	descHeapManager->setUAV(entryNum++, uavDesc, rRes->pDevice, *in_mv);
+	descHeapManager->setUAV(entryNum++, uavDesc, rRes->pDevice, *in_normal_roughness);
+
+	uavDesc.Format = DXGI_FORMAT_R32_FLOAT;
+	descHeapManager->setUAV(entryNum++, uavDesc, rRes->pDevice, *in_view_z);
+
+	uavDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
+	descHeapManager->setUAV(entryNum++, uavDesc, rRes->pDevice, *in_diff_radiance_hitdist);
+	descHeapManager->setUAV(entryNum++, uavDesc, rRes->pDevice, *out_diff_radiance_hitdist);
+}
+
+void DenoiserShading::setupDenoiser()
+{
+	auto rRes = rendererResources;
+
+	const nrd::MethodDesc methodDescs[] =
+	{
+		// put neeeded methods here, like:
+		{ nrd::Method::REBLUR_DIFFUSE, static_cast<uint16_t>(rRes->winDimensions.x), static_cast<uint16_t>(rRes->winDimensions.y) }
+	};
+
+	nrd::DenoiserCreationDesc denoiserCreationDesc = {};
+	denoiserCreationDesc.requestedMethods = methodDescs;
+	denoiserCreationDesc.requestedMethodNum = static_cast<uint32_t>(std::size(methodDescs));
+
+	destroyDenoiser();
+	NRD = make_unique<NrdIntegration>(rRes->numBackBuffers);
+	bool res = NRD->Initialize(*nriDevice, *NRI, *NRI, denoiserCreationDesc);
+}
+
+void DenoiserShading::destroyDenoiser()
+{
+	if (NRD)
+	{
+		NRD->Destroy();
+		NRD.reset();
+	}
 }
