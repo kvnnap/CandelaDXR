@@ -12,12 +12,13 @@ Texture2D<float4> albedo : register(t1);
 Texture2D<float4> normal : register(t2);
 Texture2D<float> depth : register(t3);
 Texture2D<float4> pt_rad_hitt : register(t4);
+Texture2D<float4> out_diff_radiance_hitdist : register(t5);
 
 RWTexture2D<float4> in_mv : register(u0);
 RWTexture2D<float4> in_normal_roughness : register(u1);
 RWTexture2D<float> in_view_z : register(u2);
 RWTexture2D<float4> in_diff_radiance_hitdist : register(u3);
-RWTexture2D<float4> out_diff_radiance_hitdist : register(u4);
+RWTexture2D<float4> gOutput : register(u4);
 
 
 [numthreads(8, 8, 1)]
@@ -51,7 +52,7 @@ void main(uint3 DTid : SV_DispatchThreadID)
 	}
 	else if (mode == 1)
 	{
-		out_diff_radiance_hitdist[DTid.xy] *= float4(albedo[DTid.xy].xyz, 1.f);
+		gOutput[DTid.xy] = float4(out_diff_radiance_hitdist[DTid.xy].xyz * albedo[DTid.xy].xyz, 1.f);
 	}
 }
 

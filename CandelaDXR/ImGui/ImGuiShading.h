@@ -28,6 +28,7 @@ namespace candela::renderer::imgui
 		void visit(LTRasterGuidedShading*) override;
 		void visit(PathTracingShading*) override;
 		void visit(RasterRTShadowsShading*) override;
+		void visit(DenoiserShading*) override;
 
 	private:
 		enum PathInteraction : std::uint32_t

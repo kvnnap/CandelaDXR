@@ -5,7 +5,6 @@
 #include "Util/StringUtil.h"
 #include "Mathematics/Types.h"
 
-#include "NRD.h"
 #include "NRIDescs.h"
 #include "NRI.h"
 #include "NRIDescs.hpp"
@@ -108,7 +107,7 @@ void DenoiserShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12GraphicsCo
 	// Setup compute shader RS
 	auto rsm = make_shared<RootSignatureManager>();
 	CD3DX12_ROOT_PARAMETER1 param;
-	rsm->addDescriptorRange("IORange", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 5u, 0u));
+	rsm->addDescriptorRange("IORange", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 6u, 0u));
 	rsm->addDescriptorRange("IORange", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 5u, 0u));
 	rsm->setDescriptorTableParameter("IODescTable", "IORange");
 	param.InitAsConstants(3u, 0u); rsm->setParameter("Constants", param);
@@ -182,6 +181,8 @@ void DenoiserShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentComman
 	normal->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
 	depth->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
 	pt_rad->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
+	rendererResources->pRTVRadBackBuffer->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+
 
 	compute(pCurrentCommandList, 0);
 
@@ -229,24 +230,22 @@ void DenoiserShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentComman
 		entryDescs[i].nextLayout = entryDescs[i].nextAccess == nri::AccessBits::SHADER_RESOURCE ? nri::TextureLayout::SHADER_RESOURCE : nri::TextureLayout::GENERAL;
 	}
 
-	nrd::CommonSettings commonSettings{};
 	auto camera = rendererResources->camera;
-	memcpy(&commonSettings.worldToViewMatrix, &camera->getViewMatrix(), sizeof(commonSettings.worldToViewMatrix));
-	memcpy(&commonSettings.worldToViewMatrixPrev, &camera->getViewMatrix(), sizeof(commonSettings.worldToViewMatrixPrev));
-	memcpy(&commonSettings.viewToClipMatrix, &camera->getPerspectiveMatrix(), sizeof(commonSettings.viewToClipMatrix));
-	memcpy(&commonSettings.viewToClipMatrixPrev, &camera->getPerspectiveMatrix(), sizeof(commonSettings.viewToClipMatrixPrev));
-	commonSettings.frameIndex = static_cast<uint32_t>(rendererResources->frameNumber);
-	commonSettings.isMotionVectorInWorldSpace = true;
+	memcpy(&nrdCommonSettings.worldToViewMatrix, &camera->getViewMatrix(), sizeof(nrdCommonSettings.worldToViewMatrix));
+	memcpy(&nrdCommonSettings.worldToViewMatrixPrev, &camera->getViewMatrix(), sizeof(nrdCommonSettings.worldToViewMatrixPrev));
+	memcpy(&nrdCommonSettings.viewToClipMatrix, &camera->getPerspectiveMatrix(), sizeof(nrdCommonSettings.viewToClipMatrix));
+	memcpy(&nrdCommonSettings.viewToClipMatrixPrev, &camera->getPerspectiveMatrix(), sizeof(nrdCommonSettings.viewToClipMatrixPrev));
+	nrdCommonSettings.frameIndex = static_cast<uint32_t>(rendererResources->frameNumber);
+	nrdCommonSettings.isMotionVectorInWorldSpace = true;
 	
-	nrd::ReblurSettings settings{};
-	//settings.checkerboardMode = nrd::CheckerboardMode::WHITE;
-	//settings.diffusePrepassBlurRadius = 1.f;
-	//settings.blurRadius = .5f;
-	//settings.stabilizationStrength = 0.1f;
-	//settings.enableReferenceAccumulation = true;
-	//settings.historyFixStrength = 0;
+	//nrdReblurSettings.checkerboardMode = nrd::CheckerboardMode::WHITE;
+	//nrdReblurSettings.diffusePrepassBlurRadius = 1.f;
+	//nrdReblurSettings.blurRadius = .5f;
+	//nrdReblurSettings.stabilizationStrength = 0.1f;
+	//nrdReblurSettings.enableReferenceAccumulation = true;
+	//nrdReblurSettings.historyFixFrameNum = 0;
 
-	NRD->SetMethodSettings(nrd::Method::REBLUR_DIFFUSE, &settings);
+	NRD->SetMethodSettings(nrd::Method::REBLUR_DIFFUSE, &nrdReblurSettings);
 	
 	// Populate the user pool
 	NrdUserPool userPool = {};
@@ -259,7 +258,7 @@ void DenoiserShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentComman
 		NrdIntegration_SetResource(userPool, denResource.resourceType, tex);
 	}
 	
-	NRD->Denoise(currentBackBufferIndex, *cmdBuffer, commonSettings, userPool, false);
+	NRD->Denoise(currentBackBufferIndex, *cmdBuffer, nrdCommonSettings, userPool, false);
 	
 	// Sync states
 	for (uint32_t i = 0; i < N; i++)
@@ -284,6 +283,7 @@ void DenoiserShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentComman
 	in_normal_roughness->transitionToPrevBarrier(pCurrentCommandList);
 	in_view_z->transitionToPrevBarrier(pCurrentCommandList);
 	in_diff_radiance_hitdist->transitionToPrevBarrier(pCurrentCommandList);
+
 	compute(pCurrentCommandList, 1);
 
 	radAccumulator->transitionToPrevBarrier(pCurrentCommandList);
@@ -291,6 +291,16 @@ void DenoiserShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentComman
 	normal->transitionToPrevBarrier(pCurrentCommandList);
 	depth->transitionToPrevBarrier(pCurrentCommandList);
 	pt_rad->transitionToPrevBarrier(pCurrentCommandList);
+	rendererResources->pRTVRadBackBuffer->transitionToPrevBarrier(pCurrentCommandList);
+
+	nrdCommonSettings.accumulationMode = nrd::AccumulationMode::CONTINUE;
+
+	//// Copy to output buffer
+	//out_diff_radiance_hitdist->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_COPY_SOURCE);
+	//rendererResources->pRTVRadBackBuffer->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_COPY_DEST);
+	//pCurrentCommandList->CopyResource(*rendererResources->pRTVRadBackBuffer, *out_diff_radiance_hitdist);
+	//rendererResources->pRTVRadBackBuffer->transitionToPrevBarrier(pCurrentCommandList);
+	//out_diff_radiance_hitdist->transitionToPrevBarrier(pCurrentCommandList);
 }
 
 void DenoiserShading::onChange(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, uint32_t currentBackBufferIndex, ChangeEvent_t changeEvent)
@@ -307,12 +317,27 @@ void DenoiserShading::onResize()
 
 void DenoiserShading::accept(IVisitor* visitor)
 {
+	visitor->visit(this);
+}
+
+nrd::CommonSettings& DenoiserShading::getCommonSettings()
+{
+	return nrdCommonSettings;
+}
+
+nrd::ReblurSettings& DenoiserShading::getReblurSettings()
+{
+	return nrdReblurSettings;
+}
+
+void DenoiserShading::clearHistory()
+{
+	nrdCommonSettings.accumulationMode = nrd::AccumulationMode::RESTART;
 }
 
 void DenoiserShading::compute(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, uint32_t mode)
 {
-	if (mode == 1)
-		out_diff_radiance_hitdist->uavBarrier(pCurrentCommandList);
+	out_diff_radiance_hitdist->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
 	pCurrentCommandList->SetComputeRootSignature(computeRootSignature.Get());
 	pCurrentCommandList->SetPipelineState(computePipelineState.Get());
@@ -326,8 +351,7 @@ void DenoiserShading::compute(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCom
 	auto launchDimensions = UVector2(dim.x / ThreadGroupDim + (dim.x % ThreadGroupDim == 0u ? 0u : 1u), dim.y / ThreadGroupDim + (dim.y % ThreadGroupDim == 0u ? 0u : 1u));
 	pCurrentCommandList->Dispatch(launchDimensions.x, launchDimensions.y, 1u);
 
-	if (mode == 1)
-		out_diff_radiance_hitdist->uavBarrier(pCurrentCommandList);
+	out_diff_radiance_hitdist->transitionToPrevBarrier(pCurrentCommandList);
 }
 
 void DenoiserShading::createShaderResources()
@@ -348,6 +372,7 @@ void DenoiserShading::createShaderResources()
 	descHeapManager->setSRV(entryNum++, srvDesc, rRes->pDevice, *depth);
 	srvDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
 	descHeapManager->setSRV(entryNum++, srvDesc, rRes->pDevice, *pt_rad);
+	descHeapManager->setSRV(entryNum++, srvDesc, rRes->pDevice, *out_diff_radiance_hitdist);
 
 	D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc{};
 	uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
@@ -360,7 +385,7 @@ void DenoiserShading::createShaderResources()
 
 	uavDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
 	descHeapManager->setUAV(entryNum++, uavDesc, rRes->pDevice, *in_diff_radiance_hitdist);
-	descHeapManager->setUAV(entryNum++, uavDesc, rRes->pDevice, *out_diff_radiance_hitdist);
+	descHeapManager->setUAV(entryNum++, uavDesc, rRes->pDevice, *rRes->pRTVRadBackBuffer);
 }
 
 void DenoiserShading::setupDenoiser()

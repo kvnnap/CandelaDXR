@@ -8,6 +8,7 @@
 #include "Renderer/LTRasterGuidedShading.h"
 #include "Renderer/PathTracingShading.h"
 #include "Renderer/RasterRTShadowsShading.h"
+#include "Renderer/DenoiserShading.h"
 
 #include "ImGuiShading.h"
 
@@ -18,6 +19,7 @@ using candela::renderer::RasterShading;
 using candela::renderer::LightTracingShading;
 using candela::renderer::PathTracingShading;
 using candela::renderer::RasterRTShadowsShading;
+using candela::renderer::DenoiserShading;
 
 using candela::renderer::imgui::ImGuiShading;
 
@@ -64,6 +66,28 @@ void ImGuiShading::visit(RasterRTShadowsShading* rasterShader)
 		rasterShader->setLightType(lightType ? 1 : 0);
 		changed = true;
 	}
+}
+
+void ImGuiShading::visit(DenoiserShading* denShading)
+{
+	ImGui::Text("DenoiserShading - CS");
+	
+	auto& common = denShading->getCommonSettings();
+	changed |= ImGui::DragFloat("Denoising Range", &common.denoisingRange, 1.f, 1.f, 524031.f);
+	changed |= ImGui::DragFloat("Disocclusion Threshold", &common.disocclusionThreshold, 0.0001f, 0.0025f, 0.0150f);
+	changed |= ImGui::DragFloat("Split Screen", &common.splitScreen, 0.01f, 0.f, 1.f);
+
+	ImGui::Text("DenoiserShading - RS");
+
+	auto& reblur = denShading->getReblurSettings();
+	changed |= ImGui::DragInt("Max Accum Frame", reinterpret_cast<int*>(&reblur.maxAccumulatedFrameNum), 1.f, 0, 1000);
+	changed |= ImGui::DragInt("Max Fast Accum Frame", reinterpret_cast<int*>(&reblur.maxFastAccumulatedFrameNum), 1.f, 0, reblur.maxAccumulatedFrameNum - 1);
+	changed |= ImGui::DragInt("History Fix frame num", reinterpret_cast<int*>(&reblur.historyFixFrameNum), 1.f, 0, reblur.maxFastAccumulatedFrameNum - 1);
+	changed |= ImGui::DragFloat("diffusePrepassBlurRadius", &reblur.diffusePrepassBlurRadius, 1.f, 1.f, 100.f);
+	changed |= ImGui::DragFloat("blurRadius", &reblur.blurRadius, 1.f, 1.f, 100.f);
+	changed |= ImGui::DragFloat("historyFixStrideBetweenSamples", &reblur.historyFixStrideBetweenSamples, 1.f, 1.f, 100.f);
+	changed |= ImGui::DragFloat("stabilizationStrength", &reblur.stabilizationStrength, 0.01f, 0.01, 1.f);
+
 }
 
 void ImGuiShading::visit(LightTracingShading* lightTracingShader)

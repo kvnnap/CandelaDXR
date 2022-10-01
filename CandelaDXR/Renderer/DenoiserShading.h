@@ -21,6 +21,9 @@
 #include "Drawable.h"
 #include "RasterShading.h"
 
+#include "NRD.h"
+
+
 class NrdIntegration;
 
 namespace nri
@@ -48,12 +51,17 @@ namespace candela::renderer
 		void onResize() override;
 		void accept(IVisitor* visitor) override;
 
+		nrd::CommonSettings& getCommonSettings();
+		nrd::ReblurSettings& getReblurSettings();
+		void clearHistory();
+
+	private:
+
 		void compute(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, std::uint32_t mode);
 		void createShaderResources();
 		void setupDenoiser();
 		void destroyDenoiser();
 
-	private:
 		// Common renderer resources
 		RendererResources* rendererResources;
 		std::unique_ptr<NrdIntegration> NRD;
@@ -86,5 +94,9 @@ namespace candela::renderer
 		directx::Resource* in_view_z; // need to linearize from g_buffer
 		directx::Resource* in_diff_radiance_hitdist;
 		directx::Resource* out_diff_radiance_hitdist;
+
+		nrd::CommonSettings nrdCommonSettings{};
+		nrd::ReblurSettings nrdReblurSettings{};
+
 	};
 }

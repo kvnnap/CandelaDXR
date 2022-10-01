@@ -8,6 +8,7 @@ namespace candela::renderer
 	class LTRasterGuidedShading;
 	class PathTracingShading;
 	class RasterRTShadowsShading;
+	class DenoiserShading;
 
 	class IVisitor
 	{
@@ -19,5 +20,6 @@ namespace candela::renderer
 		virtual void visit(LTRasterGuidedShading*) = 0;
 		virtual void visit(PathTracingShading*) = 0;
 		virtual void visit(RasterRTShadowsShading*) = 0;
+		virtual void visit(DenoiserShading*) = 0;
 	};
 }
