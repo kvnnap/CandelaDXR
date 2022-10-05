@@ -18,6 +18,9 @@ void ImGuiRenderer::drawUi()
 	changed = false;
 	auto &rTime = renderer.getRendererTime();
 	animating = rTime.isRunning();
+	
+	if (ImGui::Button("Record"))
+		renderer.getAnimationSequencer().setEnabled(true);
 
 	if (ImGui::Checkbox("Animation", &animating))
 	{

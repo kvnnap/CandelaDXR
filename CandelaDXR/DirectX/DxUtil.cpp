@@ -281,7 +281,7 @@ vector<shared_ptr<Resource>> DXUtil::createRenderTargetViewsEx(
 	ComPtr<ID3D12Device> device,
 	ComPtr<ID3D12DescriptorHeap> descriptorHeap,
 	ComPtr<IDXGISwapChain> swapChain,
-	vector<shared_ptr<Resource>>& textureTargets, UINT numRTV)
+	const vector<Resource*>& textureTargets, UINT numRTV)
 {
 	vector<ComPtr<ID3D12Resource>> conv;
 	conv.reserve(textureTargets.size());
@@ -312,14 +312,11 @@ vector<shared_ptr<Resource>> DXUtil::createRenderTargetViewsEx(
 		rtvHandle.Offset(rtvDescSize);
 	}
 
+	// End with texture targets
+	for (auto& textureTarget : textureTargets)
 	{
-		UINT i = 0;
-		// End with texture targets
-		for (auto& textureTarget : textureTargets)
-		{
-			device->CreateRenderTargetView(textureTargets[i++].Get(), nullptr, rtvHandle);
-			rtvHandle.Offset(rtvDescSize);
-		}
+		device->CreateRenderTargetView(textureTarget.Get(), nullptr, rtvHandle);
+		rtvHandle.Offset(rtvDescSize);
 	}
 
 	return backBuffers;

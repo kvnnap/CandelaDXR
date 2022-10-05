@@ -47,7 +47,7 @@ namespace candela::directx
 			Microsoft::WRL::ComPtr<ID3D12Device> device,
 			Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> descriptorHeap,
 			Microsoft::WRL::ComPtr<IDXGISwapChain> swapChain,
-			std::vector<std::shared_ptr<Resource>> &textureTargets,
+			const std::vector<Resource*>& textureTargets,
 			UINT numRTV);
 
 		static std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>> createDepthStencilView(

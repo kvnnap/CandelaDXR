@@ -171,6 +171,12 @@ void Scene::addSceneNodeToGroupMapping(SceneNode& sceneNode, const string& scene
 	if (item == spanDataMap.end())
 		return;
 	sceneNode.addChild(sceneNodeName, groupName, item->second.CentrePosition);
+	// Update centre position
+	DirectX::XMVECTOR accum{};
+	for (auto& snChild : sceneNode.Children)
+		accum = DirectX::XMVectorAdd(accum, snChild->CentrePosition);
+	const float invSize = 1.f / sceneNode.Children.size();
+	sceneNode.CentrePosition = DirectX::XMVectorMultiply(accum, DirectX::XMVectorSet(invSize, invSize, invSize, invSize));
 }
 
 bool Material::isEmissive() const
@@ -234,6 +240,20 @@ vector<SceneNode*> SceneNode::getLeafNodes()
 	vector<SceneNode*> leafs;
 	getLeafNodes(leafs);
 	return leafs;
+}
+
+void SceneNode::getAllNodes(vector<SceneNode*>& nodes)
+{
+	nodes.push_back(this);
+	for (auto& child : Children)
+		child->getAllNodes(nodes);
+}
+
+vector<SceneNode*> SceneNode::getAllNodes()
+{
+	vector<SceneNode*> nodes;
+	getAllNodes(nodes);
+	return nodes;
 }
 
 void SceneNode::transform(const Matrix& trans)

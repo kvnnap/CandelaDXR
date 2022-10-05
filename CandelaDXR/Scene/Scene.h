@@ -35,6 +35,10 @@ namespace candela::scene
 		void getLeafNodes(std::vector<SceneNode*>& leafs);
 		std::vector<SceneNode*> getLeafNodes();
 
+		void getAllNodes(std::vector<SceneNode*>& nodes);
+		std::vector<SceneNode*> getAllNodes();
+
+
 		void transform(const mathematics::Matrix& trans) override;
 		const DirectX::XMVECTOR& getCentrePosition() const override;
 	};

@@ -27,7 +27,7 @@ unique_ptr<Animation> AnimationFactory::create(const ConfigurationNode& config) 
     auto animation = create();
 
     std::unordered_map<std::string, std::size_t> stateMap;
-
+    
     std::size_t i{};
     // Load states
     for (const auto& state : config["States"].asList())
@@ -68,11 +68,15 @@ unique_ptr<Animation> AnimationFactory::create(const ConfigurationNode& config) 
 
     // Initial mesh state
     const auto& initialMeshStateIdConf = config["InitialMeshState"].asLiteral();
+    bool transAbs = false;
+    if (config.asObject().keyExists("TranslationAbsolute"))
+        transAbs = config["TranslationAbsolute"].read<bool>();
 
     animation->setInitialMeshStateId(
         initialMeshStateIdConf.is<std::string>() ? 
         stateMap.at(initialMeshStateIdConf.read<std::string>()) : 
         initialMeshStateIdConf.read<std::uint64_t>());
+    animation->setTranslationAbsolute(transAbs);
 
     return animation;
 }

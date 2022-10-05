@@ -29,6 +29,7 @@ namespace candela::animation
 		std::uint32_t getTotalTimeMs() const;
 
 		void setInitialMeshStateId(std::size_t initialMeshStateId);
+		void setTranslationAbsolute(bool translationAbsolute);
 		void addMeshState(const MeshState& meshState);
 		void addTransition(const Transition& transition);
 	private:
@@ -36,5 +37,6 @@ namespace candela::animation
 		std::vector<MeshState> meshStates;
 		std::vector<Transition> transitions;
 		std::size_t initialMeshStateId;
+		bool translationAbsolute;
 	};
 }

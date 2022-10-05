@@ -50,7 +50,7 @@ unique_ptr<IRenderer> RendererFactory::create(const ConfigurationNode& config) c
 			auto targetName = targetNode.read<string>();
 			if (config["Camera"].read<string>() == targetName)
 				animationMapping.push_back({ camera, anim, targetName, true });
-			for (auto node : scene->getSceneGraph().getLeafNodes())
+			for (auto node : scene->getSceneGraph().getAllNodes())
 				if (node->NodeName == targetName)
 					animationMapping.push_back({ node, anim, targetName, true });
 		}

@@ -31,12 +31,15 @@ Matrix Animation::animate(std::uint32_t timeMs, const DirectX::XMVECTOR& centreT
 	auto rotate = DirectX::XMVectorLerp(statePrev.Rotate, stateCurrent.Rotate, t);
 	auto scale = DirectX::XMVectorLerp(statePrev.Scale, stateCurrent.Scale, t);
 
+	if (!translationAbsolute)
+		translate = DirectX::XMVectorAdd(centreTranslation, translate);
+
 	return DirectX::XMMatrixTranslationFromVector(DirectX::XMVectorNegate(centreTranslation))
 		* DirectX::XMMatrixScalingFromVector(scale)
 		* DirectX::XMMatrixRotationX(rotate.m128_f32[0])
 		* DirectX::XMMatrixRotationY(rotate.m128_f32[1])
 		* DirectX::XMMatrixRotationZ(rotate.m128_f32[2])
-		* DirectX::XMMatrixTranslationFromVector(DirectX::XMVectorAdd(centreTranslation, translate));
+		* DirectX::XMMatrixTranslationFromVector(translate);
 }
 
 uint32_t Animation::getTotalTimeMs() const
@@ -47,6 +50,11 @@ uint32_t Animation::getTotalTimeMs() const
 void Animation::setInitialMeshStateId(std::size_t initialMeshStateId)
 {
 	this->initialMeshStateId = initialMeshStateId;
+}
+
+void Animation::setTranslationAbsolute(bool p_translationAbsolute)
+{
+	translationAbsolute = p_translationAbsolute;
 }
 
 void Animation::addMeshState(const MeshState& meshState)
