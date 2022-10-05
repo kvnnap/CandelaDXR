@@ -122,8 +122,8 @@ void Renderer::init()
 	// Chains - TODO: Configurable through Factory
 	chain.clear();
 	auto fileOutput = make_unique<FileOutput>();
-	fileOutput->setFileType(FileOutput::RAW);
-	chain.push_back(std::move(fileOutput));
+	//fileOutput->setFileType(FileOutput::RAW);
+	//chain.push_back(std::move(fileOutput));
 	chain.push_back(make_unique<ToneMapping>());
 	chain.push_back(make_unique<AlphaCorrection>());
 	fileOutput = make_unique<FileOutput>();
@@ -155,23 +155,41 @@ void Renderer::init()
 	// Create command queue, with command list and command allocators
 	commandQueue = make_unique<CommandQueue>(pDevice, D3D12_COMMAND_LIST_TYPE_DIRECT);
 
-	resizeFloatTargetTextures();
-
 	// Create swap chain
 	pSwapChain = DXUtil::createSwapChain(dxgiFactory, commandQueue->getCommandQueue(), window->getHandle(), NumBackBuffers);
 
-	// Create descriptor heap for render target view - Num 8-bit normal targets, 1 32-bit and 1-32 accumulator
-	pRTVDescriptorHeap = DXUtil::createDescriptorHeap(pDevice, NumBackBuffers + 2, D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+	// Create descriptor heap for render target view - Num + pRTVRadBackBuffer, pRTVDiff, PRTVSpec
+	pRTVDescriptorHeap = DXUtil::createDescriptorHeap(pDevice, NumBackBuffers + 3, D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 	pRTVDescriptorHeap->SetName(L"RTV Descriptor Heap");
+
+	// Other tex
+	rendererResources.resourceManager = make_unique<ResourceManager>(pDevice);
+	rendererResources.resourceManager->setTempBufferSlots(NumBackBuffers);
+	auto& rMan = rendererResources.resourceManager;
+	// The resource that will be used to copy back to render target
+	pRTV8BitBackBuffer = &rMan->createResource(D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
+		windowDimensions.x, windowDimensions.y, DXGI_FORMAT_R8G8B8A8_UNORM, true);
+	pRTV8BitBackBuffer->setName(L"RTV Radiance 8-bit Back-Buffer");
+
+	// Create Float RTV Targets
+	pRTVRadBackBuffer = &rMan->createResource(D3D12_RESOURCE_STATE_RENDER_TARGET,
+		D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS | D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET,
+		windowDimensions.x, windowDimensions.y, DXGI_FORMAT_R32G32B32A32_FLOAT, true);
+	pRTVRadBackBuffer->setName(L"RTV Radiance Back-Buffer");
+	pRTVDiff = &rMan->createResource(D3D12_RESOURCE_STATE_RENDER_TARGET,
+		D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS | D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET,
+		windowDimensions.x, windowDimensions.y, DXGI_FORMAT_R32G32B32A32_FLOAT, true);
+	pRTVDiff->setName(L"pRTVDiff");
+	pRTVSpec = &rMan->createResource(D3D12_RESOURCE_STATE_RENDER_TARGET,
+		D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS | D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET,
+		windowDimensions.x, windowDimensions.y, DXGI_FORMAT_R32G32B32A32_FLOAT, true);
+	pRTVSpec->setName(L"pRTVSpec");
 
 	// Create render target Views
 	rtvDescriptorSize = pDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-	ResPtrVec otherBuffs = { pRTVRadBackBuffer };
-	pRTVBackBuffers = DXUtil::createRenderTargetViewsEx(pDevice, pRTVDescriptorHeap, pSwapChain, otherBuffs, NumBackBuffers);
+	pRTVBackBuffers = DXUtil::createRenderTargetViewsEx(pDevice, pRTVDescriptorHeap, pSwapChain, { pRTVRadBackBuffer, pRTVDiff, pRTVSpec }, NumBackBuffers);
 	
 	// Upload scene resources
-	rendererResources.resourceManager = make_unique<ResourceManager>(pDevice);
-	rendererResources.resourceManager->setTempBufferSlots(NumBackBuffers);
 	initSceneResources();
 
 	// Prepare struct to share with drawables
@@ -651,43 +669,22 @@ void Renderer::resize()
 {
 	// Wait for all GPU operations to complete
 	commandQueue->flush();
-	rendererResources.pRTVRadBackBuffer.reset();
 	pRTVBackBuffers.clear();
 	rendererResources.currentBackBufferIndex = currentBackBufferIndex = 0;
 	camera->setAspectRatio(static_cast<float>(windowDimensions.x) / windowDimensions.y);
 	HRESULT hr;
 	auto flags = DXUtil::checkTearingSupport(dxgiFactory) ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING : 0;
 	GFXTHROWIFFAILED(pSwapChain->ResizeBuffers(NumBackBuffers, windowDimensions.x, windowDimensions.y, DXGI_FORMAT_UNKNOWN, flags));
-	// Resize Float textures and 
-	resizeFloatTargetTextures();
+	// Resize textures in resource manager
+	rendererResources.resourceManager->resize(windowDimensions.x, windowDimensions.y);
 	rendererResources.pRTVRadBackBuffer = pRTVRadBackBuffer;
-	ResPtrVec otherBuffs = { pRTVRadBackBuffer };
-	pRTVBackBuffers = DXUtil::createRenderTargetViewsEx(pDevice, pRTVDescriptorHeap, pSwapChain, otherBuffs, NumBackBuffers);
+	pRTVBackBuffers = DXUtil::createRenderTargetViewsEx(pDevice, pRTVDescriptorHeap, pSwapChain, { pRTVRadBackBuffer, pRTVDiff, pRTVSpec }, NumBackBuffers);
 	fpsCounter.resetFrameCount();
 	
-	// Resize drawables
-	rendererResources.resourceManager->resize(windowDimensions.x, windowDimensions.y);
 	createShaderResources(); // some resources used in renderer depend on resizing
 	for (IDrawable* drawable : drawables)
 		drawable->onResize();
 	imguiManager.onResize();
-}
-
-void Renderer::resizeFloatTargetTextures()
-{
-	// The resource that will be used to copy back to render target
-	pRTV8BitBackBuffer = make_shared<Resource>(Resource::createTextureCommittedResource(
-		pDevice, windowDimensions.x, windowDimensions.y,
-		D3D12_RESOURCE_STATE_UNORDERED_ACCESS,
-		DXGI_FORMAT_R8G8B8A8_UNORM, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS));
-	pRTV8BitBackBuffer->setName(L"RTV Radiance 8-bit Back-Buffer");
-
-	// Create Float RTV Targets
-	pRTVRadBackBuffer = make_shared<Resource>(Resource::createTextureCommittedResource(
-		pDevice, windowDimensions.x, windowDimensions.y,
-		D3D12_RESOURCE_STATE_RENDER_TARGET, DXGI_FORMAT_R32G32B32A32_FLOAT, 
-		D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS | D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET));
-	pRTVRadBackBuffer->setName(L"RTV Radiance Back-Buffer");
 }
 
 vector<DirectX::XMFLOAT3X4> Renderer::getMatrices()

@@ -70,7 +70,6 @@ namespace candela::renderer
 		void createShaderResources();
 		void updateCamera();
 		void resize();
-		void resizeFloatTargetTextures();
 		void refreshMaterialResources();
 		directx::DXResource& getTempResource();
 		std::vector<DirectX::XMFLOAT3X4> getMatrices();
@@ -93,8 +92,8 @@ namespace candela::renderer
 		wrl::ComPtr<IDXGIFactory> dxgiFactory;
 		wrl::ComPtr<IDXGISwapChain> pSwapChain;
 		wrl::ComPtr<ID3D12DescriptorHeap> pRTVDescriptorHeap;
-		std::shared_ptr<directx::Resource> pRTV8BitBackBuffer; // This is the 8-bit target that will then be copied to swap-chain
-		std::shared_ptr<directx::Resource> pRTVRadBackBuffer; // This is the target for drawables (32-bit)
+		directx::Resource * pRTV8BitBackBuffer; // This is the 8-bit target that will then be copied to swap-chain
+		directx::Resource * pRTVRadBackBuffer, * pRTVDiff, * pRTVSpec; // This is the target for drawables (32-bit)
 		directx::Resource * pRadAccumulator; // 32-bit
 		ResPtrVec pRTVBackBuffers; // Buffers retrieved from swap-chain (these are 8-bit)
 
