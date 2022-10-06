@@ -528,8 +528,6 @@ void Renderer::initSceneResources()
 		ThrowException("Scene is empty - nothing to render");
 
 	wrl::ComPtr<ID3D12Resource> tempVB;
-	sceneBuffer = DXUtil::createCommittedResource(pDevice, D3D12_HEAP_TYPE_DEFAULT, totalSize, D3D12_RESOURCE_STATE_COPY_DEST);
-	sceneBuffer->SetName(L"Scene Buffer");
 	auto tempResource = DXUtil::createCommittedResource(pDevice, D3D12_HEAP_TYPE_UPLOAD, totalSize, D3D12_RESOURCE_STATE_GENERIC_READ);
 	uint8_t* data;
 	auto readRange = D3D12_RANGE(0, 0);
@@ -540,6 +538,10 @@ void Renderer::initSceneResources()
 	memcpy(data + scene->getIndicesOffset(), scene->getIndices().data(), scene->getIndicesSizeBytes());
 	tempResource->Unmap(0, nullptr);
 	pCurrentCommandList = commandQueue->getCommandList();
+	sceneBuffer = DXUtil::createCommittedResource(pDevice, D3D12_HEAP_TYPE_DEFAULT, totalSize, D3D12_RESOURCE_STATE_COMMON);
+	sceneBuffer->SetName(L"Scene Buffer");
+	auto resBarrierDesc = CD3DX12_RESOURCE_BARRIER::Transition(sceneBuffer.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
+	pCurrentCommandList->ResourceBarrier(1, &resBarrierDesc);
 	pCurrentCommandList->CopyResource(sceneBuffer.Get(), tempResource.Get());
 
 	// Upload materials and face attributes (in separate buffers otherwise we have to take care of alignment)

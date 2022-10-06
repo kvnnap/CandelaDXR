@@ -211,7 +211,7 @@ void PrefixSumComputeShader::bindAdditionalResources(UINT baseIndex)
 	auto reqSize = getLaunchDimensions(dim).x;
 
 	// Create resouce
-	scratchResource = &resourceManager->createResource(D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, reqSize * sizeof(float));
+	scratchResource = &resourceManager->createResource(D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, reqSize * sizeof(float));
 	
 	// Describe resource and add to descriptor heap
 	D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc{};
@@ -230,7 +230,10 @@ void PrefixSumComputeShader::dispatch(wrl::ComPtr<ID3D12GraphicsCommandList> cur
 	currentCommandList->SetComputeRoot32BitConstant(1u, 0u, 0u);
 	currentCommandList->Dispatch(launchDimensions.x, launchDimensions.y, 1u);
 	outputTexture->uavBarrier(currentCommandList);
-	scratchResource->uavBarrier(currentCommandList);
+	if (scratchResource->getState() != D3D12_RESOURCE_STATE_UNORDERED_ACCESS)
+		scratchResource->transistionBarrier(currentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+	else
+		scratchResource->uavBarrier(currentCommandList);
 
 	// If we only have one block, the operation is complete
 	if (launchDimensions.x <= 1u)
@@ -309,8 +312,9 @@ void FilterComputeShader::dispatch(wrl::ComPtr<ID3D12GraphicsCommandList> curren
 
 void FilterComputeShader::initComponent(RendererResources* rendererResources, wrl::ComPtr<ID3D12GraphicsCommandList>& pCurrentCommandList)
 {
-	cbvResource = &resourceManager->createResource(D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_FLAG_NONE, static_cast<UINT>(MaxSize * sizeof(float)));
+	cbvResource = &resourceManager->createResource(D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_FLAG_NONE, static_cast<UINT>(MaxSize * sizeof(float)));
 	cbvResource->setName("Gaussian Constant Data");
+	cbvResource->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 	changed = true;
 }
 
@@ -360,7 +364,7 @@ void DistanceComputeShader::bindAdditionalResources(UINT baseIndex)
 	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
 	srvDesc.Texture2D.MipLevels = 1u;
 	faceIndexResource = resourceManager->getNamedResource("ltr_gMat");
-	constBufferResource = &resourceManager->createResource(D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER, D3D12_RESOURCE_FLAG_NONE, sizeof(distConstBuffer));
+	constBufferResource = &resourceManager->createResource(D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_FLAG_NONE, sizeof(distConstBuffer));
 	descHeapManager->setSRV(baseIndex++, srvDesc, pDevice, *faceIndexResource);
 	
 	srvDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
@@ -392,6 +396,8 @@ void DistanceComputeShader::updateData(wrl::ComPtr<ID3D12GraphicsCommandList> cu
 	faceIndexResource->transistionBarrier(currentCommandList, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 	normalResource->transistionBarrier(currentCommandList, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 	cdfMaskResource->transistionBarrier(currentCommandList, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+	if (constBufferResource->getState() != D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER)
+		constBufferResource->transistionBarrier(currentCommandList, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
 	constBufferResource->write(currentCommandList, rendererResources->getTempResource(), &distConstBuffer);
 }
 

@@ -62,7 +62,7 @@ namespace candela::renderer
 
 	private:
 		void buildPipeline();
-		void createShaderResources();
+		void createShaderResources(wrl::ComPtr<ID3D12GraphicsCommandList>& commandList);
 		void createShaderTable(wrl::ComPtr<ID3D12GraphicsCommandList> &commandList);
 		
 		void generateIrrToRadTexture(wrl::ComPtr<ID3D12GraphicsCommandList>& commandList, wrl::ComPtr<ID3D12Resource>& tempResource);
@@ -106,7 +106,7 @@ namespace candela::renderer
 		mathematics::UVector2 lightSamples;
 
 		wrl::ComPtr<ID3D12Resource> constantBuffer;
-		wrl::ComPtr<ID3D12Resource> irradianceDataStructure;
+		directx::Resource* irradianceDataStructure;
 		directx::Resource* irrToRad;
 
 		directx::Resource* irradianceTexture;

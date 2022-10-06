@@ -54,7 +54,8 @@ void DXUtil::setupDebugLayer(ComPtr<ID3D12Device> pDevice, bool breakEnabled)
 	};
 	D3D12_MESSAGE_ID denyIds[] = {
 		D3D12_MESSAGE_ID_CLEARRENDERTARGETVIEW_MISMATCHINGCLEARVALUE,
-		D3D12_MESSAGE_ID_CREATEGRAPHICSPIPELINESTATE_RENDERTARGETVIEW_NOT_SET
+		D3D12_MESSAGE_ID_CREATEGRAPHICSPIPELINESTATE_RENDERTARGETVIEW_NOT_SET,
+		//D3D12_MESSAGE_ID_CREATERESOURCE_STATE_IGNORED // TO INVESTIGATE
 	};
 
 	// TODO comment the below to see if we get more messages
@@ -409,9 +410,9 @@ ComPtr<ID3D12Resource> DXUtil::createTextureCommittedResource(ComPtr<ID3D12Devic
 ComPtr<ID3D12Resource> DXUtil::uploadDataToDefaultHeap(ComPtr<ID3D12Device> pDevice, ComPtr<ID3D12GraphicsCommandList> pCommandList, ComPtr<ID3D12Resource>& tempResource, const void* ptData, std::size_t dataSize, D3D12_RESOURCE_STATES finalState)
 {
 	// Upload buffer to gpu
-	ComPtr<ID3D12Resource> defaultResource = DXUtil::createCommittedResource(pDevice, D3D12_HEAP_TYPE_DEFAULT, dataSize, D3D12_RESOURCE_STATE_COPY_DEST);
+	ComPtr<ID3D12Resource> defaultResource = DXUtil::createCommittedResource(pDevice, D3D12_HEAP_TYPE_DEFAULT, dataSize, D3D12_RESOURCE_STATE_COMMON);
 
-	updateDataInDefaultHeap(pDevice, pCommandList, defaultResource, tempResource, ptData, dataSize, D3D12_RESOURCE_STATE_COPY_DEST, finalState);
+	updateDataInDefaultHeap(pDevice, pCommandList, defaultResource, tempResource, ptData, dataSize, D3D12_RESOURCE_STATE_COMMON, finalState);
 
 	return defaultResource;
 }
@@ -538,8 +539,10 @@ DXUtil::AccelerationStructureBuffers DXUtil::createBottomLevelAS(
 	pDevice5->GetRaytracingAccelerationStructurePrebuildInfo(&rtStructureDescriptor, &prebuildInfo);
 
 	// Create the buffers..
-	blasBuffers.pScratch = createCommittedResource(pDevice, D3D12_HEAP_TYPE_DEFAULT, prebuildInfo.ScratchDataSizeInBytes, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS);
+	blasBuffers.pScratch = createCommittedResource(pDevice, D3D12_HEAP_TYPE_DEFAULT, prebuildInfo.ScratchDataSizeInBytes, D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS);
 	blasBuffers.pScratch->SetName(L"BLAS Buffer pScratch");
+	auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(blasBuffers.pScratch.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+	pCommandList->ResourceBarrier(1u, &barrier);
 	blasBuffers.pResult = createCommittedResource(pDevice, D3D12_HEAP_TYPE_DEFAULT, prebuildInfo.ResultDataMaxSizeInBytes, D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS);
 	blasBuffers.pResult->SetName(L"BLAS Buffer pResult");
 
@@ -583,8 +586,10 @@ void DXUtil::buildTopLevelAS(
 	}
 	else {
 		// Create the buffers..
-		tlasBuffers.pScratch = createCommittedResource(pDevice, D3D12_HEAP_TYPE_DEFAULT, prebuildInfo.ScratchDataSizeInBytes, D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS);
+		tlasBuffers.pScratch = createCommittedResource(pDevice, D3D12_HEAP_TYPE_DEFAULT, prebuildInfo.ScratchDataSizeInBytes, D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS);
 		tlasBuffers.pScratch->SetName(L"TLAS Buffer pScratch");
+		auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(tlasBuffers.pScratch.Get(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+		pCommandList->ResourceBarrier(1u, &barrier);
 		tlasBuffers.pResult = createCommittedResource(pDevice, D3D12_HEAP_TYPE_DEFAULT, prebuildInfo.ResultDataMaxSizeInBytes, D3D12_RESOURCE_STATE_RAYTRACING_ACCELERATION_STRUCTURE, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS);
 		tlasBuffers.pResult->SetName(L"TLAS Buffer pResult");
 	}
