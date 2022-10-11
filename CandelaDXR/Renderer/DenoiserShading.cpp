@@ -181,7 +181,7 @@ void DenoiserShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentComman
 	normal->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
 	depth->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
 	pt_rad->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
-	rendererResources->pRTVRadBackBuffer->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+	rendererResources->pRTVRad->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
 
 	compute(pCurrentCommandList, 0);
@@ -291,7 +291,7 @@ void DenoiserShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentComman
 	normal->transitionToPrevBarrier(pCurrentCommandList);
 	depth->transitionToPrevBarrier(pCurrentCommandList);
 	pt_rad->transitionToPrevBarrier(pCurrentCommandList);
-	rendererResources->pRTVRadBackBuffer->transitionToPrevBarrier(pCurrentCommandList);
+	rendererResources->pRTVRad->transitionToPrevBarrier(pCurrentCommandList);
 
 	nrdCommonSettings.accumulationMode = nrd::AccumulationMode::CONTINUE;
 
@@ -385,7 +385,7 @@ void DenoiserShading::createShaderResources()
 
 	uavDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
 	descHeapManager->setUAV(entryNum++, uavDesc, rRes->pDevice, *in_diff_radiance_hitdist);
-	descHeapManager->setUAV(entryNum++, uavDesc, rRes->pDevice, *rRes->pRTVRadBackBuffer);
+	descHeapManager->setUAV(entryNum++, uavDesc, rRes->pDevice, *rRes->pRTVRad);
 }
 
 void DenoiserShading::setupDenoiser()

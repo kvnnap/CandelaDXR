@@ -86,7 +86,7 @@ void ImGuiShading::visit(DenoiserShading* denShading)
 	changed |= ImGui::DragFloat("diffusePrepassBlurRadius", &reblur.diffusePrepassBlurRadius, 1.f, 1.f, 100.f);
 	changed |= ImGui::DragFloat("blurRadius", &reblur.blurRadius, 1.f, 1.f, 100.f);
 	changed |= ImGui::DragFloat("historyFixStrideBetweenSamples", &reblur.historyFixStrideBetweenSamples, 1.f, 1.f, 100.f);
-	changed |= ImGui::DragFloat("stabilizationStrength", &reblur.stabilizationStrength, 0.01f, 0.01, 1.f);
+	changed |= ImGui::DragFloat("stabilizationStrength", &reblur.stabilizationStrength, 0.01f, 0.01f, 1.f);
 
 }
 

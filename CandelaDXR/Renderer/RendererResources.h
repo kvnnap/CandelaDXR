@@ -34,7 +34,9 @@ namespace candela::renderer
 		wrl::ComPtr<IDXGIAdapter> adapter;
 		std::vector<directx::Resource> textures;
 		wrl::ComPtr<ID3D12DescriptorHeap> pRTVDescriptorHeap;
-		directx::Resource* pRTVRadBackBuffer;
+		directx::Resource* pRTVRad;
+		directx::Resource* pRTVDiff;
+		directx::Resource* pRTVSpec;
 		directx::CommandQueue* commandQueue;
 		mathematics::UVector2 winDimensions;
 		UINT numBackBuffers;

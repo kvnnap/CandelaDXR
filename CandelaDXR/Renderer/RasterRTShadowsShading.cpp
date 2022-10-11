@@ -87,7 +87,7 @@ void RasterRTShadowsShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurren
 	rasterShader.draw(pCurrentCommandList, currentBackBufferIndex);
 
 	// Pre-stuff
-	auto& backBuff = rendererResources->pRTVRadBackBuffer;
+	auto& backBuff = rendererResources->pRTVRad;
 	backBuff->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
 	// Do we need these barriers? I think so
@@ -262,7 +262,7 @@ void RasterRTShadowsShading::createShaderResources()
 
 	D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
 	uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
-	descHeapManager->setUAV(entryNumber++, uavDesc, rendererResources->pDevice, *rendererResources->pRTVRadBackBuffer);
+	descHeapManager->setUAV(entryNumber++, uavDesc, rendererResources->pDevice, *rendererResources->pRTVRad);
 	descHeapManager->setUAV(entryNumber++, uavDesc, rendererResources->pDevice, *radianceTexture);
 
 	// Create the SRV descriptor in second place (following same order as in root signature)

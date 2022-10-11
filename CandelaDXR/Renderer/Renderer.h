@@ -67,15 +67,20 @@ namespace candela::renderer
 		enum class AccumResource : std::uint32_t
 		{
 			RTV8BitBackBuffer = 0,
-			RTVRadBackBuffer = 1,
-			RadAccumulator = 2
+			RTVRad = 1,
+			RTVDiff = 2,
+			RTVSpec = 3,
+			RadAccumulator = 4,
+			DiffAccumulator = 5,
+			SpecAccumulator = 6,
 		};
 
 		// Accum Const Buff
 		struct AccumConstBuff
 		{
-			AccumResource InIndex;
-			AccumResource OutIndex;
+			AccumResource InIndex[4];
+			AccumResource OutIndex[4];
+			std::uint32_t PairCount;
 			std::uint32_t Flags;
 		};
 
@@ -112,9 +117,9 @@ namespace candela::renderer
 		wrl::ComPtr<IDXGIFactory> dxgiFactory;
 		wrl::ComPtr<IDXGISwapChain> pSwapChain;
 		wrl::ComPtr<ID3D12DescriptorHeap> pRTVDescriptorHeap;
-		directx::Resource * pRTV8BitBackBuffer; // This is the 8-bit target that will then be copied to swap-chain
-		directx::Resource * pRTVRadBackBuffer, * pRTVDiff, * pRTVSpec; // This is the target for drawables (32-bit)
-		directx::Resource * pRadAccumulator; // 32-bit
+		directx::Resource * pRTV8Bit; // This is the 8-bit target that will then be copied to swap-chain
+		directx::Resource * pRTVRad, * pRTVDiff, * pRTVSpec; // This is the target for drawables (32-bit)
+		directx::Resource * pRadAccumulator, * pDiffAccumulator, * pSpecAccumulator; // 32-bit
 		ResPtrVec pRTVBackBuffers; // Buffers retrieved from swap-chain (these are 8-bit)
 
 		// ImGui Manager - is also a drawable
