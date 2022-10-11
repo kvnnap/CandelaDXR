@@ -1,3 +1,6 @@
+#ifndef RAY_TRACING_UTILS
+#define RAY_TRACING_UTILS
+
 uint getFaceIndex()
 {
 	return InstanceID() / 3 + PrimitiveIndex();
@@ -27,3 +30,5 @@ void getVertexWorldCoordinates(inout float3 lv[3], uint vertBaseId, uint matrixI
 	lv[1] = mul(float4(verts[indices[vertBaseId + 1]], 1.f), matrices[matrixId]);
 	lv[2] = mul(float4(verts[indices[vertBaseId + 2]], 1.f), matrices[matrixId]);
 }
+
+#endif

@@ -62,6 +62,7 @@ unique_ptr<IRenderer> RendererFactory::create(const ConfigurationNode& config) c
 	bool breakEnabled = false;
 	bool vsync = false;
 	bool exitOnAnimCompl = false;
+	bool shaderAccumulation = true;
 	std::uint32_t adapterIndex = 0;
 	if (config.asObject().keyExists("AdapterIndex"))
 		adapterIndex = config["AdapterIndex"].read<std::uint32_t>();
@@ -73,10 +74,12 @@ unique_ptr<IRenderer> RendererFactory::create(const ConfigurationNode& config) c
 		vsync = config["VSync"].read<bool>();
 	if (config.asObject().keyExists("ExitOnAnimationCompletion"))
 		exitOnAnimCompl = config["ExitOnAnimationCompletion"].read<bool>();
+	if (config.asObject().keyExists("ShaderAccumulation"))
+		shaderAccumulation = config["ShaderAccumulation"].read<bool>();
 	std::vector<IDrawable*> drawables;
 	for (auto& drawableConfig : drawablesConfig)
 		drawables.push_back(&env.getDrawableManager().getInstanceManager().get(drawableConfig));
-	auto renderer = make_unique<Renderer>(scene, camera, dim, std::move(drawables), adapterIndex, debugEnabled, breakEnabled, vsync, exitOnAnimCompl);
+	auto renderer = make_unique<Renderer>(scene, camera, dim, std::move(drawables), adapterIndex, debugEnabled, breakEnabled, vsync, exitOnAnimCompl, shaderAccumulation);
 	renderer->setAnimationRecords(std::move(animationMapping));
 
 	// Animation Seq

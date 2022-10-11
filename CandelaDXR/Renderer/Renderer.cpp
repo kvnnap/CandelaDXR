@@ -19,6 +19,8 @@
 #include "Chain/AlphaCorrection.h"
 #include "Chain/FileOutput.h"
 
+#include "Shader/AccumulatorShader.hlsli"
+
 #include <iostream>
 
 using std::unique_ptr;
@@ -69,7 +71,8 @@ using candela::animation::AnimationSequencer;
 
 using DirectX::XMVectorSet;
 
-Renderer::Renderer(Scene *scene, Camera *camera, const UVector2 &windowDimensions, vector<IDrawable*> p_drawables, uint32_t adapterIndex, bool debugEnabled, bool breakEnabled, bool vsync, bool exitOnAnimCompl)
+Renderer::Renderer(Scene *scene, Camera *camera, const UVector2 &windowDimensions, vector<IDrawable*> p_drawables,
+	uint32_t adapterIndex, bool debugEnabled, bool breakEnabled, bool vsync, bool exitOnAnimCompl, bool shaderAccumulation)
 	: windowDimensions(windowDimensions),
 	  adapterIndex(adapterIndex),
 	  rtvDescriptorSize(),
@@ -81,7 +84,8 @@ Renderer::Renderer(Scene *scene, Camera *camera, const UVector2 &windowDimension
 	  debugEnabled(debugEnabled),
 	  breakEnabled(breakEnabled),
 	  vsync(vsync),
-	  exitOnAnimationCompletion(exitOnAnimCompl)
+	  exitOnAnimationCompletion(exitOnAnimCompl),
+	  shaderAccumulation(shaderAccumulation)
 {
 }
 
@@ -272,7 +276,7 @@ void Renderer::renderFrame()
 	else
 		updateCamera();
 	
-	ChangeEvent_t camChanged = camera->hasChanged() ? static_cast<ChangeEvent_t>(ChangeEvent::Camera) : 0;
+	const ChangeEvent_t camChanged = camera->hasChanged() ? static_cast<ChangeEvent_t>(ChangeEvent::Camera) : 0;
 	ChangeEvent_t changeEvent = camChanged | imguiManager.processChangeEvent();
 
 	constexpr auto flags = D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE;
@@ -355,10 +359,10 @@ void Renderer::renderFrame()
 
 	// Resources on change
 	for (auto& resource : resources)
-		resource->onChange(pCurrentCommandList, currentBackBufferIndex, changeEvent);
+		if (changeEvent)
+			resource->onChange(pCurrentCommandList, currentBackBufferIndex, changeEvent);
 
 	// Draw
-
 	int32_t first = -1, last = -1;
 	for (int32_t i = 0; i < static_cast<int>(drawables.size()); ++i)
 	{
@@ -375,7 +379,7 @@ void Renderer::renderFrame()
 	for (size_t i = 0; i < drawables.size(); ++i)
 	{
 		auto drawable = drawables[i];
-		if (changeEvent)
+		if (changeEvent || !shaderAccumulation)
 			drawable->onChange(pCurrentCommandList, currentBackBufferIndex, changeEvent);
 		if (!drawable->isEnabled())
 			continue;
@@ -386,14 +390,15 @@ void Renderer::renderFrame()
 		pRTVRadBackBuffer->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
 		// Copy - per loop - testing here
-		pCurrentCommandList->SetPipelineState(computePipelineState.Get());
-		pCurrentCommandList->SetComputeRootSignature(computeRootSignature.Get());
-		pCurrentCommandList->SetDescriptorHeaps(1u, computeDescriptorHeap.GetAddressOf());
-		pCurrentCommandList->SetComputeRootDescriptorTable(1u, computeDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
+		bindComputePipeline();
+
 		// in, out, clear, accumulate, toneMap, ToSrgb
-		uint32_t tM = !grabRadiancePressed && last == i ? 1u : 0u;
-		uint32_t c32data[6] = { 1u, 2u, first == i ? 1u : 0u, 1u, tM, tM };
-		pCurrentCommandList->SetComputeRoot32BitConstants(0u, 6u, &c32data[0], 0);
+		uint32_t flags{};
+		flags |= first == i ? ACC_CLEAR : ACC_NONE;
+		flags |= ACC_ACCUMULATE;
+		flags |= !grabRadiancePressed && last == i ? ACC_TONEMAP | ACC_LINEARTOSRGB : ACC_NONE;
+		AccumConstBuff c32Data { AccumResource::RTVRadBackBuffer, AccumResource::RadAccumulator, flags };
+		pCurrentCommandList->SetComputeRoot32BitConstants(0u, sizeof(AccumConstBuff) / sizeof(uint32_t), &c32Data, 0);
 		pCurrentCommandList->Dispatch(dim.x / 8 + (dim.x % 8 == 0 ? 0 : 1), dim.y / 8 + (dim.y % 8 == 0 ? 0 : 1), 1);
 
 		pRTVRadBackBuffer->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);
@@ -401,10 +406,7 @@ void Renderer::renderFrame()
 	}
 
 	// Compute setup
-	pCurrentCommandList->SetPipelineState(computePipelineState.Get());
-	pCurrentCommandList->SetComputeRootSignature(computeRootSignature.Get());
-	pCurrentCommandList->SetDescriptorHeaps(1u, computeDescriptorHeap.GetAddressOf());
-	pCurrentCommandList->SetComputeRootDescriptorTable(1u, computeDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
+	bindComputePipeline();
 
 	// Extract radiance values if needed
 	if (grabRadiancePressed)
@@ -423,21 +425,18 @@ void Renderer::renderFrame()
 		pCurrentCommandList = commandQueue->getCommandList();
 
 		// Restore compute stuff
-		pCurrentCommandList->SetPipelineState(computePipelineState.Get());
-		pCurrentCommandList->SetComputeRootSignature(computeRootSignature.Get());
-		pCurrentCommandList->SetDescriptorHeaps(1u, computeDescriptorHeap.GetAddressOf());
-		pCurrentCommandList->SetComputeRootDescriptorTable(1u, computeDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
+		bindComputePipeline();
 
 		// Perform tone mapping
-		uint32_t c32data[6] = { 2u, 2u, 0u, 0u, 1u, 1u };
-		pCurrentCommandList->SetComputeRoot32BitConstants(0u, 6u, &c32data[0], 0);
+		AccumConstBuff c32Data { AccumResource::RadAccumulator, AccumResource::RadAccumulator, ACC_TONEMAP | ACC_LINEARTOSRGB };
+		pCurrentCommandList->SetComputeRoot32BitConstants(0u, sizeof(AccumConstBuff) / sizeof(uint32_t), &c32Data, 0);
 		pCurrentCommandList->Dispatch(dim.x / 8 + (dim.x % 8 == 0 ? 0 : 1), dim.y / 8 + (dim.y % 8 == 0 ? 0 : 1), 1);
 		pRadAccumulator->uavBarrier(pCurrentCommandList);
 	}
 
 	// Copy accumulator to 8-bit Texture
-	uint32_t c32data2[6] = { 2u, 0u, 1u, 1u, 0u, 0u };
-	pCurrentCommandList->SetComputeRoot32BitConstants(0u, 6u, &c32data2[0], 0);
+	AccumConstBuff c32Data { AccumResource::RadAccumulator, AccumResource::RTV8BitBackBuffer, ACC_CLEAR | ACC_ACCUMULATE };
+	pCurrentCommandList->SetComputeRoot32BitConstants(0u, sizeof(AccumConstBuff) / sizeof(uint32_t), &c32Data, 0);
 	pCurrentCommandList->Dispatch(dim.x / 8 + (dim.x % 8 == 0 ? 0 : 1), dim.y / 8 + (dim.y % 8 == 0 ? 0 : 1), 1);
 
 	// Point to 8-bit swap chain buffers
@@ -498,6 +497,16 @@ void Renderer::renderFrame()
 	// Reset camera
 	camera->resetChanged();
 	++rendererResources.frameNumber;
+}
+
+void Renderer::setShaderAccumulation(bool p_shaderAccumulation)
+{
+	shaderAccumulation = p_shaderAccumulation;
+}
+
+bool Renderer::getShaderAccumulation() const
+{
+	return shaderAccumulation;
 }
 
 RendererTime& Renderer::getRendererTime()
@@ -605,8 +614,8 @@ void Renderer::initShaders()
 	CD3DX12_ROOT_PARAMETER1 param; 
 	computeRSM->addDescriptorRange("ComputeData", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 3, 0));
 	computeRSM->setDescriptorTableParameter("ComputeDataDescTable", "ComputeData");
-	param.InitAsConstants(6u, 0u);
-	computeRSM->setParameter("ComputeConstants", param); // inIndex, outInde, clear, accumulate, linearToSrgb
+	param.InitAsConstants(sizeof(AccumConstBuff) / sizeof(uint32_t), 0u);
+	computeRSM->setParameter("ComputeConstants", param); // inIndex, outIndex, flags
 	computeRSM->addParametersToRootSignature("ComputeRootSignature", { "ComputeConstants", "ComputeDataDescTable"});
 	computeRootSignature = computeRSM->generateRootSignature("ComputeRootSignature", pDevice, D3D12_ROOT_SIGNATURE_FLAG_NONE);
 
@@ -732,6 +741,14 @@ void Renderer::refreshMaterialResources()
 		specs.data(), sizeof(SpecularPrimitive) * specs.size(), flags);
 	specularBuffer->SetName(L"Specular Buffer");
 	rendererResources.specularBuffer = specularBuffer;
+}
+
+void Renderer::bindComputePipeline()
+{
+	pCurrentCommandList->SetPipelineState(computePipelineState.Get());
+	pCurrentCommandList->SetComputeRootSignature(computeRootSignature.Get());
+	pCurrentCommandList->SetDescriptorHeaps(1u, computeDescriptorHeap.GetAddressOf());
+	pCurrentCommandList->SetComputeRootDescriptorTable(1u, computeDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
 }
 
 candela::directx::DXResource& Renderer::getTempResource()

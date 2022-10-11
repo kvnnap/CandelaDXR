@@ -8,7 +8,7 @@
 using candela::renderer::imgui::ImGuiRenderer;
 
 ImGuiRenderer::ImGuiRenderer(Renderer& renderer)
-	: changed(), animating(), renderer(renderer), timeMs()
+	: renderer(renderer), changed(), animating(), shaderAccumulation(), timeMs()
 {
 	animating = renderer.getRendererTime().isRunning();
 }
@@ -18,6 +18,7 @@ void ImGuiRenderer::drawUi()
 	changed = false;
 	auto &rTime = renderer.getRendererTime();
 	animating = rTime.isRunning();
+	shaderAccumulation = renderer.getShaderAccumulation();
 	
 	if (ImGui::Button("Record"))
 		renderer.getAnimationSequencer().setEnabled(true);
@@ -30,6 +31,9 @@ void ImGuiRenderer::drawUi()
 			rTime.stop();
 		changed = true;
 	}
+
+	if (ImGui::Checkbox("Shader Accum", &shaderAccumulation))
+		renderer.setShaderAccumulation(shaderAccumulation);
 
 	if (ImGui::DragInt("time", &timeMs, 1.f, 0, 2147483647))
 	{

@@ -1,3 +1,6 @@
+#ifndef LIGHT_TRACING_VARS
+#define LIGHT_TRACING_VARS
+
 // Used to filter path components for analysis
 enum PathInteraction : uint
 {
@@ -92,3 +95,5 @@ void AddContribution(uint pixLaunchIndex, float3 contrib)
 	InterlockedAdd(gIrradianceDS[pixLaunchIndex].value.y, uContrib.y);
 	InterlockedAdd(gIrradianceDS[pixLaunchIndex].value.z, uContrib.z);
 }
+
+#endif

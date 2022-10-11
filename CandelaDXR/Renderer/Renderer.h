@@ -46,11 +46,14 @@ namespace candela::renderer
 	public:
 		Renderer(scene::Scene *scene, Camera *camera, 
 			const mathematics::UVector2& windowDimensions, std::vector<IDrawable*> drawables, 
-			std::uint32_t adapterIndex, bool debugEnabled, bool breakEnabled, bool vsync, bool exitOnAnimCompl);
+			std::uint32_t adapterIndex, bool debugEnabled, bool breakEnabled, bool vsync, bool exitOnAnimCompl
+			, bool shaderAccumulation);
 		~Renderer();
 
 		void init() override;
 		void renderFrame() override;
+		void setShaderAccumulation(bool shaderAccumulation);
+		bool getShaderAccumulation() const;
 
 		// Promote to interface?
 		RendererTime& getRendererTime();
@@ -60,6 +63,22 @@ namespace candela::renderer
 		animation::AnimationSequencer& getAnimationSequencer();
 
 	private:
+		// Accum Resource Enum
+		enum class AccumResource : std::uint32_t
+		{
+			RTV8BitBackBuffer = 0,
+			RTVRadBackBuffer = 1,
+			RadAccumulator = 2
+		};
+
+		// Accum Const Buff
+		struct AccumConstBuff
+		{
+			AccumResource InIndex;
+			AccumResource OutIndex;
+			std::uint32_t Flags;
+		};
+
 		template<class T>
 		using ComPtrVec = std::vector<wrl::ComPtr<T>>;
 		
@@ -71,6 +90,7 @@ namespace candela::renderer
 		void updateCamera();
 		void resize();
 		void refreshMaterialResources();
+		void bindComputePipeline();
 		directx::DXResource& getTempResource();
 		std::vector<DirectX::XMFLOAT3X4> getMatrices();
 		std::vector<DirectX::XMFLOAT3X3> getNormalMatrices();
@@ -149,5 +169,6 @@ namespace candela::renderer
 		const bool breakEnabled;
 		const bool vsync;
 		const bool exitOnAnimationCompletion;
+		bool shaderAccumulation;
 	};
 }

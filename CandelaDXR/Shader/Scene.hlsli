@@ -1,3 +1,6 @@
+#ifndef SCENE_HLSLI
+#define SCENE_HLSLI
+
 struct FaceAttributes
 {
 	uint MaterialId;
@@ -36,3 +39,5 @@ struct Material
 	uint EmissiveType;
 	uint2 padding;
 };
+
+#endif

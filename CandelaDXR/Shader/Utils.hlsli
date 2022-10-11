@@ -1,3 +1,6 @@
+#ifndef UTILS_HLSLI
+#define UTILS_HLSLI
+
 /*******************************************************************
 	Random numbers based on Mersenne Twister
 *******************************************************************/
@@ -197,3 +200,5 @@ float fresnel(const float cosx, const float n1, const float n2)
 	
 	return fr;
 }
+
+#endif

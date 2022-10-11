@@ -20,6 +20,7 @@ namespace candela::renderer::imgui
 
 		bool changed;
 		bool animating;
+		bool shaderAccumulation;
 
 		int timeMs;
 	};

@@ -662,6 +662,7 @@
     </FxCompile>
   </ItemGroup>
   <ItemGroup>
+    <None Include="Shader\AccumulatorShader.hlsli" />
     <None Include="Shader\IrradianceItem.hlsli" />
     <None Include="Shader\LightTracingVars.hlsli" />
     <None Include="Shader\RayTracingUtils.hlsli" />
