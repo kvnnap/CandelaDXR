@@ -12,6 +12,8 @@ namespace candela::renderer
 
 		bool isEnabled() const override;
 		void setEnabled(bool p_enabled) override;
+
+		bool shouldClearAccumulation() const override;
 	private:
 		bool enabled;
 	};

@@ -46,6 +46,7 @@ namespace candela::renderer
 		// Is enabled?
 		virtual bool isEnabled() const override;
 		virtual void setEnabled(bool p_enabled) override;
+		bool shouldClearAccumulation() const override;
 
 		virtual void appendToPipeline(directx::RootSignatureManager* rootSignatureManager) override;
 		virtual void appendToShaderTable(directx::ShadingTable* shadingTable) override;

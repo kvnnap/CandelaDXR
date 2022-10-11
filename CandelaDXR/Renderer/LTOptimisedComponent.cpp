@@ -62,6 +62,11 @@ void LTOptimisedComponent::setEnabled(bool p_enabled)
 {
 }
 
+bool LTOptimisedComponent::shouldClearAccumulation() const
+{
+	return false;
+}
+
 void LTOptimisedComponent::appendToPipeline(directx::RootSignatureManager* rootSignatureManager)
 {
 	CD3DX12_ROOT_PARAMETER1 param;

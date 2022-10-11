@@ -230,6 +230,11 @@ void LTRasterGuidedShading::setEnabled(bool p_enabled)
 {
 }
 
+bool LTRasterGuidedShading::shouldClearAccumulation() const
+{
+	return false;
+}
+
 void LTRasterGuidedShading::appendToPipeline(directx::RootSignatureManager* rootSignatureManager)
 {
 	CD3DX12_ROOT_PARAMETER1 param;

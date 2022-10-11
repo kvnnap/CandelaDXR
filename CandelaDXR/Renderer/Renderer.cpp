@@ -162,7 +162,7 @@ void Renderer::init()
 	// Create swap chain
 	pSwapChain = DXUtil::createSwapChain(dxgiFactory, commandQueue->getCommandQueue(), window->getHandle(), NumBackBuffers);
 
-	// Create descriptor heap for render target view - Num + pRTVRadBackBuffer, pRTVDiff, PRTVSpec
+	// Create descriptor heap for render target view - Num + pRTVRad, pRTVDiff, PRTVSpec
 	pRTVDescriptorHeap = DXUtil::createDescriptorHeap(pDevice, NumBackBuffers + 3, D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 	pRTVDescriptorHeap->SetName(L"RTV Descriptor Heap");
 
@@ -387,28 +387,63 @@ void Renderer::renderFrame()
 			continue;
 		
 		// Clear the RadRTV 
-		pCurrentCommandList->ClearRenderTargetView(rtvDescriptorHandle, color, 0, nullptr);
+		auto rtvDescHandle = rtvDescriptorHandle;
+		pCurrentCommandList->ClearRenderTargetView(rtvDescHandle, color, 0, nullptr);
+		// Clear the RTVDiff
+		rtvDescHandle.Offset(rtvDescriptorSize);
+		pCurrentCommandList->ClearRenderTargetView(rtvDescHandle, color, 0, nullptr);
+		// Clear the RTVSpec
+		rtvDescHandle.Offset(rtvDescriptorSize);
+		pCurrentCommandList->ClearRenderTargetView(rtvDescHandle, color, 0, nullptr);
+
 		drawable->draw(pCurrentCommandList, currentBackBufferIndex);
 		pRTVRad->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+		pRTVDiff->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+		pRTVSpec->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
 		// Copy - per loop - testing here
 		bindComputePipeline();
-
-		// in, out, clear, accumulate, toneMap, ToSrgb
 		uint32_t flags{};
-		flags |= first == i ? ACC_CLEAR : ACC_NONE;
+		flags |= first == i || drawable->shouldClearAccumulation() ? ACC_CLEAR : ACC_NONE;
 		flags |= ACC_ACCUMULATE;
-		flags |= !grabRadiancePressed && last == i ? ACC_TONEMAP | ACC_LINEARTOSRGB : ACC_NONE;
-		AccumConstBuff c32Data{ {AccumResource::RTVRad}, {AccumResource::RadAccumulator}, 1U, flags };
+		//flags |= !grabRadiancePressed && last == i ? ACC_TONEMAP | ACC_LINEARTOSRGB : ACC_NONE;
+		AccumConstBuff c32Data{ 
+			{AccumResource::RTVRad, AccumResource::RTVDiff, AccumResource::RTVSpec},
+			{AccumResource::RadAccumulator, AccumResource::DiffAccumulator, AccumResource::SpecAccumulator},
+			3U, flags };
 		pCurrentCommandList->SetComputeRoot32BitConstants(0u, sizeof(AccumConstBuff) / sizeof(uint32_t), &c32Data, 0);
 		pCurrentCommandList->Dispatch(dim.x / 8 + (dim.x % 8 == 0 ? 0 : 1), dim.y / 8 + (dim.y % 8 == 0 ? 0 : 1), 1);
 
+		pRTVSpec->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);
+		pRTVDiff->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);
 		pRTVRad->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);
 		pRadAccumulator->uavBarrier(pCurrentCommandList);
+		pDiffAccumulator->uavBarrier(pCurrentCommandList);
+		pSpecAccumulator->uavBarrier(pCurrentCommandList);
 	}
 
-	// Compute setup
+	// Merge Spec and Diff towards Rad Accumulator
 	bindComputePipeline();
+
+	{
+		// Accum Diff and Spec and Rad into RAD
+		AccumConstBuff c32Data{ 
+			{AccumResource::DiffAccumulator, AccumResource::SpecAccumulator}, 
+			{AccumResource::RadAccumulator, AccumResource::RadAccumulator}, 2U, ACC_ACCUMULATE };
+		pCurrentCommandList->SetComputeRoot32BitConstants(0u, sizeof(AccumConstBuff) / sizeof(uint32_t), &c32Data, 0);
+		pCurrentCommandList->Dispatch(dim.x / 8 + (dim.x % 8 == 0 ? 0 : 1), dim.y / 8 + (dim.y % 8 == 0 ? 0 : 1), 1);
+
+		pRadAccumulator->uavBarrier(pCurrentCommandList);
+
+		// Tone map
+		if (!grabRadiancePressed)
+		{
+			c32Data = { {AccumResource::RadAccumulator}, {AccumResource::RadAccumulator}, 1U, ACC_TONEMAP | ACC_LINEARTOSRGB };
+			pCurrentCommandList->SetComputeRoot32BitConstants(0u, sizeof(AccumConstBuff) / sizeof(uint32_t), &c32Data, 0);
+			pCurrentCommandList->Dispatch(dim.x / 8 + (dim.x % 8 == 0 ? 0 : 1), dim.y / 8 + (dim.y % 8 == 0 ? 0 : 1), 1);
+			pRadAccumulator->uavBarrier(pCurrentCommandList);
+		}
+	}
 
 	// Extract radiance values if needed
 	if (grabRadiancePressed)

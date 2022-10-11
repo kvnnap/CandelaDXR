@@ -50,6 +50,7 @@ namespace candela::renderer
 		void onChange(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, std::uint32_t currentBackBufferIndex, ChangeEvent_t changeEvent) override;
 		void onResize() override;
 		void accept(IVisitor* visitor) override;
+		bool shouldClearAccumulation() const override;
 
 		nrd::CommonSettings& getCommonSettings();
 		nrd::ReblurSettings& getReblurSettings();

@@ -31,5 +31,8 @@ namespace candela::renderer
 		// Is enabled?
 		virtual bool isEnabled() const = 0;
 		virtual void setEnabled(bool p_enabled) = 0;
+
+		// Accumulation
+		virtual bool shouldClearAccumulation() const = 0;
 	};
 }

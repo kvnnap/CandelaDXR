@@ -92,7 +92,7 @@ void DenoiserShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12GraphicsCo
 
 	// Get resources & create new ones
 	auto& dim = rRes->winDimensions;
-	radAccumulator = rRes->resourceManager->getNamedResource("rad_accumulator");
+	radAccumulator = rRes->resourceManager->getNamedResource("rad_acc");
 	albedo = rRes->resourceManager->getNamedResource("den_gAlb");
 	normal = rRes->resourceManager->getNamedResource("den_gNorm");
 	depth = rRes->resourceManager->getNamedResource("den_gDepth");
@@ -318,6 +318,11 @@ void DenoiserShading::onResize()
 void DenoiserShading::accept(IVisitor* visitor)
 {
 	visitor->visit(this);
+}
+
+bool DenoiserShading::shouldClearAccumulation() const
+{
+	return true;
 }
 
 nrd::CommonSettings& DenoiserShading::getCommonSettings()
