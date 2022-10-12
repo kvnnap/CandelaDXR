@@ -120,7 +120,7 @@ void LightTracingShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> currentCom
 		ltShader.component->draw(currentCommandList, currentBackBufferIndex);
 
 	// Pre-stuff
-	auto &backBuff = rendererResources->pRTVRad;
+	auto &backBuff = rendererResources->pRTVDiff;
 	backBuff->transistionBarrier(currentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
 	// Copy and update camera
@@ -373,7 +373,7 @@ void LightTracingShading::createShaderResources(wrl::ComPtr<ID3D12GraphicsComman
 
 	// Compute shader
 	auto cmpDescHeapManager = DescriptorHeap(computeRSM, "ComputeDataDescTable", "ComputeData1", rendererResources->pDevice);
-	cmpDescHeapManager.setUAV(0, uavDesc, rendererResources->pDevice, *rendererResources->pRTVRad);
+	cmpDescHeapManager.setUAV(0, uavDesc, rendererResources->pDevice, *rendererResources->pRTVDiff);
 	cmpDescHeapManager.setUAV(1, uavDesc2, rendererResources->pDevice, *irradianceDataStructure);
 	cmpDescHeapManager.setUAV(2, uavDesc, rendererResources->pDevice, *irradianceTexture);
 	cmpDescHeapManager.setSRV(3, irrToRadSrvDesc, rendererResources->pDevice, *irrToRad);

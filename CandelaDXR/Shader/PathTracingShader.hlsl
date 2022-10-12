@@ -39,8 +39,10 @@ struct ShadowPayload
 	bool occluded;
 };
 
-RWTexture2D<float4> gOutput : register(u0);
-RWTexture2D<float4> gRadiance : register(u1);
+RWTexture2D<float4> gOutputDiff : register(u0);
+RWTexture2D<float4> gOutputSpec : register(u1);
+RWTexture2D<float4> gRadianceDiff : register(u2);
+RWTexture2D<float4> gRadianceSpec : register(u3);
 
 // SRVs
 StructuredBuffer<float3> verts : register(t0);
@@ -81,7 +83,7 @@ void rayGen()
 	const uint2 launchDim = DispatchRaysDimensions().xy;
 
 	// Clear output pixel
-	gOutput[launchIndex] = float4(0.f, 0.f, 0.f, 0.f);
+	gOutputDiff[launchIndex] = gOutputSpec[launchIndex] = float4(0.f, 0.f, 0.f, 0.f);
 
 	// Early-exit checks
 	if (cBuffer.numLights == 0)
@@ -116,6 +118,7 @@ void rayGen()
 	PathInteraction prevInteraction = Light;
 
 	float denoiserHitT = 0.f;
+	bool isSpecularPath = cBuffer.specularOnly;
 
 	RayPayload rayPayload;
 	while (TraceRay(
@@ -148,6 +151,7 @@ void rayGen()
 		// Fresnel vars
 		float n1, n2, dissolve, coeff;
 
+		// Select only Specular Path
 		if (cBuffer.specularOnly && i == 1)
 		{
 			n1 = 1.f;
@@ -204,7 +208,7 @@ void rayGen()
 		else
 		{
 			// If material is emissive, add its radiance
-			if (((prevInteraction & cBuffer.pathFilter & (Light | Reflect | Refract)) != 0) && i >= cBuffer.minBounces && mat.EmissiveType != 1 && any(mat.Emissive))
+			if (((prevInteraction & cBuffer.pathFilter & (Light | Reflect | Refract)) != 0) && i >= cBuffer.minBounces && mat.EmissiveType != 1 && any(mat.Emissive) && i > 1)
 			{
 				float3 albedo = mat.Emissive;
 				if (mat.EmissiveTextureId >= 0)
@@ -238,6 +242,7 @@ void rayGen()
 		// Should reflect?
 		if (rand_next(seed) <= fr)
 		{
+			isSpecularPath |= i == 2;
 			ray.Direction = reflect(ray.Direction, coeff * unitFaceNormal);
 			prevInteraction = Reflect;
 			continue;
@@ -363,6 +368,7 @@ void rayGen()
 		else
 		{
 			// Transmission
+			isSpecularPath |= i == 2;
 			float3 dir = refract(ray.Direction, coeff * unitFaceNormal, n1 / n2);
 			// fr = fresnel(dot(unitFaceNormal, ray.Direction), n1, n2); TODO!!
 			if (any(dir))
@@ -386,10 +392,19 @@ void rayGen()
 
 	// Using this resource as a RADIANCE accumulator
 	if (cBuffer.frameNumber == 1)
-		gRadiance[launchIndex] = float4(0.f, 0.f, 0.f, 1.f);
-	gRadiance[launchIndex] += float4(radiance, 0.f);
-	gRadiance[launchIndex].w = denoiserHitT;
-	gOutput[launchIndex] = float4(gRadiance[launchIndex].xyz / cBuffer.frameNumber, 1.f);
+		gRadianceSpec[launchIndex] = gRadianceDiff[launchIndex] = float4(0.f, 0.f, 0.f, 1.f);
+	if (isSpecularPath)
+	{
+		gRadianceSpec[launchIndex] += float4(radiance, 0.f);
+		gRadianceSpec[launchIndex].w = denoiserHitT;
+		gOutputSpec[launchIndex] = float4(gRadianceSpec[launchIndex].xyz / cBuffer.frameNumber, 1.f);
+	}
+	else
+	{
+		gRadianceDiff[launchIndex] += float4(radiance, 0.f);
+		gRadianceDiff[launchIndex].w = denoiserHitT;
+		gOutputDiff[launchIndex] = float4(gRadianceDiff[launchIndex].xyz / cBuffer.frameNumber, 1.f);
+	}
 }
 
 // Ray

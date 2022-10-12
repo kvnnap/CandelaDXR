@@ -75,7 +75,8 @@ namespace candela::renderer
 			std::uint32_t maxBounces;
 		} constBuffer;
 
-		directx::Resource* radianceTexture;
+		directx::Resource* diffTexture;
+		directx::Resource* specTexture;
 		wrl::ComPtr<ID3D12Resource> constantBuffer;
 		std::unique_ptr<sampler::ISampler> sampler;
 		bool clear;

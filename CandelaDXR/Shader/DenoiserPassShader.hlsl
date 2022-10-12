@@ -28,7 +28,7 @@ void main(uint3 DTid : SV_DispatchThreadID)
 	{
 		in_mv[DTid.xy] = 0.f;
 		in_view_z[DTid.xy] = 0.f;
-		in_normal_roughness[DTid.xy] = float4((normal[DTid.xy].xyz + 1.f) * 0.5f, 1.f);
+		in_normal_roughness[DTid.xy] = float4((normal[DTid.xy].xyz + 1.f) * 0.5f, 0.f);
 
 		float ndc = depth[DTid.xy] * 2.f - 1.f;
 		float res = (2.f * near * far) / (far + near - ndc * (far - near));
