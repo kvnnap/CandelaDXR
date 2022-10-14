@@ -88,6 +88,15 @@ void ImGuiShading::visit(DenoiserShading* denShading)
 	changed |= ImGui::DragFloat("historyFixStrideBetweenSamples", &reblur.historyFixStrideBetweenSamples, 1.f, 1.f, 100.f);
 	changed |= ImGui::DragFloat("stabilizationStrength", &reblur.stabilizationStrength, 0.01f, 0.01f, 1.f);
 
+	// AntiLag
+	changed |= ImGui::Checkbox("AntiLagHitDist", &reblur.antilagHitDistanceSettings.enable);
+	if (reblur.antilagHitDistanceSettings.enable)
+	{
+		changed |= ImGui::DragFloat("sensitivityToDarkness", &reblur.antilagHitDistanceSettings.sensitivityToDarkness, 0.01f, 0.01f, 1.f);
+		changed |= ImGui::DragFloat("sigmaScale", &reblur.antilagHitDistanceSettings.sigmaScale, 0.01f, 0.01f, 2.f);
+		changed |= ImGui::DragFloat("thresholdMin", &reblur.antilagHitDistanceSettings.thresholdMin, 0.01f, 0.01f, 1.f);
+		changed |= ImGui::DragFloat("thresholdMax", &reblur.antilagHitDistanceSettings.thresholdMax, 0.01f, 0.01f, 1.f);
+	}
 }
 
 void ImGuiShading::visit(LightTracingShading* lightTracingShader)

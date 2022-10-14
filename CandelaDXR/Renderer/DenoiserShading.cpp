@@ -14,6 +14,8 @@
 #include "Extensions/NRIWrapperD3D12.h"
 #include "Extensions/NRIHelper.h"
 
+#include <iostream>
+
 using std::make_unique;
 using std::make_shared;
 using std::uint32_t;
@@ -199,7 +201,7 @@ void DenoiserShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentComman
 	nri::CommandBufferD3D12Desc cmdDesc = {};
 	cmdDesc.d3d12CommandList = pCurrentCommandList.Get();
 	cmdDesc.d3d12CommandAllocator = nullptr; // rendererResources->commandQueue->getCommandAllocator(pCurrentCommandList); // Not needed for NRD integration layer
-	
+
 	nri::CommandBuffer* cmdBuffer = nullptr;
 	NRI->CreateCommandBufferD3D12(*nriDevice, cmdDesc, cmdBuffer);
 
@@ -230,13 +232,40 @@ void DenoiserShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentComman
 		entryDescs[i].nextLayout = entryDescs[i].nextAccess == nri::AccessBits::SHADER_RESOURCE ? nri::TextureLayout::SHADER_RESOURCE : nri::TextureLayout::GENERAL;
 	}
 
-	auto camera = rendererResources->camera;
-	memcpy(&nrdCommonSettings.worldToViewMatrix, &camera->getViewMatrix(), sizeof(nrdCommonSettings.worldToViewMatrix));
-	memcpy(&nrdCommonSettings.worldToViewMatrixPrev, &camera->getViewMatrix(), sizeof(nrdCommonSettings.worldToViewMatrixPrev));
-	memcpy(&nrdCommonSettings.viewToClipMatrix, &camera->getPerspectiveMatrix(), sizeof(nrdCommonSettings.viewToClipMatrix));
-	memcpy(&nrdCommonSettings.viewToClipMatrixPrev, &camera->getPerspectiveMatrix(), sizeof(nrdCommonSettings.viewToClipMatrixPrev));
 	nrdCommonSettings.frameIndex = static_cast<uint32_t>(rendererResources->frameNumber);
 	nrdCommonSettings.isMotionVectorInWorldSpace = true;
+
+	auto camera = rendererResources->camera;
+	// transform to column-Major
+	auto viewMatrix = /*DirectX::XMMatrixTranspose*/(camera->getViewMatrix());
+	auto persMatrix = /*DirectX::XMMatrixTranspose*/(camera->getPerspectiveMatrix());
+	//if (camera->hasChanged())
+	//{
+	//	for (int i = 0; i < 4; ++i)
+	//	{
+	//		for (int j = 0; j < 4; ++j)
+	//		{
+	//			std::cout << viewMatrix.r[i].m128_f32[j] << ", ";
+	//		}
+	//		std::cout << std::endl;
+	//	}
+	//}
+
+
+	if (nrdCommonSettings.frameIndex == 0)
+	{
+		memcpy(&nrdCommonSettings.worldToViewMatrixPrev, &viewMatrix, sizeof(nrdCommonSettings.worldToViewMatrixPrev));
+		memcpy(&nrdCommonSettings.viewToClipMatrixPrev, &persMatrix, sizeof(nrdCommonSettings.viewToClipMatrixPrev));
+	}
+	else
+	{
+		memcpy(&nrdCommonSettings.worldToViewMatrixPrev, &nrdCommonSettings.worldToViewMatrix, sizeof(nrdCommonSettings.worldToViewMatrixPrev));
+		memcpy(&nrdCommonSettings.viewToClipMatrixPrev, &nrdCommonSettings.viewToClipMatrix, sizeof(nrdCommonSettings.viewToClipMatrixPrev));
+	}
+
+	memcpy(&nrdCommonSettings.worldToViewMatrix, &viewMatrix, sizeof(nrdCommonSettings.worldToViewMatrix));
+	memcpy(&nrdCommonSettings.viewToClipMatrix, &persMatrix, sizeof(nrdCommonSettings.viewToClipMatrix));
+
 	
 	//nrdReblurSettings.checkerboardMode = nrd::CheckerboardMode::WHITE;
 	//nrdReblurSettings.diffusePrepassBlurRadius = 1.f;
