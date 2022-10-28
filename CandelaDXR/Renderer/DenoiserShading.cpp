@@ -109,9 +109,8 @@ void DenoiserShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12GraphicsCo
 	rsm->addDescriptorRange("IORange", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 7u, 0u));
 	rsm->addDescriptorRange("IORange", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 5u, 0u));
 	rsm->setDescriptorTableParameter("IODescTable", "IORange");
-	param.InitAsConstants(3u, 0u); rsm->setParameter("Constants", param);
-	param.InitAsConstants(16u, 1u); rsm->setParameter("View", param);
-	rsm->addParametersToRootSignature("ComputeRootSignature", { "IODescTable", "Constants", "View"});
+	param.InitAsConstants(4u, 0u); rsm->setParameter("Constants", param);
+	rsm->addParametersToRootSignature("ComputeRootSignature", { "IODescTable", "Constants" });
 	computeRootSignature = rsm->generateRootSignature("ComputeRootSignature", rRes->pDevice, D3D12_ROOT_SIGNATURE_FLAG_NONE);
 
 	// Heap
@@ -360,9 +359,8 @@ void DenoiserShading::compute(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCom
 	pCurrentCommandList->SetComputeRootDescriptorTable(0u, descHeapManager->getDescriptorHeap()->GetGPUDescriptorHandleForHeapStart());
 	auto camDim = rendererResources->camera->getNearPlaneDimensions();
 	pCurrentCommandList->SetComputeRoot32BitConstants(1u, 2u, &camDim.m128_f32[2], 0u);
-	pCurrentCommandList->SetComputeRoot32BitConstant(1u, mode, 2u);
-	auto vm = DirectX::XMMatrixTranspose(rendererResources->camera->getViewMatrix());
-	pCurrentCommandList->SetComputeRoot32BitConstants(2u, 16u, &vm, 0u);
+	pCurrentCommandList->SetComputeRoot32BitConstants(1u, 1u, &rendererResources->camera->getPosition().m128_f32[2], 2u);
+	pCurrentCommandList->SetComputeRoot32BitConstant(1u, mode, 3u);
 	constexpr auto ThreadGroupDim = 8u;
 	auto& dim = rendererResources->winDimensions;
 	auto launchDimensions = UVector2(dim.x / ThreadGroupDim + (dim.x % ThreadGroupDim == 0u ? 0u : 1u), dim.y / ThreadGroupDim + (dim.y % ThreadGroupDim == 0u ? 0u : 1u));
