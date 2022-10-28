@@ -33,7 +33,7 @@ void Camera::recalculateViewMatrix()
 
 XMVECTOR Camera::getCrossVector() const
 {
-	return XMVector3Normalize(XMVector3Cross(up, direction));
+	return XMVector3Normalize(XMVector3Cross(direction, up));
 }
 
 void Camera::lookTo(const XMVECTOR& p_direction, const XMVECTOR& p_up)

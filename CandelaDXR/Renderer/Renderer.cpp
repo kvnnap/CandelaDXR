@@ -711,15 +711,15 @@ void Renderer::updateCamera()
 
 	float deltaUnits = fpsCounter.getLastFrameTime() / 1000.f * unitsPerSec;
 	if (keyboard.isKeyPressed('D') || keyboard.isKeyPressed('W'))
-		camera->incrementPositionAlongDirection(getValueIfPressed('D', -deltaUnits), getValueIfPressed('W', deltaUnits));
+		camera->incrementPositionAlongDirection(getValueIfPressed('D', deltaUnits), getValueIfPressed('W', deltaUnits));
 	if (keyboard.isKeyPressed('A') || keyboard.isKeyPressed('S'))
-		camera->incrementPositionAlongDirection(getValueIfPressed('A', deltaUnits), getValueIfPressed('S', -deltaUnits));
+		camera->incrementPositionAlongDirection(getValueIfPressed('A', -deltaUnits), getValueIfPressed('S', -deltaUnits));
 
 	deltaUnits = fpsCounter.getLastFrameTime() / 1000.f;
 	if (keyboard.isKeyPressed('L') || keyboard.isKeyPressed('I'))
-		camera->incrementDirection(getValueIfPressed('L', -deltaUnits), getValueIfPressed('I', -deltaUnits));
+		camera->incrementDirection(getValueIfPressed('L', -deltaUnits), getValueIfPressed('I', deltaUnits));
 	if (keyboard.isKeyPressed('J') || keyboard.isKeyPressed('K'))
-		camera->incrementDirection(getValueIfPressed('J', deltaUnits), getValueIfPressed('K', deltaUnits));
+		camera->incrementDirection(getValueIfPressed('J', deltaUnits), getValueIfPressed('K', -deltaUnits));
 }
 
 void Renderer::resize()

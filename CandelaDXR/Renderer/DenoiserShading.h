@@ -90,6 +90,8 @@ namespace candela::renderer
 		directx::Resource* normal; // Produce (normal, 0.f)  --> IN_NORMAL_ROUGHNESS
 		directx::Resource* depth; // 
 		directx::Resource* pt_rad; // 
+		directx::Resource* position; // Produce (normal, 0.f)  --> IN_NORMAL_ROUGHNESS
+
 		directx::Resource* in_mv; // Produce (0,0,0)  --> IN_MV
 		directx::Resource* in_normal_roughness;
 		directx::Resource* in_view_z; // need to linearize from g_buffer

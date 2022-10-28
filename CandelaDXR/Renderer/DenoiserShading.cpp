@@ -14,8 +14,6 @@
 #include "Extensions/NRIWrapperD3D12.h"
 #include "Extensions/NRIHelper.h"
 
-#include <iostream>
-
 using std::make_unique;
 using std::make_shared;
 using std::uint32_t;
@@ -26,8 +24,6 @@ using candela::directx::RootSignatureManager;
 using candela::directx::Resource;
 using candela::directx::DescriptorHeap;
 using candela::mathematics::UVector2;
-
-//extern D3D12_RESOURCE_STATES GetResourceStates(nri::AccessBits accessMask);
 
 namespace candela::renderer
 {
@@ -99,6 +95,7 @@ void DenoiserShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12GraphicsCo
 	normal = rRes->resourceManager->getNamedResource("den_gNorm");
 	depth = rRes->resourceManager->getNamedResource("den_gDepth");
 	pt_rad = rRes->resourceManager->getNamedResource("pt_diff");
+	position = rRes->resourceManager->getNamedResource("den_gPos");
 
 	in_mv = &rRes->resourceManager->createResource(D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, dim.x, dim.y, DXGI_FORMAT_R32G32B32A32_FLOAT, true, "in_mv");
 	in_normal_roughness = &rRes->resourceManager->createResource(D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, dim.x, dim.y, DXGI_FORMAT_R32G32B32A32_FLOAT, true, "in_normal_roughness");
@@ -109,11 +106,12 @@ void DenoiserShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12GraphicsCo
 	// Setup compute shader RS
 	auto rsm = make_shared<RootSignatureManager>();
 	CD3DX12_ROOT_PARAMETER1 param;
-	rsm->addDescriptorRange("IORange", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 6u, 0u));
+	rsm->addDescriptorRange("IORange", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 7u, 0u));
 	rsm->addDescriptorRange("IORange", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 5u, 0u));
 	rsm->setDescriptorTableParameter("IODescTable", "IORange");
 	param.InitAsConstants(3u, 0u); rsm->setParameter("Constants", param);
-	rsm->addParametersToRootSignature("ComputeRootSignature", { "IODescTable", "Constants" });
+	param.InitAsConstants(16u, 1u); rsm->setParameter("View", param);
+	rsm->addParametersToRootSignature("ComputeRootSignature", { "IODescTable", "Constants", "View"});
 	computeRootSignature = rsm->generateRootSignature("ComputeRootSignature", rRes->pDevice, D3D12_ROOT_SIGNATURE_FLAG_NONE);
 
 	// Heap
@@ -181,6 +179,7 @@ void DenoiserShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentComman
 	radAccumulator->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
 	albedo->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
 	normal->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
+	position->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
 	depth->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
 	pt_rad->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
 	rendererResources->pRTVDiff->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
@@ -233,24 +232,13 @@ void DenoiserShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentComman
 	}
 
 	nrdCommonSettings.frameIndex = static_cast<uint32_t>(rendererResources->frameNumber);
+	nrdCommonSettings.denoisingRange = 40.f;
 	nrdCommonSettings.isMotionVectorInWorldSpace = true;
 
 	auto camera = rendererResources->camera;
 	// transform to column-Major
-	auto viewMatrix = /*DirectX::XMMatrixTranspose*/(camera->getViewMatrix());
-	auto persMatrix = /*DirectX::XMMatrixTranspose*/(camera->getPerspectiveMatrix());
-	//if (camera->hasChanged())
-	//{
-	//	for (int i = 0; i < 4; ++i)
-	//	{
-	//		for (int j = 0; j < 4; ++j)
-	//		{
-	//			std::cout << viewMatrix.r[i].m128_f32[j] << ", ";
-	//		}
-	//		std::cout << std::endl;
-	//	}
-	//}
-
+	auto viewMatrix = camera->getViewMatrix();
+	auto persMatrix = camera->getPerspectiveMatrix();
 
 	if (nrdCommonSettings.frameIndex == 0)
 	{
@@ -265,7 +253,6 @@ void DenoiserShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentComman
 
 	memcpy(&nrdCommonSettings.worldToViewMatrix, &viewMatrix, sizeof(nrdCommonSettings.worldToViewMatrix));
 	memcpy(&nrdCommonSettings.viewToClipMatrix, &persMatrix, sizeof(nrdCommonSettings.viewToClipMatrix));
-
 	
 	//nrdReblurSettings.checkerboardMode = nrd::CheckerboardMode::WHITE;
 	//nrdReblurSettings.diffusePrepassBlurRadius = 1.f;
@@ -318,18 +305,12 @@ void DenoiserShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentComman
 	radAccumulator->transitionToPrevBarrier(pCurrentCommandList);
 	albedo->transitionToPrevBarrier(pCurrentCommandList);
 	normal->transitionToPrevBarrier(pCurrentCommandList);
+	position->transitionToPrevBarrier(pCurrentCommandList);
 	depth->transitionToPrevBarrier(pCurrentCommandList);
 	pt_rad->transitionToPrevBarrier(pCurrentCommandList);
 	rendererResources->pRTVDiff->transitionToPrevBarrier(pCurrentCommandList);
 
 	nrdCommonSettings.accumulationMode = nrd::AccumulationMode::CONTINUE;
-
-	//// Copy to output buffer
-	//out_diff_radiance_hitdist->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_COPY_SOURCE);
-	//rendererResources->pRTVRadBackBuffer->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_COPY_DEST);
-	//pCurrentCommandList->CopyResource(*rendererResources->pRTVRadBackBuffer, *out_diff_radiance_hitdist);
-	//rendererResources->pRTVRadBackBuffer->transitionToPrevBarrier(pCurrentCommandList);
-	//out_diff_radiance_hitdist->transitionToPrevBarrier(pCurrentCommandList);
 }
 
 void DenoiserShading::onChange(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, uint32_t currentBackBufferIndex, ChangeEvent_t changeEvent)
@@ -380,6 +361,8 @@ void DenoiserShading::compute(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCom
 	auto camDim = rendererResources->camera->getNearPlaneDimensions();
 	pCurrentCommandList->SetComputeRoot32BitConstants(1u, 2u, &camDim.m128_f32[2], 0u);
 	pCurrentCommandList->SetComputeRoot32BitConstant(1u, mode, 2u);
+	auto vm = DirectX::XMMatrixTranspose(rendererResources->camera->getViewMatrix());
+	pCurrentCommandList->SetComputeRoot32BitConstants(2u, 16u, &vm, 0u);
 	constexpr auto ThreadGroupDim = 8u;
 	auto& dim = rendererResources->winDimensions;
 	auto launchDimensions = UVector2(dim.x / ThreadGroupDim + (dim.x % ThreadGroupDim == 0u ? 0u : 1u), dim.y / ThreadGroupDim + (dim.y % ThreadGroupDim == 0u ? 0u : 1u));
@@ -407,6 +390,7 @@ void DenoiserShading::createShaderResources()
 	srvDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
 	descHeapManager->setSRV(entryNum++, srvDesc, rRes->pDevice, *pt_rad);
 	descHeapManager->setSRV(entryNum++, srvDesc, rRes->pDevice, *out_diff_radiance_hitdist);
+	descHeapManager->setSRV(entryNum++, srvDesc, rRes->pDevice, *position);
 
 	D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc{};
 	uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;

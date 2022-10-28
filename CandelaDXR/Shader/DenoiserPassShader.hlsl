@@ -7,12 +7,19 @@ cbuffer CB1 : register(b0)
 	uint mode;
 }
 
+cbuffer CB2 : register(b1)
+{
+	matrix View;
+}
+
 Texture2D<float4> radAccumulator : register(t0);
 Texture2D<float4> albedo : register(t1);
 Texture2D<float4> normal : register(t2);
 Texture2D<float> depth : register(t3);
 Texture2D<float4> pt_rad_hitt : register(t4);
 Texture2D<float4> out_diff_radiance_hitdist : register(t5);
+Texture2D<float4> position : register(t6);
+
 
 RWTexture2D<float4> in_mv : register(u0);
 RWTexture2D<float4> in_normal_roughness : register(u1);
@@ -29,10 +36,11 @@ void main(uint3 DTid : SV_DispatchThreadID)
 		in_mv[DTid.xy] = 0.f;
 		in_view_z[DTid.xy] = 0.f;
 		in_normal_roughness[DTid.xy] = float4((normal[DTid.xy].xyz + 1.f) * 0.5f, 0.f);
+		in_view_z[DTid.xy] = mul(float4(position[DTid.xy].xyz, 1.f), View).z;
 
-		float ndc = depth[DTid.xy] * 2.f - 1.f;
-		float res = (2.f * near * far) / (far + near - ndc * (far - near));
-		in_view_z[DTid.xy] = (res - near) / (far - near);
+		//float ndc = depth[DTid.xy] * 2.f - 1.f;
+		//float res = (2.f * near * far) / (far + near - ndc * (far - near));
+		//in_view_z[DTid.xy] = (res - near) / (far - near);
 
 		// Kevin - simplified above
 		//in_view_z[DTid.xy] = near * (1.f + ndc) / (near + far - ndc * (far - near));
