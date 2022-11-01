@@ -360,10 +360,10 @@ void DistanceComputeShader::bindAdditionalResources(UINT baseIndex)
 {
 	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
 	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-	srvDesc.Format = DXGI_FORMAT_R32_UINT;
+	srvDesc.Format = DXGI_FORMAT_R32G32_UINT;
 	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
 	srvDesc.Texture2D.MipLevels = 1u;
-	faceIndexResource = resourceManager->getNamedResource("ltr_gMat");
+	faceIndexResource = resourceManager->getNamedResource("ltr_gMeshInfo");
 	constBufferResource = &resourceManager->createResource(D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_FLAG_NONE, sizeof(distConstBuffer));
 	descHeapManager->setSRV(baseIndex++, srvDesc, pDevice, *faceIndexResource);
 	

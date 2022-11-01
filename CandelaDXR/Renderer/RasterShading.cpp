@@ -144,7 +144,7 @@ void RasterShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12GraphicsComm
 	for (UINT i = 0; i < numRenderTargets; ++i)
 		rtvFormats.RTFormats[i] = DXGI_FORMAT_R32G32B32A32_FLOAT;
 	if (computeGBuffer)
-		rtvFormats.RTFormats[numRenderTargets - 1] = DXGI_FORMAT_R32_UINT;
+		rtvFormats.RTFormats[numRenderTargets - 1] = DXGI_FORMAT_R32G32_UINT;
 
 	auto rasterDesc = CD3DX12_RASTERIZER_DESC(CD3DX12_DEFAULT());
 	rasterDesc.CullMode = D3D12_CULL_MODE_NONE;
@@ -180,7 +180,7 @@ void RasterShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12GraphicsComm
 	// Init G-Buffer
 	if (computeGBuffer)
 	{
-		std::array<std::string, 5> names = { "gPos", "gNorm", "gAlb", "gMat", "gOut"};
+		std::array<std::string, 5> names = { "gPos", "gNorm", "gAlb", "gMeshInfo", "gOut"};
 		for (size_t i = 0; i < names.size(); ++i)
 			gBuffer.emplace_back(&rendererResources->resourceManager->createResource(
 				D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET,

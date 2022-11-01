@@ -20,7 +20,7 @@ cbuffer CB1 : register(b0, space1)
 Texture2D<float4> input[] : register(t0);
 RWTexture2D<float> output[] : register(u0);
 
-Texture2D<uint> matIds : register(t0, space1);
+Texture2D<uint2> meshInfo : register(t0, space1);
 Texture2D<float4> gNormals : register(t1, space1);
 Texture2D<float> cdfMask : register(t2, space1);
 StructuredBuffer<Material> materials : register(t3, space1);
@@ -49,7 +49,7 @@ void main( uint3 DTid : SV_DispatchThreadID )
 	const float4 inData = input[InputIndex][DTid.xy];
 	const float3 gPos = inData.xyz;
 	const float3 gNorm = gNormals[DTid.xy].xyz;
-	const Material gMat = materials[matIds[DTid.xy]];
+	const Material gMat = materials[meshInfo[DTid.xy].x];
 	const float3 dir = gPos - LightPosition;
 	const float lenDir = length(dir);
 	const float noValue = 0.015625f;

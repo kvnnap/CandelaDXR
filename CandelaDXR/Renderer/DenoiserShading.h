@@ -55,6 +55,7 @@ namespace candela::renderer
 		nrd::CommonSettings& getCommonSettings();
 		nrd::ReblurSettings& getReblurSettings();
 		void clearHistory();
+		std::vector<DirectX::XMFLOAT3X4> getMVMatrices();
 
 	private:
 
@@ -73,7 +74,6 @@ namespace candela::renderer
 		RasterShading rasterShader;
 
 		// Compute Shader
-		// Compute shader
 		std::unique_ptr<directx::DescriptorHeap> descHeapManager;
 		wrl::ComPtr<ID3D12RootSignature> computeRootSignature;
 		wrl::ComPtr<ID3D12PipelineState> computePipelineState;
@@ -90,7 +90,9 @@ namespace candela::renderer
 		directx::Resource* normal; // Produce (normal, 0.f)  --> IN_NORMAL_ROUGHNESS
 		directx::Resource* depth; // 
 		directx::Resource* pt_rad; // 
-		directx::Resource* position; // Produce (normal, 0.f)  --> IN_NORMAL_ROUGHNESS
+		directx::Resource* position; //
+		directx::Resource* meshInfo; // Need mesh groupId to generate Motion Vectors
+		directx::Resource* matrices;
 
 		directx::Resource* in_mv; // Produce (0,0,0)  --> IN_MV
 		directx::Resource* in_normal_roughness;
@@ -101,5 +103,6 @@ namespace candela::renderer
 		nrd::CommonSettings nrdCommonSettings{};
 		nrd::ReblurSettings nrdReblurSettings{};
 
+		std::vector<DirectX::XMMATRIX> prevMat;
 	};
 }

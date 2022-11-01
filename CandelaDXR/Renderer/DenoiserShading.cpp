@@ -1,9 +1,12 @@
 #include "DenoiserShading.h"
 
+#include <vector>
+
 #include <d3dcompiler.h>
 #include "Exception/WindowException.h"
 #include "Util/StringUtil.h"
 #include "Mathematics/Types.h"
+#include "DirectX/DxUtil.h"
 
 #include "NRIDescs.h"
 #include "NRI.h"
@@ -18,11 +21,13 @@ using std::make_unique;
 using std::make_shared;
 using std::uint32_t;
 using std::uint16_t;
+using std::vector;
 
 using candela::renderer::DenoiserShading;
 using candela::directx::RootSignatureManager;
 using candela::directx::Resource;
 using candela::directx::DescriptorHeap;
+using candela::directx::DXUtil;
 using candela::mathematics::UVector2;
 
 namespace candela::renderer
@@ -37,6 +42,7 @@ namespace candela::renderer
 DenoiserShading::DenoiserShading()
 	: rendererResources(), nriDevice(), rasterShader(true),
 	  radAccumulator(), albedo(), normal(), depth(), pt_rad(),
+	  position(), meshInfo(), matrices(),
 	  in_mv(), in_normal_roughness(), in_view_z(),
 	  in_diff_radiance_hitdist(), out_diff_radiance_hitdist()
 {
@@ -83,6 +89,16 @@ void DenoiserShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12GraphicsCo
 {
 	rendererResources = rRes;
 
+	prevMat.clear();
+	for (auto sn : rRes->scene->getSceneGraph().getLeafNodes())
+		prevMat.push_back(sn->getTransform());
+
+	auto mvMats = getMVMatrices();
+	matrices = &rRes->resourceManager->createResource(D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, static_cast<UINT>(sizeof(decltype(mvMats)::value_type) * mvMats.size()));
+	matrices->setName("Denoiser MV Matrices");
+	matrices->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
+	matrices->write(pCurrentCommandList, rendererResources->getTempResource(), mvMats.data());
+
 	// Setup raster shader
 	rasterShader.setGlobaResourcePrefix("den_");
 	rasterShader.init(rRes, pCurrentCommandList, resRegFn);
@@ -96,6 +112,7 @@ void DenoiserShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12GraphicsCo
 	depth = rRes->resourceManager->getNamedResource("den_gDepth");
 	pt_rad = rRes->resourceManager->getNamedResource("pt_diff");
 	position = rRes->resourceManager->getNamedResource("den_gPos");
+	meshInfo = rRes->resourceManager->getNamedResource("den_gMeshInfo");
 
 	in_mv = &rRes->resourceManager->createResource(D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, dim.x, dim.y, DXGI_FORMAT_R32G32B32A32_FLOAT, true, "in_mv");
 	in_normal_roughness = &rRes->resourceManager->createResource(D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, dim.x, dim.y, DXGI_FORMAT_R32G32B32A32_FLOAT, true, "in_normal_roughness");
@@ -106,11 +123,12 @@ void DenoiserShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12GraphicsCo
 	// Setup compute shader RS
 	auto rsm = make_shared<RootSignatureManager>();
 	CD3DX12_ROOT_PARAMETER1 param;
-	rsm->addDescriptorRange("IORange", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 7u, 0u));
+	rsm->addDescriptorRange("IORange", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 8u, 0u));
 	rsm->addDescriptorRange("IORange", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 5u, 0u));
 	rsm->setDescriptorTableParameter("IODescTable", "IORange");
 	param.InitAsConstants(4u, 0u); rsm->setParameter("Constants", param);
-	rsm->addParametersToRootSignature("ComputeRootSignature", { "IODescTable", "Constants" });
+	param.InitAsShaderResourceView(8u); rsm->setParameter("Matrices", param);
+	rsm->addParametersToRootSignature("ComputeRootSignature", { "IODescTable", "Constants", "Matrices" });
 	computeRootSignature = rsm->generateRootSignature("ComputeRootSignature", rRes->pDevice, D3D12_ROOT_SIGNATURE_FLAG_NONE);
 
 	// Heap
@@ -169,20 +187,21 @@ void DenoiserShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentComman
 {
 	wrl::ComPtr<ID3D12DebugCommandList> pDbgCmdList;
 	pCurrentCommandList.As(&pDbgCmdList);
-	//pDbgCmdList->SetFeatureMask(D3D12_DEBUG_FEATURE_ALLOW_BEHAVIOR_CHANGING_DEBUG_AIDS);
-	//bool isUAV = pDbgCmdList->AssertResourceState(*out_diff_radiance_hitdist, 0, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
 	rasterShader.draw(pCurrentCommandList, currentBackBufferIndex);
+
+	// Update Mat
+	matrices->write(pCurrentCommandList, rendererResources->getTempResource(), getMVMatrices().data());
 
 	// Compute pre-pass
 	radAccumulator->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
 	albedo->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
 	normal->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
 	position->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
+	meshInfo->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
 	depth->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
 	pt_rad->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
 	rendererResources->pRTVDiff->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-
 
 	compute(pCurrentCommandList, 0);
 
@@ -305,6 +324,7 @@ void DenoiserShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentComman
 	albedo->transitionToPrevBarrier(pCurrentCommandList);
 	normal->transitionToPrevBarrier(pCurrentCommandList);
 	position->transitionToPrevBarrier(pCurrentCommandList);
+	meshInfo->transitionToPrevBarrier(pCurrentCommandList);
 	depth->transitionToPrevBarrier(pCurrentCommandList);
 	pt_rad->transitionToPrevBarrier(pCurrentCommandList);
 	rendererResources->pRTVDiff->transitionToPrevBarrier(pCurrentCommandList);
@@ -349,6 +369,22 @@ void DenoiserShading::clearHistory()
 	nrdCommonSettings.accumulationMode = nrd::AccumulationMode::RESTART;
 }
 
+vector<DirectX::XMFLOAT3X4> DenoiserShading::getMVMatrices()
+{
+	vector<DirectX::XMFLOAT3X4> mats(prevMat.size());
+	auto sMats = rendererResources->scene->getSceneGraph().getLeafNodes();
+	for (std::size_t i = 0; i < prevMat.size(); ++i)
+	{
+		auto copyOfCurrentMat = sMats.at(i)->getTransform();
+		auto mat = copyOfCurrentMat; // Get current local to World transform
+		mat = DirectX::XMMatrixInverse(nullptr, mat); // Invert It - becomes world to local
+		mat *= prevMat[i]; // Then apply previous local to world transform
+		DirectX::XMStoreFloat3x4(&mats[i], mat);
+		prevMat[i] = copyOfCurrentMat;
+	}
+	return mats;
+}
+
 void DenoiserShading::compute(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, uint32_t mode)
 {
 	out_diff_radiance_hitdist->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
@@ -361,6 +397,7 @@ void DenoiserShading::compute(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCom
 	pCurrentCommandList->SetComputeRoot32BitConstants(1u, 2u, &camDim.m128_f32[2], 0u);
 	pCurrentCommandList->SetComputeRoot32BitConstants(1u, 1u, &rendererResources->camera->getPosition().m128_f32[2], 2u);
 	pCurrentCommandList->SetComputeRoot32BitConstant(1u, mode, 3u);
+	pCurrentCommandList->SetComputeRootShaderResourceView(2u, ((ID3D12Resource*)*matrices)->GetGPUVirtualAddress());
 	constexpr auto ThreadGroupDim = 8u;
 	auto& dim = rendererResources->winDimensions;
 	auto launchDimensions = UVector2(dim.x / ThreadGroupDim + (dim.x % ThreadGroupDim == 0u ? 0u : 1u), dim.y / ThreadGroupDim + (dim.y % ThreadGroupDim == 0u ? 0u : 1u));
@@ -389,6 +426,8 @@ void DenoiserShading::createShaderResources()
 	descHeapManager->setSRV(entryNum++, srvDesc, rRes->pDevice, *pt_rad);
 	descHeapManager->setSRV(entryNum++, srvDesc, rRes->pDevice, *out_diff_radiance_hitdist);
 	descHeapManager->setSRV(entryNum++, srvDesc, rRes->pDevice, *position);
+	srvDesc.Format = DXGI_FORMAT_R32G32_UINT;
+	descHeapManager->setSRV(entryNum++, srvDesc, rRes->pDevice, *meshInfo);
 
 	D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc{};
 	uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;

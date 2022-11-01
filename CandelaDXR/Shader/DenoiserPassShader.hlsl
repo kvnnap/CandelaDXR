@@ -15,6 +15,8 @@ Texture2D<float> depth : register(t3);
 Texture2D<float4> pt_rad_hitt : register(t4);
 Texture2D<float4> out_diff_radiance_hitdist : register(t5);
 Texture2D<float4> position : register(t6);
+Texture2D<uint2> meshInfo : register(t7);
+StructuredBuffer<float4x3> matrices : register(t8); // WorldToLocalToPrevWorld
 
 RWTexture2D<float4> in_mv : register(u0);
 RWTexture2D<float4> in_normal_roughness : register(u1);
@@ -27,8 +29,11 @@ void main(uint3 DTid : SV_DispatchThreadID)
 {
 	if (mode == 0)
 	{
-		in_mv[DTid.xy] = 0.f;
-		in_view_z[DTid.xy] = 0.f;
+		uint meshGroupId = meshInfo[DTid.xy].y; // y is groupId
+		float3 pixWorldPos = position[DTid.xy].xyz;
+		float3 prevPoint = mul(float4(pixWorldPos, 1.f), matrices[meshGroupId]);
+		in_mv[DTid.xy] = float4(prevPoint - pixWorldPos, 0.f);
+
 		in_normal_roughness[DTid.xy] = float4((normal[DTid.xy].xyz + 1.f) * 0.5f, 0.f);
 		in_view_z[DTid.xy] = position[DTid.xy].z - camZ;
 
