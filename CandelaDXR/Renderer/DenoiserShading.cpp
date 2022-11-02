@@ -8,14 +8,12 @@
 #include "Mathematics/Types.h"
 #include "DirectX/DxUtil.h"
 
-#include "NRIDescs.h"
 #include "NRI.h"
 #include "NRIDescs.hpp"
 #include "Extensions/NRIHelper.h"
+#include "Extensions/NRIWrapperD3D12.h"
 #include "NVIDIA/NRDIntegration.h"
 #include "NVIDIA/NRDIntegration.hpp"
-#include "Extensions/NRIWrapperD3D12.h"
-#include "Extensions/NRIHelper.h"
 
 using std::make_unique;
 using std::make_shared;
@@ -459,7 +457,7 @@ void DenoiserShading::setupDenoiser()
 
 	destroyDenoiser();
 	NRD = make_unique<NrdIntegration>(rRes->numBackBuffers);
-	bool res = NRD->Initialize(*nriDevice, *NRI, *NRI, denoiserCreationDesc);
+	bool res = NRD->Initialize(denoiserCreationDesc, *nriDevice, *NRI, *NRI);
 }
 
 void DenoiserShading::destroyDenoiser()

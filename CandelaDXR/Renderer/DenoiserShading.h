@@ -23,7 +23,6 @@
 
 #include "NRD.h"
 
-
 class NrdIntegration;
 
 namespace nri
