@@ -1,5 +1,9 @@
 #include "Utils.hlsli"
 
+#include "NRDEncoding.hlsli"
+#define NRD_HEADER_ONLY
+#include "NRD.hlsli"
+
 cbuffer CB1 : register(b0)
 {
 	float near;
@@ -36,6 +40,8 @@ void main(uint3 DTid : SV_DispatchThreadID)
 
 		in_normal_roughness[DTid.xy] = float4((normal[DTid.xy].xyz + 1.f) * 0.5f, 0.f);
 		in_view_z[DTid.xy] = position[DTid.xy].z - camZ;
+		//float vz = position[DTid.xy].z - camZ;
+		//in_view_z[DTid.xy] = _NRD_PackViewZ(vz);
 
 		float3 rad = albedo[DTid.xy].xyz;
 		if (rad.x > 0)
@@ -45,10 +51,12 @@ void main(uint3 DTid : SV_DispatchThreadID)
 		if (rad.z > 0)
 			rad.z = radAccumulator[DTid.xy].z / rad.z;
 
-		in_diff_radiance_hitdist[DTid.xy] = float4(rad, pt_rad_hitt[DTid.xy].w);
+		//in_diff_radiance_hitdist[DTid.xy] = float4(rad, pt_rad_hitt[DTid.xy].w);
+		in_diff_radiance_hitdist[DTid.xy] = REBLUR_FrontEnd_PackRadianceAndNormHitDist(rad, pt_rad_hitt[DTid.xy].w);
 	}
 	else if (mode == 1)
 	{
-		gOutput[DTid.xy] = float4(out_diff_radiance_hitdist[DTid.xy].xyz * albedo[DTid.xy].xyz, 1.f);
+		float4 result = REBLUR_BackEnd_UnpackRadianceAndNormHitDist(out_diff_radiance_hitdist[DTid.xy]);
+		gOutput[DTid.xy] = float4(result.xyz * albedo[DTid.xy].xyz, 1.f);
 	}
 }
