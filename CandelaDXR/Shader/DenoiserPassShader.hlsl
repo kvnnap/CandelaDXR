@@ -36,22 +36,28 @@ void main(uint3 DTid : SV_DispatchThreadID)
 		uint meshGroupId = meshInfo[DTid.xy].y; // y is groupId
 		float3 pixWorldPos = position[DTid.xy].xyz;
 		float3 prevPoint = mul(float4(pixWorldPos, 1.f), matrices[meshGroupId]);
-		in_mv[DTid.xy] = float4(prevPoint - pixWorldPos, 0.f);
+		float3 motion = prevPoint - pixWorldPos;
 
-		in_normal_roughness[DTid.xy] = float4((normal[DTid.xy].xyz + 1.f) * 0.5f, 0.f);
+		// Check PrimaryRays.cd.hlsl:106 - motion * STL::Math::LinearStep( 0.0, 0.0000005, abs( motion ) );
+		// has the effect of a quadratic curve for value components less than 0.0000005 ? Smoothing maybe? 
+		in_mv[DTid.xy] = float4(motion * saturate(abs(motion) / 0.0000005), 0.f);
+
+		// TODO: Roughness is always one here, alter with material!
+		in_normal_roughness[DTid.xy] = NRD_FrontEnd_PackNormalAndRoughness(normal[DTid.xy].xyz, 1.f);
+
+		// Can skip some denoising steps here by providing
+		// providing viewZ > CommonSettings::denoisingRange (default 500000.0f) (black image)
 		in_view_z[DTid.xy] = position[DTid.xy].z - camZ;
-		//float vz = position[DTid.xy].z - camZ;
-		//in_view_z[DTid.xy] = _NRD_PackViewZ(vz);
 
+		float3 radAcc = radAccumulator[DTid.xy].xyz;
 		float3 rad = albedo[DTid.xy].xyz;
 		if (rad.x > 0)
-			rad.x = radAccumulator[DTid.xy].x / rad.x;
+			rad.x = radAcc.x / rad.x;
 		if (rad.y > 0)
-			rad.y = radAccumulator[DTid.xy].y / rad.y;
+			rad.y = radAcc.y / rad.y;
 		if (rad.z > 0)
-			rad.z = radAccumulator[DTid.xy].z / rad.z;
+			rad.z = radAcc.z / rad.z;
 
-		//in_diff_radiance_hitdist[DTid.xy] = float4(rad, pt_rad_hitt[DTid.xy].w);
 		in_diff_radiance_hitdist[DTid.xy] = REBLUR_FrontEnd_PackRadianceAndNormHitDist(rad, pt_rad_hitt[DTid.xy].w);
 	}
 	else if (mode == 1)

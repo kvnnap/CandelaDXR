@@ -248,7 +248,6 @@ void DenoiserShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentComman
 	}
 
 	nrdCommonSettings.frameIndex = static_cast<uint32_t>(rendererResources->frameNumber);
-	nrdCommonSettings.denoisingRange = 40.f;
 	nrdCommonSettings.isMotionVectorInWorldSpace = true;
 
 	auto camera = rendererResources->camera;
