@@ -6,8 +6,7 @@
 
 cbuffer CB1 : register(b0)
 {
-	float near;
-	float far;
+	float4 hitDistParams;
 	float camZ;
 	uint mode;
 }
@@ -47,10 +46,11 @@ void main(uint3 DTid : SV_DispatchThreadID)
 
 		// Can skip some denoising steps here by providing
 		// providing viewZ > CommonSettings::denoisingRange (default 500000.0f) (black image)
-		in_view_z[DTid.xy] = position[DTid.xy].z - camZ;
+		float vz = position[DTid.xy].z - camZ;
+		in_view_z[DTid.xy] = vz;
 
 		float3 radAcc = radAccumulator[DTid.xy].xyz;
-		float3 rad = albedo[DTid.xy].xyz;
+		float3 rad = albedo[DTid.xy].xyz / PI;
 		if (rad.x > 0)
 			rad.x = radAcc.x / rad.x;
 		if (rad.y > 0)
@@ -58,11 +58,13 @@ void main(uint3 DTid : SV_DispatchThreadID)
 		if (rad.z > 0)
 			rad.z = radAcc.z / rad.z;
 
-		in_diff_radiance_hitdist[DTid.xy] = REBLUR_FrontEnd_PackRadianceAndNormHitDist(rad, pt_rad_hitt[DTid.xy].w);
+		// Normalize hit distance..
+		float normHitDist = REBLUR_FrontEnd_GetNormHitDist(pt_rad_hitt[DTid.xy].w, vz, hitDistParams, 1.0f);
+		in_diff_radiance_hitdist[DTid.xy] = REBLUR_FrontEnd_PackRadianceAndNormHitDist(rad, normHitDist);
 	}
 	else if (mode == 1)
 	{
 		float4 result = REBLUR_BackEnd_UnpackRadianceAndNormHitDist(out_diff_radiance_hitdist[DTid.xy]);
-		gOutput[DTid.xy] = float4(result.xyz * albedo[DTid.xy].xyz, 1.f);
+		gOutput[DTid.xy] = float4(result.xyz * (albedo[DTid.xy].xyz / PI), 1.f);
 	}
 }

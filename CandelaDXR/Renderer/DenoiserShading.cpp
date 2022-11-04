@@ -124,7 +124,7 @@ void DenoiserShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12GraphicsCo
 	rsm->addDescriptorRange("IORange", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 8u, 0u));
 	rsm->addDescriptorRange("IORange", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 5u, 0u));
 	rsm->setDescriptorTableParameter("IODescTable", "IORange");
-	param.InitAsConstants(4u, 0u); rsm->setParameter("Constants", param);
+	param.InitAsConstants(6u, 0u); rsm->setParameter("Constants", param);
 	param.InitAsShaderResourceView(8u); rsm->setParameter("Matrices", param);
 	rsm->addParametersToRootSignature("ComputeRootSignature", { "IODescTable", "Constants", "Matrices" });
 	computeRootSignature = rsm->generateRootSignature("ComputeRootSignature", rRes->pDevice, D3D12_ROOT_SIGNATURE_FLAG_NONE);
@@ -275,6 +275,8 @@ void DenoiserShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentComman
 	//nrdReblurSettings.stabilizationStrength = 0.1f;
 	//nrdReblurSettings.enableReferenceAccumulation = true;
 	//nrdReblurSettings.historyFixFrameNum = 0;
+	//nrdReblurSettings.hitDistanceParameters;
+	//nrdReblurSettings.hitDistanceReconstructionMode; --- NEED FOR LightTracing!
 
 	NRD->SetMethodSettings(nrd::Method::REBLUR_DIFFUSE, &nrdReblurSettings);
 	
@@ -390,10 +392,10 @@ void DenoiserShading::compute(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCom
 	pCurrentCommandList->SetPipelineState(computePipelineState.Get());
 	pCurrentCommandList->SetDescriptorHeaps(1u, descHeapManager->getDescriptorHeap().GetAddressOf());
 	pCurrentCommandList->SetComputeRootDescriptorTable(0u, descHeapManager->getDescriptorHeap()->GetGPUDescriptorHandleForHeapStart());
-	auto camDim = rendererResources->camera->getNearPlaneDimensions();
-	pCurrentCommandList->SetComputeRoot32BitConstants(1u, 2u, &camDim.m128_f32[2], 0u);
-	pCurrentCommandList->SetComputeRoot32BitConstants(1u, 1u, &rendererResources->camera->getPosition().m128_f32[2], 2u);
-	pCurrentCommandList->SetComputeRoot32BitConstant(1u, mode, 3u);
+	pCurrentCommandList->SetComputeRoot32BitConstants(1u, 4u, &nrdReblurSettings.hitDistanceParameters, 0u);
+	pCurrentCommandList->SetComputeRoot32BitConstants(1u, 1u, &rendererResources->camera->getPosition().m128_f32[2], 4u);
+	pCurrentCommandList->SetComputeRoot32BitConstant(1u, mode, 5u);
+
 	pCurrentCommandList->SetComputeRootShaderResourceView(2u, ((ID3D12Resource*)*matrices)->GetGPUVirtualAddress());
 	constexpr auto ThreadGroupDim = 8u;
 	auto& dim = rendererResources->winDimensions;
