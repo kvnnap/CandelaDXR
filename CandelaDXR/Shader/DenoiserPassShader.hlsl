@@ -11,21 +11,25 @@ cbuffer CB1 : register(b0)
 	uint mode;
 }
 
-Texture2D<float4> radAccumulator : register(t0);
-Texture2D<float4> albedo : register(t1);
-Texture2D<float4> normal : register(t2);
-Texture2D<float> depth : register(t3);
-Texture2D<float4> gRayHitT : register(t4);
-Texture2D<float4> out_diff_radiance_hitdist : register(t5);
-Texture2D<float4> position : register(t6);
-Texture2D<uint2> meshInfo : register(t7);
-StructuredBuffer<float4x3> matrices : register(t8); // WorldToLocalToPrevWorld
+Texture2D<float4> diffRadAcc : register(t0);
+Texture2D<float4> specRadAcc : register(t1);
+Texture2D<float4> albedo : register(t2);
+Texture2D<float4> normal : register(t3);
+Texture2D<float> depth : register(t4);
+Texture2D<float4> gRayHitT : register(t5);
+Texture2D<float4> out_diff_radiance_hitdist : register(t6);
+Texture2D<float4> out_spec_radiance_hitdist : register(t7);
+Texture2D<float4> position : register(t8);
+Texture2D<uint2> meshInfo : register(t9);
+StructuredBuffer<float4x3> matrices : register(t10); // WorldToLocalToPrevWorld
 
 RWTexture2D<float4> in_mv : register(u0);
 RWTexture2D<float4> in_normal_roughness : register(u1);
 RWTexture2D<float> in_view_z : register(u2);
 RWTexture2D<float4> in_diff_radiance_hitdist : register(u3);
-RWTexture2D<float4> gOutput : register(u4);
+RWTexture2D<float4> in_spec_radiance_hitdist : register(u4);
+RWTexture2D<float4> gOutputDiff : register(u5);
+RWTexture2D<float4> gOutputSpec : register(u6);
 
 [numthreads(8, 8, 1)]
 void main(uint3 DTid : SV_DispatchThreadID)
@@ -49,7 +53,7 @@ void main(uint3 DTid : SV_DispatchThreadID)
 		float vz = position[DTid.xy].z - camZ;
 		in_view_z[DTid.xy] = vz;
 
-		float3 radAcc = radAccumulator[DTid.xy].xyz;
+		float3 radAcc = diffRadAcc[DTid.xy].xyz;
 		float3 rad = albedo[DTid.xy].xyz / PI;
 		if (rad.x > 0)
 			rad.x = radAcc.x / rad.x;
@@ -61,10 +65,17 @@ void main(uint3 DTid : SV_DispatchThreadID)
 		// Normalize hit distance..
 		float normHitDist = REBLUR_FrontEnd_GetNormHitDist(gRayHitT[DTid.xy].x, vz, hitDistParams, 1.0f);
 		in_diff_radiance_hitdist[DTid.xy] = REBLUR_FrontEnd_PackRadianceAndNormHitDist(rad, normHitDist);
+
+		// Spec - no material additional stuff in our case?
+		normHitDist = REBLUR_FrontEnd_GetNormHitDist(gRayHitT[DTid.xy].y, vz, hitDistParams, 1.0f);
+		in_spec_radiance_hitdist[DTid.xy] = REBLUR_FrontEnd_PackRadianceAndNormHitDist(specRadAcc[DTid.xy].xyz, normHitDist);
 	}
 	else if (mode == 1)
 	{
 		float4 result = REBLUR_BackEnd_UnpackRadianceAndNormHitDist(out_diff_radiance_hitdist[DTid.xy]);
-		gOutput[DTid.xy] = float4(result.xyz * (albedo[DTid.xy].xyz / PI), 1.f);
+		gOutputDiff[DTid.xy] = float4(result.xyz * (albedo[DTid.xy].xyz / PI), 1.f);
+
+		result = REBLUR_BackEnd_UnpackRadianceAndNormHitDist(out_spec_radiance_hitdist[DTid.xy]);
+		gOutputSpec[DTid.xy] = float4(result.xyz, 1.f);
 	}
 }

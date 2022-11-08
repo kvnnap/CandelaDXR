@@ -39,10 +39,11 @@ namespace candela::renderer
 
 DenoiserShading::DenoiserShading()
 	: rendererResources(), nriDevice(), rasterShader(true),
-	  radAccumulator(), albedo(), normal(), depth(), gRayHitT(),
-	  position(), meshInfo(), matrices(),
+	  diffRadAccumulator(), specRadAccumulator(), albedo(), 
+	  normal(), depth(), gRayHitT(), position(), meshInfo(), matrices(),
 	  in_mv(), in_normal_roughness(), in_view_z(),
-	  in_diff_radiance_hitdist(), out_diff_radiance_hitdist()
+	  in_diff_radiance_hitdist(), in_spec_radiance_hitdist(),
+	  out_diff_radiance_hitdist(), out_spec_radiance_hitdist()
 {
 }
 
@@ -104,7 +105,8 @@ void DenoiserShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12GraphicsCo
 
 	// Get resources & create new ones
 	auto& dim = rRes->winDimensions;
-	radAccumulator = rRes->resourceManager->getNamedResource("diff_acc");
+	diffRadAccumulator = rRes->resourceManager->getNamedResource("diff_acc");
+	specRadAccumulator = rRes->resourceManager->getNamedResource("spec_acc");
 	albedo = rRes->resourceManager->getNamedResource("den_gAlb");
 	normal = rRes->resourceManager->getNamedResource("den_gNorm");
 	depth = rRes->resourceManager->getNamedResource("den_gDepth");
@@ -116,16 +118,18 @@ void DenoiserShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12GraphicsCo
 	in_normal_roughness = &rRes->resourceManager->createResource(D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, dim.x, dim.y, DXGI_FORMAT_R32G32B32A32_FLOAT, true, "in_normal_roughness");
 	in_view_z = &rRes->resourceManager->createResource(D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, dim.x, dim.y, DXGI_FORMAT_R32_FLOAT, true, "in_view_z");
 	in_diff_radiance_hitdist = &rRes->resourceManager->createResource(D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, dim.x, dim.y, DXGI_FORMAT_R32G32B32A32_FLOAT, true, "in_diff_radiance_hitdist");
+	in_spec_radiance_hitdist = &rRes->resourceManager->createResource(D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, dim.x, dim.y, DXGI_FORMAT_R32G32B32A32_FLOAT, true, "in_spec_radiance_hitdist");
 	out_diff_radiance_hitdist = &rRes->resourceManager->createResource(D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, dim.x, dim.y, DXGI_FORMAT_R32G32B32A32_FLOAT, true, "out_diff_radiance_hitdist");
+	out_spec_radiance_hitdist = &rRes->resourceManager->createResource(D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, dim.x, dim.y, DXGI_FORMAT_R32G32B32A32_FLOAT, true, "out_spec_radiance_hitdist");
 
 	// Setup compute shader RS
 	auto rsm = make_shared<RootSignatureManager>();
 	CD3DX12_ROOT_PARAMETER1 param;
-	rsm->addDescriptorRange("IORange", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 8u, 0u));
-	rsm->addDescriptorRange("IORange", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 5u, 0u));
+	rsm->addDescriptorRange("IORange", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 10u, 0u));
+	rsm->addDescriptorRange("IORange", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 7u, 0u));
 	rsm->setDescriptorTableParameter("IODescTable", "IORange");
 	param.InitAsConstants(6u, 0u); rsm->setParameter("Constants", param);
-	param.InitAsShaderResourceView(8u); rsm->setParameter("Matrices", param);
+	param.InitAsShaderResourceView(10u); rsm->setParameter("Matrices", param);
 	rsm->addParametersToRootSignature("ComputeRootSignature", { "IODescTable", "Constants", "Matrices" });
 	computeRootSignature = rsm->generateRootSignature("ComputeRootSignature", rRes->pDevice, D3D12_ROOT_SIGNATURE_FLAG_NONE);
 
@@ -192,7 +196,8 @@ void DenoiserShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentComman
 	matrices->write(pCurrentCommandList, rendererResources->getTempResource(), getMVMatrices().data());
 
 	// Compute pre-pass
-	radAccumulator->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
+	diffRadAccumulator->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
+	specRadAccumulator->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
 	albedo->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
 	normal->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
 	position->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
@@ -200,6 +205,7 @@ void DenoiserShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentComman
 	depth->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
 	gRayHitT->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
 	rendererResources->pRTVDiff->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+	rendererResources->pRTVSpec->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
 	compute(pCurrentCommandList, 0);
 
@@ -207,6 +213,7 @@ void DenoiserShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentComman
 	in_normal_roughness->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
 	in_view_z->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
 	in_diff_radiance_hitdist->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
+	in_spec_radiance_hitdist->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
 
 	/// Pass to convert radiance without albedo - compute shader required
 
@@ -221,7 +228,7 @@ void DenoiserShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentComman
 	NRI->CreateCommandBufferD3D12(*nriDevice, cmdDesc, cmdBuffer);
 
 	// Wrap required textures
-	constexpr int N = 5;
+	constexpr int N = 7;
 	nri::TextureTransitionBarrierDesc entryDescs[N] = {};
 	nri::Format entryFormat[N] = {};
 	DenoiserResource denoiserResources[N] = {
@@ -229,7 +236,9 @@ void DenoiserShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentComman
 		{ in_normal_roughness,       D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE, nrd::ResourceType::IN_NORMAL_ROUGHNESS,       nri::Format::RGBA32_SFLOAT },
 		{ in_view_z,                 D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE, nrd::ResourceType::IN_VIEWZ,                  nri::Format::R32_SFLOAT    },
 		{ in_diff_radiance_hitdist,  D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE, nrd::ResourceType::IN_DIFF_RADIANCE_HITDIST,  nri::Format::RGBA32_SFLOAT },
-		{ out_diff_radiance_hitdist, D3D12_RESOURCE_STATE_UNORDERED_ACCESS,    nrd::ResourceType::OUT_DIFF_RADIANCE_HITDIST, nri::Format::RGBA32_SFLOAT }
+		{ in_spec_radiance_hitdist,  D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE, nrd::ResourceType::IN_SPEC_RADIANCE_HITDIST,  nri::Format::RGBA32_SFLOAT },
+		{ out_diff_radiance_hitdist, D3D12_RESOURCE_STATE_UNORDERED_ACCESS,    nrd::ResourceType::OUT_DIFF_RADIANCE_HITDIST, nri::Format::RGBA32_SFLOAT },
+		{ out_spec_radiance_hitdist, D3D12_RESOURCE_STATE_UNORDERED_ACCESS,    nrd::ResourceType::OUT_SPEC_RADIANCE_HITDIST, nri::Format::RGBA32_SFLOAT }
 	};
 
 	for (uint32_t i = 0; i < N; i++)
@@ -278,7 +287,7 @@ void DenoiserShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentComman
 	//nrdReblurSettings.hitDistanceParameters;
 	//nrdReblurSettings.hitDistanceReconstructionMode; --- NEED FOR LightTracing!
 
-	NRD->SetMethodSettings(nrd::Method::REBLUR_DIFFUSE, &nrdReblurSettings);
+	NRD->SetMethodSettings(nrd::Method::REBLUR_DIFFUSE_SPECULAR, &nrdReblurSettings);
 	
 	// Populate the user pool
 	NrdUserPool userPool = {};
@@ -316,10 +325,12 @@ void DenoiserShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentComman
 	in_normal_roughness->transitionToPrevBarrier(pCurrentCommandList);
 	in_view_z->transitionToPrevBarrier(pCurrentCommandList);
 	in_diff_radiance_hitdist->transitionToPrevBarrier(pCurrentCommandList);
+	in_spec_radiance_hitdist->transitionToPrevBarrier(pCurrentCommandList);
 
 	compute(pCurrentCommandList, 1);
 
-	radAccumulator->transitionToPrevBarrier(pCurrentCommandList);
+	diffRadAccumulator->transitionToPrevBarrier(pCurrentCommandList);
+	specRadAccumulator->transitionToPrevBarrier(pCurrentCommandList);
 	albedo->transitionToPrevBarrier(pCurrentCommandList);
 	normal->transitionToPrevBarrier(pCurrentCommandList);
 	position->transitionToPrevBarrier(pCurrentCommandList);
@@ -327,6 +338,7 @@ void DenoiserShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentComman
 	depth->transitionToPrevBarrier(pCurrentCommandList);
 	gRayHitT->transitionToPrevBarrier(pCurrentCommandList);
 	rendererResources->pRTVDiff->transitionToPrevBarrier(pCurrentCommandList);
+	rendererResources->pRTVSpec->transitionToPrevBarrier(pCurrentCommandList);
 
 	nrdCommonSettings.accumulationMode = nrd::AccumulationMode::CONTINUE;
 }
@@ -387,6 +399,7 @@ vector<DirectX::XMFLOAT3X4> DenoiserShading::getMVMatrices()
 void DenoiserShading::compute(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, uint32_t mode)
 {
 	out_diff_radiance_hitdist->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+	out_spec_radiance_hitdist->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
 	pCurrentCommandList->SetComputeRootSignature(computeRootSignature.Get());
 	pCurrentCommandList->SetPipelineState(computePipelineState.Get());
@@ -403,6 +416,7 @@ void DenoiserShading::compute(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCom
 	pCurrentCommandList->Dispatch(launchDimensions.x, launchDimensions.y, 1u);
 
 	out_diff_radiance_hitdist->transitionToPrevBarrier(pCurrentCommandList);
+	out_spec_radiance_hitdist->transitionToPrevBarrier(pCurrentCommandList);
 }
 
 void DenoiserShading::createShaderResources()
@@ -416,7 +430,8 @@ void DenoiserShading::createShaderResources()
 	srvDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
 	srvDesc.Texture2D.MipLevels = 1u;
 	uint32_t entryNum{};
-	descHeapManager->setSRV(entryNum++, srvDesc, rRes->pDevice, *radAccumulator);
+	descHeapManager->setSRV(entryNum++, srvDesc, rRes->pDevice, *diffRadAccumulator);
+	descHeapManager->setSRV(entryNum++, srvDesc, rRes->pDevice, *specRadAccumulator);
 	descHeapManager->setSRV(entryNum++, srvDesc, rRes->pDevice, *albedo);
 	descHeapManager->setSRV(entryNum++, srvDesc, rRes->pDevice, *normal);
 	srvDesc.Format = DXGI_FORMAT_R32_FLOAT;
@@ -425,6 +440,7 @@ void DenoiserShading::createShaderResources()
 	descHeapManager->setSRV(entryNum++, srvDesc, rRes->pDevice, *gRayHitT);
 	srvDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
 	descHeapManager->setSRV(entryNum++, srvDesc, rRes->pDevice, *out_diff_radiance_hitdist);
+	descHeapManager->setSRV(entryNum++, srvDesc, rRes->pDevice, *out_spec_radiance_hitdist);
 	descHeapManager->setSRV(entryNum++, srvDesc, rRes->pDevice, *position);
 	srvDesc.Format = DXGI_FORMAT_R32G32_UINT;
 	descHeapManager->setSRV(entryNum++, srvDesc, rRes->pDevice, *meshInfo);
@@ -440,7 +456,9 @@ void DenoiserShading::createShaderResources()
 
 	uavDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
 	descHeapManager->setUAV(entryNum++, uavDesc, rRes->pDevice, *in_diff_radiance_hitdist);
+	descHeapManager->setUAV(entryNum++, uavDesc, rRes->pDevice, *in_spec_radiance_hitdist);
 	descHeapManager->setUAV(entryNum++, uavDesc, rRes->pDevice, *rRes->pRTVDiff);
+	descHeapManager->setUAV(entryNum++, uavDesc, rRes->pDevice, *rRes->pRTVSpec);
 }
 
 void DenoiserShading::setupDenoiser()
@@ -450,7 +468,7 @@ void DenoiserShading::setupDenoiser()
 	const nrd::MethodDesc methodDescs[] =
 	{
 		// put neeeded methods here, like:
-		{ nrd::Method::REBLUR_DIFFUSE, static_cast<uint16_t>(rRes->winDimensions.x), static_cast<uint16_t>(rRes->winDimensions.y) }
+		{ nrd::Method::REBLUR_DIFFUSE_SPECULAR, static_cast<uint16_t>(rRes->winDimensions.x), static_cast<uint16_t>(rRes->winDimensions.y) }
 	};
 
 	nrd::DenoiserCreationDesc denoiserCreationDesc = {};

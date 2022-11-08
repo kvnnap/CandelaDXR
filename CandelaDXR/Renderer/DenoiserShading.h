@@ -84,7 +84,8 @@ namespace candela::renderer
 		*  motion vectors - 0
 		*  normal - use from normal texture
 		*/
-		directx::Resource* radAccumulator;
+		directx::Resource* diffRadAccumulator;
+		directx::Resource* specRadAccumulator;
 		directx::Resource* albedo; // need to radAccum/albedo --> IN_DIFF_RADIANCE_HITDIST 
 		directx::Resource* normal; // Produce (normal, 0.f)  --> IN_NORMAL_ROUGHNESS
 		directx::Resource* depth; // 
@@ -97,7 +98,9 @@ namespace candela::renderer
 		directx::Resource* in_normal_roughness;
 		directx::Resource* in_view_z; // need to linearize from g_buffer
 		directx::Resource* in_diff_radiance_hitdist;
+		directx::Resource* in_spec_radiance_hitdist;
 		directx::Resource* out_diff_radiance_hitdist;
+		directx::Resource* out_spec_radiance_hitdist;
 
 		nrd::CommonSettings nrdCommonSettings{};
 		nrd::ReblurSettings nrdReblurSettings{};
