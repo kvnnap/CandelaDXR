@@ -39,7 +39,7 @@ namespace candela::renderer
 
 DenoiserShading::DenoiserShading()
 	: rendererResources(), nriDevice(), rasterShader(true),
-	  radAccumulator(), albedo(), normal(), depth(), pt_rad(),
+	  radAccumulator(), albedo(), normal(), depth(), gRayHitT(),
 	  position(), meshInfo(), matrices(),
 	  in_mv(), in_normal_roughness(), in_view_z(),
 	  in_diff_radiance_hitdist(), out_diff_radiance_hitdist()
@@ -108,7 +108,7 @@ void DenoiserShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12GraphicsCo
 	albedo = rRes->resourceManager->getNamedResource("den_gAlb");
 	normal = rRes->resourceManager->getNamedResource("den_gNorm");
 	depth = rRes->resourceManager->getNamedResource("den_gDepth");
-	pt_rad = rRes->resourceManager->getNamedResource("pt_diff");
+	gRayHitT = rRes->resourceManager->getNamedResource("ray_hitT");
 	position = rRes->resourceManager->getNamedResource("den_gPos");
 	meshInfo = rRes->resourceManager->getNamedResource("den_gMeshInfo");
 
@@ -198,7 +198,7 @@ void DenoiserShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentComman
 	position->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
 	meshInfo->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
 	depth->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
-	pt_rad->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
+	gRayHitT->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
 	rendererResources->pRTVDiff->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
 	compute(pCurrentCommandList, 0);
@@ -325,7 +325,7 @@ void DenoiserShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentComman
 	position->transitionToPrevBarrier(pCurrentCommandList);
 	meshInfo->transitionToPrevBarrier(pCurrentCommandList);
 	depth->transitionToPrevBarrier(pCurrentCommandList);
-	pt_rad->transitionToPrevBarrier(pCurrentCommandList);
+	gRayHitT->transitionToPrevBarrier(pCurrentCommandList);
 	rendererResources->pRTVDiff->transitionToPrevBarrier(pCurrentCommandList);
 
 	nrdCommonSettings.accumulationMode = nrd::AccumulationMode::CONTINUE;
@@ -421,8 +421,9 @@ void DenoiserShading::createShaderResources()
 	descHeapManager->setSRV(entryNum++, srvDesc, rRes->pDevice, *normal);
 	srvDesc.Format = DXGI_FORMAT_R32_FLOAT;
 	descHeapManager->setSRV(entryNum++, srvDesc, rRes->pDevice, *depth);
+	srvDesc.Format = DXGI_FORMAT_R32G32_FLOAT;
+	descHeapManager->setSRV(entryNum++, srvDesc, rRes->pDevice, *gRayHitT);
 	srvDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
-	descHeapManager->setSRV(entryNum++, srvDesc, rRes->pDevice, *pt_rad);
 	descHeapManager->setSRV(entryNum++, srvDesc, rRes->pDevice, *out_diff_radiance_hitdist);
 	descHeapManager->setSRV(entryNum++, srvDesc, rRes->pDevice, *position);
 	srvDesc.Format = DXGI_FORMAT_R32G32_UINT;

@@ -43,6 +43,7 @@ RWTexture2D<float4> gOutputDiff : register(u0);
 RWTexture2D<float4> gOutputSpec : register(u1);
 RWTexture2D<float4> gRadianceDiff : register(u2);
 RWTexture2D<float4> gRadianceSpec : register(u3);
+RWTexture2D<float2> gRayHitT : register(u4);
 
 // SRVs
 StructuredBuffer<float3> verts : register(t0);
@@ -84,6 +85,7 @@ void rayGen()
 
 	// Clear output pixel
 	gOutputDiff[launchIndex] = gOutputSpec[launchIndex] = float4(0.f, 0.f, 0.f, 0.f);
+	gRayHitT[launchIndex] = 0.f;
 
 	// Early-exit checks
 	if (cBuffer.numLights == 0)
@@ -396,13 +398,13 @@ void rayGen()
 	if (isSpecularPath)
 	{
 		gRadianceSpec[launchIndex] += float4(radiance, 0.f);
-		gRadianceSpec[launchIndex].w = denoiserHitT;
+		gRayHitT[launchIndex].y = denoiserHitT;
 		gOutputSpec[launchIndex] = float4(gRadianceSpec[launchIndex].xyz / cBuffer.frameNumber, 1.f);
 	}
 	else
 	{
 		gRadianceDiff[launchIndex] += float4(radiance, 0.f);
-		gRadianceDiff[launchIndex].w = denoiserHitT;
+		gRayHitT[launchIndex].x = denoiserHitT;
 		gOutputDiff[launchIndex] = float4(gRadianceDiff[launchIndex].xyz / cBuffer.frameNumber, 1.f);
 	}
 }

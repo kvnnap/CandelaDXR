@@ -15,7 +15,7 @@ Texture2D<float4> radAccumulator : register(t0);
 Texture2D<float4> albedo : register(t1);
 Texture2D<float4> normal : register(t2);
 Texture2D<float> depth : register(t3);
-Texture2D<float4> pt_rad_hitt : register(t4);
+Texture2D<float4> gRayHitT : register(t4);
 Texture2D<float4> out_diff_radiance_hitdist : register(t5);
 Texture2D<float4> position : register(t6);
 Texture2D<uint2> meshInfo : register(t7);
@@ -59,7 +59,7 @@ void main(uint3 DTid : SV_DispatchThreadID)
 			rad.z = radAcc.z / rad.z;
 
 		// Normalize hit distance..
-		float normHitDist = REBLUR_FrontEnd_GetNormHitDist(pt_rad_hitt[DTid.xy].w, vz, hitDistParams, 1.0f);
+		float normHitDist = REBLUR_FrontEnd_GetNormHitDist(gRayHitT[DTid.xy].x, vz, hitDistParams, 1.0f);
 		in_diff_radiance_hitdist[DTid.xy] = REBLUR_FrontEnd_PackRadianceAndNormHitDist(rad, normHitDist);
 	}
 	else if (mode == 1)

@@ -88,7 +88,7 @@ namespace candela::renderer
 		directx::Resource* albedo; // need to radAccum/albedo --> IN_DIFF_RADIANCE_HITDIST 
 		directx::Resource* normal; // Produce (normal, 0.f)  --> IN_NORMAL_ROUGHNESS
 		directx::Resource* depth; // 
-		directx::Resource* pt_rad; // 
+		directx::Resource* gRayHitT; // 
 		directx::Resource* position; //
 		directx::Resource* meshInfo; // Need mesh groupId to generate Motion Vectors
 		directx::Resource* matrices;

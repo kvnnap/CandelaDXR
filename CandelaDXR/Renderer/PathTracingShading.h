@@ -77,6 +77,7 @@ namespace candela::renderer
 
 		directx::Resource* diffTexture;
 		directx::Resource* specTexture;
+		directx::Resource* rayHitT;
 		wrl::ComPtr<ID3D12Resource> constantBuffer;
 		std::unique_ptr<sampler::ISampler> sampler;
 		bool clear;
