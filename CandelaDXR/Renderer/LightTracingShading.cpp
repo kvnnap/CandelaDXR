@@ -54,7 +54,9 @@ using candela::sampler::ISampler;
 using candela::util::StringToWString;
 
 LightTracingShading::LightTracingShading(unique_ptr<ISampler> sampler, UVector2 lightSamples)
-	: rendererResources(), constBuffer(), lightSamples(lightSamples), sampler(std::move(sampler)), clear(), currentShader()
+	: rendererResources(), constBuffer(), lightSamples(lightSamples), 
+	irradianceDataStructure(), irrToRad(), rayHitT(), irradianceTexture(),
+	sampler(std::move(sampler)), clear(), currentShader()
 {
 }
 
@@ -86,6 +88,8 @@ void LightTracingShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12Graphi
 	irradianceTexture->setName(L"Irradiance Texture");
 	irrToRad = &rendererResources->resourceManager->createResource(D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_FLAG_NONE, dim.x, dim.y, DXGI_FORMAT_R32_FLOAT, true);
 	irrToRad->setName(L"irrToRad Texture");
+	rayHitT = &rRes->resourceManager->createResourceIfNotExists(D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
+		rRes->winDimensions.x, rRes->winDimensions.y, DXGI_FORMAT_R32G32_FLOAT, true, "ray_hitT");
 
 	// Init components
 	for (auto& ltShader : ltShaders)
@@ -211,8 +215,8 @@ void LightTracingShading::buildPipeline()
 		ltShader.rootSignatureManager = make_shared<RootSignatureManager>();
 		auto rootSignatureManager = ltShader.rootSignatureManager;
 
-		rootSignatureManager->addDescriptorRange("BVH", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, 1)); //gOutput, gIrradianceDS
-		rootSignatureManager->addDescriptorRange("BVH", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 10)); //gRtScene, gIrrToRad
+		rootSignatureManager->addDescriptorRange("BVH", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, 1)); //gIrradianceDS
+		rootSignatureManager->addDescriptorRange("BVH", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 10)); //gRtScene
 		if (!rendererResources->textures.empty())
 			rootSignatureManager->addDescriptorRange("BVH", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, static_cast<UINT>(rendererResources->textures.size()), 12));
 
@@ -281,7 +285,7 @@ void LightTracingShading::buildPipeline()
 	
 	// Compute shader
 	computeRSM = make_shared<RootSignatureManager>();
-	computeRSM->addDescriptorRange("ComputeData", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 3, 0)); // gOutput, gIrradianceDataStructure, gIrradiance
+	computeRSM->addDescriptorRange("ComputeData", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 4, 0)); // gOutput, gIrradianceDataStructure, gIrradiance
 	computeRSM->addDescriptorRange("ComputeData", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0)); // gIrrToRad
 	computeRSM->setDescriptorTableParameter("ComputeDataDescTable", "ComputeData");
 	param.InitAsConstants(5u, 0u); computeRSM->setParameter("ComputeConstants", param); // winDimensions (x,y), lightSamples, numFrames, clear
@@ -376,7 +380,8 @@ void LightTracingShading::createShaderResources(wrl::ComPtr<ID3D12GraphicsComman
 	cmpDescHeapManager.setUAV(0, uavDesc, rendererResources->pDevice, *rendererResources->pRTVDiff);
 	cmpDescHeapManager.setUAV(1, uavDesc2, rendererResources->pDevice, *irradianceDataStructure);
 	cmpDescHeapManager.setUAV(2, uavDesc, rendererResources->pDevice, *irradianceTexture);
-	cmpDescHeapManager.setSRV(3, irrToRadSrvDesc, rendererResources->pDevice, *irrToRad);
+	cmpDescHeapManager.setUAV(3, uavDesc, rendererResources->pDevice, *rayHitT);
+	cmpDescHeapManager.setSRV(4, irrToRadSrvDesc, rendererResources->pDevice, *irrToRad);
 	computeDescriptorHeap = cmpDescHeapManager.getDescriptorHeap();
 }
 

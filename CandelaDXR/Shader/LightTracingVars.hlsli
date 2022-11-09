@@ -88,12 +88,13 @@ bool getPixel(RayDesc ray, uint2 screenDimensions, inout uint2 pixel)
 	return true;
 }
 
-void AddContribution(uint pixLaunchIndex, float3 contrib)
+void AddContribution(uint pixLaunchIndex, float3 contrib, float hitT = 0.f)
 {
-	uint3 uContrib = floatToFixed(contrib, ConvRangeBits);
+	uint4 uContrib = floatToFixed(float4(contrib, hitT), ConvRangeBits);
 	InterlockedAdd(gIrradianceDS[pixLaunchIndex].value.x, uContrib.x);
 	InterlockedAdd(gIrradianceDS[pixLaunchIndex].value.y, uContrib.y);
 	InterlockedAdd(gIrradianceDS[pixLaunchIndex].value.z, uContrib.z);
+	InterlockedAdd(gIrradianceDS[pixLaunchIndex].value.w, uContrib.w);
 }
 
 #endif

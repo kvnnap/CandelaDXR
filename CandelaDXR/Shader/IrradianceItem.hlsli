@@ -3,14 +3,12 @@
 
 struct IrradianceItem
 {
-	uint3 value;
-	uint padding;
+	uint4 value;
 };
 
 struct IrradianceItemFloat
 {
-	float3 value;
-	float padding;
+	float4 value;
 };
 
 #endif

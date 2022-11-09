@@ -108,6 +108,7 @@ namespace candela::renderer
 		wrl::ComPtr<ID3D12Resource> constantBuffer;
 		directx::Resource* irradianceDataStructure;
 		directx::Resource* irrToRad;
+		directx::Resource* rayHitT;
 
 		directx::Resource* irradianceTexture;
 		std::unique_ptr<sampler::ISampler> sampler;

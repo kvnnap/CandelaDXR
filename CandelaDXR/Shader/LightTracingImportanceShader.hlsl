@@ -194,7 +194,7 @@ void rayGen()
 	// Path filter
 	PathInteraction prevStateFlags = Light;
 
-	if ((prevStateFlags & cBuffer.pathFilter) != 0 && i >= cBuffer.minBounces && (i <= cBuffer.maxBounces || cBuffer.maxBounces == 0) && !lightDirectional && lightDot > 0.f && cameraDot > 0.f)
+	if (false && (prevStateFlags & cBuffer.pathFilter) != 0 && i >= cBuffer.minBounces && (i <= cBuffer.maxBounces || cBuffer.maxBounces == 0) && !lightDirectional && lightDot > 0.f && cameraDot > 0.f)
 	{
 		if (getPixel(shadowRay, cBuffer.winDim, pixel))
 		{
@@ -334,7 +334,7 @@ void rayGen()
 						if (mat.DiffuseTextureId >= 0)
 							brdfDiff *= gTextures[mat.DiffuseTextureId].SampleLevel(gSampler, getTextureLocation(rayPayload.bary, vertIndex), 0);
 						float3 contrib = (localContribution * brdfDiff) * ((1.f - fr) * mat.Dissolve * surfaceDot * invShadowDistance * invShadowDistance * cameraDot);
-						AddContribution(pixLaunchIndex, contrib);
+						AddContribution(pixLaunchIndex, contrib, rayPayload.t);
 					}
 				}
 			}

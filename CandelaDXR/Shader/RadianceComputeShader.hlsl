@@ -12,6 +12,7 @@ cbuffer CB1 : register(b0)
 RWTexture2D<float4> gOutput : register(u0);
 RWStructuredBuffer<IrradianceItem> gIrradianceDS : register(u1);
 RWTexture2D<float4> gIrradiance : register(u2);
+RWTexture2D<float2> gRayHitT : register(u3);
 
 Texture2D<float> gIrrToRad : register(t0);
 
@@ -29,9 +30,11 @@ void main( uint3 DTid : SV_DispatchThreadID )
 		gIrradiance[DTid.xy] = float4(0.f, 0.f, 0.f, 1.f);
 
 	const uint flatLaunchIndex = DTid.y * ScreenDim.x + DTid.x;
-	gIrradiance[DTid.xy] += float4(fixedToFloat(gIrradianceDS[flatLaunchIndex].value, ConvRangeBits), 0.f);
+	float4 result = fixedToFloat(gIrradianceDS[flatLaunchIndex].value, ConvRangeBits);
+	gIrradiance[DTid.xy] += float4(result.xyz, 0.f);
 	gIrradianceDS[flatLaunchIndex].value = 0;
 
 	const float sampleRatio = 1.f / (LightSamples * (float)FrameNumber);
+	gRayHitT[DTid.xy].xy = float2(result.w * gIrrToRad[DTid.xy] * sampleRatio, 0.f);
 	gOutput[DTid.xy] = float4(gIrradiance[DTid.xy].xyz * gIrrToRad[DTid.xy] * sampleRatio, 1.f);
 }

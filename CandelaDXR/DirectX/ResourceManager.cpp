@@ -28,6 +28,13 @@ Resource& ResourceManager::createResource(D3D12_RESOURCE_STATES resourceState, D
 	return resources.emplace_back(std::move(res))->resource;
 }
 
+Resource& ResourceManager::createResourceIfNotExists(D3D12_RESOURCE_STATES resourceState, D3D12_RESOURCE_FLAGS resourceFlags, UINT width, UINT height, DXGI_FORMAT format, bool resizeOnResize, std::string globalName, D3D12_HEAP_TYPE heapType, D3D12_CLEAR_VALUE* clearValue)
+{
+	return namedResourceExists(globalName) ?
+		*getNamedResource(globalName) :
+		createResource(resourceState, resourceFlags, width, height, format, resizeOnResize, globalName, heapType, clearValue);
+}
+
 Resource& ResourceManager::addExistingResource(DXResource resource, D3D12_RESOURCE_STATES resourceState, std::string globalName)
 {
 	auto res = make_unique<ResourceItem>(Resource(resource, resourceState));
@@ -48,6 +55,11 @@ void ResourceManager::resize(UINT width, UINT height)
 Resource* ResourceManager::getNamedResource(const string& resourceName)
 {
 	return namedResources.at(resourceName);
+}
+
+bool ResourceManager::namedResourceExists(const string& resourceName) const
+{
+	return namedResources.contains(resourceName);
 }
 
 const NamedResType& ResourceManager::getNamedResources() const
