@@ -35,6 +35,7 @@ using Microsoft::WRL::ComPtr;
 RasterShading::RasterShading(bool computeGBuffer)
 	: constBuffer{}, scissorRect(CD3DX12_RECT(0, 0, LONG_MAX, LONG_MAX)), computeGBuffer(computeGBuffer), numRenderTargets(computeGBuffer ? 5u : 1u), camera(), winDimensions()
 {
+	constBuffer.computeRadiance = 1;
 }
 
 void RasterShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12GraphicsCommandList>& pCurrentCommandList, ResourceRegFunction& resRegFn)
@@ -167,7 +168,6 @@ void RasterShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12GraphicsComm
 
 	// Init const buffer
 	constBuffer.numLights = static_cast<uint32_t>(rendererResources->scene->getLights().size());
-	constBuffer.computeRadiance = 1;
 	constantBuffer = DXUtil::uploadDataToDefaultHeap(
 		rRes->pDevice,
 		pCurrentCommandList,
@@ -315,6 +315,11 @@ void RasterShading::accept(IVisitor* visitor)
 	visitor->visit(this);
 }
 
+uint32_t RasterShading::getBufferUsage() const
+{
+	return BufferUsage::Radiance;
+}
+
 ResPtrVec& RasterShading::getGBuffer()
 {
 	return gBuffer;
@@ -330,9 +335,19 @@ uint32_t RasterShading::getComputeRadiance() const
 	return constBuffer.computeRadiance;
 }
 
+uint32_t RasterShading::getComputeEmissiveIfRadOff() const
+{
+	return constBuffer.computeEmissiveIfRadOff;
+}
+
 void RasterShading::setComputeRadiance(uint32_t cType)
 {
 	constBuffer.computeRadiance = cType;
+}
+
+void RasterShading::setComputeEmissiveIfRadOff(std::uint32_t ceifro)
+{
+	constBuffer.computeEmissiveIfRadOff = ceifro;
 }
 
 void RasterShading::setGlobaResourcePrefix(const std::string& prefix)

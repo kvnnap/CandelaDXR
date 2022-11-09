@@ -14,6 +14,7 @@ namespace candela::renderer
 		void setEnabled(bool p_enabled) override;
 
 		bool shouldClearAccumulation() const override;
+		std::uint32_t getBufferUsage() const override;
 	private:
 		bool enabled;
 	};

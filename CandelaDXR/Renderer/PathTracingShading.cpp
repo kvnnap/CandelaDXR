@@ -148,6 +148,13 @@ void PathTracingShading::accept(IVisitor* visitor)
 	visitor->visit(this);
 }
 
+uint32_t PathTracingShading::getBufferUsage() const
+{
+	return getSpecularOnly() ? 
+		BufferUsage::Specular : 
+		BufferUsage::Diffuse | BufferUsage::Specular;
+}
+
 void PathTracingShading::setSpecularOnly(bool specularOnly)
 {
 	constBuffer.specularOnly = specularOnly;

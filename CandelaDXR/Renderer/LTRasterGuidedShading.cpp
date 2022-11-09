@@ -235,6 +235,11 @@ bool LTRasterGuidedShading::shouldClearAccumulation() const
 	return false;
 }
 
+std::uint32_t candela::renderer::LTRasterGuidedShading::getBufferUsage() const
+{
+	return BufferUsage::Diffuse;
+}
+
 void LTRasterGuidedShading::appendToPipeline(directx::RootSignatureManager* rootSignatureManager)
 {
 	CD3DX12_ROOT_PARAMETER1 param;

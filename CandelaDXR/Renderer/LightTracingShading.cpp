@@ -466,6 +466,12 @@ void LightTracingShading::accept(IVisitor* visitor)
 	visitor->visit(this);
 }
 
+uint32_t LightTracingShading::getBufferUsage() const
+{
+	auto &c = ltShaders[currentShader].component;
+	return c ? c->getBufferUsage() : BufferUsage::Diffuse;
+}
+
 const UVector2& LightTracingShading::getLightSamples() const
 {
 	return lightSamples;

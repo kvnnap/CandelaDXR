@@ -38,7 +38,7 @@ namespace candela::renderer
 }
 
 DenoiserShading::DenoiserShading()
-	: rendererResources(), nriDevice(), rasterShader(true),
+	: rendererResources(), nriDevice(),
 	  diffRadAccumulator(), specRadAccumulator(), albedo(), 
 	  normal(), depth(), gRayHitT(), position(), meshInfo(), matrices(),
 	  in_mv(), in_normal_roughness(), in_view_z(),
@@ -98,21 +98,16 @@ void DenoiserShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12GraphicsCo
 	matrices->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
 	matrices->write(pCurrentCommandList, rendererResources->getTempResource(), mvMats.data());
 
-	// Setup raster shader
-	rasterShader.setGlobaResourcePrefix("den_");
-	rasterShader.init(rRes, pCurrentCommandList, resRegFn);
-	rasterShader.setComputeRadiance(false);
-
 	// Get resources & create new ones
 	auto& dim = rRes->winDimensions;
 	diffRadAccumulator = rRes->resourceManager->getNamedResource("diff_acc");
 	specRadAccumulator = rRes->resourceManager->getNamedResource("spec_acc");
-	albedo = rRes->resourceManager->getNamedResource("den_gAlb");
-	normal = rRes->resourceManager->getNamedResource("den_gNorm");
-	depth = rRes->resourceManager->getNamedResource("den_gDepth");
+	albedo = rRes->resourceManager->getNamedResource("gAlb");
+	normal = rRes->resourceManager->getNamedResource("gNorm");
+	depth = rRes->resourceManager->getNamedResource("gDepth");
 	gRayHitT = rRes->resourceManager->getNamedResource("ray_hitT");
-	position = rRes->resourceManager->getNamedResource("den_gPos");
-	meshInfo = rRes->resourceManager->getNamedResource("den_gMeshInfo");
+	position = rRes->resourceManager->getNamedResource("gPos");
+	meshInfo = rRes->resourceManager->getNamedResource("gMeshInfo");
 
 	in_mv = &rRes->resourceManager->createResource(D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, dim.x, dim.y, DXGI_FORMAT_R32G32B32A32_FLOAT, true, "in_mv");
 	in_normal_roughness = &rRes->resourceManager->createResource(D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, dim.x, dim.y, DXGI_FORMAT_R32G32B32A32_FLOAT, true, "in_normal_roughness");
@@ -189,8 +184,6 @@ void DenoiserShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentComman
 {
 	wrl::ComPtr<ID3D12DebugCommandList> pDbgCmdList;
 	pCurrentCommandList.As(&pDbgCmdList);
-
-	rasterShader.draw(pCurrentCommandList, currentBackBufferIndex);
 
 	// Update Mat
 	matrices->write(pCurrentCommandList, rendererResources->getTempResource(), getMVMatrices().data());
@@ -345,12 +338,10 @@ void DenoiserShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentComman
 
 void DenoiserShading::onChange(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, uint32_t currentBackBufferIndex, ChangeEvent_t changeEvent)
 {
-	rasterShader.onChange(pCurrentCommandList, currentBackBufferIndex, changeEvent);
 }
 
 void DenoiserShading::onResize()
 {
-	rasterShader.onResize();
 	createShaderResources();
 	setupDenoiser();
 }
@@ -363,6 +354,11 @@ void DenoiserShading::accept(IVisitor* visitor)
 bool DenoiserShading::shouldClearAccumulation() const
 {
 	return true;
+}
+
+std::uint32_t candela::renderer::DenoiserShading::getBufferUsage() const
+{
+	return BufferUsage::Diffuse | BufferUsage::Specular;
 }
 
 nrd::CommonSettings& DenoiserShading::getCommonSettings()

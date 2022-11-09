@@ -59,6 +59,12 @@ namespace candela::renderer::imgui
 		union {
 			// Raster Shading
 			struct {
+				bool computeRadiance;
+				bool computeEmissiveIfRadOff;
+			};
+
+			// Raster RT Shading
+			struct {
 				bool lightType;
 			};
 

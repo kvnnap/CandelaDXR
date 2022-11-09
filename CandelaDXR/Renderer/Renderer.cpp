@@ -385,16 +385,17 @@ void Renderer::renderFrame()
 			drawable->onChange(pCurrentCommandList, currentBackBufferIndex, changeEvent);
 		if (!drawable->isEnabled())
 			continue;
-		
+
+		uint32_t buffUsage = first == i ? 0xFF : drawable->getBufferUsage();
+
 		// Clear the RadRTV 
 		auto rtvDescHandle = rtvDescriptorHandle;
-		pCurrentCommandList->ClearRenderTargetView(rtvDescHandle, color, 0, nullptr);
-		// Clear the RTVDiff
-		rtvDescHandle.Offset(rtvDescriptorSize);
-		pCurrentCommandList->ClearRenderTargetView(rtvDescHandle, color, 0, nullptr);
-		// Clear the RTVSpec
-		rtvDescHandle.Offset(rtvDescriptorSize);
-		pCurrentCommandList->ClearRenderTargetView(rtvDescHandle, color, 0, nullptr);
+		for (uint32_t j = 0; j < 3; ++j)
+		{
+			if (buffUsage & (BufferUsage::Radiance << j)) // Clear the RadRTV, RTVDiff, RTVSpec
+				pCurrentCommandList->ClearRenderTargetView(rtvDescHandle, color, 0, nullptr);
+			rtvDescHandle.Offset(rtvDescriptorSize);
+		}
 
 		drawable->draw(pCurrentCommandList, currentBackBufferIndex);
 		pRTVRad->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
@@ -407,10 +408,20 @@ void Renderer::renderFrame()
 		flags |= first == i || drawable->shouldClearAccumulation() ? ACC_CLEAR : ACC_NONE;
 		flags |= ACC_ACCUMULATE;
 		//flags |= !grabRadiancePressed && last == i ? ACC_TONEMAP | ACC_LINEARTOSRGB : ACC_NONE;
-		AccumConstBuff c32Data{ 
-			{AccumResource::RTVRad, AccumResource::RTVDiff, AccumResource::RTVSpec},
-			{AccumResource::RadAccumulator, AccumResource::DiffAccumulator, AccumResource::SpecAccumulator},
-			3U, flags };
+		AccumConstBuff c32Data;
+		uint32_t bUsageIndex{}; // Accumulate rtvRad, rtvDiff and rtvSpec into their accumulators and optionnally clear.
+		for (uint32_t bUI = 0; bUI < 3; ++bUI)
+		{
+			if (buffUsage & (BufferUsage::Radiance << bUI))
+			{
+				c32Data.InIndex[bUsageIndex] = static_cast<AccumResource>(AccumResource::RTVRad + bUI);
+				c32Data.OutIndex[bUsageIndex] = static_cast<AccumResource>(AccumResource::RadAccumulator + bUI);
+				++bUsageIndex;
+			}
+		}
+		c32Data.PairCount = bUsageIndex;
+		c32Data.Flags = flags;
+
 		pCurrentCommandList->SetComputeRoot32BitConstants(0u, sizeof(AccumConstBuff) / sizeof(uint32_t), &c32Data, 0);
 		pCurrentCommandList->Dispatch(dim.x / 8 + (dim.x % 8 == 0 ? 0 : 1), dim.y / 8 + (dim.y % 8 == 0 ? 0 : 1), 1);
 

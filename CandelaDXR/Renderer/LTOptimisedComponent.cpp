@@ -67,6 +67,11 @@ bool LTOptimisedComponent::shouldClearAccumulation() const
 	return false;
 }
 
+std::uint32_t candela::renderer::LTOptimisedComponent::getBufferUsage() const
+{
+	return BufferUsage::Diffuse;
+}
+
 void LTOptimisedComponent::appendToPipeline(directx::RootSignatureManager* rootSignatureManager)
 {
 	CD3DX12_ROOT_PARAMETER1 param;

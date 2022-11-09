@@ -10,6 +10,7 @@ struct ConstBuff {
 	Camera camera;
 	uint numLights;
 	uint computeRadiance;
+	uint computeEmissiveIfRadOff;
 };
 
 cbuffer CB1 : register(b0)
@@ -108,7 +109,8 @@ MyOutput main(MyInput myInput)
 
 	if (!cBuffer.computeRadiance)
 	{
-		output.radiance = float4(0.f, 0.f, 0.f, 1.f);
+		if (!cBuffer.computeEmissiveIfRadOff)
+			output.radiance = float4(0.f, 0.f, 0.f, 1.f);
 		return output;
 	}
 

@@ -150,6 +150,11 @@ void RasterRTShadowsShading::accept(IVisitor* visitor)
 	visitor->visit(this);
 }
 
+uint32_t RasterRTShadowsShading::getBufferUsage() const
+{
+	return BufferUsage::Radiance;
+}
+
 uint32_t RasterRTShadowsShading::getLightType() const
 {
 	return constBuffer.lightType;

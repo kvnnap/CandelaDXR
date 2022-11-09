@@ -50,6 +50,7 @@ namespace candela::renderer
 		void onResize() override;
 		void accept(IVisitor* visitor) override;
 		bool shouldClearAccumulation() const override;
+		std::uint32_t getBufferUsage() const override;
 
 		nrd::CommonSettings& getCommonSettings();
 		nrd::ReblurSettings& getReblurSettings();
@@ -68,9 +69,6 @@ namespace candela::renderer
 		std::unique_ptr<NrdIntegration> NRD;
 		nri::Device *nriDevice;
 		std::unique_ptr<NriInterface> NRI;
-
-		// Shader stuff
-		RasterShading rasterShader;
 
 		// Compute Shader
 		std::unique_ptr<directx::DescriptorHeap> descHeapManager;

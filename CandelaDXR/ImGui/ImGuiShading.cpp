@@ -51,7 +51,25 @@ bool ImGuiShading::isEnabled() const
 
 void ImGuiShading::visit(RasterShading* rasterShader)
 {
+	if (!initialised)
+	{
+		computeRadiance = rasterShader->getComputeRadiance();
+		computeEmissiveIfRadOff = rasterShader->getComputeEmissiveIfRadOff();
+	}
 	ImGui::Text("RasterShading");
+	if (ImGui::Checkbox("Compute Radiance", &computeRadiance))
+	{
+		rasterShader->setComputeRadiance(computeRadiance);
+		changed = true;
+	}
+	if (!computeRadiance)
+	{
+		if (ImGui::Checkbox("Compute Emissive", &computeEmissiveIfRadOff))
+		{
+			rasterShader->setComputeEmissiveIfRadOff(computeEmissiveIfRadOff);
+			changed = true;
+		}
+	}
 }
 
 void ImGuiShading::visit(RasterRTShadowsShading* rasterShader)

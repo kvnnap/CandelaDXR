@@ -21,3 +21,8 @@ bool Drawable::shouldClearAccumulation() const
 {
 	return false;
 }
+
+std::uint32_t Drawable::getBufferUsage() const
+{
+	return BufferUsage::Radiance | BufferUsage::Diffuse | BufferUsage::Specular;
+}

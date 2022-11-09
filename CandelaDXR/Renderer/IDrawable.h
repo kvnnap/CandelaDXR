@@ -15,6 +15,14 @@ namespace candela::renderer
 	
 	using ResourceRegFunction = std::function<void(std::unique_ptr<IResource>)>;
 
+	enum BufferUsage : std::uint32_t
+	{
+		None = 0,
+		Radiance = 1,
+		Diffuse = 2,
+		Specular = 4
+	};
+
 	class IDrawable
 	{
 	public:
@@ -34,5 +42,6 @@ namespace candela::renderer
 
 		// Accumulation
 		virtual bool shouldClearAccumulation() const = 0;
+		virtual std::uint32_t getBufferUsage() const = 0;
 	};
 }

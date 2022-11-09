@@ -33,10 +33,14 @@ namespace candela::renderer
 		void onChange(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, std::uint32_t currentBackBufferIndex, ChangeEvent_t changeEvent) override;
 		void onResize() override;
 		void accept(IVisitor* visitor) override;
+		std::uint32_t getBufferUsage() const override;
+
 		ResPtrVec& getGBuffer();
 		UINT getNumRenderTargets() const;
 		std::uint32_t getComputeRadiance() const;
+		std::uint32_t getComputeEmissiveIfRadOff() const;
 		void setComputeRadiance(std::uint32_t cType);
+		void setComputeEmissiveIfRadOff(std::uint32_t ceifro);
 		void setGlobaResourcePrefix(const std::string& prefix);
 		void setCamera(Camera* p_camera);
 		void resize(const mathematics::UVector2* winDimensions);
@@ -50,6 +54,7 @@ namespace candela::renderer
 			DirectX::XMVECTOR CameraPosition;
 			std::uint32_t numLights;
 			std::uint32_t computeRadiance;
+			std::uint32_t computeEmissiveIfRadOff;
 		} constBuffer;
 
 		D3D12_VERTEX_BUFFER_VIEW bufferViews[3];

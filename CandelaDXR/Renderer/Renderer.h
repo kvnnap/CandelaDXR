@@ -64,7 +64,7 @@ namespace candela::renderer
 
 	private:
 		// Accum Resource Enum
-		enum class AccumResource : std::uint32_t
+		enum AccumResource : std::uint32_t
 		{
 			RTV8BitBackBuffer = 0,
 			RTVRad = 1,

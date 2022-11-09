@@ -73,7 +73,10 @@
   "Drawables": [
     {
       "Type": "RasterDrawable",
-      "Name": "Raster"
+      "Name": "Raster",
+      "ComputeGBuffer": true,
+      "ComputeRadiance": false,
+      "ComputeEmissiveIfRadOff": true
     },
     {
       "Type": "RasterRTShadowsDrawable",
@@ -90,7 +93,7 @@
     {
       "Type": "PathTracingDrawable",
       "Name": "PT",
-      "SpecularOnly": false
+      "SpecularOnly": true
     },
     {
       "Type": "DenoiserDrawable",
@@ -106,8 +109,11 @@
       "VSync": false,
       "Scene": "Scene",
       "Camera": "Camera",
+      "ShaderAccumulation": false,
       "Drawables": [
+        "LT",
         "PT",
+        "Raster",
         "Den"
       ],
       "WindowDimensions": {

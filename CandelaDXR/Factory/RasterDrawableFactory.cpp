@@ -18,5 +18,14 @@ unique_ptr<IDrawable> RasterDrawableFactory::create() const
 
 unique_ptr<IDrawable> RasterDrawableFactory::create(const ConfigurationNode& config) const
 {
-	return make_unique<RasterShading>();
+	const auto& confObject = config.asObject();
+	bool gBuffer{};
+	if (confObject.keyExists("ComputeGBuffer"))
+		gBuffer = confObject["ComputeGBuffer"].read<bool>();
+	auto rs = make_unique<RasterShading>(gBuffer);
+	if (confObject.keyExists("ComputeRadiance"))
+		rs->setComputeRadiance(confObject["ComputeRadiance"].read<bool>());
+	if (confObject.keyExists("ComputeEmissiveIfRadOff"))
+		rs->setComputeEmissiveIfRadOff(confObject["ComputeEmissiveIfRadOff"].read<bool>());
+	return rs;
 }
