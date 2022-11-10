@@ -85,7 +85,6 @@ void rayGen()
 
 	// Clear output pixel
 	gOutputDiff[launchIndex] = gOutputSpec[launchIndex] = float4(0.f, 0.f, 0.f, 0.f);
-	gRayHitT[launchIndex] = 0.f;
 
 	// Early-exit checks
 	if (cBuffer.numLights == 0)

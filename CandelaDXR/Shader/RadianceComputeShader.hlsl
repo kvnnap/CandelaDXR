@@ -27,14 +27,15 @@ void main( uint3 DTid : SV_DispatchThreadID )
 		return;
 
 	if (Clear)
-		gIrradiance[DTid.xy] = float4(0.f, 0.f, 0.f, 1.f);
+		gIrradiance[DTid.xy] = float4(0.f, 0.f, 0.f, 0.f);
 
 	const uint flatLaunchIndex = DTid.y * ScreenDim.x + DTid.x;
 	float4 result = fixedToFloat(gIrradianceDS[flatLaunchIndex].value, ConvRangeBits);
-	gIrradiance[DTid.xy] += float4(result.xyz, 0.f);
+	gIrradiance[DTid.xy] += result;
 	gIrradianceDS[flatLaunchIndex].value = 0;
 
 	const float sampleRatio = 1.f / (LightSamples * (float)FrameNumber);
-	gRayHitT[DTid.xy].xy = float2(result.w * gIrrToRad[DTid.xy] * sampleRatio, 0.f);
+	float2 prevRayHitT = gRayHitT[DTid.xy];
+	gRayHitT[DTid.xy] = float2(gIrradiance[DTid.xy].w * gIrrToRad[DTid.xy] * sampleRatio, prevRayHitT.y);
 	gOutput[DTid.xy] = float4(gIrradiance[DTid.xy].xyz * gIrrToRad[DTid.xy] * sampleRatio, 1.f);
 }
