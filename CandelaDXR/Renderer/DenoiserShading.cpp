@@ -125,7 +125,8 @@ void DenoiserShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12GraphicsCo
 	rsm->setDescriptorTableParameter("IODescTable", "IORange");
 	param.InitAsConstants(6u, 0u); rsm->setParameter("Constants", param);
 	param.InitAsShaderResourceView(10u); rsm->setParameter("Matrices", param);
-	rsm->addParametersToRootSignature("ComputeRootSignature", { "IODescTable", "Constants", "Matrices" });
+	param.InitAsShaderResourceView(11u); rsm->setParameter("Materials", param);
+	rsm->addParametersToRootSignature("ComputeRootSignature", { "IODescTable", "Constants", "Matrices", "Materials"});
 	computeRootSignature = rsm->generateRootSignature("ComputeRootSignature", rRes->pDevice, D3D12_ROOT_SIGNATURE_FLAG_NONE);
 
 	// Heap
@@ -406,6 +407,7 @@ void DenoiserShading::compute(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCom
 	pCurrentCommandList->SetComputeRoot32BitConstant(1u, mode, 5u);
 
 	pCurrentCommandList->SetComputeRootShaderResourceView(2u, ((ID3D12Resource*)*matrices)->GetGPUVirtualAddress());
+	pCurrentCommandList->SetComputeRootShaderResourceView(3u, rendererResources->materialBuffer->GetGPUVirtualAddress());
 	constexpr auto ThreadGroupDim = 8u;
 	auto& dim = rendererResources->winDimensions;
 	auto launchDimensions = UVector2(dim.x / ThreadGroupDim + (dim.x % ThreadGroupDim == 0u ? 0u : 1u), dim.y / ThreadGroupDim + (dim.y % ThreadGroupDim == 0u ? 0u : 1u));

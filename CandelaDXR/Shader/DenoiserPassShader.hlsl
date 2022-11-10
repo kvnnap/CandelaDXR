@@ -1,4 +1,5 @@
 #include "Utils.hlsli"
+#include "Scene.hlsli"
 
 #include "NRDEncoding.hlsli"
 #define NRD_HEADER_ONLY
@@ -22,6 +23,7 @@ Texture2D<float4> out_spec_radiance_hitdist : register(t7);
 Texture2D<float4> position : register(t8);
 Texture2D<uint2> meshInfo : register(t9);
 StructuredBuffer<float4x3> matrices : register(t10); // WorldToLocalToPrevWorld
+StructuredBuffer<Material> materials : register(t11);
 
 RWTexture2D<float4> in_mv : register(u0);
 RWTexture2D<float4> in_normal_roughness : register(u1);
@@ -45,8 +47,10 @@ void main(uint3 DTid : SV_DispatchThreadID)
 		// has the effect of a quadratic curve for value components less than 0.0000005 ? Smoothing maybe? 
 		in_mv[DTid.xy] = float4(motion * saturate(abs(motion) / 0.0000005), 0.f);
 
-		// TODO: Roughness is always one here, alter with material!
-		in_normal_roughness[DTid.xy] = NRD_FrontEnd_PackNormalAndRoughness(normal[DTid.xy].xyz, 1.f);
+		// TODO: Roughness is equal to dissolve value, is this correct? Should be a very crude approx.
+		// Not sure. If sample was diffuse, we should 1.f and if sample was specular, we should use 0.f; I guess.
+		const Material mat = materials[meshInfo[DTid.xy].x];
+		in_normal_roughness[DTid.xy] = NRD_FrontEnd_PackNormalAndRoughness(normal[DTid.xy].xyz, mat.Dissolve);
 
 		// Can skip some denoising steps here by providing
 		// providing viewZ > CommonSettings::denoisingRange (default 500000.0f) (black image)
