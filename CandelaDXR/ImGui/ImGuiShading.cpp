@@ -95,25 +95,36 @@ void ImGuiShading::visit(DenoiserShading* denShading)
 	changed |= ImGui::DragFloat("Disocclusion Threshold", &common.disocclusionThreshold, 0.0001f, 0.0025f, 0.0150f);
 	changed |= ImGui::DragFloat("Split Screen", &common.splitScreen, 0.01f, 0.f, 1.f);
 
-	ImGui::Text("DenoiserShading - RS");
-
-	auto& reblur = denShading->getReblurSettings();
-	changed |= ImGui::DragInt("Max Accum Frame", reinterpret_cast<int*>(&reblur.maxAccumulatedFrameNum), 1.f, 0, 1000);
-	changed |= ImGui::DragInt("Max Fast Accum Frame", reinterpret_cast<int*>(&reblur.maxFastAccumulatedFrameNum), 1.f, 0, reblur.maxAccumulatedFrameNum - 1);
-	changed |= ImGui::DragInt("History Fix frame num", reinterpret_cast<int*>(&reblur.historyFixFrameNum), 1.f, 0, reblur.maxFastAccumulatedFrameNum - 1);
-	changed |= ImGui::DragFloat("diffusePrepassBlurRadius", &reblur.diffusePrepassBlurRadius, 1.f, 1.f, 100.f);
-	changed |= ImGui::DragFloat("blurRadius", &reblur.blurRadius, 1.f, 1.f, 100.f);
-	changed |= ImGui::DragFloat("historyFixStrideBetweenSamples", &reblur.historyFixStrideBetweenSamples, 1.f, 1.f, 100.f);
-	changed |= ImGui::DragFloat("stabilizationStrength", &reblur.stabilizationStrength, 0.01f, 0.01f, 1.f);
-
-	// AntiLag
-	changed |= ImGui::Checkbox("AntiLagHitDist", &reblur.antilagHitDistanceSettings.enable);
-	if (reblur.antilagHitDistanceSettings.enable)
+	auto denSelected = denShading->getDenoiserSelected();
+	bool relax = denSelected;
+	if (ImGui::Checkbox("ReLax", &relax))
 	{
-		changed |= ImGui::DragFloat("sensitivityToDarkness", &reblur.antilagHitDistanceSettings.sensitivityToDarkness, 0.01f, 0.01f, 1.f);
-		changed |= ImGui::DragFloat("sigmaScale", &reblur.antilagHitDistanceSettings.sigmaScale, 0.01f, 0.01f, 2.f);
-		changed |= ImGui::DragFloat("thresholdMin", &reblur.antilagHitDistanceSettings.thresholdMin, 0.01f, 0.01f, 1.f);
-		changed |= ImGui::DragFloat("thresholdMax", &reblur.antilagHitDistanceSettings.thresholdMax, 0.01f, 0.01f, 1.f);
+		changed = true;
+		denShading->setDenoiserSelected(relax ? 1u : 0u);
+	}
+
+	if (denSelected == 0)
+	{
+		ImGui::Text("DenoiserShading - RS");
+
+		auto& reblur = denShading->getReblurSettings();
+		changed |= ImGui::DragInt("Max Accum Frame", reinterpret_cast<int*>(&reblur.maxAccumulatedFrameNum), 1.f, 0, 1000);
+		changed |= ImGui::DragInt("Max Fast Accum Frame", reinterpret_cast<int*>(&reblur.maxFastAccumulatedFrameNum), 1.f, 0, reblur.maxAccumulatedFrameNum - 1);
+		changed |= ImGui::DragInt("History Fix frame num", reinterpret_cast<int*>(&reblur.historyFixFrameNum), 1.f, 0, reblur.maxFastAccumulatedFrameNum - 1);
+		changed |= ImGui::DragFloat("diffusePrepassBlurRadius", &reblur.diffusePrepassBlurRadius, 1.f, 1.f, 100.f);
+		changed |= ImGui::DragFloat("blurRadius", &reblur.blurRadius, 1.f, 1.f, 100.f);
+		changed |= ImGui::DragFloat("historyFixStrideBetweenSamples", &reblur.historyFixStrideBetweenSamples, 1.f, 1.f, 100.f);
+		changed |= ImGui::DragFloat("stabilizationStrength", &reblur.stabilizationStrength, 0.01f, 0.01f, 1.f);
+
+		// AntiLag
+		changed |= ImGui::Checkbox("AntiLagHitDist", &reblur.antilagHitDistanceSettings.enable);
+		if (reblur.antilagHitDistanceSettings.enable)
+		{
+			changed |= ImGui::DragFloat("sensitivityToDarkness", &reblur.antilagHitDistanceSettings.sensitivityToDarkness, 0.01f, 0.01f, 1.f);
+			changed |= ImGui::DragFloat("sigmaScale", &reblur.antilagHitDistanceSettings.sigmaScale, 0.01f, 0.01f, 2.f);
+			changed |= ImGui::DragFloat("thresholdMin", &reblur.antilagHitDistanceSettings.thresholdMin, 0.01f, 0.01f, 1.f);
+			changed |= ImGui::DragFloat("thresholdMax", &reblur.antilagHitDistanceSettings.thresholdMax, 0.01f, 0.01f, 1.f);
+		}
 	}
 }
 

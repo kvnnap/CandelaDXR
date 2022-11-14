@@ -54,8 +54,11 @@ namespace candela::renderer
 
 		nrd::CommonSettings& getCommonSettings();
 		nrd::ReblurSettings& getReblurSettings();
+		nrd::RelaxDiffuseSpecularSettings& getRelaxSettings();
 		void clearHistory();
 		std::vector<DirectX::XMFLOAT3X4> getMVMatrices();
+		std::uint32_t getDenoiserSelected() const;
+		void setDenoiserSelected(std::uint32_t den);
 
 	private:
 
@@ -66,7 +69,7 @@ namespace candela::renderer
 
 		// Common renderer resources
 		RendererResources* rendererResources;
-		std::unique_ptr<NrdIntegration> NRD;
+		std::vector<std::unique_ptr<NrdIntegration>> NRD;
 		nri::Device *nriDevice;
 		std::unique_ptr<NriInterface> NRI;
 
@@ -102,6 +105,8 @@ namespace candela::renderer
 
 		nrd::CommonSettings nrdCommonSettings{};
 		nrd::ReblurSettings nrdReblurSettings{};
+		nrd::RelaxDiffuseSpecularSettings nrdRelaxSettings{};
+		std::uint32_t denoiserSelected{};
 
 		std::vector<DirectX::XMMATRIX> prevMat;
 	};

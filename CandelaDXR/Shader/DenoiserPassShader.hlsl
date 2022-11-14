@@ -10,6 +10,7 @@ cbuffer CB1 : register(b0)
 	float4 hitDistParams;
 	float camZ;
 	uint mode;
+	uint denoiserSelected;
 }
 
 Texture2D<float4> diffRadAcc : register(t0);
@@ -65,21 +66,42 @@ void main(uint3 DTid : SV_DispatchThreadID)
 			rad.y = radAcc.y / rad.y;
 		if (rad.z > 0)
 			rad.z = radAcc.z / rad.z;
+		float3 specRad = specRadAcc[DTid.xy].xyz;
 
 		// Normalize hit distance..
-		float normHitDist = REBLUR_FrontEnd_GetNormHitDist(gRayHitT[DTid.xy].x, vz, hitDistParams, 1.0f);
-		in_diff_radiance_hitdist[DTid.xy] = REBLUR_FrontEnd_PackRadianceAndNormHitDist(rad, normHitDist);
-
-		// Spec - no material additional stuff in our case?
-		normHitDist = REBLUR_FrontEnd_GetNormHitDist(gRayHitT[DTid.xy].y, vz, hitDistParams, 1.0f);
-		in_spec_radiance_hitdist[DTid.xy] = REBLUR_FrontEnd_PackRadianceAndNormHitDist(specRadAcc[DTid.xy].xyz, normHitDist);
+		float diffHitDist = gRayHitT[DTid.xy].x;
+		float specHitDist = gRayHitT[DTid.xy].y;
+		if (denoiserSelected == 0)
+		{
+			float normHitDist = REBLUR_FrontEnd_GetNormHitDist(diffHitDist, vz, hitDistParams, mat.Dissolve);
+			in_diff_radiance_hitdist[DTid.xy] = REBLUR_FrontEnd_PackRadianceAndNormHitDist(rad, normHitDist);
+			// Spec - no material additional stuff in our case?
+			normHitDist = REBLUR_FrontEnd_GetNormHitDist(specHitDist, vz, hitDistParams, mat.Dissolve);
+			in_spec_radiance_hitdist[DTid.xy] = REBLUR_FrontEnd_PackRadianceAndNormHitDist(specRad, normHitDist);
+		}
+		else if (denoiserSelected == 1)
+		{
+			in_diff_radiance_hitdist[DTid.xy] = RELAX_FrontEnd_PackRadianceAndHitDist(rad, diffHitDist);
+			in_spec_radiance_hitdist[DTid.xy] = RELAX_FrontEnd_PackRadianceAndHitDist(specRad, specHitDist);
+		}
+		
 	}
 	else if (mode == 1)
 	{
-		float4 result = REBLUR_BackEnd_UnpackRadianceAndNormHitDist(out_diff_radiance_hitdist[DTid.xy]);
-		gOutputDiff[DTid.xy] = float4(result.xyz * (albedo[DTid.xy].xyz / PI), 1.f);
+		float4 diffResult;
+		float4 specResult;
+		if (denoiserSelected == 0)
+		{
+			diffResult = REBLUR_BackEnd_UnpackRadianceAndNormHitDist(out_diff_radiance_hitdist[DTid.xy]);
+			specResult = REBLUR_BackEnd_UnpackRadianceAndNormHitDist(out_spec_radiance_hitdist[DTid.xy]);
+		}
+		else if (denoiserSelected == 1)
+		{
+			diffResult = RELAX_BackEnd_UnpackRadiance(out_diff_radiance_hitdist[DTid.xy]);
+			specResult = RELAX_BackEnd_UnpackRadiance(out_spec_radiance_hitdist[DTid.xy]);
+		}
 
-		result = REBLUR_BackEnd_UnpackRadianceAndNormHitDist(out_spec_radiance_hitdist[DTid.xy]);
-		gOutputSpec[DTid.xy] = float4(result.xyz, 1.f);
+		gOutputDiff[DTid.xy] = float4(diffResult.xyz * (albedo[DTid.xy].xyz / PI), 1.f);
+		gOutputSpec[DTid.xy] = float4(specResult.xyz, 1.f);
 	}
 }

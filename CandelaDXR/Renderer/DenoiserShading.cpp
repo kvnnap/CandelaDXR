@@ -123,7 +123,7 @@ void DenoiserShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12GraphicsCo
 	rsm->addDescriptorRange("IORange", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 10u, 0u));
 	rsm->addDescriptorRange("IORange", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 7u, 0u));
 	rsm->setDescriptorTableParameter("IODescTable", "IORange");
-	param.InitAsConstants(6u, 0u); rsm->setParameter("Constants", param);
+	param.InitAsConstants(7u, 0u); rsm->setParameter("Constants", param);
 	param.InitAsShaderResourceView(10u); rsm->setParameter("Matrices", param);
 	param.InitAsShaderResourceView(11u); rsm->setParameter("Materials", param);
 	rsm->addParametersToRootSignature("ComputeRootSignature", { "IODescTable", "Constants", "Matrices", "Materials"});
@@ -177,6 +177,7 @@ void DenoiserShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12GraphicsCo
 	// Get needed "wrapper" extension, XXX - can be D3D11, D3D12 or VULKAN
 	result = nri::GetInterface(*nriDevice, NRI_INTERFACE(nri::WrapperD3D12Interface), (nri::WrapperD3D12Interface*)NRI.get());
 
+	NRD = std::vector<std::unique_ptr<NrdIntegration>>(2);
 	setupDenoiser();
 	// --- END NVIDIA Wrap device
 }
@@ -281,7 +282,10 @@ void DenoiserShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentComman
 	//nrdReblurSettings.hitDistanceParameters;
 	//nrdReblurSettings.hitDistanceReconstructionMode; --- NEED FOR LightTracing!
 
-	NRD->SetMethodSettings(nrd::Method::REBLUR_DIFFUSE_SPECULAR, &nrdReblurSettings);
+	if (denoiserSelected == 0)
+		NRD[denoiserSelected]->SetMethodSettings(nrd::Method::REBLUR_DIFFUSE_SPECULAR, &nrdReblurSettings);
+	else 
+		NRD[denoiserSelected]->SetMethodSettings(nrd::Method::RELAX_DIFFUSE_SPECULAR, &nrdRelaxSettings);
 	
 	// Populate the user pool
 	NrdUserPool userPool = {};
@@ -294,7 +298,7 @@ void DenoiserShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentComman
 		NrdIntegration_SetResource(userPool, denResource.resourceType, tex);
 	}
 	
-	NRD->Denoise(currentBackBufferIndex, *cmdBuffer, nrdCommonSettings, userPool, false);
+	NRD[denoiserSelected]->Denoise(currentBackBufferIndex, *cmdBuffer, nrdCommonSettings, userPool, false);
 	
 	// Sync states
 	for (uint32_t i = 0; i < N; i++)
@@ -339,6 +343,8 @@ void DenoiserShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentComman
 
 void DenoiserShading::onChange(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, uint32_t currentBackBufferIndex, ChangeEvent_t changeEvent)
 {
+	if (changeEvent & static_cast<ChangeEvent_t>(ChangeEvent::Statistics))
+		clearHistory();
 }
 
 void DenoiserShading::onResize()
@@ -372,9 +378,14 @@ nrd::ReblurSettings& DenoiserShading::getReblurSettings()
 	return nrdReblurSettings;
 }
 
+nrd::RelaxDiffuseSpecularSettings& DenoiserShading::getRelaxSettings()
+{
+	return nrdRelaxSettings;
+}
+
 void DenoiserShading::clearHistory()
 {
-	nrdCommonSettings.accumulationMode = nrd::AccumulationMode::RESTART;
+	nrdCommonSettings.accumulationMode = nrd::AccumulationMode::CLEAR_AND_RESTART;
 }
 
 vector<DirectX::XMFLOAT3X4> DenoiserShading::getMVMatrices()
@@ -393,6 +404,18 @@ vector<DirectX::XMFLOAT3X4> DenoiserShading::getMVMatrices()
 	return mats;
 }
 
+void DenoiserShading::setDenoiserSelected(std::uint32_t den)
+{
+	if (den >= 2) return;
+	denoiserSelected = den;
+	clearHistory();
+}
+
+uint32_t DenoiserShading::getDenoiserSelected() const
+{
+	return denoiserSelected;
+}
+
 void DenoiserShading::compute(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, uint32_t mode)
 {
 	out_diff_radiance_hitdist->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
@@ -405,6 +428,7 @@ void DenoiserShading::compute(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCom
 	pCurrentCommandList->SetComputeRoot32BitConstants(1u, 4u, &nrdReblurSettings.hitDistanceParameters, 0u);
 	pCurrentCommandList->SetComputeRoot32BitConstants(1u, 1u, &rendererResources->camera->getPosition().m128_f32[2], 4u);
 	pCurrentCommandList->SetComputeRoot32BitConstant(1u, mode, 5u);
+	pCurrentCommandList->SetComputeRoot32BitConstant(1u, denoiserSelected, 6u);
 
 	pCurrentCommandList->SetComputeRootShaderResourceView(2u, ((ID3D12Resource*)*matrices)->GetGPUVirtualAddress());
 	pCurrentCommandList->SetComputeRootShaderResourceView(3u, rendererResources->materialBuffer->GetGPUVirtualAddress());
@@ -462,27 +486,34 @@ void DenoiserShading::createShaderResources()
 void DenoiserShading::setupDenoiser()
 {
 	auto rRes = rendererResources;
-
-	const nrd::MethodDesc methodDescs[] =
-	{
-		// put neeeded methods here, like:
-		{ nrd::Method::REBLUR_DIFFUSE_SPECULAR, static_cast<uint16_t>(rRes->winDimensions.x), static_cast<uint16_t>(rRes->winDimensions.y) }
-	};
-
-	nrd::DenoiserCreationDesc denoiserCreationDesc = {};
-	denoiserCreationDesc.requestedMethods = methodDescs;
-	denoiserCreationDesc.requestedMethodNum = static_cast<uint32_t>(std::size(methodDescs));
-
 	destroyDenoiser();
-	NRD = make_unique<NrdIntegration>(rRes->numBackBuffers);
-	bool res = NRD->Initialize(denoiserCreationDesc, *nriDevice, *NRI, *NRI);
+
+	for (uint32_t i = 0; i < NRD.size(); ++i)
+	{
+
+		const nrd::MethodDesc methodDescs[] =
+		{
+			// put neeeded methods here, like:
+			{ i == 0 ? nrd::Method::REBLUR_DIFFUSE_SPECULAR : nrd::Method::RELAX_DIFFUSE_SPECULAR, static_cast<uint16_t>(rRes->winDimensions.x), static_cast<uint16_t>(rRes->winDimensions.y) }
+		};
+
+		nrd::DenoiserCreationDesc denoiserCreationDesc = {};
+		denoiserCreationDesc.requestedMethods = methodDescs;
+		denoiserCreationDesc.requestedMethodNum = static_cast<uint32_t>(std::size(methodDescs));
+
+		NRD[i] = make_unique<NrdIntegration>(rRes->numBackBuffers);
+		bool res = NRD[i]->Initialize(denoiserCreationDesc, *nriDevice, *NRI, *NRI);
+	}
 }
 
 void DenoiserShading::destroyDenoiser()
 {
-	if (NRD)
+	for (auto& nrd : NRD)
 	{
-		NRD->Destroy();
-		NRD.reset();
+		if (nrd)
+		{
+			nrd->Destroy();
+			nrd.reset();
+		}
 	}
 }
