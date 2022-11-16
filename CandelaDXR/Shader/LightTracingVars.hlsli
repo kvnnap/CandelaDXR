@@ -23,7 +23,8 @@ struct ConstBuff
 	PathInteraction pathFilter;
 	uint minBounces;
 	uint maxBounces;
-	uint3 padding;
+	uint seperateCaustics;
+	uint2 padding;
 };
 
 // UAVs
@@ -95,6 +96,15 @@ void AddContribution(uint pixLaunchIndex, float3 contrib, float hitT = 0.f)
 	InterlockedAdd(gIrradianceDS[pixLaunchIndex].value.y, uContrib.y);
 	InterlockedAdd(gIrradianceDS[pixLaunchIndex].value.z, uContrib.z);
 	InterlockedAdd(gIrradianceDS[pixLaunchIndex].value.w, uContrib.w);
+}
+
+void AddCausticsContribution(uint pixLaunchIndex, float3 contrib, float hitT = 0.f)
+{
+	uint4 uContrib = floatToFixed(float4(contrib, hitT), ConvRangeBits);
+	InterlockedAdd(gIrradianceDS[pixLaunchIndex].caust.x, uContrib.x);
+	InterlockedAdd(gIrradianceDS[pixLaunchIndex].caust.y, uContrib.y);
+	InterlockedAdd(gIrradianceDS[pixLaunchIndex].caust.z, uContrib.z);
+	InterlockedAdd(gIrradianceDS[pixLaunchIndex].caust.w, uContrib.w);
 }
 
 #endif

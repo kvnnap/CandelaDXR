@@ -11,20 +11,22 @@ cbuffer CB1 : register(b0)
 	float camZ;
 	uint mode;
 	uint denoiserSelected;
+	uint denoiseCaustics;
 }
 
 Texture2D<float4> diffRadAcc : register(t0);
-Texture2D<float4> specRadAcc : register(t1);
-Texture2D<float4> albedo : register(t2);
-Texture2D<float4> normal : register(t3);
-Texture2D<float> depth : register(t4);
-Texture2D<float4> gRayHitT : register(t5);
-Texture2D<float4> out_diff_radiance_hitdist : register(t6);
-Texture2D<float4> out_spec_radiance_hitdist : register(t7);
-Texture2D<float4> position : register(t8);
-Texture2D<uint2> meshInfo : register(t9);
-StructuredBuffer<float4x3> matrices : register(t10); // WorldToLocalToPrevWorld
-StructuredBuffer<Material> materials : register(t11);
+Texture2D<float4> causRadAcc : register(t1);
+Texture2D<float4> specRadAcc : register(t2);
+Texture2D<float4> albedo : register(t3);
+Texture2D<float4> normal : register(t4);
+Texture2D<float> depth : register(t5);
+Texture2D<float4> gRayHitT : register(t6);
+Texture2D<float4> out_diff_radiance_hitdist : register(t7);
+Texture2D<float4> out_spec_radiance_hitdist : register(t8);
+Texture2D<float4> position : register(t9);
+Texture2D<uint2> meshInfo : register(t10);
+StructuredBuffer<float4x3> matrices : register(t11); // WorldToLocalToPrevWorld
+StructuredBuffer<Material> materials : register(t12);
 
 RWTexture2D<float4> in_mv : register(u0);
 RWTexture2D<float4> in_normal_roughness : register(u1);
@@ -58,7 +60,7 @@ void main(uint3 DTid : SV_DispatchThreadID)
 		float vz = position[DTid.xy].z - camZ;
 		in_view_z[DTid.xy] = vz;
 
-		float3 radAcc = diffRadAcc[DTid.xy].xyz;
+		float3 radAcc = denoiseCaustics == 0 ? diffRadAcc[DTid.xy].xyz : causRadAcc[DTid.xy].xyz;
 		float3 rad = albedo[DTid.xy].xyz / PI;
 		if (rad.x > 0)
 			rad.x = radAcc.x / rad.x;
@@ -69,7 +71,7 @@ void main(uint3 DTid : SV_DispatchThreadID)
 		float3 specRad = specRadAcc[DTid.xy].xyz;
 
 		// Normalize hit distance..
-		float diffHitDist = gRayHitT[DTid.xy].x;
+		float diffHitDist = denoiseCaustics == 0 ? gRayHitT[DTid.xy].x : gRayHitT[DTid.xy].z;
 		float specHitDist = gRayHitT[DTid.xy].y;
 		if (denoiserSelected == 0)
 		{
@@ -84,7 +86,6 @@ void main(uint3 DTid : SV_DispatchThreadID)
 			in_diff_radiance_hitdist[DTid.xy] = RELAX_FrontEnd_PackRadianceAndHitDist(rad, diffHitDist);
 			in_spec_radiance_hitdist[DTid.xy] = RELAX_FrontEnd_PackRadianceAndHitDist(specRad, specHitDist);
 		}
-		
 	}
 	else if (mode == 1)
 	{
@@ -101,7 +102,10 @@ void main(uint3 DTid : SV_DispatchThreadID)
 			specResult = RELAX_BackEnd_UnpackRadiance(out_spec_radiance_hitdist[DTid.xy]);
 		}
 
-		gOutputDiff[DTid.xy] = float4(diffResult.xyz * (albedo[DTid.xy].xyz / PI), 1.f);
+		float3 decodedDiff = diffResult.xyz * (albedo[DTid.xy].xyz / PI);
+		decodedDiff += denoiseCaustics == 0 ? causRadAcc[DTid.xy].xyz : diffRadAcc[DTid.xy].xyz;
+
+		gOutputDiff[DTid.xy] = float4(decodedDiff, 1.f);
 		gOutputSpec[DTid.xy] = float4(specResult.xyz, 1.f);
 	}
 }

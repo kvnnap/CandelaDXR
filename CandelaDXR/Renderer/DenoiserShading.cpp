@@ -39,7 +39,7 @@ namespace candela::renderer
 
 DenoiserShading::DenoiserShading()
 	: rendererResources(), nriDevice(),
-	  diffRadAccumulator(), specRadAccumulator(), albedo(), 
+	  diffRadAccumulator(), causticsAccumulator(), specRadAccumulator(), albedo(), 
 	  normal(), depth(), gRayHitT(), position(), meshInfo(), matrices(),
 	  in_mv(), in_normal_roughness(), in_view_z(),
 	  in_diff_radiance_hitdist(), in_spec_radiance_hitdist(),
@@ -101,6 +101,9 @@ void DenoiserShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12GraphicsCo
 	// Get resources & create new ones
 	auto& dim = rRes->winDimensions;
 	diffRadAccumulator = rRes->resourceManager->getNamedResource("diff_acc");
+	//causticsAccumulator = rRes->resourceManager->getNamedResource("caustics");
+	causticsAccumulator = &rendererResources->resourceManager->createResourceIfNotExists(D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
+		dim.x, dim.y, DXGI_FORMAT_R32G32B32A32_FLOAT, true, "caustics");
 	specRadAccumulator = rRes->resourceManager->getNamedResource("spec_acc");
 	albedo = rRes->resourceManager->getNamedResource("gAlb");
 	normal = rRes->resourceManager->getNamedResource("gNorm");
@@ -120,13 +123,13 @@ void DenoiserShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12GraphicsCo
 	// Setup compute shader RS
 	auto rsm = make_shared<RootSignatureManager>();
 	CD3DX12_ROOT_PARAMETER1 param;
-	rsm->addDescriptorRange("IORange", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 10u, 0u));
+	rsm->addDescriptorRange("IORange", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 11u, 0u));
 	rsm->addDescriptorRange("IORange", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 7u, 0u));
 	rsm->setDescriptorTableParameter("IODescTable", "IORange");
-	param.InitAsConstants(7u, 0u); rsm->setParameter("Constants", param);
-	param.InitAsShaderResourceView(10u); rsm->setParameter("Matrices", param);
-	param.InitAsShaderResourceView(11u); rsm->setParameter("Materials", param);
-	rsm->addParametersToRootSignature("ComputeRootSignature", { "IODescTable", "Constants", "Matrices", "Materials"});
+	param.InitAsConstants(8u, 0u); rsm->setParameter("Constants", param);
+	param.InitAsShaderResourceView(11u); rsm->setParameter("Matrices", param);
+	param.InitAsShaderResourceView(12u); rsm->setParameter("Materials", param);
+	rsm->addParametersToRootSignature("ComputeRootSignature", { "IODescTable", "Constants", "Matrices", "Materials" });
 	computeRootSignature = rsm->generateRootSignature("ComputeRootSignature", rRes->pDevice, D3D12_ROOT_SIGNATURE_FLAG_NONE);
 
 	// Heap
@@ -192,6 +195,7 @@ void DenoiserShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentComman
 
 	// Compute pre-pass
 	diffRadAccumulator->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
+	causticsAccumulator->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
 	specRadAccumulator->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
 	albedo->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
 	normal->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
@@ -328,6 +332,7 @@ void DenoiserShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentComman
 	compute(pCurrentCommandList, 1);
 
 	diffRadAccumulator->transitionToPrevBarrier(pCurrentCommandList);
+	causticsAccumulator->transitionToPrevBarrier(pCurrentCommandList);
 	specRadAccumulator->transitionToPrevBarrier(pCurrentCommandList);
 	albedo->transitionToPrevBarrier(pCurrentCommandList);
 	normal->transitionToPrevBarrier(pCurrentCommandList);
@@ -411,6 +416,18 @@ void DenoiserShading::setDenoiserSelected(std::uint32_t den)
 	clearHistory();
 }
 
+uint32_t DenoiserShading::getDenoiseCaustics() const
+{
+	return denoiseCaustics;
+}
+
+void DenoiserShading::setDenoiseCaustics(std::uint32_t den)
+{
+	if (den >= 2) return;
+	denoiseCaustics = den;
+	clearHistory();
+}
+
 uint32_t DenoiserShading::getDenoiserSelected() const
 {
 	return denoiserSelected;
@@ -429,6 +446,7 @@ void DenoiserShading::compute(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCom
 	pCurrentCommandList->SetComputeRoot32BitConstants(1u, 1u, &rendererResources->camera->getPosition().m128_f32[2], 4u);
 	pCurrentCommandList->SetComputeRoot32BitConstant(1u, mode, 5u);
 	pCurrentCommandList->SetComputeRoot32BitConstant(1u, denoiserSelected, 6u);
+	pCurrentCommandList->SetComputeRoot32BitConstant(1u, denoiseCaustics, 7u);
 
 	pCurrentCommandList->SetComputeRootShaderResourceView(2u, ((ID3D12Resource*)*matrices)->GetGPUVirtualAddress());
 	pCurrentCommandList->SetComputeRootShaderResourceView(3u, rendererResources->materialBuffer->GetGPUVirtualAddress());
@@ -453,14 +471,14 @@ void DenoiserShading::createShaderResources()
 	srvDesc.Texture2D.MipLevels = 1u;
 	uint32_t entryNum{};
 	descHeapManager->setSRV(entryNum++, srvDesc, rRes->pDevice, *diffRadAccumulator);
+	descHeapManager->setSRV(entryNum++, srvDesc, rRes->pDevice, *causticsAccumulator);
 	descHeapManager->setSRV(entryNum++, srvDesc, rRes->pDevice, *specRadAccumulator);
 	descHeapManager->setSRV(entryNum++, srvDesc, rRes->pDevice, *albedo);
 	descHeapManager->setSRV(entryNum++, srvDesc, rRes->pDevice, *normal);
 	srvDesc.Format = DXGI_FORMAT_R32_FLOAT;
 	descHeapManager->setSRV(entryNum++, srvDesc, rRes->pDevice, *depth);
-	srvDesc.Format = DXGI_FORMAT_R32G32_FLOAT;
-	descHeapManager->setSRV(entryNum++, srvDesc, rRes->pDevice, *gRayHitT);
 	srvDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
+	descHeapManager->setSRV(entryNum++, srvDesc, rRes->pDevice, *gRayHitT);
 	descHeapManager->setSRV(entryNum++, srvDesc, rRes->pDevice, *out_diff_radiance_hitdist);
 	descHeapManager->setSRV(entryNum++, srvDesc, rRes->pDevice, *out_spec_radiance_hitdist);
 	descHeapManager->setSRV(entryNum++, srvDesc, rRes->pDevice, *position);

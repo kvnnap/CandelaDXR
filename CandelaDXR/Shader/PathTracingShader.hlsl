@@ -43,7 +43,7 @@ RWTexture2D<float4> gOutputDiff : register(u0);
 RWTexture2D<float4> gOutputSpec : register(u1);
 RWTexture2D<float4> gRadianceDiff : register(u2);
 RWTexture2D<float4> gRadianceSpec : register(u3);
-RWTexture2D<float2> gRayHitT : register(u4);
+RWTexture2D<float4> gRayHitT : register(u4);
 
 // SRVs
 StructuredBuffer<float3> verts : register(t0);

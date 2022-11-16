@@ -103,6 +103,14 @@ void ImGuiShading::visit(DenoiserShading* denShading)
 		denShading->setDenoiserSelected(relax ? 1u : 0u);
 	}
 
+	auto denCaustics = denShading->getDenoiseCaustics();
+	bool denCBool = denCaustics;
+	if (ImGui::Checkbox("Denoise Caustics", &denCBool))
+	{
+		changed = true;
+		denShading->setDenoiseCaustics(denCBool ? 1u : 0u);
+	}
+
 	if (denSelected == 0)
 	{
 		ImGui::Text("DenoiserShading - RS");
@@ -148,6 +156,7 @@ void ImGuiShading::visit(LightTracingShading* lightTracingShader)
 		}
 
 		currentComponent = ltShaderInfo[shaderIndex].component;
+		seperateCaustics = lightTracingShader->getSeperateCaustics();
 	}
 	ImGui::Text("LightTracingShading");
 	if (ImGui::DragInt2("LightSamples", &lightSamples[0], 1.f, 0, 4096))
@@ -180,6 +189,12 @@ void ImGuiShading::visit(LightTracingShading* lightTracingShader)
 	if (processPathFilter(pathFlags, lightPathFlags))
 	{
 		lightTracingShader->setPathFilter(pathFlags);
+		changed = true;
+	}
+
+	if (ImGui::Checkbox("Seperate Caustics", &seperateCaustics))
+	{
+		lightTracingShader->seperateCaustics(seperateCaustics ? 1u : 0u);
 		changed = true;
 	}
 }

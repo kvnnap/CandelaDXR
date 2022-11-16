@@ -78,6 +78,7 @@ namespace candela::renderer::imgui
 				ILightTracingComponent* currentComponent;
 				int filterSize;
 				int distanceMetricMode;
+				bool seperateCaustics;
 			};
 
 			// Path Shading

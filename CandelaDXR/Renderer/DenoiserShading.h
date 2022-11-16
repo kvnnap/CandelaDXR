@@ -59,6 +59,8 @@ namespace candela::renderer
 		std::vector<DirectX::XMFLOAT3X4> getMVMatrices();
 		std::uint32_t getDenoiserSelected() const;
 		void setDenoiserSelected(std::uint32_t den);
+		std::uint32_t getDenoiseCaustics() const;
+		void setDenoiseCaustics(std::uint32_t den);
 
 	private:
 
@@ -86,6 +88,7 @@ namespace candela::renderer
 		*  normal - use from normal texture
 		*/
 		directx::Resource* diffRadAccumulator;
+		directx::Resource* causticsAccumulator;
 		directx::Resource* specRadAccumulator;
 		directx::Resource* albedo; // need to radAccum/albedo --> IN_DIFF_RADIANCE_HITDIST 
 		directx::Resource* normal; // Produce (normal, 0.f)  --> IN_NORMAL_ROUGHNESS
@@ -107,6 +110,7 @@ namespace candela::renderer
 		nrd::ReblurSettings nrdReblurSettings{};
 		nrd::RelaxDiffuseSpecularSettings nrdRelaxSettings{};
 		std::uint32_t denoiserSelected{};
+		std::uint32_t denoiseCaustics{};
 
 		std::vector<DirectX::XMMATRIX> prevMat;
 	};

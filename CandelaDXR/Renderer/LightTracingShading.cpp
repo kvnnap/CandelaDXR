@@ -55,8 +55,8 @@ using candela::util::StringToWString;
 
 LightTracingShading::LightTracingShading(unique_ptr<ISampler> sampler, UVector2 lightSamples)
 	: rendererResources(), constBuffer(), lightSamples(lightSamples), 
-	irradianceDataStructure(), irrToRad(), rayHitT(), irradianceTexture(),
-	sampler(std::move(sampler)), clear(), currentShader()
+	irradianceDataStructure(), irrToRad(), rayHitT(), irradianceCaustics(),
+	outputCaustics(), irradianceTexture(), sampler(std::move(sampler)), clear(), currentShader()
 {
 }
 
@@ -89,7 +89,9 @@ void LightTracingShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12Graphi
 	irrToRad = &rendererResources->resourceManager->createResource(D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_FLAG_NONE, dim.x, dim.y, DXGI_FORMAT_R32_FLOAT, true);
 	irrToRad->setName(L"irrToRad Texture");
 	rayHitT = &rRes->resourceManager->createResourceIfNotExists(D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
-		rRes->winDimensions.x, rRes->winDimensions.y, DXGI_FORMAT_R32G32_FLOAT, true, "ray_hitT");
+		rRes->winDimensions.x, rRes->winDimensions.y, DXGI_FORMAT_R32G32B32A32_FLOAT, true, "ray_hitT");
+	irradianceCaustics = &rendererResources->resourceManager->createResource(D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, dim.x, dim.y, DXGI_FORMAT_R32G32B32A32_FLOAT, true, "lt_irr_caustics");
+	outputCaustics = &rendererResources->resourceManager->createResourceIfNotExists(D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, dim.x, dim.y, DXGI_FORMAT_R32G32B32A32_FLOAT, true, "caustics");
 
 	// Init components
 	for (auto& ltShader : ltShaders)
@@ -285,7 +287,7 @@ void LightTracingShading::buildPipeline()
 	
 	// Compute shader
 	computeRSM = make_shared<RootSignatureManager>();
-	computeRSM->addDescriptorRange("ComputeData", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 4, 0)); // gOutput, gIrradianceDataStructure, gIrradiance
+	computeRSM->addDescriptorRange("ComputeData", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 6, 0)); // gOutput, gIrradianceDataStructure, gIrradiance, rayhitt, irrC, outC
 	computeRSM->addDescriptorRange("ComputeData", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0)); // gIrrToRad
 	computeRSM->setDescriptorTableParameter("ComputeDataDescTable", "ComputeData");
 	param.InitAsConstants(5u, 0u); computeRSM->setParameter("ComputeConstants", param); // winDimensions (x,y), lightSamples, numFrames, clear
@@ -319,10 +321,10 @@ void LightTracingShading::createShaderResources(wrl::ComPtr<ID3D12GraphicsComman
 	D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc2 = {};
 	uavDesc2.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
 	uavDesc2.Buffer.NumElements = dim.x * dim.y;
-	uavDesc2.Buffer.StructureByteStride = sizeof(uint32_t) * 4;
+	uavDesc2.Buffer.StructureByteStride = sizeof(uint32_t) * 4 * 2; // IrradianceItem - val and caustics
 
 	// The output resource
-	irradianceDataStructure = &rendererResources->resourceManager->createResource(D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, dim.x * dim.y * sizeof(uint32_t) * 4);
+	irradianceDataStructure = &rendererResources->resourceManager->createResource(D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, uavDesc2.Buffer.NumElements * uavDesc2.Buffer.StructureByteStride);
 	irradianceDataStructure->setName(L"Irradiance DS");
 	irradianceDataStructure->transistionBarrier(commandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
@@ -381,7 +383,9 @@ void LightTracingShading::createShaderResources(wrl::ComPtr<ID3D12GraphicsComman
 	cmpDescHeapManager.setUAV(1, uavDesc2, rendererResources->pDevice, *irradianceDataStructure);
 	cmpDescHeapManager.setUAV(2, uavDesc, rendererResources->pDevice, *irradianceTexture);
 	cmpDescHeapManager.setUAV(3, uavDesc, rendererResources->pDevice, *rayHitT);
-	cmpDescHeapManager.setSRV(4, irrToRadSrvDesc, rendererResources->pDevice, *irrToRad);
+	cmpDescHeapManager.setUAV(4, uavDesc, rendererResources->pDevice, *irradianceCaustics);
+	cmpDescHeapManager.setUAV(5, uavDesc, rendererResources->pDevice, *outputCaustics);
+	cmpDescHeapManager.setSRV(6, irrToRadSrvDesc, rendererResources->pDevice, *irrToRad);
 	computeDescriptorHeap = cmpDescHeapManager.getDescriptorHeap();
 }
 
@@ -520,6 +524,16 @@ uint32_t LightTracingShading::getMaxBounces() const
 void LightTracingShading::setMaxBounces(uint32_t maxBounces)
 {
 	constBuffer.maxBounces = maxBounces;
+}
+
+uint32_t LightTracingShading::getSeperateCaustics() const
+{
+	return constBuffer.seperateCaustics;
+}
+
+void LightTracingShading::seperateCaustics(std::uint32_t sepCaustics)
+{
+	constBuffer.seperateCaustics = sepCaustics;
 }
 
 // Compute constants

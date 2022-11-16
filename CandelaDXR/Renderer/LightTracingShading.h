@@ -52,6 +52,8 @@ namespace candela::renderer
 		void setMinBounces(std::uint32_t minBounces);
 		std::uint32_t getMaxBounces() const;
 		void setMaxBounces(std::uint32_t maxBounces);
+		std::uint32_t getSeperateCaustics() const;
+		void seperateCaustics(std::uint32_t sepCaustics);
 
 		struct LTShaderInfo
 		{
@@ -103,6 +105,7 @@ namespace candela::renderer
 			std::uint32_t pathFilter;
 			std::uint32_t minBounces;
 			std::uint32_t maxBounces;
+			std::uint32_t seperateCaustics;
 		} constBuffer;
 		mathematics::UVector2 lightSamples;
 
@@ -110,6 +113,8 @@ namespace candela::renderer
 		directx::Resource* irradianceDataStructure;
 		directx::Resource* irrToRad;
 		directx::Resource* rayHitT;
+		directx::Resource* irradianceCaustics;
+		directx::Resource* outputCaustics;
 
 		directx::Resource* irradianceTexture;
 		std::unique_ptr<sampler::ISampler> sampler;

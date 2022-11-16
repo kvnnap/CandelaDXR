@@ -72,8 +72,7 @@ void PathTracingShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12Graphic
 		rRes->winDimensions.x, rRes->winDimensions.y, DXGI_FORMAT_R32G32B32A32_FLOAT, true);
 	specTexture->setName("pt_spec");
 	rayHitT = &rRes->resourceManager->createResourceIfNotExists(D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
-		rRes->winDimensions.x, rRes->winDimensions.y, DXGI_FORMAT_R32G32_FLOAT, true, "ray_hitT");
-
+		rRes->winDimensions.x, rRes->winDimensions.y, DXGI_FORMAT_R32G32B32A32_FLOAT, true, "ray_hitT");
 
 	// Create Shader resources
 	createShaderResources();
