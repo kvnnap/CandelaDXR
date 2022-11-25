@@ -393,19 +393,25 @@ void rayGen()
 
 	// Using this resource as a RADIANCE accumulator
 	if (cBuffer.frameNumber == 1)
+	{
 		gRadianceSpec[launchIndex] = gRadianceDiff[launchIndex] = float4(0.f, 0.f, 0.f, 1.f);
+		gRayHitT[launchIndex].y = 0.f;
+		if (!cBuffer.specularOnly)
+			gRayHitT[launchIndex].x = 0.f;
+	}
 	if (isSpecularPath)
 	{
 		gRadianceSpec[launchIndex] += float4(radiance, 0.f);
 		gRayHitT[launchIndex].y = denoiserHitT;
-		gOutputSpec[launchIndex] = float4(gRadianceSpec[launchIndex].xyz / cBuffer.frameNumber, 1.f);
 	}
 	else
 	{
 		gRadianceDiff[launchIndex] += float4(radiance, 0.f);
 		gRayHitT[launchIndex].x = denoiserHitT;
-		gOutputDiff[launchIndex] = float4(gRadianceDiff[launchIndex].xyz / cBuffer.frameNumber, 1.f);
 	}
+	
+	gOutputDiff[launchIndex] = float4(gRadianceDiff[launchIndex].xyz / cBuffer.frameNumber, 1.f);
+	gOutputSpec[launchIndex] = float4(gRadianceSpec[launchIndex].xyz / cBuffer.frameNumber, 1.f);
 }
 
 // Ray

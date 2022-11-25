@@ -44,8 +44,8 @@ void main( uint3 DTid : SV_DispatchThreadID )
 	const float sampleRatio = 1.f / (LightSamples * (float)FrameNumber);
 	const float coeff = gIrrToRad[DTid.xy] * sampleRatio;
 	float4 prevRayHitT = gRayHitT[DTid.xy];
-	prevRayHitT.w = 1.f; // Remove before commit - this serves for viewing the texture
-	gRayHitT[DTid.xy] = float4(gIrradiance[DTid.xy].w * coeff, prevRayHitT.y, gIrradianceCaustics[DTid.xy].w, prevRayHitT.w);
+	//prevRayHitT.w = 1.f; // this serves for viewing the texture
+	gRayHitT[DTid.xy] = float4(gIrradiance[DTid.xy].w * coeff, prevRayHitT.y, gIrradianceCaustics[DTid.xy].w * coeff, prevRayHitT.w);
 	gOutput[DTid.xy] = float4(gIrradiance[DTid.xy].xyz * coeff, 1.f);
 	gOutputCaustics[DTid.xy] = float4(gIrradianceCaustics[DTid.xy].xyz * coeff, 1.f);
 }
