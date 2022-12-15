@@ -181,14 +181,11 @@ void rayGen()
 			{
 				ray.Direction = dir;
 				fr = fresnel(-dot(unitFaceNormal, ray.Direction), n2, n1);
-				localCoefficient *= 1.f - fr;
+				localCoefficient *= (1.f - fr) * (1.f - mat.Dissolve);
 				++numEntries;
 				prevInteraction = Refract;
 			}
-			else
-			{
-				break; // Should never happen
-			}
+			else break; // Should never happen
 			
 			continue;
 		}
@@ -359,12 +356,31 @@ void rayGen()
 			// Proceed with normal diffuse hemispherical
 			float pdf;
 			ray.Direction = randomRayLobe(seed, unitFaceNormal, 1, pdf);
-			fr = fresnel(dot(unitFaceNormal, ray.Direction), n1, n2);
 			float3 brdfDiff = mat.Diffuse * OneOverPI;
 			if (mat.DiffuseTextureId >= 0)
 				brdfDiff *= gTextures[mat.DiffuseTextureId].SampleLevel(gSampler, getTextureLocation(rayPayload.bary, vertIndex), 0);
-			localCoefficient *= brdfDiff * dot(unitFaceNormal, ray.Direction) * (1.f - fr) / pdf;
-			prevInteraction = Diffuse;
+
+			const float prDiffRef = 1.f / (2.f - mat.Dissolve);
+			// Diffuse reflection
+			if (rand_next(seed) <= prDiffRef)
+			{
+				fr = fresnel(dot(unitFaceNormal, ray.Direction), n1, n2);
+				localCoefficient *= brdfDiff * dot(unitFaceNormal, ray.Direction) * (1.f - fr) / (pdf * prDiffRef);
+				prevInteraction = Diffuse;
+			}
+			else // Diffuse Transmission
+			{
+				float3 dir = refract(ray.Direction, coeff * unitFaceNormal, n1 / n2);
+				if (any(dir))
+				{
+					numEntries += 1;
+					prevInteraction = Refract;
+					fr = fresnel(-coeff * dot(unitFaceNormal, dir), n2, n1);
+					localCoefficient *= brdfDiff * dot(unitFaceNormal, ray.Direction) * (1.f - fr) / (pdf * (1.f - prDiffRef));
+					ray.Direction = dir;
+				}
+				else break;
+			}
 		}
 		else
 		{
@@ -378,14 +394,10 @@ void rayGen()
 				numEntries += isInternal ? -1 : 1;
 				prevInteraction = Refract;
 				fr = fresnel(-coeff * dot(unitFaceNormal, ray.Direction), n2, n1);
-				localCoefficient *= (1.f - fr) / (1.f - dissolve);
-				if (isInternal) // On Surface Exit, distribute using dissolve too
-					localCoefficient *= 1.f - mat.Dissolve;
+				localCoefficient *= (1.f - fr) * (1.f - mat.Dissolve) / (1.f - dissolve);
 			}
-			else
-			{   
-				break; // Should never happen
-			}
+			else break; // Should never happen
+			
 		}
 
 		//ray.Direction = normalize(ray.Direction);

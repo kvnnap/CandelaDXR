@@ -276,19 +276,17 @@ void rayGen()
 		const bool isInternal = wiDot > 0.f;
 
 		// Setup Fresnel coeff
-		float n1, n2, dissolve, coeff;
+		float n1, n2, coeff;
 		if (isInternal)
 		{
 			n1 = mat.RefractiveIndex;
 			n2 = 1.f;
-			dissolve = 0.f;
 			coeff = -1.f;
 		}
 		else
 		{
 			n1 = 1.f;
 			n2 = mat.RefractiveIndex;
-			dissolve = mat.Dissolve;
 			coeff = 1.f;
 		}
 		const float fr = fresnel(-coeff * wiDot, n1, n2); // Reflection
@@ -300,7 +298,8 @@ void rayGen()
 				return;
 			localContribution *= exp((-rayPayload.t) * mat.TransmissiveFilter);
 		}
-		else if ((prevStateFlags & cBuffer.pathFilter) != 0 && i >= cBuffer.minBounces)
+		
+		if ((prevStateFlags & cBuffer.pathFilter) != 0 && i >= cBuffer.minBounces)
 		{
 			// Check contribution to eye
 			shadowRay.Origin = intersectionPoint;
@@ -363,7 +362,7 @@ void rayGen()
 		}
 
 		// Diffusion
-		if (rand_next(seed) <= dissolve)
+		if (rand_next(seed) <= mat.Dissolve)
 		{
 			// Sample the brdf and generate a new ray
 			ray.Direction = randomRayLobe(seed, unitFaceNormal, 1, pdf);
