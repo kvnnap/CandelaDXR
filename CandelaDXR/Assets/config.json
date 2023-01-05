@@ -1,7 +1,7 @@
 {
   "SceneLoaders": [
     {
-      "Type": "WavefrontSceneLoader",
+      "Type": "AssImpSceneLoader",
       "Scene": "Scene",
       "FilePath": "Assets/CornellBox-Original.obj"
     }
@@ -111,9 +111,9 @@
       "Camera": "Camera",
       "ShaderAccumulation": false,
       "Drawables": [
+        "Raster",
         "LT",
         "PT",
-        "Raster",
         "Den"
       ],
       "WindowDimensions": {

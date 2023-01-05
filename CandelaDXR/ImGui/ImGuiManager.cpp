@@ -23,9 +23,16 @@ using candela::renderer::Renderer;
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
+ImGuiManager::ImGuiManager()
+	: rendererResources()
+{
+}
+
 ImGuiManager::~ImGuiManager()
 {
 	// Cleanup ImGui
+	if (rendererResources == nullptr)
+		return;
 	ImGui_ImplDX12_Shutdown();
 	ImGui_ImplWin32_Shutdown();
 }

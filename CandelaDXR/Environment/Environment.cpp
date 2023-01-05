@@ -6,6 +6,7 @@
 #include "feanor/core/configuration/parser/json_configuration_parser.h"
 #include "factory/SceneFactory.h"
 #include "factory/WavefrontSceneLoaderFactory.h"
+#include "factory/AssImpSceneLoaderFactory.h"
 #include "factory/RendererFactory.h"
 #include "factory/RasterDrawableFactory.h"
 #include "factory/RasterRTShadowsDrawableFactory.h"
@@ -31,6 +32,7 @@ using feanor::configuration::ConfigurationNode;
 using feanor::configuration::parser::JsonConfigurationParserFactory;
 using candela::scene::factory::SceneFactory;
 using candela::scene::factory::WavefrontSceneLoaderFactory;
+using candela::scene::factory::AssImpSceneLoaderFactory;
 using candela::renderer::factory::RendererFactory;
 using candela::renderer::factory::RasterDrawableFactory;
 using candela::renderer::factory::RasterRTShadowsDrawableFactory;
@@ -114,6 +116,7 @@ void Environment::loadCoreFactories()
 
     // Register Scene Loaders
     sceneLoaderManager.getFactoryManager().registerItem<WavefrontSceneLoaderFactory>("WavefrontSceneLoader", *this);
+    sceneLoaderManager.getFactoryManager().registerItem<AssImpSceneLoaderFactory>("AssImpSceneLoader", *this);
 
     // Renderers
     rendererManager.getFactoryManager().registerItem<RendererFactory>("Renderer", *this);

@@ -94,7 +94,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);dxguid.lib;d3d12.lib;dxgi.lib;d3dcompiler.lib;wininet.lib;NRD.lib;NRI.lib;Core_d.lib;stb_d.lib;tinyobjloader_d.lib;imgui_d.lib</AdditionalDependencies>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);dxguid.lib;d3d12.lib;dxgi.lib;d3dcompiler.lib;wininet.lib;NRD.lib;NRI.lib;Core_d.lib;stb_d.lib;tinyobjloader_d.lib;imgui_d.lib;assimp-vc142-mt_d.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(FEANOR_ROOT)\lib;$(NRD_ROOT)\Lib\Debug;$(NRI_ROOT)\Lib\Debug</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
@@ -124,7 +124,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);dxguid.lib;d3d12.lib;dxgi.lib;d3dcompiler.lib;wininet.lib;NRD.lib;NRI.lib;Core.lib;stb.lib;tinyobjloader.lib;imgui.lib</AdditionalDependencies>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);dxguid.lib;d3d12.lib;dxgi.lib;d3dcompiler.lib;wininet.lib;NRD.lib;NRI.lib;Core.lib;stb.lib;tinyobjloader.lib;imgui.lib;assimp-vc142-mt.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(FEANOR_ROOT)\lib;$(NRD_ROOT)\Lib\Release;$(NRI_ROOT)\Lib\Release</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
@@ -150,7 +150,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);dxguid.lib;d3d12.lib;dxgi.lib;d3dcompiler.lib;wininet.lib;NRD.lib;NRI.lib;Core_d.lib;stb_d.lib;tinyobjloader_d.lib;imgui_d.lib</AdditionalDependencies>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);dxguid.lib;d3d12.lib;dxgi.lib;d3dcompiler.lib;wininet.lib;NRD.lib;NRI.lib;Core_d.lib;stb_d.lib;tinyobjloader_d.lib;imgui_d.lib;assimp-vc142-mt_d.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(FEANOR_ROOT)\lib;$(NRD_ROOT)\Lib\Debug;$(NRI_ROOT)\Lib\Debug</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
@@ -180,7 +180,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);dxguid.lib;d3d12.lib;dxgi.lib;d3dcompiler.lib;wininet.lib;NRD.lib;NRI.lib;Core.lib;stb.lib;tinyobjloader.lib;imgui.lib</AdditionalDependencies>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);dxguid.lib;d3d12.lib;dxgi.lib;d3dcompiler.lib;wininet.lib;NRD.lib;NRI.lib;Core.lib;stb.lib;tinyobjloader.lib;imgui.lib;assimp-vc142-mt.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(FEANOR_ROOT)\lib;$(NRD_ROOT)\Lib\Release;$(NRI_ROOT)\Lib\Release</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
@@ -208,6 +208,7 @@
     <ClCompile Include="DirectX\ShadingTable.cpp" />
     <ClCompile Include="Environment\Environment.cpp" />
     <ClCompile Include="Factory\AnimationFactory.cpp" />
+    <ClCompile Include="Factory\AssImpSceneLoaderFactory.cpp" />
     <ClCompile Include="Factory\CameraFactory.cpp" />
     <ClCompile Include="Factory\DenoiserDrawableFactory.cpp" />
     <ClCompile Include="Factory\LightTracingDrawableFactory.cpp" />
@@ -248,6 +249,7 @@
     <ClCompile Include="Renderer\Renderer.cpp" />
     <ClCompile Include="Renderer\AccelerationStructure.cpp" />
     <ClCompile Include="Sampler\UniformSampler.cpp" />
+    <ClCompile Include="Scene\AssImpSceneLoader.cpp" />
     <ClCompile Include="Scene\Scene.cpp" />
     <ClCompile Include="Factory\SceneFactory.cpp" />
     <ClCompile Include="Scene\Texture.cpp" />
@@ -278,6 +280,7 @@
     <ClInclude Include="DirectX\ShadingTable.h" />
     <ClInclude Include="DirectX\Types.h" />
     <ClInclude Include="Factory\AnimationFactory.h" />
+    <ClInclude Include="Factory\AssImpSceneLoaderFactory.h" />
     <ClInclude Include="Factory\DenoiserDrawableFactory.h" />
     <ClInclude Include="ImGui\ImGuiManager.h" />
     <ClInclude Include="ImGui\ImGuiRenderer.h" />
@@ -332,6 +335,7 @@
     <ClInclude Include="Sampler\ISampler.h" />
     <ClInclude Include="Sampler\UniformRealDistribution.h" />
     <ClInclude Include="Sampler\UniformSampler.h" />
+    <ClInclude Include="Scene\AssImpSceneLoader.h" />
     <ClInclude Include="Scene\ISceneLoader.h" />
     <ClInclude Include="Scene\Scene.h" />
     <ClInclude Include="Factory\SceneFactory.h" />

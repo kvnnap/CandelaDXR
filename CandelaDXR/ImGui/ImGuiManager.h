@@ -19,6 +19,7 @@ namespace candela::renderer::imgui
 		: public Drawable
 	{
 	public:
+		ImGuiManager();
 		~ImGuiManager();
 
 		ChangeEvent_t processChangeEvent();
