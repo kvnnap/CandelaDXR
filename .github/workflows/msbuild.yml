@@ -22,29 +22,30 @@ env:
   FEANOR_EXTERNAL_ID: 13987704
   
 jobs:
-  build:
+  build-feanor-core:
     runs-on: windows-2022
     steps:
-    - uses: actions/checkout@v3.3.0
-    
-    - name: Get Feanor Core and External Commit SHA
+    #- name: Cache Feanor Core Sha
+    #  uses: actions/cache@v3.2.2
+    #  with:
+    #    path: feanor.core.sha
+    #    key: feanor-core-sha-${{ github.run_id }}
+    - name: Get Feanor Core SHA
       run: |
         curl --location --output feanor.core.sha --header "PRIVATE-TOKEN: ${{env.GITLAB_TOKEN}}" "https://gitlab.com/api/v4/projects/${{env.FEANOR_CORE_ID}}/repository/commits/master"
-        curl --location --output feanor.external.sha --header "PRIVATE-TOKEN: ${{env.GITLAB_TOKEN}}" "https://gitlab.com/api/v4/projects/${{env.FEANOR_EXTERNAL_ID}}/repository/commits/master"
-    
+        
+    - name: Upload Feanor Core SHA
+      uses: actions/upload-artifact@v3.1.2
+      with:
+        name: feanor.core.sha.artifact
+        path: feanor.core.sha
+        
     - name: Read Feanor Core Commit SHA to Variable
       id: read-core-sha
       uses: juliangruber/read-file-action@v1.1.6
       with:
         path: feanor.core.sha
         
-    - name: Read Feanor External Commit SHA to Variable
-      id: read-external-sha
-      uses: juliangruber/read-file-action@v1.1.6
-      with:
-        path: feanor.external.sha
-    
-    # Feanor Core
     - name: Cache Feanor Core
       id: cache-core
       uses: actions/cache@v3.2.2
@@ -57,14 +58,35 @@ jobs:
       if: steps.cache-core.outputs.cache-hit != 'true'
       run: |
         git clone https://oauth2:${{env.GITLAB_TOKEN}}@gitlab.com/cgvg/feanor/core feanor-core
+        cd feanor-core
+        git checkout ${{ fromJson(steps.read-core-sha.outputs.content).id }}
+        cd ..
     
     - name: Build and install Feanor Core
       if: steps.cache-core.outputs.cache-hit != 'true'
       run: |
         cmake -S feanor-core -B feanor-core/build -DCMAKE_INSTALL_PREFIX:PATH="${{github.workspace}}\installed-core" -DBUILD_SHARED_LIBS:BOOL=OFF
         cmake --build feanor-core/build --config Release --parallel --target install
+        
+  build-feanor-external:
+    runs-on: windows-2022
+    steps:
+    - name: Get Feanor External Commit SHA
+      run: |
+        curl --location --output feanor.external.sha --header "PRIVATE-TOKEN: ${{env.GITLAB_TOKEN}}" "https://gitlab.com/api/v4/projects/${{env.FEANOR_EXTERNAL_ID}}/repository/commits/master"
+      
+    - name: Upload Feanor External SHA
+      uses: actions/upload-artifact@v3.1.2
+      with:
+        name: feanor.external.sha.artifact
+        path: feanor.external.sha
 
-    # Feanor External
+    - name: Read Feanor External Commit SHA to Variable
+      id: read-external-sha
+      uses: juliangruber/read-file-action@v1.1.6
+      with:
+        path: feanor.external.sha
+
     - name: Cache Feanor External
       id: cache-external
       uses: actions/cache@v3.2.2
@@ -77,6 +99,7 @@ jobs:
       run: |
         git clone https://oauth2:${{env.GITLAB_TOKEN}}@gitlab.com/cgvg/feanor/external feanor-external
         cd feanor-external
+        git checkout ${{ fromJson(steps.read-external-sha.outputs.content).id }}
         git submodule update --init --recursive
         cd ..
         
@@ -85,18 +108,58 @@ jobs:
       working-directory: ${{github.workspace}}\feanor-external
       run: |
         .\install.ps1 "${{github.workspace}}\installed-external" OFF
-    
-    # Get NRI/NRD metadata
-    - name: Get NVIDIA NRI and NRD details
+        
+  build-nvidia-nri:
+    runs-on: windows-2022
+    steps:
+    - name: Get NVIDIA NRI details
       run: |
         curl --location --output nri.sha "https://api.github.com/repos/NVIDIAGameWorks/NRI/commits/main"
-        curl --location --output nrd.sha "https://api.github.com/repos/NVIDIAGameWorks/RayTracingDenoiser/commits/master"
+    
+    - name: Upload NVIDIA NRI SHA
+      uses: actions/upload-artifact@v3.1.2
+      with:
+        name: nri.sha.artifact
+        path: nri.sha
     
     - name: Read NVIDIA NRI Json from file
       id: read-nri-json
       uses: juliangruber/read-file-action@v1.1.6
       with:
         path: nri.sha
+    
+    - name: Cache NVIDIA NRI
+      id: cache-nri
+      uses: actions/cache@v3.2.2
+      with:
+        path: NRI\_NRI_SDK
+        key: nvidia-nri-${{ fromJson(steps.read-nri-json.outputs.content).sha }}
+    
+    # Static lib is broken - Add "-DNRI_STATIC_LIBRARY:BOOL=ON" to try again
+    - name: Get NVIDIA NRI
+      if: steps.cache-nri.outputs.cache-hit != 'true'
+      run: |
+        git clone https://github.com/NVIDIAGameWorks/NRI
+        cd NRI
+        git checkout ${{ fromJson(steps.read-nri-json.outputs.content).sha }}
+        git submodule update --init --recursive
+        cmake -B _Compiler
+        cmake --build _Compiler --parallel --config Release
+        & ".\3-Prepare NRI SDK.bat"
+        cd ..
+        
+  build-nvidia-nrd:
+    runs-on: windows-2022
+    steps:
+    - name: Get NVIDIA NRD details
+      run: |
+        curl --location --output nrd.sha "https://api.github.com/repos/NVIDIAGameWorks/RayTracingDenoiser/commits/master"
+
+    - name: Upload NVIDIA NRD SHA
+      uses: actions/upload-artifact@v3.1.2
+      with:
+        name: nrd.sha.artifact
+        path: nrd.sha
 
     - name: Read NVIDIA NRD Json from file
       id: read-nrd-json
@@ -104,26 +167,6 @@ jobs:
       with:
         path: nrd.sha
 
-    # NRI Section
-    - name: Cache NVIDIA NRI
-      id: cache-nri
-      uses: actions/cache@v3.2.2
-      with:
-        path: NRI\_NRI_SDK
-        key: nvidia-nri-${{ fromJson(steps.read-nri-json.outputs.content).sha }}
-
-    # Static lib is broken - Add "-DNRI_STATIC_LIBRARY:BOOL=ON" to try again
-    - name: Get NVIDIA NRI
-      if: steps.cache-nri.outputs.cache-hit != 'true'
-      run: |
-        git clone --recurse-submodules https://github.com/NVIDIAGameWorks/NRI
-        cd NRI
-        cmake -B _Compiler
-        cmake --build _Compiler --parallel --config Release
-        & ".\3-Prepare NRI SDK.bat"
-        cd ..
-
-    # NRD Section (Includes retrieving DXC)
     - name: Cache NVIDIA NRD
       id: cache-nrd
       uses: actions/cache@v3.2.2
@@ -154,13 +197,107 @@ jobs:
     - name: Get NVIDIA NRD
       if: steps.cache-nrd.outputs.cache-hit != 'true'
       run: |
-        git clone --recurse-submodules https://github.com/NVIDIAGameWorks/RayTracingDenoiser
+        git clone https://github.com/NVIDIAGameWorks/RayTracingDenoiser
         cd RayTracingDenoiser
+        git checkout ${{ fromJson(steps.read-nrd-json.outputs.content).sha }}
+        git submodule update --init --recursive
         cmake -B _Compiler -DNRD_INTERPROCEDURAL_OPTIMIZATION:BOOL=ON -DDXC_SPIRV_PATH:FILEPATH="${{github.workspace}}\dxc\bin\x64\dxc.exe"
         cmake --build _Compiler --parallel --config Release
         & ".\3-Prepare NRD SDK.bat" --no-pause --no-shaders --no-integration
         cd ..
+  
+  build:
+    runs-on: windows-2022
+    needs: [build-feanor-core, build-feanor-external, build-nvidia-nri, build-nvidia-nrd]
+    steps:
+    - uses: actions/checkout@v3.3.0
 
+    # Download SHAs
+    - name: Download Feanor Core SHA
+      uses: actions/download-artifact@v3.0.2
+      with:
+        name: feanor.core.sha.artifact
+        path: feanor.core.sha
+        
+    - name: Download Feanor External SHA
+      uses: actions/download-artifact@v3.0.2
+      with:
+        name: feanor.external.sha.artifact
+        path: feanor.external.sha
+    
+    - name: Download NVIDIA NRI SHA
+      uses: actions/download-artifact@v3.0.2
+      with:
+        name: nri.sha.artifact
+        path: nri.sha
+        
+    - name: Download NVIDIA NRD SHA
+      uses: actions/download-artifact@v3.0.2
+      with:
+        name: nrd.sha.artifact
+        path: nrd.sha
+    
+    # Read to var
+    - name: Read Feanor Core Commit SHA to Variable
+      id: read-core-sha
+      uses: juliangruber/read-file-action@v1.1.6
+      with:
+        path: feanor.core.sha
+        
+    - name: Read Feanor External Commit SHA to Variable
+      id: read-external-sha
+      uses: juliangruber/read-file-action@v1.1.6
+      with:
+        path: feanor.external.sha
+        
+    - name: Read NVIDIA NRI Json from file
+      id: read-nri-json
+      uses: juliangruber/read-file-action@v1.1.6
+      with:
+        path: nri.sha
+        
+    - name: Read NVIDIA NRD Json from file
+      id: read-nrd-json
+      uses: juliangruber/read-file-action@v1.1.6
+      with:
+        path: nrd.sha
+    
+    # Get cache contents
+    - name: Cache Feanor Core
+      id: cache-core
+      uses: actions/cache@v3.2.2
+      with:
+        path: installed-core
+        key: feanor-core-${{ fromJson(steps.read-core-sha.outputs.content).id }}
+
+    - name: Cache Feanor External
+      id: cache-external
+      uses: actions/cache@v3.2.2
+      with:
+        path: installed-external
+        key: feanor-external-${{ fromJson(steps.read-external-sha.outputs.content).id }}
+
+    - name: Cache NVIDIA NRI
+      id: cache-nri
+      uses: actions/cache@v3.2.2
+      with:
+        path: NRI\_NRI_SDK
+        key: nvidia-nri-${{ fromJson(steps.read-nri-json.outputs.content).sha }}
+
+    - name: Cache NVIDIA NRD
+      id: cache-nrd
+      uses: actions/cache@v3.2.2
+      with:
+        path: RayTracingDenoiser\_NRD_SDK
+        key: nvidia-nrd-${{ fromJson(steps.read-nrd-json.outputs.content).sha }}
+    
+    # Validate all caches present
+    - name: Validate all caches present
+      if: steps.cache-core.outputs.cache-hit != 'true' || steps.cache-external.outputs.cache-hit != 'true' || steps.cache-nri.outputs.cache-hit != 'true' || steps.cache-nrd.outputs.cache-hit != 'true'
+      run: |
+        echo "Validation failed. There is a missing cache"
+        exit 1
+    
     # Merge dirs
     - name: Merge dependency directories into installed directory
       run: |
@@ -179,10 +316,6 @@ jobs:
       
     - name: Add MSBuild to PATH
       uses: microsoft/setup-msbuild@v1.1.3
-
-#   - name: Restore NuGet packages
-#     working-directory: ${{github.workspace}}
-#      run: nuget restore ${{env.SOLUTION_FILE_PATH}}
 
     - name: Build
       working-directory: ${{github.workspace}}
