@@ -166,7 +166,7 @@ jobs:
       uses: actions/cache@v3.2.2
       with:
         path: RayTracingDenoiser\_NRD_SDK
-        key: nvidia-nrd-${{ fromJson(steps.read-nrd-json.outputs.content).sha }}
+        key: nvidia-nrd-${{ steps.nrd-sha.outputs.sha }}
 
     - name: Get Microsoft DXC Json
       if: steps.cache-nrd.outputs.cache-hit != 'true'
@@ -193,7 +193,7 @@ jobs:
       run: |
         git clone https://github.com/NVIDIAGameWorks/RayTracingDenoiser
         cd RayTracingDenoiser
-        git checkout ${{ fromJson(steps.read-nrd-json.outputs.content).sha }}
+        git checkout ${{ steps.nrd-sha.outputs.sha }}
         git submodule update --init --recursive
         cmake -B _Compiler -DNRD_INTERPROCEDURAL_OPTIMIZATION:BOOL=ON -DDXC_SPIRV_PATH:FILEPATH="${{github.workspace}}\dxc\bin\x64\dxc.exe"
         cmake --build _Compiler --parallel --config Release
