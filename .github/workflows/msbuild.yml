@@ -217,25 +217,21 @@ jobs:
       uses: actions/download-artifact@v3.0.2
       with:
         name: feanor.core.sha.artifact
-        path: feanor.core.sha
         
     - name: Download Feanor External SHA
       uses: actions/download-artifact@v3.0.2
       with:
         name: feanor.external.sha.artifact
-        path: feanor.external.sha
     
     - name: Download NVIDIA NRI SHA
       uses: actions/download-artifact@v3.0.2
       with:
         name: nri.sha.artifact
-        path: nri.sha
         
     - name: Download NVIDIA NRD SHA
       uses: actions/download-artifact@v3.0.2
       with:
         name: nrd.sha.artifact
-        path: nrd.sha
     
     # Read to var
     - name: Read Feanor Core Commit SHA to Variable
