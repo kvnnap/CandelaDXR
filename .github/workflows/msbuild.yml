@@ -24,42 +24,36 @@ env:
 jobs:
   build-feanor-core:
     runs-on: windows-2022
+    outputs:
+      sha: ${{ steps.core-sha.outputs.sha }}
     steps:
-    #- name: Cache Feanor Core Sha
-    #  uses: actions/cache@v3.2.2
-    #  with:
-    #    path: feanor.core.sha
-    #    key: feanor-core-sha-${{ github.run_id }}
-    - name: Get Feanor Core SHA
+    - name: Get Feanor Core SHA JSON
       run: |
         curl --location --output feanor.core.sha --header "PRIVATE-TOKEN: ${{env.GITLAB_TOKEN}}" "https://gitlab.com/api/v4/projects/${{env.FEANOR_CORE_ID}}/repository/commits/master"
-        
-    - name: Upload Feanor Core SHA
-      uses: actions/upload-artifact@v3.1.2
-      with:
-        name: feanor.core.sha.artifact
-        path: feanor.core.sha
-        
-    - name: Read Feanor Core Commit SHA to Variable
+    
+    - name: Read Feanor Core Commit SHA JSON to Variable
       id: read-core-sha
       uses: juliangruber/read-file-action@v1.1.6
       with:
         path: feanor.core.sha
+    
+    - name: Set output Feanor Core SHA
+      id: core-sha
+      run: echo "sha=${{ fromJson(steps.read-core-sha.outputs.content).id }}" | Out-File -FilePath $Env:GITHUB_OUTPUT -Encoding utf-8 -Append
         
     - name: Cache Feanor Core
       id: cache-core
       uses: actions/cache@v3.2.2
       with:
         path: installed-core
-        key: feanor-core-${{ fromJson(steps.read-core-sha.outputs.content).id }}
+        key: feanor-core-${{ steps.core-sha.outputs.sha }}
     
-    # Changed to use git clone
     - name: Get Feanor Core Repo
       if: steps.cache-core.outputs.cache-hit != 'true'
       run: |
         git clone https://oauth2:${{env.GITLAB_TOKEN}}@gitlab.com/cgvg/feanor/core feanor-core
         cd feanor-core
-        git checkout ${{ fromJson(steps.read-core-sha.outputs.content).id }}
+        git checkout ${{ steps.core-sha.outputs.sha }}
         cd ..
     
     - name: Build and install Feanor Core
@@ -70,36 +64,36 @@ jobs:
         
   build-feanor-external:
     runs-on: windows-2022
+    outputs:
+      sha: ${{ steps.external-sha.outputs.sha }}
     steps:
     - name: Get Feanor External Commit SHA
       run: |
         curl --location --output feanor.external.sha --header "PRIVATE-TOKEN: ${{env.GITLAB_TOKEN}}" "https://gitlab.com/api/v4/projects/${{env.FEANOR_EXTERNAL_ID}}/repository/commits/master"
-      
-    - name: Upload Feanor External SHA
-      uses: actions/upload-artifact@v3.1.2
-      with:
-        name: feanor.external.sha.artifact
-        path: feanor.external.sha
 
     - name: Read Feanor External Commit SHA to Variable
       id: read-external-sha
       uses: juliangruber/read-file-action@v1.1.6
       with:
         path: feanor.external.sha
-
+        
+    - name: Set output Feanor External SHA
+      id: external-sha
+      run: echo "sha=${{ fromJson(steps.read-external-sha.outputs.content).id }}" | Out-File -FilePath $Env:GITHUB_OUTPUT -Encoding utf-8 -Append
+      
     - name: Cache Feanor External
       id: cache-external
       uses: actions/cache@v3.2.2
       with:
         path: installed-external
-        key: feanor-external-${{ fromJson(steps.read-external-sha.outputs.content).id }}
+        key: feanor-external-${{ steps.external-sha.outputs.sha }}
         
     - name: Get Feanor External Repo
       if: steps.cache-external.outputs.cache-hit != 'true'
       run: |
         git clone https://oauth2:${{env.GITLAB_TOKEN}}@gitlab.com/cgvg/feanor/external feanor-external
         cd feanor-external
-        git checkout ${{ fromJson(steps.read-external-sha.outputs.content).id }}
+        git checkout ${{ steps.external-sha.outputs.sha }}
         git submodule update --init --recursive
         cd ..
         
@@ -111,29 +105,29 @@ jobs:
         
   build-nvidia-nri:
     runs-on: windows-2022
+    outputs:
+      sha: ${{ steps.nri-sha.outputs.sha }}
     steps:
     - name: Get NVIDIA NRI details
       run: |
         curl --location --output nri.sha "https://api.github.com/repos/NVIDIAGameWorks/NRI/commits/main"
-    
-    - name: Upload NVIDIA NRI SHA
-      uses: actions/upload-artifact@v3.1.2
-      with:
-        name: nri.sha.artifact
-        path: nri.sha
     
     - name: Read NVIDIA NRI Json from file
       id: read-nri-json
       uses: juliangruber/read-file-action@v1.1.6
       with:
         path: nri.sha
+        
+    - name: Set output NVIDIA NRI SHA
+      id: nri-sha
+      run: echo "sha=${{ fromJson(steps.read-nri-json.outputs.content).sha }}" | Out-File -FilePath $Env:GITHUB_OUTPUT -Encoding utf-8 -Append
     
     - name: Cache NVIDIA NRI
       id: cache-nri
       uses: actions/cache@v3.2.2
       with:
         path: NRI\_NRI_SDK
-        key: nvidia-nri-${{ fromJson(steps.read-nri-json.outputs.content).sha }}
+        key: nvidia-nri-${{ steps.nri-sha.outputs.sha }}
     
     # Static lib is broken - Add "-DNRI_STATIC_LIBRARY:BOOL=ON" to try again
     - name: Get NVIDIA NRI
@@ -141,7 +135,7 @@ jobs:
       run: |
         git clone https://github.com/NVIDIAGameWorks/NRI
         cd NRI
-        git checkout ${{ fromJson(steps.read-nri-json.outputs.content).sha }}
+        git checkout ${{ steps.nri-sha.outputs.sha }}
         git submodule update --init --recursive
         cmake -B _Compiler
         cmake --build _Compiler --parallel --config Release
@@ -150,16 +144,12 @@ jobs:
         
   build-nvidia-nrd:
     runs-on: windows-2022
+    outputs:
+      sha: ${{ steps.nrd-sha.outputs.sha }}
     steps:
     - name: Get NVIDIA NRD details
       run: |
         curl --location --output nrd.sha "https://api.github.com/repos/NVIDIAGameWorks/RayTracingDenoiser/commits/master"
-
-    - name: Upload NVIDIA NRD SHA
-      uses: actions/upload-artifact@v3.1.2
-      with:
-        name: nrd.sha.artifact
-        path: nrd.sha
 
     - name: Read NVIDIA NRD Json from file
       id: read-nrd-json
@@ -167,6 +157,10 @@ jobs:
       with:
         path: nrd.sha
 
+    - name: Set output NVIDIA NRD SHA
+      id: nrd-sha
+      run: echo "sha=${{ fromJson(steps.read-nrd-json.outputs.content).sha }}" | Out-File -FilePath $Env:GITHUB_OUTPUT -Encoding utf-8 -Append
+    
     - name: Cache NVIDIA NRD
       id: cache-nrd
       uses: actions/cache@v3.2.2
@@ -211,52 +205,6 @@ jobs:
     needs: [build-feanor-core, build-feanor-external, build-nvidia-nri, build-nvidia-nrd]
     steps:
     - uses: actions/checkout@v3.3.0
-
-    # Download SHAs
-    - name: Download Feanor Core SHA
-      uses: actions/download-artifact@v3.0.2
-      with:
-        name: feanor.core.sha.artifact
-        
-    - name: Download Feanor External SHA
-      uses: actions/download-artifact@v3.0.2
-      with:
-        name: feanor.external.sha.artifact
-    
-    - name: Download NVIDIA NRI SHA
-      uses: actions/download-artifact@v3.0.2
-      with:
-        name: nri.sha.artifact
-        
-    - name: Download NVIDIA NRD SHA
-      uses: actions/download-artifact@v3.0.2
-      with:
-        name: nrd.sha.artifact
-    
-    # Read to var
-    - name: Read Feanor Core Commit SHA to Variable
-      id: read-core-sha
-      uses: juliangruber/read-file-action@v1.1.6
-      with:
-        path: feanor.core.sha
-        
-    - name: Read Feanor External Commit SHA to Variable
-      id: read-external-sha
-      uses: juliangruber/read-file-action@v1.1.6
-      with:
-        path: feanor.external.sha
-        
-    - name: Read NVIDIA NRI Json from file
-      id: read-nri-json
-      uses: juliangruber/read-file-action@v1.1.6
-      with:
-        path: nri.sha
-        
-    - name: Read NVIDIA NRD Json from file
-      id: read-nrd-json
-      uses: juliangruber/read-file-action@v1.1.6
-      with:
-        path: nrd.sha
     
     # Get cache contents
     - name: Cache Feanor Core
@@ -264,28 +212,28 @@ jobs:
       uses: actions/cache@v3.2.2
       with:
         path: installed-core
-        key: feanor-core-${{ fromJson(steps.read-core-sha.outputs.content).id }}
+        key: feanor-core-${{ needs.build-feanor-core.outputs.sha }}
 
     - name: Cache Feanor External
       id: cache-external
       uses: actions/cache@v3.2.2
       with:
         path: installed-external
-        key: feanor-external-${{ fromJson(steps.read-external-sha.outputs.content).id }}
+        key: feanor-external-${{ needs.build-feanor-external.outputs.sha }}
 
     - name: Cache NVIDIA NRI
       id: cache-nri
       uses: actions/cache@v3.2.2
       with:
         path: NRI\_NRI_SDK
-        key: nvidia-nri-${{ fromJson(steps.read-nri-json.outputs.content).sha }}
+        key: nvidia-nri-${{ needs.build-nvidia-nri.outputs.sha }}
 
     - name: Cache NVIDIA NRD
       id: cache-nrd
       uses: actions/cache@v3.2.2
       with:
         path: RayTracingDenoiser\_NRD_SDK
-        key: nvidia-nrd-${{ fromJson(steps.read-nrd-json.outputs.content).sha }}
+        key: nvidia-nrd-${{ needs.build-nvidia-nrd.outputs.sha }}
     
     # Validate all caches present
     - name: Validate all caches present
