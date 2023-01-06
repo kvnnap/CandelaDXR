@@ -9,7 +9,7 @@
 #include "DirectX/DxUtil.h"
 
 #include "NRI.h"
-#include "NRIDescs.hpp"
+#include "NRIDescs.h"
 #include "Extensions/NRIHelper.h"
 #include "Extensions/NRIWrapperD3D12.h"
 #include "NVIDIA/NRDIntegration.h"
@@ -517,7 +517,7 @@ void DenoiserShading::setupDenoiser()
 
 		nrd::DenoiserCreationDesc denoiserCreationDesc = {};
 		denoiserCreationDesc.requestedMethods = methodDescs;
-		denoiserCreationDesc.requestedMethodNum = static_cast<uint32_t>(std::size(methodDescs));
+		denoiserCreationDesc.requestedMethodsNum = static_cast<uint32_t>(std::size(methodDescs));
 
 		NRD[i] = make_unique<NrdIntegration>(rRes->numBackBuffers);
 		bool res = NRD[i]->Initialize(denoiserCreationDesc, *nriDevice, *NRI, *NRI);
