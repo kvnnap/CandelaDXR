@@ -30,7 +30,7 @@ Scene::Scene()
 	sceneGraph.Transform = DirectX::XMMatrixIdentity();
 }
 
-size_t Scene::addTexture(Texture texture)
+size_t Scene::addTexture(std::unique_ptr<Texture> texture)
 {
 	textures.push_back(std::move(texture));
 	return textures.size() - 1;
@@ -165,18 +165,13 @@ void Scene::recalculateLightsAndFaceAttributes()
 	}
 }
 
-void Scene::addSceneNodeToGroupMapping(SceneNode& sceneNode, const string& sceneNodeName, const string& groupName)
+SceneNode& Scene::addSceneNodeToGroupMapping(SceneNode& sceneNode, const string& sceneNodeName, const string& groupName)
 {
+	DirectX::XMVECTOR centrePosition{};
 	auto item = spanDataMap.find(groupName);
-	if (item == spanDataMap.end())
-		return;
-	sceneNode.addChild(sceneNodeName, groupName, item->second.CentrePosition);
-	// Update centre position
-	DirectX::XMVECTOR accum{};
-	for (auto& snChild : sceneNode.Children)
-		accum = DirectX::XMVectorAdd(accum, snChild->CentrePosition);
-	const float invSize = 1.f / sceneNode.Children.size();
-	sceneNode.CentrePosition = DirectX::XMVectorMultiply(accum, DirectX::XMVectorSet(invSize, invSize, invSize, invSize));
+	if (item != spanDataMap.end())
+		centrePosition = item->second.CentrePosition;
+	return sceneNode.addChild(sceneNodeName, groupName, centrePosition);
 }
 
 bool Material::isEmissive() const
@@ -223,9 +218,20 @@ Matrix SceneNode::getTransform() const
 	return mat;
 }
 
-void SceneNode::getLeafNodes(vector<SceneNode*>& leafs)
+void SceneNode::processCentrePositionsForDirectChildren()
 {
 	if (isLeaf())
+		return;
+	DirectX::XMVECTOR accum{};
+	for (auto& snChild : Children)
+		accum = DirectX::XMVectorAdd(accum, snChild->CentrePosition);
+	const float invSize = 1.f / Children.size();
+	CentrePosition = DirectX::XMVectorMultiply(accum, DirectX::XMVectorSet(invSize, invSize, invSize, invSize));
+}
+
+void SceneNode::getLeafNodes(vector<SceneNode*>& leafs)
+{
+	if (isLeaf() && !GroupName.empty())
 	{
 		leafs.push_back(this);
 		return;
@@ -272,7 +278,7 @@ const vector<Vector2>& Scene::getTextureCoords() const { return textureCoords; }
 const vector<Vector3>& Scene::getNormals() const { return normals; }
 const vector<int>& Scene::getIndices() const { return indexData; }
 
-const vector<Texture>& Scene::getTextures() const { return textures; }
+const vector<std::unique_ptr<Texture>>& Scene::getTextures() const { return textures; }
 const vector<Material>& Scene::getMaterials() const { return materials; }
 string Scene::getMaterialName(size_t matId) const { return materialNames.at(matId); }
 vector<Material>& Scene::getMaterials() { return materials; }

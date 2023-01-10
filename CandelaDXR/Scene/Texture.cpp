@@ -5,9 +5,31 @@
 #include "Exception/Exception.h"
 
 using candela::scene::Texture;
+using candela::scene::MemoryTexture;
+using candela::scene::StbTexture;
 
-Texture::Texture(const std::string& fileName)
-	: dataBuffer(nullptr, stbImageDeleter), width(), height(), channels()
+Texture::Texture()
+	: width(), height(), channels()
+{
+}
+
+MemoryTexture::MemoryTexture(const void* imageData, int width, int height, int bytesPerPixel)
+{
+	auto sizeInBytes = width * height * bytesPerPixel;
+	dataBuffer = std::make_unique<unsigned char[]>(sizeInBytes);
+	memcpy(dataBuffer.get(), imageData, sizeInBytes);
+	this->width = width;
+	this->height = height;
+	this->channels = bytesPerPixel;
+}
+
+const unsigned char* MemoryTexture::data() const
+{
+	return dataBuffer.get();
+}
+
+StbTexture::StbTexture(const std::string& fileName)
+	: dataBuffer(nullptr, stbImageDeleter)
 {
 	int imageChannels;
 	dataBuffer = StbImagePtr(stbi_load(fileName.c_str(), &width, &height, &imageChannels, channels = STBI_rgb_alpha), stbImageDeleter);
@@ -15,16 +37,26 @@ Texture::Texture(const std::string& fileName)
 		ThrowException("Texture '" + fileName + "' cannot be loaded");
 }
 
-void Texture::stbImageDeleter(unsigned char* image)
+StbTexture::StbTexture(const void* imageData, std::size_t len)
+	: dataBuffer(nullptr, stbImageDeleter)
+{
+	int imageChannels;
+	dataBuffer = StbImagePtr(stbi_load_from_memory(reinterpret_cast<const stbi_uc*>(imageData), len, &width, &height, &imageChannels, channels = STBI_rgb_alpha), stbImageDeleter);
+	if (!dataBuffer)
+		ThrowException("Texture cannot be loaded");
+}
+
+const unsigned char* StbTexture::data() const
+{
+	return dataBuffer.get();
+}
+
+void StbTexture::stbImageDeleter(unsigned char* image)
 {
 	if (image != nullptr)
 		stbi_image_free(image);
 }
 
-const unsigned char* Texture::data() const
-{
-	return dataBuffer.get();
-}
 
 int Texture::getWidth() const
 {
@@ -45,3 +77,5 @@ int Texture::getBytesPerPixel() const
 {
 	return channels * 8;
 }
+
+

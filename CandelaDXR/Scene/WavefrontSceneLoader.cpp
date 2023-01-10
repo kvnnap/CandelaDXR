@@ -15,6 +15,7 @@ using std::int32_t;
 using std::uint32_t;
 using std::size_t;
 using std::array;
+using std::make_unique;
 using std::filesystem::path;
 
 using tinyobj::attrib_t;
@@ -26,6 +27,7 @@ using candela::mathematics::Vector2;
 using candela::mathematics::Vector3;
 
 using candela::scene::WavefrontSceneLoader;
+using candela::scene::StbTexture;
 using candela::mathematics::Vector3;
 
 WavefrontSceneLoader::WavefrontSceneLoader(Scene* scene)
@@ -63,9 +65,9 @@ void WavefrontSceneLoader::loadScene()
         int32_t currentDiffTexId = -1;
         int32_t currentSpecTexId = -1;
         if (!tinyMat.diffuse_texname.empty())
-            currentDiffTexId = static_cast<int>(scene->addTexture(getConcatPath(basePath, tinyMat.diffuse_texname).string()));
+            currentDiffTexId = static_cast<int>(scene->addTexture(make_unique<StbTexture>(getConcatPath(basePath, tinyMat.diffuse_texname).string())));
         if (!tinyMat.specular_texname.empty())
-            currentSpecTexId = static_cast<int>(scene->addTexture(getConcatPath(basePath, tinyMat.specular_texname).string()));
+            currentSpecTexId = static_cast<int>(scene->addTexture(make_unique<StbTexture>(getConcatPath(basePath, tinyMat.specular_texname).string())));
         
         // Materials point to textures using the identifier
         scene->addMaterial(Material{
@@ -152,6 +154,8 @@ void WavefrontSceneLoader::loadScene()
         // Add to scene graph
         scene->addSceneNodeToGroupMapping(sceneNode, shape.name, shape.name);
     }
+
+    sceneNode.processCentrePositionsForDirectChildren();
 }
 
 void WavefrontSceneLoader::setFilePath(const string& filePath)

@@ -38,6 +38,8 @@ void SingleIOComputeShader::init(RendererResources* rendererResources, wrl::ComP
 	resources = res;
 	this->numInputs = numInputs;
 	this->numOutputs = numOutputs;
+	if (numInputs == 0 || numOutputs == 0)
+		ThrowException("numInputs/numOutputs cannot be zero. Maybe no lights?");
 
 	// First need to generate Root Signature
 	auto rsm = std::make_shared<RootSignatureManager>();
@@ -50,7 +52,7 @@ void SingleIOComputeShader::init(RendererResources* rendererResources, wrl::ComP
 	param.InitAsConstants(static_cast<UINT>(cbSize / 4), 1u); rsm->setParameter("Constants1", param);
 	rsm->addParametersToRootSignature("ComputeRootSignature", { "Constants", "Constants1", "IODescTable" });
 	computeRootSignature = rsm->generateRootSignature("ComputeRootSignature", pDevice, D3D12_ROOT_SIGNATURE_FLAG_NONE);
-
+	
 	// Create descriptor heap
 	descHeapManager = std::make_unique<DescriptorHeap>(rsm, "IODescTable", "IO1", pDevice);
 

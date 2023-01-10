@@ -11,7 +11,14 @@
 
 using std::filesystem::path;
 using std::array;
+using std::string;
+using std::make_unique;
 using candela::scene::AssImpSceneLoader;
+using candela::scene::SceneNode;
+using candela::scene::Scene;
+using candela::scene::Texture;
+using candela::scene::MemoryTexture;
+using candela::scene::StbTexture;
 using candela::mathematics::Vector2;
 using candela::mathematics::Vector3;
 
@@ -19,6 +26,50 @@ static path getConcatPath(path base, path other)
 {
 	base /= other;
 	return base;
+}
+
+static void processSceneGraph(Scene& scene, const aiScene* sceneAi, SceneNode* sceneNode, const aiNode* sceneAiNode)
+{
+	string nodeName = sceneAiNode->mName.C_Str();
+	string groupName;
+
+	if (sceneAiNode->mNumMeshes > 1)
+		throw std::runtime_error("Model node has more than one mesh, this is currently unsupported");
+
+	// Process current node
+	if (sceneAiNode->mNumMeshes > 0)
+	{
+		auto index = sceneAiNode->mMeshes[0];
+		groupName = sceneAi->mMeshes[index]->mName.C_Str();
+	}
+
+	auto& childSceneNode = scene.addSceneNodeToGroupMapping(*sceneNode, nodeName, groupName);
+	memcpy(&childSceneNode.Transform, &sceneAiNode->mTransformation, sizeof(childSceneNode.Transform));
+	childSceneNode.Transform = DirectX::XMMatrixTranspose(childSceneNode.Transform); // assimp mat should have been row-major, why tranpose?
+	// Process scene graph
+	for (unsigned int i = 0; i < sceneAiNode->mNumChildren; ++i)
+		processSceneGraph(scene, sceneAi, &childSceneNode, sceneAiNode->mChildren[i]);
+
+	childSceneNode.processCentrePositionsForDirectChildren();
+}
+
+static int32_t addTextureToScene(Scene* scene, path basePath, const aiScene* pScene, aiString texFileName)
+{
+	int32_t currentTexId = -1;
+	auto emDiffTex = pScene->GetEmbeddedTexture(texFileName.C_Str());
+	if (emDiffTex)
+	{
+		if (emDiffTex->mHeight == 0)
+			currentTexId = static_cast<int32_t>(scene->addTexture(make_unique<StbTexture>(emDiffTex->pcData, emDiffTex->mWidth)));
+		else
+			currentTexId = static_cast<int32_t>(scene->addTexture(make_unique<MemoryTexture>(emDiffTex->pcData, emDiffTex->mWidth, emDiffTex->mHeight)));
+	}
+	else
+	{
+		currentTexId = static_cast<int32_t>(scene->addTexture(make_unique<StbTexture>(getConcatPath(basePath, texFileName.C_Str()).string())));
+	}
+
+	return currentTexId;
 }
 
 AssImpSceneLoader::AssImpSceneLoader(Scene* scene)
@@ -29,7 +80,7 @@ AssImpSceneLoader::AssImpSceneLoader(Scene* scene)
 void AssImpSceneLoader::loadScene()
 {
 	Assimp::Importer importer;
-	auto pScene = importer.ReadFile(filePath, 
+	auto pScene = importer.ReadFile(filePath,
 		aiProcess_Triangulate |
 		aiProcess_JoinIdenticalVertices |
 		aiProcess_SortByPType |
@@ -41,8 +92,7 @@ void AssImpSceneLoader::loadScene()
 
 	uint32_t baseMaterialId = static_cast<uint32_t>(scene->getMaterials().size());
 	path basePath = path(filePath).parent_path();
-	auto objName = path(filePath).filename().string();
-	auto& sceneNode = scene->getSceneGraph().addChild(objName, {}, {});
+	const auto objName = path(filePath).filename().string();
 
 	// Load materials
 	for (unsigned int i = 0; i < pScene->mNumMaterials; ++i)
@@ -72,14 +122,14 @@ void AssImpSceneLoader::loadScene()
 		{
 			aiString diffTex;
 			mat->GetTexture(aiTextureType_DIFFUSE, 0, &diffTex);
-			currentDiffTexId = scene->addTexture(getConcatPath(basePath, diffTex.C_Str()).string());
+			currentDiffTexId = addTextureToScene(scene, basePath, pScene, diffTex);
 		}
 
 		if (mat->GetTextureCount(aiTextureType_SPECULAR))
 		{
 			aiString specTex;
 			mat->GetTexture(aiTextureType_SPECULAR, 0, &specTex);
-			currentSpecTexId = scene->addTexture(getConcatPath(basePath, specTex.C_Str()).string());
+			currentSpecTexId = addTextureToScene(scene, basePath, pScene, specTex);
 		}
 
 		// Materials point to textures using the identifier
@@ -141,10 +191,9 @@ void AssImpSceneLoader::loadScene()
 
 		// End this group
 		scene->endGroup();
-
-		// Add to scene graph
-		scene->addSceneNodeToGroupMapping(sceneNode, meshName, meshName);
 	}
+
+	processSceneGraph(*scene, pScene, &scene->getSceneGraph(), pScene->mRootNode);
 }
 
 void AssImpSceneLoader::setFilePath(const std::string& p_filePath)

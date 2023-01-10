@@ -46,6 +46,7 @@ void ImGuiSceneNode::drawUi()
 
 	ImGui::PopID();
 
+	// TODO: Handle initial rotation and scaling as well
 	if (changed)
 		sceneNode.Transform = 
 		  DirectX::XMMatrixTranslation(worldPosition.x, worldPosition.y, worldPosition.z)

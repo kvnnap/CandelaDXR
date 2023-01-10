@@ -32,6 +32,7 @@ namespace candela::scene
 		bool isLeaf() const;
 		mathematics::Matrix getTransform() const;
 
+		void processCentrePositionsForDirectChildren();
 		void getLeafNodes(std::vector<SceneNode*>& leafs);
 		std::vector<SceneNode*> getLeafNodes();
 
@@ -94,7 +95,7 @@ namespace candela::scene
 	public:
 		Scene();
 
-		std::size_t addTexture(Texture texture);
+		std::size_t addTexture(std::unique_ptr<Texture> texture);
 		void addMaterial(Material material, const std::string& name = "");
 
 		void startGroup(const std::string& name);
@@ -106,7 +107,7 @@ namespace candela::scene
 		void recalculateLightsAndFaceAttributes();
 
 		// Scene graph
-		void addSceneNodeToGroupMapping(SceneNode& sceneNode, const std::string& sceneNodeName, const std::string& groupName);
+		SceneNode& addSceneNodeToGroupMapping(SceneNode& sceneNode, const std::string& sceneNodeName, const std::string& groupName);
 
 		// Getters
 		const std::vector<mathematics::Vector3>& getVertices() const;
@@ -114,7 +115,7 @@ namespace candela::scene
 		const std::vector<mathematics::Vector3>& getNormals() const;
 		const std::vector<int>& getIndices() const;
 
-		const std::vector<Texture>& getTextures() const;
+		const std::vector<std::unique_ptr<Texture>>& getTextures() const;
 		std::string getMaterialName(std::size_t matId) const;
 		const std::vector<Material>& getMaterials() const;
 		std::vector<Material>& getMaterials();
@@ -140,7 +141,7 @@ namespace candela::scene
 
 	private:
 		// Data
-		std::vector<Texture> textures;
+		std::vector<std::unique_ptr<Texture>> textures;
 		std::vector<Material> materials;
 		std::vector<std::string> materialNames;
 		std::vector<AreaLight> lights;

@@ -635,10 +635,10 @@ void Renderer::initSceneResources()
 			pDevice,
 			pCurrentCommandList,
 			*tempTexBuffer++,
-			texture.data(),
-			texture.getWidth(),
-			texture.getHeight(),
-			texture.getChannels(),
+			texture->data(),
+			texture->getWidth(),
+			texture->getHeight(),
+			texture->getChannels(),
 			DXGI_FORMAT_R8G8B8A8_UNORM, flags), flags);
 		textures.back().setName(L"Texture");
 	}
