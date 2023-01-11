@@ -16,10 +16,10 @@ using DirectX::operator+=;
 using DirectX::operator+;
 using DirectX::operator*;
 
-Camera::Camera(const XMVECTOR& position, const XMVECTOR& direction, float nearWidth, float nearHeight, float nearZ, float farZ)
-	: position(position), direction(XMVector3Normalize(direction)), up(), nearWidth(nearWidth), nearHeight(nearHeight), nearZ(nearZ), farZ(farZ), viewMatrix(), changed()
+Camera::Camera(const XMVECTOR& position, const XMVECTOR& direction, float nearWidth, float nearHeight, float nearZ, float farZ, const DirectX::XMVECTOR& up)
+	: position(position), direction(XMVector3Normalize(direction)), up(up), nearWidth(nearWidth), nearHeight(nearHeight), nearZ(nearZ), farZ(farZ), viewMatrix(), changed()
 {
-	lookTo(direction);
+	lookTo(direction, up);
 	perspectiveMatrix = XMMatrixPerspectiveRH(nearWidth, nearHeight, nearZ, farZ);
 	origPosition = position;
 	origDirection = direction;
@@ -88,6 +88,11 @@ void Camera::incrementDirection(float rotationLeftRight, float rotationUpDown)
 	recalculateViewMatrix();
 }
 
+void Camera::setName(const std::string& name)
+{
+	this->name = name;
+}
+
 const XMVECTOR& Camera::getPosition() const
 {
 	return position;
@@ -129,9 +134,19 @@ XMMATRIX Camera::getViewPerspectiveMatrixColMajor() const
 	return XMMatrixTranspose(getViewPerspectiveMatrix());
 }
 
+const std::string& Camera::getName() const
+{
+	return name;
+}
+
 bool Camera::hasChanged() const
 {
 	return changed;
+}
+
+void Camera::setChanged()
+{
+	changed = true;
 }
 
 void Camera::resetChanged()

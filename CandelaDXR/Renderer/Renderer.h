@@ -55,6 +55,9 @@ namespace candela::renderer
 		void setShaderAccumulation(bool shaderAccumulation);
 		bool getShaderAccumulation() const;
 
+		void setCameraCopy(const Camera& camera);
+		const scene::Scene& getScene() const;
+
 		// Promote to interface?
 		RendererTime& getRendererTime();
 		void setAnimationRecords(std::vector<AnimationRecord>&& animationRecords);

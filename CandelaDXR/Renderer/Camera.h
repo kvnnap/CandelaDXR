@@ -2,6 +2,7 @@
 
 #include <DirectXMath.h>
 
+#include <string>
 #include "ITransform.h"
 
 namespace candela::renderer
@@ -10,7 +11,7 @@ namespace candela::renderer
 		: public ITransform
 	{
 	public:
-		Camera(const DirectX::XMVECTOR& position, const DirectX::XMVECTOR& direction, float nearWidth, float nearHeight, float nearZ, float farZ);
+		Camera(const DirectX::XMVECTOR& position, const DirectX::XMVECTOR& direction, float nearWidth, float nearHeight, float nearZ, float farZ, const DirectX::XMVECTOR& up = DirectX::XMVectorSet(0.f, 1.f, 0.f, 0.f));
 
 		// Methods
 		void lookTo(const DirectX::XMVECTOR& direction, const DirectX::XMVECTOR& up = DirectX::XMVectorSet(0.f, 1.f, 0.f, 0.f));
@@ -24,6 +25,7 @@ namespace candela::renderer
 		void incrementPositionAlongDirection(float dx, float dy);
 
 		void incrementDirection(float rotationY, float rotationZ);
+		void setName(const std::string& name);
 
 		const DirectX::XMVECTOR& getPosition() const;
 		const DirectX::XMVECTOR& getDirection() const;
@@ -33,8 +35,10 @@ namespace candela::renderer
 		DirectX::XMVECTOR getNearPlaneDimensions() const;
 		DirectX::XMMATRIX getViewPerspectiveMatrix() const;
 		DirectX::XMMATRIX getViewPerspectiveMatrixColMajor() const;
+		const std::string& getName() const;
 
 		bool hasChanged() const;
+		void setChanged();
 		void resetChanged();
 
 		void transform(const mathematics::Matrix& trans) override;
@@ -43,6 +47,8 @@ namespace candela::renderer
 	private:
 		void recalculateViewMatrix();
 		DirectX::XMVECTOR getCrossVector() const;
+
+		std::string name;
 
 		// Camera vectors
 		DirectX::XMVECTOR position;

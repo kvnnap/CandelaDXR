@@ -278,8 +278,8 @@ void Renderer::renderFrame()
 	else
 		updateCamera();
 	
-	const ChangeEvent_t camChanged = camera->hasChanged() ? static_cast<ChangeEvent_t>(ChangeEvent::Camera) : 0;
-	ChangeEvent_t changeEvent = camChanged | imguiManager.processChangeEvent();
+	ChangeEvent_t changeEvent = imguiManager.processChangeEvent();
+	changeEvent |= camera->hasChanged() ? static_cast<ChangeEvent_t>(ChangeEvent::Camera) : 0;
 
 	constexpr auto flags = D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE;
 	
@@ -555,6 +555,17 @@ void Renderer::setShaderAccumulation(bool p_shaderAccumulation)
 bool Renderer::getShaderAccumulation() const
 {
 	return shaderAccumulation;
+}
+
+void Renderer::setCameraCopy(const Camera& p_camera)
+{
+	*camera = p_camera;
+	camera->setChanged();
+}
+
+const Scene& Renderer::getScene() const
+{
+	return *scene;
 }
 
 RendererTime& Renderer::getRendererTime()

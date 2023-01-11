@@ -11,6 +11,7 @@
 #include "Texture.h"
 #include "Mathematics/Types.h"
 #include "Renderer/ITransform.h"
+#include "Renderer/Camera.h"
 
 namespace candela::scene
 {
@@ -129,6 +130,9 @@ namespace candela::scene
 		const SceneNode& getSceneGraph() const;
 		SceneNode& getSceneGraph();
 
+		void addCamera(renderer::Camera camera);
+		const std::vector<renderer::Camera>& getCameras() const;
+
 		// Utility functions - Offsets in bytes
 		const std::size_t getVerticesOffset() const;
 		const std::size_t getVerticesSizeBytes() const;
@@ -146,6 +150,7 @@ namespace candela::scene
 		std::vector<std::string> materialNames;
 		std::vector<AreaLight> lights;
 		std::vector<SpecularPrimitive> speculars;
+		std::vector<renderer::Camera> cameras;
 
 		// These contain the vertices. The 3 arrays must all be the same size
 		// Storing separately vs interleaved. Trying separate first.

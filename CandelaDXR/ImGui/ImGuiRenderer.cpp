@@ -59,6 +59,21 @@ void ImGuiRenderer::drawUi()
 		ImGui::Text(animRecord.name.c_str());
 		ImGui::PopID();
 	}
+
+	ImGui::Text("Scene Cameras");
+	for (const auto& camera : renderer.getScene().getCameras())
+	{
+		if (ImGui::Button(camera.getName().c_str()))
+			renderer.setCameraCopy(camera);
+	}
+
+	/*if (ImGui::ListBox("Shader", &shaderIndex, shaderNames.data(), static_cast<int>(shaderNames.size())))
+	{
+		lightTracingShader->setCurrentShaderIndex(static_cast<uint32_t>(shaderIndex));
+		currentComponent = ltShaderInfo[shaderIndex].component;
+		changed = true;
+	}*/
+	
 }
 
 bool ImGuiRenderer::hasChanged() const

@@ -23,6 +23,7 @@ using candela::scene::AreaLight;
 using candela::scene::SpecularPrimitive;
 using candela::scene::FaceAttributes;
 using candela::scene::IndexedSpan;
+using candela::renderer::Camera;
 
 Scene::Scene()
 {
@@ -298,6 +299,16 @@ const std::unordered_map<string, IndexedSpan>& Scene::getMeshIndexedSpanDataMap(
 
 const SceneNode& Scene::getSceneGraph() const { return sceneGraph; }
 SceneNode& Scene::getSceneGraph() { return sceneGraph; }
+
+void Scene::addCamera(Camera camera)
+{
+	cameras.push_back(camera);
+}
+
+const std::vector<Camera>& Scene::getCameras() const
+{
+	return cameras;
+}
 
 const size_t Scene::getVerticesOffset() const
 {

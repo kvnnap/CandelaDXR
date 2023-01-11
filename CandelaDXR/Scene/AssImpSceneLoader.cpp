@@ -8,6 +8,7 @@
 #include <stdexcept>
 #include <array>
 #include <filesystem>
+#include <math.h>
 
 using std::filesystem::path;
 using std::array;
@@ -21,6 +22,7 @@ using candela::scene::MemoryTexture;
 using candela::scene::StbTexture;
 using candela::mathematics::Vector2;
 using candela::mathematics::Vector3;
+using candela::renderer::Camera;
 
 static path getConcatPath(path base, path other)
 {
@@ -84,7 +86,8 @@ void AssImpSceneLoader::loadScene()
 		aiProcess_Triangulate |
 		aiProcess_JoinIdenticalVertices |
 		aiProcess_SortByPType |
-		aiProcess_GenNormals
+		aiProcess_GenNormals |
+		aiProcess_PreTransformVertices // Remove this when we can instance
 	);
 
 	if (!pScene || !pScene->mRootNode || pScene->mFlags & AI_SCENE_FLAGS_INCOMPLETE)
@@ -194,6 +197,37 @@ void AssImpSceneLoader::loadScene()
 	}
 
 	processSceneGraph(*scene, pScene, &scene->getSceneGraph(), pScene->mRootNode);
+
+	auto mySceneNodes = scene->getSceneGraph().getAllNodes();
+
+	// Add cameras
+	for (unsigned int i = 0; i < pScene->mNumCameras; ++i)
+	{
+		const auto camera = pScene->mCameras[i];
+
+		// Construct camera
+		auto nearWidth = 2.f * camera->mClipPlaneNear * std::tan(camera->mHorizontalFOV * 0.5f);
+		auto nearHeight = nearWidth / camera->mAspect;
+		Camera myCamera = Camera(
+			DirectX::XMVectorSet(camera->mPosition.x, camera->mPosition.y, camera->mPosition.z, 1.f),
+			DirectX::XMVectorSet(camera->mLookAt.x, camera->mLookAt.y, camera->mLookAt.z, 0.f),
+			nearWidth, nearHeight,
+			camera->mClipPlaneNear, camera->mClipPlaneFar,
+			DirectX::XMVectorSet(camera->mUp.x, camera->mUp.y, camera->mUp.z, 0.f)
+		);
+		myCamera.setName(camera->mName.C_Str());
+
+		// Transform according to scene graph
+		auto myCameraNode = std::find_if(mySceneNodes.begin(), mySceneNodes.end(), [&myCamera](const SceneNode* n) -> bool {
+			return n->NodeName == myCamera.getName();
+		});
+
+		const auto cameraTransform = (*myCameraNode)->getTransform();
+		myCamera.transform(cameraTransform);
+
+		// Add to scene
+		scene->addCamera(myCamera);
+	}
 }
 
 void AssImpSceneLoader::setFilePath(const std::string& p_filePath)
