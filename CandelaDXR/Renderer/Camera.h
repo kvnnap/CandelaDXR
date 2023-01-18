@@ -42,7 +42,7 @@ namespace candela::renderer
 		void resetChanged();
 
 		void transform(const mathematics::Matrix& trans) override;
-		const DirectX::XMVECTOR& getCentrePosition() const override;
+		const DirectX::XMVECTOR getCentrePosition() const override;
 
 	private:
 		void recalculateViewMatrix();

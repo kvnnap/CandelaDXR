@@ -41,7 +41,7 @@ StbTexture::StbTexture(const void* imageData, std::size_t len)
 	: dataBuffer(nullptr, stbImageDeleter)
 {
 	int imageChannels;
-	dataBuffer = StbImagePtr(stbi_load_from_memory(reinterpret_cast<const stbi_uc*>(imageData), len, &width, &height, &imageChannels, channels = STBI_rgb_alpha), stbImageDeleter);
+	dataBuffer = StbImagePtr(stbi_load_from_memory(reinterpret_cast<const stbi_uc*>(imageData), static_cast<int>(len), &width, &height, &imageChannels, channels = STBI_rgb_alpha), stbImageDeleter);
 	if (!dataBuffer)
 		ThrowException("Texture cannot be loaded");
 }

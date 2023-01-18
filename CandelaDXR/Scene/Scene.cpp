@@ -11,6 +11,7 @@ using std::size_t;
 using std::uint32_t;
 using std::runtime_error;
 
+using candela::mathematics::Vector;
 using candela::mathematics::Vector2;
 using candela::mathematics::Vector3;
 using candela::mathematics::Matrix;
@@ -27,6 +28,7 @@ using candela::scene::IndexedSpan;
 using candela::renderer::Camera;
 
 Scene::Scene()
+	: sceneGraph(*this)
 {
 	sceneGraph.NodeName = "_root_";
 	sceneGraph.Transform = DirectX::XMMatrixIdentity();
@@ -189,18 +191,17 @@ SceneNode& SceneNode::getRootNode()
 	return *node;
 }
 
-SceneNode::SceneNode(SceneNode* parent)
-	: Parent(parent)
+SceneNode::SceneNode(scene::Scene& scene, SceneNode* parent)
+	: Scene(scene), Parent(parent)
 {
 	NodeId = assignNewNodeId();
 }
 
-SceneNode& SceneNode::addChild(const string& nodeName, const DirectX::XMVECTOR& centrePos)
+SceneNode& SceneNode::addChild(const string& nodeName)
 {
 	// Add the mapping
-	auto& ref = Children.emplace_back(std::make_unique<SceneNode>(this));
+	auto& ref = Children.emplace_back(std::make_unique<SceneNode>(Scene, this));
 	ref->Transform = DirectX::XMMatrixIdentity();
-	ref->CentrePosition = centrePos;
 	ref->NodeName = nodeName;
 	return *ref;
 }
@@ -220,17 +221,6 @@ Matrix SceneNode::getTransform() const
 		sceneNode = sceneNode->Parent;
 	}
 	return mat;
-}
-
-void SceneNode::processCentrePositionsForDirectChildren()
-{
-	if (isLeaf())
-		return;
-	DirectX::XMVECTOR accum{};
-	for (auto& snChild : Children)
-		accum = DirectX::XMVectorAdd(accum, snChild->CentrePosition); // Do we need to transform child CentrePosition?
-	const float invSize = 1.f / Children.size();
-	CentrePosition = DirectX::XMVectorMultiply(accum, DirectX::XMVectorSet(invSize, invSize, invSize, invSize));
 }
 
 void SceneNode::getMeshNodes(vector<SceneNode*>& meshNodes)
@@ -287,14 +277,20 @@ vector<SceneNode*> SceneNode::getAllNodes()
 	return nodes;
 }
 
+const Vector SceneNode::getCentrePosition() const
+{
+	DirectX::XMVECTOR accum{};
+	for (auto meshId : Meshes)
+		accum = DirectX::XMVectorAdd(accum, Scene.getMeshIndexedSpan(meshId).CentrePosition);
+	for (auto& snChild : Children)
+		accum = DirectX::XMVectorAdd(accum, DirectX::XMVector3Transform(snChild->getCentrePosition(), snChild->Transform)); // Do we need to transform child CentrePosition?
+	const float invSize = 1.f / (Children.size() + Meshes.size());
+	return DirectX::XMVectorMultiply(accum, DirectX::XMVectorSet(invSize, invSize, invSize, invSize));
+}
+
 void SceneNode::transform(const Matrix& trans)
 {
 	Transform = trans;
-}
-
-const DirectX::XMVECTOR& SceneNode::getCentrePosition() const
-{
-	return CentrePosition;
 }
 
 // Getters

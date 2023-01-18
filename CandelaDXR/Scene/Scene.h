@@ -15,6 +15,7 @@
 namespace candela::scene
 {
 	struct SceneNode;
+	class Scene;
 
 	struct SingleMeshSceneNode
 	{
@@ -28,29 +29,29 @@ namespace candela::scene
 		: public renderer::ITransform
 	{
 		// Connectivity
-		SceneNode(SceneNode* parent = nullptr);
+		SceneNode(Scene& scene, SceneNode* parent = nullptr);
+
+		// Data
+		Scene& Scene;
 		SceneNode* Parent{};
 		std::vector<std::unique_ptr<SceneNode>> Children;
 		std::size_t NextNodeId{};
-
-		// Data
 		mathematics::Matrix Transform;
-		DirectX::XMVECTOR CentrePosition;
 		std::size_t NodeId{};
 		std::string NodeName;
 		std::vector<std::size_t> Meshes;
 		std::vector<std::size_t> Cameras;
 		std::vector<std::size_t> Lights;
 
+		// Methods
 		std::size_t assignNewNodeId();
 		SceneNode& getRootNode();
 
 		//SceneNode();
-		SceneNode& addChild(const std::string& sceneNodeName, const DirectX::XMVECTOR& centrePos = {});
+		SceneNode& addChild(const std::string& sceneNodeName);
 		bool isLeaf() const;
 		mathematics::Matrix getTransform() const;
 
-		void processCentrePositionsForDirectChildren();
 		void getMeshNodes(std::vector<SceneNode*>& meshNodes);
 		std::vector<SceneNode*> getMeshNodes();
 		std::vector<SingleMeshSceneNode> getFlattenedMeshNodes();
@@ -58,9 +59,8 @@ namespace candela::scene
 		void getAllNodes(std::vector<SceneNode*>& nodes);
 		std::vector<SceneNode*> getAllNodes();
 
-
+		const mathematics::Vector getCentrePosition() const override;
 		void transform(const mathematics::Matrix& trans) override;
-		const DirectX::XMVECTOR& getCentrePosition() const override;
 	};
 
 	struct IndexedSpan

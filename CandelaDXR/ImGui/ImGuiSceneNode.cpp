@@ -1,6 +1,7 @@
 #include "imgui/imgui.h"
 
 #include "ImGuiSceneNode.h"
+#include "Mathematics/Constants.h"
 
 #include <algorithm>
 
@@ -12,9 +13,26 @@ using candela::scene::Scene;
 ImGuiSceneNode::ImGuiSceneNode(SceneNode &p_sceneNode, const RendererTime& rendererTime)
 	: sceneNode(p_sceneNode), rendererTime(rendererTime), position{}, rotation{}, scale{ 1.f, 1.f, 1.f }, changed()
 {
-	XMStoreFloat3(&position, p_sceneNode.CentrePosition);
-	XMStoreFloat3(&worldPosition, DirectX::XMVectorNegate(p_sceneNode.CentrePosition));
+	//XMStoreFloat3(&position, p_sceneNode.CentrePosition);
+	//XMStoreFloat3(&worldPosition, DirectX::XMVectorNegate(p_sceneNode.CentrePosition));
+	DirectX::XMVECTOR scale, rot, trans;
+	DirectX::XMMatrixDecompose(&scale, &rot, &trans, sceneNode.Transform);
+	//DirectX::XMQuaternionToAxisAngle(&axis, &angle, rot);
+	//DirectX::XMVector3Normalize(axis);
+	DirectX::XMStoreFloat3(&this->scale, scale);
+	DirectX::XMStoreFloat3(&this->position, trans);
+	float a = 2.f * (rot.m128_f32[3] * rot.m128_f32[0] + rot.m128_f32[1] * rot.m128_f32[2]);
+	float b = 1.f - 2.f * (rot.m128_f32[0] * rot.m128_f32[0] + rot.m128_f32[1] * rot.m128_f32[1]);
+	rotation.x = atan2f(a, b); //roll
 
+	a = sqrtf(1.f + 2.f * (rot.m128_f32[3] * rot.m128_f32[1] - rot.m128_f32[0] * rot.m128_f32[2]));
+	b = sqrtf(1.f - 2.f * (rot.m128_f32[3] * rot.m128_f32[1] - rot.m128_f32[0] * rot.m128_f32[2]));
+	rotation.y = 2.f * atan2f(a, b) - mathematics::constants::PiOver2; // pitch
+	
+	a = 2.f * (rot.m128_f32[3] * rot.m128_f32[2] + rot.m128_f32[0] * rot.m128_f32[1]);
+	b = 1.f - 2.f * (rot.m128_f32[1] * rot.m128_f32[1] + rot.m128_f32[2] * rot.m128_f32[2]);
+	rotation.z = atan2(a, b); // yaw
+	
 	for (auto& sceneChild : p_sceneNode.Children)
 		children.emplace_back(*sceneChild, rendererTime);
 }

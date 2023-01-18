@@ -162,7 +162,7 @@ void Camera::transform(const mathematics::Matrix& trans)
 	recalculateViewMatrix();
 }
 
-const DirectX::XMVECTOR& candela::renderer::Camera::getCentrePosition() const
+const DirectX::XMVECTOR Camera::getCentrePosition() const
 {
 	return origPosition;
 }

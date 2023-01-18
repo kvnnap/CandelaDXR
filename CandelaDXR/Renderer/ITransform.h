@@ -11,6 +11,6 @@ namespace candela::renderer
 
 		virtual void transform(const mathematics::Matrix& trans) = 0;
 
-		virtual const mathematics::Vector& getCentrePosition() const = 0;
+		virtual const mathematics::Vector getCentrePosition() const = 0;
 	};
 }

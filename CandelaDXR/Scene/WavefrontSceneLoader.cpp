@@ -85,7 +85,7 @@ void WavefrontSceneLoader::loadScene()
     }
 
     auto objName = path(filePath).filename().string();
-    auto& sceneNode = scene->getSceneGraph().addChild(objName, {});
+    auto& sceneNode = scene->getSceneGraph().addChild(objName);
 
     // Grouping - for each mesh group
     for (const auto& shape : shapes)
@@ -152,12 +152,10 @@ void WavefrontSceneLoader::loadScene()
         auto meshId = scene->endMesh();
 
         // Add to scene graph
-        auto& mesh = scene->getMeshIndexedSpan(meshId);
-        auto& childNode = sceneNode.addChild(shape.name, mesh.CentrePosition);
+        auto& childNode = sceneNode.addChild(shape.name);
         childNode.Meshes.push_back(meshId);
     }
 
-    sceneNode.processCentrePositionsForDirectChildren();
     scene->recalculateLightsAndFaceAttributes();
 }
 

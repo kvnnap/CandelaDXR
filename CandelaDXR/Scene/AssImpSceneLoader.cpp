@@ -48,8 +48,6 @@ static void processSceneGraph(Scene& scene, const AssImpOffsets& offsets, const 
 	// Process scene graph
 	for (unsigned int i = 0; i < sceneAiNode->mNumChildren; ++i)
 		processSceneGraph(scene, offsets, sceneAi, &childSceneNode, sceneAiNode->mChildren[i]);
-
-	childSceneNode.processCentrePositionsForDirectChildren();
 }
 
 static int32_t addTextureToScene(Scene* scene, path basePath, const aiScene* pScene, aiString texFileName)
