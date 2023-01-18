@@ -17,6 +17,7 @@ using std::make_unique;
 using candela::scene::AssImpSceneLoader;
 using candela::scene::SceneNode;
 using candela::scene::Scene;
+using candela::scene::AssImpOffsets;
 using candela::scene::Texture;
 using candela::scene::MemoryTexture;
 using candela::scene::StbTexture;
@@ -30,27 +31,23 @@ static path getConcatPath(path base, path other)
 	return base;
 }
 
-static void processSceneGraph(Scene& scene, const aiScene* sceneAi, SceneNode* sceneNode, const aiNode* sceneAiNode)
+static void processSceneGraph(Scene& scene, const AssImpOffsets& offsets, const aiScene* sceneAi, SceneNode* sceneNode, const aiNode* sceneAiNode)
 {
 	string nodeName = sceneAiNode->mName.C_Str();
 	string groupName;
 
-	if (sceneAiNode->mNumMeshes > 1)
-		throw std::runtime_error("Model node has more than one mesh, this is currently unsupported");
-
 	// Process current node
-	if (sceneAiNode->mNumMeshes > 0)
-	{
-		auto index = sceneAiNode->mMeshes[0];
-		groupName = sceneAi->mMeshes[index]->mName.C_Str();
-	}
+	auto& childSceneNode = sceneNode->addChild(nodeName);
 
-	auto& childSceneNode = scene.addSceneNodeToGroupMapping(*sceneNode, nodeName, groupName);
+	// Add Meshes
+	for (unsigned int i = 0; i < sceneAiNode->mNumMeshes; ++i)
+		childSceneNode.Meshes.push_back(offsets.mesh + sceneAiNode->mMeshes[i]);
+
 	memcpy(&childSceneNode.Transform, &sceneAiNode->mTransformation, sizeof(childSceneNode.Transform));
 	childSceneNode.Transform = DirectX::XMMatrixTranspose(childSceneNode.Transform); // assimp mat should have been row-major, why tranpose?
 	// Process scene graph
 	for (unsigned int i = 0; i < sceneAiNode->mNumChildren; ++i)
-		processSceneGraph(scene, sceneAi, &childSceneNode, sceneAiNode->mChildren[i]);
+		processSceneGraph(scene, offsets, sceneAi, &childSceneNode, sceneAiNode->mChildren[i]);
 
 	childSceneNode.processCentrePositionsForDirectChildren();
 }
@@ -86,8 +83,7 @@ void AssImpSceneLoader::loadScene()
 		aiProcess_Triangulate |
 		aiProcess_JoinIdenticalVertices |
 		aiProcess_SortByPType |
-		aiProcess_GenNormals |
-		aiProcess_PreTransformVertices // Remove this when we can instance
+		aiProcess_GenNormals
 	);
 
 	if (!pScene || !pScene->mRootNode || pScene->mFlags & AI_SCENE_FLAGS_INCOMPLETE)
@@ -151,6 +147,7 @@ void AssImpSceneLoader::loadScene()
 	}
 
 	// Loop through meshes
+	offsets.mesh = scene->getMeshIndexedSpanData().size();
 	for (unsigned int i = 0; i < pScene->mNumMeshes; ++i)
 	{
 		auto mesh = pScene->mMeshes[i];
@@ -160,7 +157,7 @@ void AssImpSceneLoader::loadScene()
 		array<Vector2, 3> tex{}; // Check if value-initialises to zero
 		array<Vector3, 3> norm{};
 
-		scene->startGroup(meshName);
+		scene->startMesh(meshName);
 
 		// Faces
 		for (unsigned int f = 0; f < mesh->mNumFaces; ++f)
@@ -193,14 +190,15 @@ void AssImpSceneLoader::loadScene()
 		}
 
 		// End this group
-		scene->endGroup();
+		scene->endMesh();
 	}
 
-	processSceneGraph(*scene, pScene, &scene->getSceneGraph(), pScene->mRootNode);
+	processSceneGraph(*scene, offsets, pScene, &scene->getSceneGraph(), pScene->mRootNode);
 
 	auto mySceneNodes = scene->getSceneGraph().getAllNodes();
 
 	// Add cameras
+	offsets.camera = scene->getCameras().size();
 	for (unsigned int i = 0; i < pScene->mNumCameras; ++i)
 	{
 		const auto camera = pScene->mCameras[i];
@@ -218,16 +216,18 @@ void AssImpSceneLoader::loadScene()
 		myCamera.setName(camera->mName.C_Str());
 
 		// Transform according to scene graph
-		auto myCameraNode = std::find_if(mySceneNodes.begin(), mySceneNodes.end(), [&myCamera](const SceneNode* n) -> bool {
+		auto myCameraNode = *std::find_if(mySceneNodes.begin(), mySceneNodes.end(), [&myCamera](const SceneNode* n) -> bool {
 			return n->NodeName == myCamera.getName();
 		});
 
-		const auto cameraTransform = (*myCameraNode)->getTransform();
-		myCamera.transform(cameraTransform);
+		myCamera.transform(myCameraNode->getTransform());
 
 		// Add to scene
-		scene->addCamera(myCamera);
+		scene->addCamera({ myCamera, myCameraNode});
 	}
+
+	scene->recalculateLightsAndFaceAttributes();
+
 }
 
 void AssImpSceneLoader::setFilePath(const std::string& p_filePath)

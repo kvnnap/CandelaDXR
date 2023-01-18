@@ -128,7 +128,7 @@ void RayTracingAOShading::buildPipeline()
 
 	// Seventh - Shader Configuration (set payload sizes - the actual program parameters)
 	CD3DX12_RAYTRACING_SHADER_CONFIG_SUBOBJECT shaderConfig(stateObjectDesc);
-	shaderConfig.Config(4 * sizeof(float), 2 * sizeof(float));
+	shaderConfig.Config(5 * sizeof(float), 2 * sizeof(float));
 
 	// Eighth - Associate the shader configuration with all shader programs
 	CD3DX12_SUBOBJECT_TO_EXPORTS_ASSOCIATION_SUBOBJECT shaderConfigAssociation(stateObjectDesc);

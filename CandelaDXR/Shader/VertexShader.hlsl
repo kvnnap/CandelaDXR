@@ -11,8 +11,8 @@ cbuffer CB1 : register(b0)
 
 cbuffer CB2 : register(b1)
 {
-	uint groupId;
 	uint instanceId;
+	uint indexId; // element in the index buffer
 }
 
 struct MyInput
@@ -32,11 +32,11 @@ struct MyOutput
 
 MyOutput main(MyInput myInput)
 {
-	float3 worldPos = mul(float4(myInput.pos, 1.f), matrices[groupId]);
+	float3 worldPos = mul(float4(myInput.pos, 1.f), matrices[instanceId]);
 	MyOutput myOutput;
 	myOutput.Position = mul(float4(worldPos, 1.f), ViewPerspective);
 	myOutput.Pos = worldPos;
-	myOutput.Normal = normalize(mul(myInput.normal, normalMatrices[groupId]));
+	myOutput.Normal = normalize(mul(myInput.normal, normalMatrices[instanceId]));
 	myOutput.TexUV = myInput.texuv;
 	return myOutput;
 }

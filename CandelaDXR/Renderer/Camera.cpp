@@ -22,7 +22,7 @@ Camera::Camera(const XMVECTOR& position, const XMVECTOR& direction, float nearWi
 	lookTo(direction, up);
 	perspectiveMatrix = XMMatrixPerspectiveRH(nearWidth, nearHeight, nearZ, farZ);
 	origPosition = position;
-	origDirection = direction;
+	origDirection = this->direction;
 }
 
 void Camera::recalculateViewMatrix()
@@ -158,7 +158,7 @@ void Camera::transform(const mathematics::Matrix& trans)
 {
 	position = DirectX::XMVector3Transform(origPosition, trans);
 	auto dirTrans = DirectX::XMMatrixTranspose(DirectX::XMMatrixInverse(nullptr, trans));
-	direction = DirectX::XMVector4Transform(origDirection, dirTrans);
+	direction = XMVector3Normalize(DirectX::XMVector4Transform(origDirection, dirTrans));
 	recalculateViewMatrix();
 }
 

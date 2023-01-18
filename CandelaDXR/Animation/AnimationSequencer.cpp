@@ -6,7 +6,7 @@ using candela::animation::AnimationSequencer;
 
 AnimationSequencer::AnimationSequencer()
 	: framesPerAnimation(), timeDeltaMs(), maxTimeMs(),
-	  currentFrameInAnimation(), currentTimeMs(), enabled()
+	  currentFrameInAnimation(), currentTimeMs(), enabled(), completed()
 {
 }
 

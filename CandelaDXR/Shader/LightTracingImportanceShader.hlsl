@@ -29,6 +29,7 @@ struct RayPayload
 	float2 bary;
 	float t;
 	uint faceIndex;
+	uint instanceIndex;
 };
 
 struct ShadowPayload
@@ -267,7 +268,7 @@ void rayGen()
 		const uint vertIndex = rayPayload.faceIndex * 3;
 
 		// Get face unit normal
-		const float3 unitFaceNormal = getUnitNormal(rayPayload.bary, vertIndex, fAttr.InstanceIndex);
+		const float3 unitFaceNormal = getUnitNormal(rayPayload.bary, vertIndex, rayPayload.instanceIndex);
 		const float wiDot = dot(ray.Direction, unitFaceNormal);
 
 		// Get appropriate BRDF - assuming Diffuse (Will handle Reflective and Transmissive later)
@@ -397,6 +398,7 @@ void chs(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr
 	payload.bary = attribs.barycentrics;
 	payload.t = RayTCurrent();
 	payload.faceIndex = getFaceIndex();
+	payload.instanceIndex = InstanceIndex();
 }
 
 [shader("miss")]

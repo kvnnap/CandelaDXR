@@ -7,6 +7,13 @@
 
 namespace candela::scene
 {
+	struct AssImpOffsets
+	{
+		std::size_t mesh;
+		std::size_t camera;
+		std::size_t light;
+	};
+
 	class AssImpSceneLoader
 		: public ISceneLoader
 	{
@@ -16,9 +23,11 @@ namespace candela::scene
 		void setFilePath(const std::string& filePath);
 		void setAlwaysComputeNormals(bool value);
 	private:
-		Scene* scene;
+		Scene* scene{};
 		std::string filePath;
 
+		AssImpOffsets offsets{};
+		
 		bool alwaysComputeNormals = false;
 	};
 }

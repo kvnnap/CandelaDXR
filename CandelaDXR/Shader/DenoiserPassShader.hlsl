@@ -41,9 +41,9 @@ void main(uint3 DTid : SV_DispatchThreadID)
 {
 	if (mode == 0)
 	{
-		uint meshGroupId = meshInfo[DTid.xy].y; // y is groupId
+		uint meshInstanceId = meshInfo[DTid.xy].y; // y is instanceId
 		float3 pixWorldPos = position[DTid.xy].xyz;
-		float3 prevPoint = mul(float4(pixWorldPos, 1.f), matrices[meshGroupId]);
+		float3 prevPoint = mul(float4(pixWorldPos, 1.f), matrices[meshInstanceId]);
 		float3 motion = prevPoint - pixWorldPos;
 
 		// Check PrimaryRays.cd.hlsl:106 - motion * STL::Math::LinearStep( 0.0, 0.0000005, abs( motion ) );

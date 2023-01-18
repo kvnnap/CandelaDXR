@@ -85,14 +85,14 @@ void WavefrontSceneLoader::loadScene()
     }
 
     auto objName = path(filePath).filename().string();
-    auto& sceneNode = scene->getSceneGraph().addChild(objName, {}, {});
+    auto& sceneNode = scene->getSceneGraph().addChild(objName, {});
 
     // Grouping - for each mesh group
     for (const auto& shape : shapes)
     {
         size_t index = 0;
         size_t faceNum = 0;
-        scene->startGroup(shape.name);
+        scene->startMesh(shape.name);
 
         // For each face - i.e every triangle
         for (const auto& vertexCountForFace : shape.mesh.num_face_vertices)
@@ -149,13 +149,16 @@ void WavefrontSceneLoader::loadScene()
         }
 
         // End this group
-        scene->endGroup();
+        auto meshId = scene->endMesh();
 
         // Add to scene graph
-        scene->addSceneNodeToGroupMapping(sceneNode, shape.name, shape.name);
+        auto& mesh = scene->getMeshIndexedSpan(meshId);
+        auto& childNode = sceneNode.addChild(shape.name, mesh.CentrePosition);
+        childNode.Meshes.push_back(meshId);
     }
 
     sceneNode.processCentrePositionsForDirectChildren();
+    scene->recalculateLightsAndFaceAttributes();
 }
 
 void WavefrontSceneLoader::setFilePath(const string& filePath)

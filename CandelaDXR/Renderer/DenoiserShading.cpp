@@ -89,8 +89,8 @@ void DenoiserShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12GraphicsCo
 	rendererResources = rRes;
 
 	prevMat.clear();
-	for (auto sn : rRes->scene->getSceneGraph().getLeafNodes())
-		prevMat.push_back(sn->getTransform());
+	for (auto sn : rRes->scene->getSceneGraph().getFlattenedMeshNodes())
+		prevMat.push_back(sn.ComputedTransform);
 
 	auto mvMats = getMVMatrices();
 	matrices = &rRes->resourceManager->createResource(D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, static_cast<UINT>(sizeof(decltype(mvMats)::value_type) * mvMats.size()));
@@ -396,10 +396,10 @@ void DenoiserShading::clearHistory()
 vector<DirectX::XMFLOAT3X4> DenoiserShading::getMVMatrices()
 {
 	vector<DirectX::XMFLOAT3X4> mats(prevMat.size());
-	auto sMats = rendererResources->scene->getSceneGraph().getLeafNodes();
+	const auto sMats = rendererResources->scene->getSceneGraph().getFlattenedMeshNodes();
 	for (std::size_t i = 0; i < prevMat.size(); ++i)
 	{
-		auto copyOfCurrentMat = sMats.at(i)->getTransform();
+		auto copyOfCurrentMat = sMats.at(i).ComputedTransform;
 		auto mat = copyOfCurrentMat; // Get current local to World transform
 		mat = DirectX::XMMatrixInverse(nullptr, mat); // Invert It - becomes world to local
 		mat *= prevMat[i]; // Then apply previous local to world transform

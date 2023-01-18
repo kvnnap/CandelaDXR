@@ -3,11 +3,9 @@
 
 #include <string>
 #include <cstdint>
-#include <unordered_map>
 
 using std::string;
 using std::size_t;
-using std::unordered_map;
 
 using candela::directx::DXUtil;
 
@@ -31,27 +29,24 @@ void AccelerationStructure::init(RendererResources* rendererResources, wrl::ComP
 	};
 
 	// Build bottom-layer - This incorporates all meshes - one BLAS per group
-	unordered_map<string, size_t> bufferMap;
-	for (auto& item : scene->getMeshIndexedSpanDataMap())
+	// blasBuffers contains each mesh - so indexing is easy
+	for (auto& meshIndex : scene->getMeshIndexedSpanData())
 	{
-		auto mis = &item.second;
-
 		DXUtil::BottomLevelAccelerationData blasData = blasReferenceData;
-		blasData.indexBuffer += static_cast<UINT>(mis->Start) * sizeof(int);
-		blasData.indexCount = static_cast<UINT>(mis->Size);
-
-		bufferMap[item.first] = blasBuffers.size();
+		blasData.indexBuffer += static_cast<UINT>(meshIndex.Start) * sizeof(int);
+		blasData.indexCount = static_cast<UINT>(meshIndex.Size);
 		blasBuffers.push_back(DXUtil::createBottomLevelAS(rendererResources->pDevice, pCurrentCommandList, { blasData }, 3 * sizeof(float)));
 	}
 
-	for (const auto* child : scene->getSceneGraph().getLeafNodes())
+	// Instancing
+	for (const auto& child : scene->getSceneGraph().getFlattenedMeshNodes())
 	{
-		auto& indexedSpan = scene->getMeshIndexedSpan(child->GroupName);
-		auto& ref = tlasInstanceData.emplace_back(DXUtil::TopLevelAccelerationData{
+		auto& indexedSpan = scene->getMeshIndexedSpan(child.MeshId);
+		auto& ref = tlasInstanceData.emplace_back(DXUtil::TopLevelAccelerationData {
 			.instanceId = indexedSpan.Start,
-			.blasBuffer = blasBuffers[bufferMap.at(child->GroupName)]
-			});
-		XMStoreFloat3x4(&ref.transform, child->getTransform());
+			.blasBuffer = blasBuffers[child.MeshId]
+		});
+		XMStoreFloat3x4(&ref.transform, child.ComputedTransform);
 	}
 
 	// Build Top-Layer
@@ -66,10 +61,14 @@ void candela::renderer::AccelerationStructure::onChange(wrl::ComPtr<ID3D12Graphi
 
 void AccelerationStructure::buildTlas(wrl::ComPtr<ID3D12GraphicsCommandList>& commandList, wrl::ComPtr<ID3D12Resource>& tempResource)
 {
-	// Warning, we are assuming order - will not be the case when instancing in the future
+	// Warning, we are assuming order - assuming scene graph structure isn't changing
 	auto tlas = tlasInstanceData.begin();
-	for (const auto* child : rendererResources->scene->getSceneGraph().getLeafNodes())
-		XMStoreFloat3x4(&(tlas++)->transform, child->getTransform());
+	for (const auto* child : rendererResources->scene->getSceneGraph().getMeshNodes())
+	{
+		auto transform = child->getTransform();
+		for (auto meshId : child->Meshes)
+			XMStoreFloat3x4(&(tlas++)->transform, transform);
+	}
 
 	DXUtil::buildTopLevelAS(rendererResources->pDevice, commandList, tlasInstanceData, tempResource, true, tlasBuffers);
 }

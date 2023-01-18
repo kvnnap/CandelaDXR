@@ -6,7 +6,6 @@
 #include <array>
 #include <map>
 #include <memory>
-#include <unordered_map>
 
 #include "Texture.h"
 #include "Mathematics/Types.h"
@@ -15,27 +14,46 @@
 
 namespace candela::scene
 {
+	struct SceneNode;
+
+	struct SingleMeshSceneNode
+	{
+		std::size_t NodeId;
+		std::size_t MeshId;
+		SceneNode* SceneNode;
+		mathematics::Matrix ComputedTransform;
+	};
+
 	struct SceneNode
 		: public renderer::ITransform
 	{
 		// Connectivity
-		SceneNode *Parent = nullptr;
+		SceneNode(SceneNode* parent = nullptr);
+		SceneNode* Parent{};
 		std::vector<std::unique_ptr<SceneNode>> Children;
+		std::size_t NextNodeId{};
 
 		// Data
 		mathematics::Matrix Transform;
 		DirectX::XMVECTOR CentrePosition;
+		std::size_t NodeId{};
 		std::string NodeName;
-		std::string GroupName;
+		std::vector<std::size_t> Meshes;
+		std::vector<std::size_t> Cameras;
+		std::vector<std::size_t> Lights;
+
+		std::size_t assignNewNodeId();
+		SceneNode& getRootNode();
 
 		//SceneNode();
-		SceneNode& addChild(const std::string& nodeName, const std::string& groupName, const DirectX::XMVECTOR& centrePos);
+		SceneNode& addChild(const std::string& sceneNodeName, const DirectX::XMVECTOR& centrePos = {});
 		bool isLeaf() const;
 		mathematics::Matrix getTransform() const;
 
 		void processCentrePositionsForDirectChildren();
-		void getLeafNodes(std::vector<SceneNode*>& leafs);
-		std::vector<SceneNode*> getLeafNodes();
+		void getMeshNodes(std::vector<SceneNode*>& meshNodes);
+		std::vector<SceneNode*> getMeshNodes();
+		std::vector<SingleMeshSceneNode> getFlattenedMeshNodes();
 
 		void getAllNodes(std::vector<SceneNode*>& nodes);
 		std::vector<SceneNode*> getAllNodes();
@@ -56,8 +74,7 @@ namespace candela::scene
 	struct alignas(16) FaceAttributes
 	{
 		std::uint32_t MaterialId;
-		std::uint32_t AreaLightId;
-		std::uint32_t InstanceIndex;
+		std::uint32_t MeshIndex;
 	};
 
 	struct alignas(16) AreaLight
@@ -99,16 +116,13 @@ namespace candela::scene
 		std::size_t addTexture(std::unique_ptr<Texture> texture);
 		void addMaterial(Material material, const std::string& name = "");
 
-		void startGroup(const std::string& name);
-		void endGroup();
-		void addFace(const std::array<mathematics::Vector3, 3> &pos,
-					 const std::array<mathematics::Vector2, 3> &tex, 
-					 const std::array<mathematics::Vector3, 3> &norm, 
-					 std::uint32_t materialId);
+		void startMesh(const std::string& meshName);
+		std::size_t endMesh();
+		void addFace(const std::array<mathematics::Vector3, 3>& pos,
+			const std::array<mathematics::Vector2, 3>& tex,
+			const std::array<mathematics::Vector3, 3>& norm,
+			std::uint32_t materialId);
 		void recalculateLightsAndFaceAttributes();
-
-		// Scene graph
-		SceneNode& addSceneNodeToGroupMapping(SceneNode& sceneNode, const std::string& sceneNodeName, const std::string& groupName);
 
 		// Getters
 		const std::vector<mathematics::Vector3>& getVertices() const;
@@ -124,14 +138,19 @@ namespace candela::scene
 		const std::vector<SpecularPrimitive>& getSpeculars() const;
 		const std::vector<FaceAttributes>& getFaceAttributes() const;
 
-		const IndexedSpan& getMeshIndexedSpan(const std::string& groupName) const;
-		const std::unordered_map<std::string, IndexedSpan>& getMeshIndexedSpanDataMap() const;
+		const IndexedSpan& getMeshIndexedSpan(std::size_t meshId) const;
+		const std::vector<IndexedSpan>& getMeshIndexedSpanData() const;
 
 		const SceneNode& getSceneGraph() const;
 		SceneNode& getSceneGraph();
 
-		void addCamera(renderer::Camera camera);
-		const std::vector<renderer::Camera>& getCameras() const;
+		struct CameraNode
+		{
+			renderer::Camera Camera;
+			SceneNode* Node;
+		};
+		void addCamera(CameraNode camera);
+		const std::vector<CameraNode>& getCameras() const;
 
 		// Utility functions - Offsets in bytes
 		const std::size_t getVerticesOffset() const;
@@ -150,7 +169,7 @@ namespace candela::scene
 		std::vector<std::string> materialNames;
 		std::vector<AreaLight> lights;
 		std::vector<SpecularPrimitive> speculars;
-		std::vector<renderer::Camera> cameras;
+		std::vector<CameraNode> cameras;
 
 		// These contain the vertices. The 3 arrays must all be the same size
 		// Storing separately vs interleaved. Trying separate first.
@@ -165,7 +184,7 @@ namespace candela::scene
 		std::map<std::array<float, 8>, int> collisionMap;
 
 		// Group data - Divides index data into sections that make up the meshes
-		std::unordered_map<std::string, IndexedSpan> spanDataMap;
+		std::vector<IndexedSpan> meshes;
 
 		// Faces
 		std::vector<FaceAttributes> faceAttributes;

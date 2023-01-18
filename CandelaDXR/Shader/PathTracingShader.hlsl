@@ -32,6 +32,7 @@ struct RayPayload
 	float2 bary;
 	float t;
 	uint faceIndex;
+	uint instanceIndex;
 };
 
 struct ShadowPayload
@@ -141,7 +142,7 @@ void rayGen()
 		const Material mat = materials[fAttr.MaterialId];
 		
 		const uint vertIndex = rayPayload.faceIndex * 3;
-		const float3 unitFaceNormal = getUnitNormal(rayPayload.bary, vertIndex, fAttr.InstanceIndex);
+		const float3 unitFaceNormal = getUnitNormal(rayPayload.bary, vertIndex, rayPayload.instanceIndex);
 		const float wiDot = dot(ray.Direction, unitFaceNormal);
 		const bool isInternal = wiDot > 0.f;
 		const float3 intersectionPoint = ray.Origin + rayPayload.t * ray.Direction;
@@ -433,6 +434,7 @@ void chs(inout RayPayload payload, in BuiltInTriangleIntersectionAttributes attr
 	payload.bary = attribs.barycentrics;
 	payload.t = RayTCurrent();
 	payload.faceIndex = getFaceIndex();
+	payload.instanceIndex = InstanceIndex();
 }
 
 [shader("miss")]

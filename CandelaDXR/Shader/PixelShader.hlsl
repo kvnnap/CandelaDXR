@@ -20,8 +20,8 @@ cbuffer CB1 : register(b0)
 
 cbuffer CB2 : register(b1)
 {
-	uint groupId;
 	uint instanceId;
+	uint indexId; // element in the index buffer
 }
 
 StructuredBuffer<Material> materials : register(t0);
@@ -89,9 +89,9 @@ MyOutput main(MyInput myInput)
 	output.normal = float4(normalize(myInput.normal), 0.f);
 	output.albedo = 0;
 
-	const uint matId = faceAttributes[instanceId / 3 + myInput.id].MaterialId;
+	const uint matId = faceAttributes[indexId / 3 + myInput.id].MaterialId;
 	output.meshInfo.x = matId;
-	output.meshInfo.y = groupId;
+	output.meshInfo.y = instanceId;
 
 	const Material mat = materials[matId];
 	output.radiance.xyz = mat.Emissive;

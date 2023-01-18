@@ -19,6 +19,7 @@ using candela::scene::Texture;
 using candela::scene::Material;
 using candela::scene::Scene;
 using candela::scene::SceneNode;
+using candela::scene::SingleMeshSceneNode;
 using candela::scene::AreaLight;
 using candela::scene::SpecularPrimitive;
 using candela::scene::FaceAttributes;
@@ -43,22 +44,14 @@ void Scene::addMaterial(Material material, const string& name)
 	materialNames.push_back(name);
 }
 
-void Scene::startGroup(const string& name)
+void Scene::startMesh(const string& meshName)
 {
-	if (!currentGroupName.empty())
-		endGroup();
-	if (spanDataMap.find(name) != spanDataMap.end())
-		ThrowException("Scene group " + string(name) + " already exists");
-	currentGroupName = name;
 	posAccumulator = {};
-	spanDataMap.insert({ name, { name, indexData.size(), 0 } });
+	meshes.emplace_back(IndexedSpan{ meshName, indexData.size(), 0 });
 }
 
-void Scene::endGroup()
+size_t Scene::endMesh()
 {
-	if (currentGroupName.empty())
-		return;
-
 	// Allocate enough space in vertex, tex and normal buffers
 	std::size_t newSize = vertices.size() + collisionMap.size();
 	vertices.resize(newSize);
@@ -77,15 +70,16 @@ void Scene::endGroup()
 		collisionMap.erase(it++);
 	}
 
-	auto& index = spanDataMap[currentGroupName];
+	auto& index = meshes.back();
 	index.Size = indexData.size() - index.Start;
-	currentGroupName.clear();
 	const float invSize = 1.f / index.Size;
 	index.CentrePosition = DirectX::XMVectorMultiply(posAccumulator, DirectX::XMVectorSet(invSize, invSize, invSize, invSize));
+
+	return meshes.size() - 1;
 }
 
 void candela::scene::Scene::addFace(
-	const array<Vector3, 3>& pos, 
+	const array<Vector3, 3>& pos,
 	const array<Vector2, 3>& tex,
 	const array<Vector3, 3>& norm,
 	uint32_t materialId)
@@ -94,7 +88,7 @@ void candela::scene::Scene::addFace(
 	for (auto i = 0; i < 3; ++i)
 	{
 		posAccumulator = DirectX::XMVectorAdd(posAccumulator, DirectX::XMLoadFloat3(&pos[i]));
-		
+
 		array<float, 8> arr = { pos[i].x, pos[i].y, pos[i].z, tex[i].x, tex[i].y, norm[i].x, norm[i].y, norm[i].z };
 		auto it = collisionMap.find(arr);
 		if (it == collisionMap.end())
@@ -109,31 +103,10 @@ void candela::scene::Scene::addFace(
 		}
 	}
 
-	// Is light?
-	if (materials[materialId].isEmissive())
-	{
-		lights.emplace_back(AreaLight{
-			.InstanceIndex = static_cast<uint32_t>(spanDataMap.size() - 1),
-			.PrimitiveId = static_cast<uint32_t>(indexData.size() / 3 - 1),
-			.MaterialId = materialId
-		});
-	}
-
-	// If specular?
-	if (materials[materialId].isSpecular())
-	{
-		speculars.emplace_back(SpecularPrimitive{
-			.InstanceIndex = static_cast<uint32_t>(spanDataMap.size() - 1),
-			.PrimitiveId = static_cast<uint32_t>(indexData.size() / 3 - 1),
-			.MaterialId = materialId
-		});
-	}
-
 	// Add face attributes
 	faceAttributes.emplace_back(FaceAttributes{
 		.MaterialId = materialId,
-		.AreaLightId = materials[materialId].isEmissive() ? static_cast<uint32_t>(lights.size() - 1) : 0,
-		.InstanceIndex = static_cast<uint32_t>(spanDataMap.size() - 1)
+		.MeshIndex = static_cast<uint32_t>(meshes.size() - 1)
 	});
 }
 
@@ -142,37 +115,55 @@ void Scene::recalculateLightsAndFaceAttributes()
 {
 	lights.clear();
 	speculars.clear();
+	
+	vector<vector<AreaLight>> meshLights; // Maps the real mesh with Emissive Area Lights - prepass
+	vector<vector<SpecularPrimitive>> meshSpecs; // Maps the real mesh with Speculars - prepass
+	meshLights.resize(meshes.size());
+	meshSpecs.resize(meshes.size());
+
+	// Pre-pass
 	for (uint32_t i = 0; i < faceAttributes.size(); ++i)
 	{
 		auto& fAttr = faceAttributes[i];
 		const auto& mat = materials[fAttr.MaterialId];
 		if (mat.isEmissive())
 		{
-			fAttr.AreaLightId = static_cast<uint32_t>(lights.size());
-			lights.emplace_back(AreaLight{
-				.InstanceIndex = fAttr.InstanceIndex,
+			meshLights[fAttr.MeshIndex].emplace_back(AreaLight{
 				.PrimitiveId = i,
 				.MaterialId = fAttr.MaterialId
 			});
 		}
 		if (mat.isSpecular())
 		{
-			speculars.emplace_back(SpecularPrimitive{
-				.InstanceIndex = fAttr.InstanceIndex,
+			meshSpecs[fAttr.MeshIndex].emplace_back(SpecularPrimitive{
 				.PrimitiveId = i,
 				.MaterialId = fAttr.MaterialId
 			});
 		}
 	}
-}
 
-SceneNode& Scene::addSceneNodeToGroupMapping(SceneNode& sceneNode, const string& sceneNodeName, const string& groupName)
-{
-	DirectX::XMVECTOR centrePosition{};
-	auto item = spanDataMap.find(groupName);
-	if (item != spanDataMap.end())
-		centrePosition = item->second.CentrePosition;
-	return sceneNode.addChild(sceneNodeName, groupName, centrePosition);
+	// Process
+	std::uint32_t i = 0;
+	for (const auto& meshInstance : sceneGraph.getFlattenedMeshNodes())
+	{
+		for (auto& meshLight : meshLights[meshInstance.MeshId])
+		{
+			lights.emplace_back(AreaLight{
+				.InstanceIndex = i,
+				.PrimitiveId = meshLight.PrimitiveId,
+				.MaterialId = meshLight.MaterialId
+			});
+		}
+		for (auto& meshSpec : meshSpecs[meshInstance.MeshId])
+		{
+			speculars.emplace_back(SpecularPrimitive{
+				.InstanceIndex = i,
+				.PrimitiveId = meshSpec.PrimitiveId,
+				.MaterialId = meshSpec.MaterialId
+			});
+		}
+		++i;
+	}
 }
 
 bool Material::isEmissive() const
@@ -190,21 +181,33 @@ bool SceneNode::isLeaf() const
 	return Children.empty();
 }
 
-SceneNode& SceneNode::addChild(const string& nodeName, const string& groupName, const DirectX::XMVECTOR& centrePos)
+SceneNode& SceneNode::getRootNode()
 {
-	// Or throw
-	for (auto& child : Children)
-		if (child->NodeName == nodeName)
-			throw std::runtime_error("child nodeName already exists");
+	auto node = this;
+	while (node->Parent)
+		node = node->Parent;
+	return *node;
+}
 
+SceneNode::SceneNode(SceneNode* parent)
+	: Parent(parent)
+{
+	NodeId = assignNewNodeId();
+}
+
+SceneNode& SceneNode::addChild(const string& nodeName, const DirectX::XMVECTOR& centrePos)
+{
 	// Add the mapping
-	auto &ref = Children.emplace_back(std::make_unique<SceneNode>());
-	ref->Parent = this;
+	auto& ref = Children.emplace_back(std::make_unique<SceneNode>(this));
 	ref->Transform = DirectX::XMMatrixIdentity();
 	ref->CentrePosition = centrePos;
 	ref->NodeName = nodeName;
-	ref->GroupName = groupName;
 	return *ref;
+}
+
+size_t SceneNode::assignNewNodeId()
+{
+	return ++getRootNode().NextNodeId;
 }
 
 Matrix SceneNode::getTransform() const
@@ -225,28 +228,49 @@ void SceneNode::processCentrePositionsForDirectChildren()
 		return;
 	DirectX::XMVECTOR accum{};
 	for (auto& snChild : Children)
-		accum = DirectX::XMVectorAdd(accum, snChild->CentrePosition);
+		accum = DirectX::XMVectorAdd(accum, snChild->CentrePosition); // Do we need to transform child CentrePosition?
 	const float invSize = 1.f / Children.size();
 	CentrePosition = DirectX::XMVectorMultiply(accum, DirectX::XMVectorSet(invSize, invSize, invSize, invSize));
 }
 
-void SceneNode::getLeafNodes(vector<SceneNode*>& leafs)
+void SceneNode::getMeshNodes(vector<SceneNode*>& meshNodes)
 {
-	if (isLeaf() && !GroupName.empty())
+	if (!Meshes.empty())
 	{
-		leafs.push_back(this);
+		meshNodes.push_back(this);
 		return;
 	}
 
 	for (auto& child : Children)
-		child->getLeafNodes(leafs);
+		child->getMeshNodes(meshNodes);
 }
 
-vector<SceneNode*> SceneNode::getLeafNodes()
+vector<SceneNode*> SceneNode::getMeshNodes()
 {
-	vector<SceneNode*> leafs;
-	getLeafNodes(leafs);
-	return leafs;
+	vector<SceneNode*> meshNodes;
+	meshNodes.reserve(getRootNode().NextNodeId);
+	getMeshNodes(meshNodes);
+	return meshNodes;
+}
+
+vector<SingleMeshSceneNode> SceneNode::getFlattenedMeshNodes()
+{
+	vector<SingleMeshSceneNode> nodes;
+	nodes.reserve(getRootNode().NextNodeId);
+	for (auto meshNode : getMeshNodes())
+	{
+		auto transform = meshNode->getTransform();
+		for (auto meshId : meshNode->Meshes)
+		{
+			nodes.emplace_back(SingleMeshSceneNode{
+				meshNode->NodeId,
+				meshId,
+				meshNode,
+				transform
+			});
+		}
+	}
+	return nodes;
 }
 
 void SceneNode::getAllNodes(vector<SceneNode*>& nodes)
@@ -287,25 +311,25 @@ const vector<AreaLight>& Scene::getLights() const { return lights; }
 const vector<SpecularPrimitive>& Scene::getSpeculars() const { return speculars; }
 const vector<FaceAttributes>& Scene::getFaceAttributes() const { return faceAttributes; }
 
-const IndexedSpan& Scene::getMeshIndexedSpan(const string& groupName) const
+const IndexedSpan& Scene::getMeshIndexedSpan(std::size_t meshId) const
 {
-	return spanDataMap.at(groupName);
+	return meshes.at(meshId);
 }
 
-const std::unordered_map<string, IndexedSpan>& Scene::getMeshIndexedSpanDataMap() const
+const vector<IndexedSpan>& Scene::getMeshIndexedSpanData() const
 {
-	return spanDataMap;
+	return meshes;
 }
 
 const SceneNode& Scene::getSceneGraph() const { return sceneGraph; }
 SceneNode& Scene::getSceneGraph() { return sceneGraph; }
 
-void Scene::addCamera(Camera camera)
+void Scene::addCamera(CameraNode camera)
 {
 	cameras.push_back(camera);
 }
 
-const std::vector<Camera>& Scene::getCameras() const
+const vector<Scene::CameraNode>& Scene::getCameras() const
 {
 	return cameras;
 }
