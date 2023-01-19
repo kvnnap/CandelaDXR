@@ -1,9 +1,8 @@
 #pragma once
 
-#include <DirectXMath.h>
-
 #include "Scene/Scene.h"
 #include "Renderer/RendererTime.h"
+#include "Mathematics/Types.h"
 
 namespace candela::renderer::imgui
 {
@@ -20,11 +19,11 @@ namespace candela::renderer::imgui
 		const RendererTime& rendererTime;
 		std::vector<ImGuiSceneNode> children;
 
-		DirectX::XMFLOAT3 worldPosition;
-		DirectX::XMFLOAT3 position;
-		DirectX::XMFLOAT3 rotation;
-		DirectX::XMFLOAT3 scale;
+		mathematics::Vector3 position;
+		mathematics::Vector3 rotation;
+		mathematics::Vector3 scale;
 
 		bool changed;
+		bool useModelCentre;
 	};
 }

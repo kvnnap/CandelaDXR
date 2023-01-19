@@ -64,7 +64,11 @@ void ImGuiRenderer::drawUi()
 	for (const auto& camera : renderer.getScene().getCameras())
 	{
 		if (ImGui::Button(camera.Camera.getName().c_str()))
-			renderer.setCameraCopy(camera.Camera);
+		{
+			auto camCopy = camera.Camera;
+			camCopy.transform(camera.Node->getTransform());
+			renderer.setCameraCopy(camCopy);
+		}
 	}
 
 	/*if (ImGui::ListBox("Shader", &shaderIndex, shaderNames.data(), static_cast<int>(shaderNames.size())))

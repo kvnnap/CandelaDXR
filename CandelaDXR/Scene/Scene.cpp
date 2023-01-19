@@ -279,7 +279,7 @@ vector<SceneNode*> SceneNode::getAllNodes()
 
 const Vector SceneNode::getCentrePosition() const
 {
-	DirectX::XMVECTOR accum{};
+	Vector accum{};
 	for (auto meshId : Meshes)
 		accum = DirectX::XMVectorAdd(accum, Scene.getMeshIndexedSpan(meshId).CentrePosition);
 	for (auto& snChild : Children)

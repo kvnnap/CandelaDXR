@@ -90,3 +90,20 @@ float candela::mathematics::f2Definite(float x0, float x1, float y0, float y1, f
 		 - f2(x1, y0, z)
 		 - f2(x0, y1, z);
 }
+
+Vector3 candela::mathematics::QuaternionToRotationXYZ(const Vector& rot)
+{
+	Vector3 rotation{};
+	float a = 2.f * (rot.m128_f32[3] * rot.m128_f32[0] + rot.m128_f32[1] * rot.m128_f32[2]);
+	float b = 1.f - 2.f * (rot.m128_f32[0] * rot.m128_f32[0] + rot.m128_f32[1] * rot.m128_f32[1]);
+	rotation.x = atan2f(a, b); //roll
+
+	a = sqrtf(1.f + 2.f * (rot.m128_f32[3] * rot.m128_f32[1] - rot.m128_f32[0] * rot.m128_f32[2]));
+	b = sqrtf(1.f - 2.f * (rot.m128_f32[3] * rot.m128_f32[1] - rot.m128_f32[0] * rot.m128_f32[2]));
+	rotation.y = 2.f * atan2f(a, b) - mathematics::constants::PiOver2; // pitch
+
+	a = 2.f * (rot.m128_f32[3] * rot.m128_f32[2] + rot.m128_f32[0] * rot.m128_f32[1]);
+	b = 1.f - 2.f * (rot.m128_f32[1] * rot.m128_f32[1] + rot.m128_f32[2] * rot.m128_f32[2]);
+	rotation.z = atan2(a, b); // yaw
+	return rotation;
+}

@@ -22,4 +22,6 @@ namespace candela::mathematics
 	// Integral cos(theta_area)/r^2 dA - for special case
 	float f2(float x, float y, float z);
 	float f2Definite(float x0, float x1, float y0, float y1, float z);
+
+	Vector3 QuaternionToRotationXYZ(const Vector& quaternion);
 }
