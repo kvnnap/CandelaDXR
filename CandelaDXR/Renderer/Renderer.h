@@ -25,7 +25,7 @@
 #include "ImGui/ImGuiManager.h"
 #include "RendererResources.h"
 #include "ITransform.h"
-#include "Animation/Animation.h"
+#include "Animation/IAnimation.h"
 #include "Animation/AnimationSequencer.h"
 
 namespace candela::renderer
@@ -35,7 +35,7 @@ namespace candela::renderer
 	struct AnimationRecord
 	{
 		ITransform* transform;
-		animation::Animation* animation;
+		animation::IAnimation* animation;
 		std::string name;
 		bool enabled;
 	};

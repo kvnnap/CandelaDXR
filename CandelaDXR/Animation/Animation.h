@@ -4,6 +4,7 @@
 #include <vector>
 #include <cstdint>
 
+#include "IAnimation.h"
 #include "Mathematics/Types.h"
 
 namespace candela::animation
@@ -23,9 +24,10 @@ namespace candela::animation
 	};
 
 	class Animation
+		: public IAnimation
 	{
 	public:
-		mathematics::Matrix animate(std::uint32_t timeMs, const DirectX::XMVECTOR& centreTranslation = {}) const;
+		mathematics::Matrix animate(std::uint32_t timeMs, const mathematics::Vector& centreTranslation = {}) const override;
 		std::uint32_t getTotalTimeMs() const;
 
 		void setInitialMeshStateId(std::size_t initialMeshStateId);

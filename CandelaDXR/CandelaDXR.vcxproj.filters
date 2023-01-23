@@ -216,6 +216,9 @@
     <ClCompile Include="Factory\AssImpSceneLoaderFactory.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Animation\KeyBasedAnimation.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Exception\GeneralException.h">
@@ -474,6 +477,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Factory\AssImpSceneLoaderFactory.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Animation\IAnimation.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Animation\KeyBasedAnimation.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

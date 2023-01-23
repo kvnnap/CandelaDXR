@@ -1,4 +1,5 @@
 #include "AnimationFactory.h"
+#include "Animation/Animation.h"
 #include "Environment/Environment.h"
 #include "VectorFactory.h"
 
@@ -11,20 +12,21 @@ using feanor::configuration::ConfigurationNode;
 
 using candela::environment::Environment;
 using candela::animation::Animation;
+using candela::animation::IAnimation;
 using candela::animation::MeshState;
 using candela::animation::Transition;
 using candela::animation::factory::AnimationFactory;
 
 using candela::mathematics::factory::Vector3Factory;
 
-unique_ptr<Animation> AnimationFactory::create() const
+unique_ptr<IAnimation> AnimationFactory::create() const
 {
     return make_unique<Animation>();
 }
 
-unique_ptr<Animation> AnimationFactory::create(const ConfigurationNode& config) const
+unique_ptr<IAnimation> AnimationFactory::create(const ConfigurationNode& config) const
 {
-    auto animation = create();
+    auto animation = make_unique<Animation>();
 
     std::unordered_map<std::string, std::size_t> stateMap;
     

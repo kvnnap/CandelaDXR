@@ -304,6 +304,18 @@ void Renderer::renderFrame()
 			for (auto& animRec : animationRecords)
 				if (animRec.enabled)
 					animRec.transform->transform(animRec.animation->animate(timeMs, animRec.transform->getCentrePosition()));
+			for (auto& sceneAnimRec : scene->getAnimationRecords())
+			{
+				if (sceneAnimRec.Enabled)
+				{
+					for (auto& animPair : sceneAnimRec.AnimPair)
+					{
+						//auto animResult = animPair.Animation->animate(timeMs, animRec.transform->getCentrePosition());
+						for (auto& node : animPair.Node)
+							node->transform(animPair.Animation->animate(timeMs, node->getCentrePosition()));
+					}
+				}
+			}
 			changeEvent |= static_cast<ChangeEvent_t>(ChangeEvent::Transformation);
 		}
 

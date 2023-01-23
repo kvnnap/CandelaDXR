@@ -25,6 +25,7 @@ using candela::scene::AreaLight;
 using candela::scene::SpecularPrimitive;
 using candela::scene::FaceAttributes;
 using candela::scene::IndexedSpan;
+using candela::scene::AnimationRecord;
 using candela::renderer::Camera;
 
 Scene::Scene()
@@ -168,6 +169,16 @@ void Scene::recalculateLightsAndFaceAttributes()
 	}
 }
 
+void Scene::addAnimation(std::unique_ptr<animation::IAnimation> animation)
+{
+	animations.push_back(std::move(animation));
+}
+
+AnimationRecord& Scene::addAnimationRecord()
+{
+	return animationRecords.emplace_back();
+}
+
 bool Material::isEmissive() const
 {
 	return Emissive.x != 0.f || Emissive.y != 0.f || Emissive.z != 0.f;
@@ -189,6 +200,20 @@ SceneNode& SceneNode::getRootNode()
 	while (node->Parent)
 		node = node->Parent;
 	return *node;
+}
+
+SceneNode* SceneNode::getNode(const std::string& nodeName)
+{
+	if (nodeName == NodeName)
+		return this;
+
+	for (auto& child : Children)
+	{
+		if (auto ret = child->getNode(nodeName))
+			return ret;
+	}
+
+	return nullptr;
 }
 
 SceneNode::SceneNode(scene::Scene& scene, SceneNode* parent)
@@ -291,6 +316,11 @@ const Vector SceneNode::getCentrePosition() const
 void SceneNode::transform(const Matrix& trans)
 {
 	Transform = trans;
+}
+
+std::vector<AnimationRecord>& candela::scene::Scene::getAnimationRecords()
+{
+	return animationRecords;
 }
 
 // Getters

@@ -11,6 +11,7 @@
 #include "Mathematics/Types.h"
 #include "Renderer/ITransform.h"
 #include "Renderer/Camera.h"
+#include "Animation/IAnimation.h"
 
 namespace candela::scene
 {
@@ -46,6 +47,7 @@ namespace candela::scene
 		// Methods
 		std::size_t assignNewNodeId();
 		SceneNode& getRootNode();
+		SceneNode* getNode(const std::string& nodeName);
 
 		//SceneNode();
 		SceneNode& addChild(const std::string& sceneNodeName);
@@ -108,6 +110,26 @@ namespace candela::scene
 		bool isSpecular() const;
 	};
 
+	//struct ObjectNode
+	//{
+	//	renderer::ITransform* Object{}; // Camera or Light or nullptr
+	//	renderer::ITransform* Node{}; // SceneNode
+	//};
+
+	struct AnimationPair // Channel in Assimp lingo
+	{
+		animation::IAnimation* Animation{};
+		std::vector<renderer::ITransform*> Node; // Nodes affected by this Animation
+	};
+
+	struct AnimationRecord
+	{
+		std::vector<AnimationPair> AnimPair;
+		std::string Name;
+		bool Enabled = true;
+	};
+
+
 	class Scene
 	{
 	public:
@@ -123,8 +145,12 @@ namespace candela::scene
 			const std::array<mathematics::Vector3, 3>& norm,
 			std::uint32_t materialId);
 		void recalculateLightsAndFaceAttributes();
+		void addAnimation(std::unique_ptr<animation::IAnimation> animation);
+		AnimationRecord& addAnimationRecord();
 
 		// Getters
+		std::vector<AnimationRecord>& getAnimationRecords();
+
 		const std::vector<mathematics::Vector3>& getVertices() const;
 		const std::vector<mathematics::Vector2>& getTextureCoords() const;
 		const std::vector<mathematics::Vector3>& getNormals() const;
@@ -191,6 +217,10 @@ namespace candela::scene
 
 		// Groups for the index data - must connect with scene graph
 		SceneNode sceneGraph;
+
+		// Animations
+		std::vector<std::unique_ptr<animation::IAnimation>> animations;
+		std::vector<AnimationRecord> animationRecords;
 
 		// Temp data
 		std::string currentGroupName;

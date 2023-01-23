@@ -10,6 +10,8 @@
 #include <filesystem>
 #include <math.h>
 
+#include "Animation/KeyBasedAnimation.h"
+
 using std::filesystem::path;
 using std::array;
 using std::string;
@@ -218,14 +220,76 @@ void AssImpSceneLoader::loadScene()
 			return n->NodeName == myCamera.getName();
 		});
 
+		myCameraNode->Cameras.push_back(offsets.camera + i);
+
 		myCamera.transform(myCameraNode->getTransform());
 
 		// Add to scene
 		scene->addCamera({ myCamera, myCameraNode});
 	}
 
-	scene->recalculateLightsAndFaceAttributes();
+	// Add animations
+	for (auto i = 0u; i < pScene->mNumAnimations; ++i)
+	{
+		DirectX::XMVECTOR temp{};
+		//animation.addMeshState(animation::MeshState{});
+		// Get animation
+		auto pAnim = pScene->mAnimations[i];
+		
+		auto& animRecord = scene->addAnimationRecord();
+		animRecord.Name = pAnim->mName.C_Str();
 
+		for (auto c = 0u; c < pAnim->mNumChannels; ++c)
+		{
+			auto pChannel = pAnim->mChannels[c];
+			if (pChannel->mNumPositionKeys < 1)
+				continue;
+
+			//auto pNode = pScene->mRootNode->FindNode(pChannel->mNodeName);
+			auto ret = scene->getSceneGraph().getNode(pChannel->mNodeName.C_Str());
+			if (ret == nullptr)
+				continue;
+
+			auto animation = std::make_unique<animation::KeyBasedAnimation>();
+			animation->setTicksPerSecond(static_cast<uint32_t>(pAnim->mTicksPerSecond));
+
+			for (auto p = 0u; p < pChannel->mNumPositionKeys; ++p)
+			{
+				auto &pos = pChannel->mPositionKeys[p];
+				temp.m128_f32[0] = pos.mValue.x;
+				temp.m128_f32[1] = pos.mValue.y;
+				temp.m128_f32[2] = pos.mValue.z;
+				temp.m128_f32[3] = 0.f;
+				animation->addTranslation({ temp, static_cast<std::uint32_t>(pos.mTime) });
+			}
+
+			for (auto r = 0u; r < pChannel->mNumRotationKeys; ++r)
+			{
+				auto &rot = pChannel->mRotationKeys[r];
+				temp.m128_f32[0] = rot.mValue.x;
+				temp.m128_f32[1] = rot.mValue.y;
+				temp.m128_f32[2] = rot.mValue.z;
+				temp.m128_f32[3] = rot.mValue.w;
+				animation->addRotation({ temp, static_cast<std::uint32_t>(rot.mTime) });
+			}
+
+			for (auto s = 0u; s < pChannel->mNumScalingKeys; ++s)
+			{
+				auto &scale = pChannel->mScalingKeys[s];
+				temp.m128_f32[0] = scale.mValue.x;
+				temp.m128_f32[1] = scale.mValue.y;
+				temp.m128_f32[2] = scale.mValue.z;
+				temp.m128_f32[3] = 0.f;
+				animation->addScale({ temp, static_cast<std::uint32_t>(scale.mTime) });
+			}
+
+			// Add to scene
+			animRecord.AnimPair.push_back({ animation.get(), { ret } });
+			scene->addAnimation(std::move(animation));
+		}
+	}
+
+	scene->recalculateLightsAndFaceAttributes();
 }
 
 void AssImpSceneLoader::setFilePath(const std::string& p_filePath)
