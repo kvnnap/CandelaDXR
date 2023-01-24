@@ -305,11 +305,14 @@ vector<SceneNode*> SceneNode::getAllNodes()
 const Vector SceneNode::getCentrePosition() const
 {
 	Vector accum{};
+	auto mySize = Children.size() + Meshes.size();
+	if (mySize == 0)
+		return accum;
 	for (auto meshId : Meshes)
 		accum = DirectX::XMVectorAdd(accum, Scene.getMeshIndexedSpan(meshId).CentrePosition);
 	for (auto& snChild : Children)
 		accum = DirectX::XMVectorAdd(accum, DirectX::XMVector3Transform(snChild->getCentrePosition(), snChild->Transform)); // Do we need to transform child CentrePosition?
-	const float invSize = 1.f / (Children.size() + Meshes.size());
+	const float invSize = 1.f / mySize;
 	return DirectX::XMVectorMultiply(accum, DirectX::XMVectorSet(invSize, invSize, invSize, invSize));
 }
 
