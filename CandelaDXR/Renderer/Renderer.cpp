@@ -208,6 +208,7 @@ void Renderer::init()
 		.specularBuffer = specularBuffer,
 		.matrices = matrices,
 		.normalMatrices = normalMatrices,
+		.externalLights = externalLights,
 		.adapter = adapter,
 		.textures = textures,
 		.pRTVDescriptorHeap = pRTVDescriptorHeap,
@@ -351,6 +352,18 @@ void Renderer::renderFrame()
 			getTempResource(),
 			nMatrices.data(),
 			sizeof(decltype(nMatrices)::value_type) * nMatrices.size(),
+			flags,
+			flags);
+
+		// Update Lights
+		auto eLights = getTransformedExternalLights();
+		DXUtil::updateDataInDefaultHeap(
+			pDevice,
+			pCurrentCommandList,
+			externalLights,
+			getTempResource(),
+			eLights.data(),
+			sizeof(decltype(eLights)::value_type) * eLights.size(),
 			flags,
 			flags);
 	}
@@ -649,6 +662,14 @@ void Renderer::initSceneResources()
 		normMatrs.data(), sizeof(decltype(normMatVec)::value_type) * normMatrs.size(), flags);
 	normalMatrices->SetName(L"Normal Matrices Buffer");
 
+	// Copy lights
+	auto eLights = getTransformedExternalLights();
+	const auto& eLightsTemp = eLights.empty() ? decltype(eLights)(1ULL) : eLights;
+	wrl::ComPtr<ID3D12Resource> tempELight;
+	externalLights = DXUtil::uploadDataToDefaultHeap(pDevice, pCurrentCommandList, tempELight,
+		eLightsTemp.data(), sizeof(decltype(eLights)::value_type) * eLightsTemp.size(), flags);
+	externalLights->SetName(L"External Lights");
+
 	// Upload textures
 	vector<wrl::ComPtr<ID3D12Resource>> texTempBuffer (scene->getTextures().size());
 	auto tempTexBuffer = texTempBuffer.begin();
@@ -796,6 +817,37 @@ vector<DirectX::XMFLOAT3X3> Renderer::getNormalMatrices()
 	for (const auto& child : meshInstances)
 		DirectX::XMStoreFloat3x3(&*ptMat++, DirectX::XMMatrixInverse(nullptr, child.ComputedTransform));
 	return localMatrices;
+}
+
+vector<candela::scene::Light> Renderer::getTransformedExternalLights()
+{
+	vector<scene::Light> tempLights;
+	tempLights.reserve(scene->getExternalLights().size());
+	for (auto& light : scene->getExternalLights())
+	{
+		auto& myLight = tempLights.emplace_back();
+		auto transform = light.Node->getTransform();
+		myLight = light.Light;
+		myLight.Position = DirectX::XMVector3Transform(myLight.Position, transform);
+		auto dirTrans = DirectX::XMMatrixTranspose(DirectX::XMMatrixInverse(nullptr, transform));
+
+		myLight.Direction = DirectX::XMVector4Transform(DirectX::XMVector3Normalize(myLight.Direction), dirTrans);
+		myLight.Up = DirectX::XMVector4Transform(DirectX::XMVector3Normalize(myLight.Up), dirTrans);
+		auto xDir = DirectX::XMVector3Cross(myLight.Direction, myLight.Up);
+
+		myLight.AreaDimensions = Vector2(
+			myLight.AreaDimensions.x * DirectX::XMVector3Length(xDir).m128_f32[0],
+			myLight.AreaDimensions.y * DirectX::XMVector3Length(myLight.Up).m128_f32[0]
+		); // TODO: Check if this actually works
+
+		myLight.Direction = DirectX::XMVector3Normalize(myLight.Direction);
+		myLight.Up = DirectX::XMVector3Normalize(myLight.Up);
+
+		myLight.Position.m128_f32[3] = 1.f;
+		myLight.Direction.m128_f32[3] = 0.f;
+		myLight.Up.m128_f32[3] = 0.f;
+	}
+	return tempLights.empty() ? vector<scene::Light>(1) : tempLights;
 }
 
 void Renderer::refreshMaterialResources()

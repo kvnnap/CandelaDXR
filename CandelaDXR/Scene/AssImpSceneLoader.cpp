@@ -197,6 +197,7 @@ void AssImpSceneLoader::loadScene()
 
 	auto mySceneNodes = scene->getSceneGraph().getAllNodes();
 
+	// NOTE - Lights and cameras are not instanced in Assimp
 	// Add cameras
 	offsets.camera = scene->getCameras().size();
 	for (unsigned int i = 0; i < pScene->mNumCameras; ++i)
@@ -226,6 +227,36 @@ void AssImpSceneLoader::loadScene()
 
 		// Add to scene
 		scene->addCamera({ myCamera, myCameraNode});
+	}
+
+	// Add lights
+	offsets.light = scene->getLights().size();
+	for (auto i = 0u; i < pScene->mNumLights; ++i)
+	{
+		auto pLight = pScene->mLights[i];
+		const auto name = string(pLight->mName.C_Str());
+
+		// Transform according to scene graph
+		auto myLightNode = *std::find_if(mySceneNodes.begin(), mySceneNodes.end(), [&name](const SceneNode* n) -> bool {
+			return n->NodeName == name;
+		});
+		myLightNode->Lights.push_back(offsets.light + i);
+
+		constexpr float cdToInt = 1.f / 683.f;
+		float coeff = pLight->mType == aiLightSource_POINT ? cdToInt : 1.f;
+
+		scene->addExternalLight({ Light{
+			.Position = DirectX::XMVectorSet(pLight->mPosition.x, pLight->mPosition.y, pLight->mPosition.z, 1.f),
+			.Direction = DirectX::XMVector3Normalize(DirectX::XMVectorSet(pLight->mDirection.x, pLight->mDirection.y, pLight->mDirection.z, 0.f)),
+			.Up = DirectX::XMVector3Normalize(DirectX::XMVectorSet(pLight->mUp.x, pLight->mUp.y, pLight->mUp.z, 0.f)),
+			.Attenuation = Vector3(pLight->mAttenuationConstant, pLight->mAttenuationLinear, pLight->mAttenuationQuadratic),
+			.Type = static_cast<uint32_t>(pLight->mType),
+			.Diffuse = Vector3(pLight->mColorDiffuse.r * coeff, pLight->mColorDiffuse.g * coeff, pLight->mColorDiffuse.b * coeff),
+			.InnerConeAngle = pLight->mAngleInnerCone,
+			.Specular = Vector3(pLight->mColorSpecular.r * coeff, pLight->mColorSpecular.g * coeff, pLight->mColorSpecular.b * coeff),
+			.OuterConeAngle = pLight->mAngleOuterCone,
+			.AreaDimensions = Vector2(pLight->mSize.x, pLight->mSize.y)
+		}, myLightNode });
 	}
 
 	// Add animations

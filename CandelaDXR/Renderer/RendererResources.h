@@ -31,6 +31,7 @@ namespace candela::renderer
 		wrl::ComPtr<ID3D12Resource> specularBuffer;
 		wrl::ComPtr<ID3D12Resource> matrices;
 		wrl::ComPtr<ID3D12Resource> normalMatrices;
+		wrl::ComPtr<ID3D12Resource> externalLights;
 		wrl::ComPtr<IDXGIAdapter> adapter;
 		std::vector<directx::Resource> textures;
 		wrl::ComPtr<ID3D12DescriptorHeap> pRTVDescriptorHeap;

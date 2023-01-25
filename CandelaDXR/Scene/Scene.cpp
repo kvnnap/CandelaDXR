@@ -22,6 +22,7 @@ using candela::scene::Scene;
 using candela::scene::SceneNode;
 using candela::scene::SingleMeshSceneNode;
 using candela::scene::AreaLight;
+using candela::scene::Light;
 using candela::scene::SpecularPrimitive;
 using candela::scene::FaceAttributes;
 using candela::scene::IndexedSpan;
@@ -167,6 +168,11 @@ void Scene::recalculateLightsAndFaceAttributes()
 		}
 		++i;
 	}
+}
+
+void Scene::addExternalLight(const LightNode& light)
+{
+	externalLights.push_back(light);
 }
 
 void Scene::addAnimation(std::unique_ptr<animation::IAnimation> animation)
@@ -337,6 +343,7 @@ const vector<Material>& Scene::getMaterials() const { return materials; }
 string Scene::getMaterialName(size_t matId) const { return materialNames.at(matId); }
 vector<Material>& Scene::getMaterials() { return materials; }
 const vector<AreaLight>& Scene::getLights() const { return lights; }
+const vector<Scene::LightNode>& Scene::getExternalLights() const { return externalLights; }
 const vector<SpecularPrimitive>& Scene::getSpeculars() const { return speculars; }
 const vector<FaceAttributes>& Scene::getFaceAttributes() const { return faceAttributes; }
 

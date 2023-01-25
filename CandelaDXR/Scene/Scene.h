@@ -79,6 +79,7 @@ namespace candela::scene
 		std::uint32_t MeshIndex;
 	};
 
+	// TODO: Change name to EmissivePrimitive
 	struct alignas(16) AreaLight
 	{
 		std::uint32_t InstanceIndex;
@@ -108,6 +109,20 @@ namespace candela::scene
 
 		bool isEmissive() const;
 		bool isSpecular() const;
+	};
+
+	struct alignas(16) Light
+	{
+		mathematics::Vector Position;
+		mathematics::Vector Direction;
+		mathematics::Vector Up;
+		mathematics::Vector3 Attenuation; // 1.f / ([0] + [1]*d + [2]*d^2) - d is distance
+		std::uint32_t Type;
+		mathematics::Vector3 Diffuse;
+		float InnerConeAngle;
+		mathematics::Vector3 Specular;
+		float OuterConeAngle;
+		mathematics::Vector2 AreaDimensions;
 	};
 
 	//struct ObjectNode
@@ -178,6 +193,15 @@ namespace candela::scene
 		void addCamera(CameraNode camera);
 		const std::vector<CameraNode>& getCameras() const;
 
+		struct LightNode
+		{
+			Light Light;
+			SceneNode* Node;
+		};
+
+		const std::vector<LightNode>& getExternalLights() const;
+		void addExternalLight(const LightNode& light);
+
 		// Utility functions - Offsets in bytes
 		const std::size_t getVerticesOffset() const;
 		const std::size_t getVerticesSizeBytes() const;
@@ -196,6 +220,7 @@ namespace candela::scene
 		std::vector<AreaLight> lights;
 		std::vector<SpecularPrimitive> speculars;
 		std::vector<CameraNode> cameras;
+		std::vector<LightNode> externalLights;
 
 		// These contain the vertices. The 3 arrays must all be the same size
 		// Storing separately vs interleaved. Trying separate first.

@@ -102,6 +102,7 @@ namespace candela::renderer
 		directx::DXResource& getTempResource();
 		std::vector<DirectX::XMFLOAT3X4> getMatrices();
 		std::vector<DirectX::XMFLOAT3X3> getNormalMatrices();
+		std::vector<scene::Light> getTransformedExternalLights();
 		LRESULT wndCallback(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 		// Basic I/O and Window
@@ -151,6 +152,7 @@ namespace candela::renderer
 		wrl::ComPtr<ID3D12Resource> specularBuffer;
 		wrl::ComPtr<ID3D12Resource> matrices;
 		wrl::ComPtr<ID3D12Resource> normalMatrices;
+		wrl::ComPtr<ID3D12Resource> externalLights;
 		std::vector<directx::Resource> textures;
 
 		// Chain

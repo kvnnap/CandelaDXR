@@ -59,6 +59,8 @@ void PathTracingShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12Graphic
 
 	// Const buffer initial values
 	constBuffer.numLights = static_cast<uint32_t>(rRes->scene->getLights().size());
+	constBuffer.numExternalLights = static_cast<uint32_t>(rRes->scene->getExternalLights().size());
+	constBuffer.numTotalLights = constBuffer.numLights + constBuffer.numExternalLights;
 	constBuffer.pathFilter = 0xFFFFFFFF;
 
 	// Build Pipeline
@@ -131,6 +133,7 @@ void PathTracingShading::onChange(wrl::ComPtr<ID3D12GraphicsCommandList> pCurren
 	if (changeEvent & static_cast<ChangeEvent_t>(ChangeEvent::SceneChange))
 	{
 		constBuffer.numLights = static_cast<uint32_t>(rendererResources->scene->getLights().size());
+		constBuffer.numTotalLights = constBuffer.numLights + constBuffer.numExternalLights;
 		createShaderTable(pCurrentCommandList, rendererResources->getTempResource());
 	}
 	clear = true;
@@ -235,8 +238,9 @@ void PathTracingShading::buildPipeline()
 	param.InitAsShaderResourceView(6); rootSignatureManager->setParameter("faceAttributes", param);
 	param.InitAsShaderResourceView(7); rootSignatureManager->setParameter("materials", param);
 	param.InitAsShaderResourceView(8); rootSignatureManager->setParameter("lights", param);
+	param.InitAsShaderResourceView(9); rootSignatureManager->setParameter("eLights", param);
 
-	rootSignatureManager->addParametersToRootSignature("RayGenRootSignature", { "BVHDescTable", "ConstBuff", "verts", "texVerts", "normals", "indices", "matrices", "normalMatrices", "faceAttributes", "materials", "lights" });
+	rootSignatureManager->addParametersToRootSignature("RayGenRootSignature", { "BVHDescTable", "ConstBuff", "verts", "texVerts", "normals", "indices", "matrices", "normalMatrices", "faceAttributes", "materials", "lights", "eLights"});
 	rootSignatureManager->setSamplerForRootSignature("RayGenRootSignature", DXUtil::getDefaultSamplerDesc());
 	rootSignatureManager->generateRootSignature("RayGenRootSignature", rendererResources->pDevice);
 
@@ -336,6 +340,7 @@ void PathTracingShading::createShaderTable(wrl::ComPtr<ID3D12GraphicsCommandList
 	shadingTable->setInputForViewParameter(L"rayGen", "faceAttributes", rendererResources->faceAttributeBuffer);
 	shadingTable->setInputForViewParameter(L"rayGen", "materials", rendererResources->materialBuffer);
 	shadingTable->setInputForViewParameter(L"rayGen", "lights", rendererResources->lightBuffer);
+	shadingTable->setInputForViewParameter(L"rayGen", "eLights", rendererResources->externalLights);
 
 	// Generate
 	shadingTable->generateShadingTable(rendererResources->pDevice, commandList, stateObject, tempBuffer);
