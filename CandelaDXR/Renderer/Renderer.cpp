@@ -357,15 +357,18 @@ void Renderer::renderFrame()
 
 		// Update Lights
 		auto eLights = getTransformedExternalLights();
-		DXUtil::updateDataInDefaultHeap(
-			pDevice,
-			pCurrentCommandList,
-			externalLights,
-			getTempResource(),
-			eLights.data(),
-			sizeof(decltype(eLights)::value_type) * eLights.size(),
-			flags,
-			flags);
+		if (!eLights.empty())
+		{
+			DXUtil::updateDataInDefaultHeap(
+				pDevice,
+				pCurrentCommandList,
+				externalLights,
+				getTempResource(),
+				eLights.data(),
+				sizeof(decltype(eLights)::value_type) * eLights.size(),
+				flags,
+				flags);
+		}
 	}
 
 	// Update material, face attributes and lights
@@ -847,7 +850,7 @@ vector<candela::scene::Light> Renderer::getTransformedExternalLights()
 		myLight.Direction.m128_f32[3] = 0.f;
 		myLight.Up.m128_f32[3] = 0.f;
 	}
-	return tempLights.empty() ? vector<scene::Light>(1) : tempLights;
+	return tempLights;
 }
 
 void Renderer::refreshMaterialResources()

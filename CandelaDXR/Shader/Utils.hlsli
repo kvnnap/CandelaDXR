@@ -168,6 +168,20 @@ float3 randomRayHemisphere(inout uint s, float3 unitNormal) {
 	return randomRayLobe(s, unitNormal, 0, p);
 }
 
+float3 randomRaySphere(inout uint s, inout float p)
+{
+	const float cosPhi = 1.f - 2.f * rand_next(s);
+	const float sinPhi = sqrt(1.f - cosPhi * cosPhi);
+	const float theta = 2.f * PI * rand_next(s);
+
+	float sinTheta;
+	float cosTheta;
+	sincos(theta, sinTheta, cosTheta);
+
+	p = 1.f / (4.f * PI);
+	return float3(sinPhi * cosTheta, cosPhi, sinPhi * sinTheta);
+}
+
 static const uint ConvRangeBits = 24;
 
 uint4 floatToFixed(float4 value, uint rangeBits)

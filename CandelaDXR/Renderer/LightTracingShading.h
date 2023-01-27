@@ -101,6 +101,7 @@ namespace candela::renderer
 			std::uint32_t seeds[2];
 			mathematics::UVector2 winDimensions;
 			std::uint32_t numLights;
+			std::uint32_t numTotalLights;
 			std::uint32_t frameNumber;
 			std::uint32_t pathFilter;
 			std::uint32_t minBounces;

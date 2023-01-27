@@ -19,6 +19,7 @@ struct ConstBuff
 	uint2 seeds;
 	uint2 winDim;
 	uint numLights;
+	uint numTotalLights;
 	uint frameNumber;
 	PathInteraction pathFilter;
 	uint minBounces;
@@ -43,9 +44,10 @@ StructuredBuffer<float3x3> normalMatrices : register(t5);
 StructuredBuffer<FaceAttributes> faceAttributes : register(t6);
 StructuredBuffer<Material> materials : register(t7);
 StructuredBuffer<AreaLight> lights : register(t8);
-StructuredBuffer<SpecularPrimitive> speculars : register(t9);
+StructuredBuffer<ExternalLight> eLights : register(t9);
+StructuredBuffer<SpecularPrimitive> speculars : register(t10);
 
-RaytracingAccelerationStructure gRtScene : register(t10);
+RaytracingAccelerationStructure gRtScene : register(t11);
 
 //Texture2D<float> gIrrToRad : register(t11);
 Texture2D<float3> gTextures[]: register(t12);

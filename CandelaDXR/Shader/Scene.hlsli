@@ -45,6 +45,7 @@ struct ExternalLight
 	float3 Specular;
 	float OuterConeAngle;
 	float2 AreaDimensions;
+	uint2 padding;
 };
 
 struct SpecularPrimitive
