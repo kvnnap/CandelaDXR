@@ -9,6 +9,7 @@
 
 #include "Texture.h"
 #include "Mathematics/Types.h"
+#include "Mathematics/AABB.h"
 #include "Renderer/ITransform.h"
 #include "Renderer/Camera.h"
 #include "Animation/IAnimation.h"
@@ -71,6 +72,7 @@ namespace candela::scene
 		std::size_t Start;
 		std::size_t Size;
 		DirectX::XMVECTOR CentrePosition;
+		mathematics::AABB AxisAlignedBB;
 	};
 
 	struct alignas(16) FaceAttributes
@@ -111,11 +113,19 @@ namespace candela::scene
 		bool isSpecular() const;
 	};
 
+	#define LT_UNDEFINED 0
+	#define LT_DIRECTIONAL 1
+	#define LT_POINT 2
+	#define LT_SPOT 3
+	#define LT_AMBIENT 4
+	#define LT_AREA 5
+
 	struct alignas(16) Light
 	{
 		mathematics::Vector Position;
 		mathematics::Vector Direction;
-		mathematics::Vector Up;
+		mathematics::Vector Up; // matches V
+		mathematics::Vector Right; // matches U = Direction CROSS Up - Custom
 		mathematics::Vector3 Attenuation; // 1.f / ([0] + [1]*d + [2]*d^2) - d is distance
 		std::uint32_t Type;
 		mathematics::Vector3 Diffuse;
@@ -184,6 +194,7 @@ namespace candela::scene
 
 		const SceneNode& getSceneGraph() const;
 		SceneNode& getSceneGraph();
+		mathematics::AABB getSceneAABB();
 
 		struct CameraNode
 		{
@@ -250,5 +261,6 @@ namespace candela::scene
 		// Temp data
 		std::string currentGroupName;
 		DirectX::XMVECTOR posAccumulator;
+		mathematics::AABB aabbAccum;
 	};
 }

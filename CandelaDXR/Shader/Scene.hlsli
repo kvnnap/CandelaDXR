@@ -38,6 +38,7 @@ struct ExternalLight
 	float4 Position;
 	float4 Direction;
 	float4 Up;
+	float4 Right;
 	float3 Attenuation;
 	uint Type;
 	float3 Diffuse;

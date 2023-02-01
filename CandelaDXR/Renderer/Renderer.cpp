@@ -3,6 +3,7 @@
 
 #include "Exception/WindowException.h"
 #include "Mathematics/Types.h"
+#include "Mathematics/Plane.h"
 
 #include "DirectX/DxUtil.h"
 #include "DirectX/d3dx12.h"
@@ -52,6 +53,7 @@ using candela::directx::ResourceManager;
 using candela::mathematics::Vector2;
 using candela::mathematics::UVector2;
 using candela::mathematics::Vector3;
+using candela::mathematics::Plane;
 
 using candela::ui::Window;
 using candela::scene::Scene;
@@ -75,9 +77,9 @@ Renderer::Renderer(Scene *scene, Camera *camera, const UVector2 &windowDimension
 	uint32_t adapterIndex, bool debugEnabled, bool breakEnabled, bool vsync, bool exitOnAnimCompl, bool shaderAccumulation)
 	: windowDimensions(windowDimensions),
 	  adapterIndex(adapterIndex),
+	  pRTV8Bit(), pRTVRad(), pRTVDiff(), pRTVSpec(), pRadAccumulator(), pDiffAccumulator(), pSpecAccumulator(),
 	  rtvDescriptorSize(),
 	  currentBackBufferIndex(),
-	  frameFenceValues(),
 	  scene(scene),
 	  camera(camera),
 	  drawables(std::move(p_drawables)),
@@ -87,6 +89,7 @@ Renderer::Renderer(Scene *scene, Camera *camera, const UVector2 &windowDimension
 	  exitOnAnimationCompletion(exitOnAnimCompl),
 	  shaderAccumulation(shaderAccumulation)
 {
+	//drawables.push_back(&eoDebug);
 }
 
 Renderer::~Renderer()
@@ -436,7 +439,7 @@ void Renderer::renderFrame()
 		flags |= first == i || drawable->shouldClearAccumulation() ? ACC_CLEAR : ACC_NONE;
 		flags |= ACC_ACCUMULATE;
 		//flags |= !grabRadiancePressed && last == i ? ACC_TONEMAP | ACC_LINEARTOSRGB : ACC_NONE;
-		AccumConstBuff c32Data;
+		AccumConstBuff c32Data{};
 		uint32_t bUsageIndex{}; // Accumulate rtvRad, rtvDiff and rtvSpec into their accumulators and optionnally clear.
 		for (uint32_t bUI = 0; bUI < 3; ++bUI)
 		{
@@ -625,7 +628,7 @@ void Renderer::initSceneResources()
 
 	wrl::ComPtr<ID3D12Resource> tempVB;
 	auto tempResource = DXUtil::createCommittedResource(pDevice, D3D12_HEAP_TYPE_UPLOAD, totalSize, D3D12_RESOURCE_STATE_GENERIC_READ);
-	uint8_t* data;
+	uint8_t* data{};
 	auto readRange = D3D12_RANGE(0, 0);
 	tempResource->Map(0, &readRange, reinterpret_cast<void**>(&data));
 	memcpy(data + scene->getVerticesOffset(), scene->getVertices().data(), scene->getVerticesSizeBytes());
@@ -706,7 +709,7 @@ void Renderer::initShaders()
 	HRESULT hr;
 	// Compute shader
 	computeRSM = make_shared<RootSignatureManager>();
-	CD3DX12_ROOT_PARAMETER1 param; 
+	CD3DX12_ROOT_PARAMETER1 param{};
 	computeRSM->addDescriptorRange("ComputeData", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 7, 0));
 	computeRSM->setDescriptorTableParameter("ComputeDataDescTable", "ComputeData");
 	param.InitAsConstants(sizeof(AccumConstBuff) / sizeof(uint32_t), 0u);
@@ -824,32 +827,130 @@ vector<DirectX::XMFLOAT3X3> Renderer::getNormalMatrices()
 
 vector<candela::scene::Light> Renderer::getTransformedExternalLights()
 {
+	//vector<Vector3> vertices; // DEbug
+	using namespace DirectX;
 	vector<scene::Light> tempLights;
 	tempLights.reserve(scene->getExternalLights().size());
 	for (auto& light : scene->getExternalLights())
 	{
 		auto& myLight = tempLights.emplace_back();
 		auto transform = light.Node->getTransform();
+		auto dirTrans = XMMatrixTranspose(XMMatrixInverse(nullptr, transform));
+
 		myLight = light.Light;
-		myLight.Position = DirectX::XMVector3Transform(myLight.Position, transform);
-		auto dirTrans = DirectX::XMMatrixTranspose(DirectX::XMMatrixInverse(nullptr, transform));
+		if (myLight.Type == LT_POINT)
+		{
+			myLight.Position = XMVector3Transform(myLight.Position, transform);
+		}
+		else if (myLight.Type == LT_DIRECTIONAL)
+		{
+			// Get scene boundaries
+			constexpr float deltaS = 0.01f;
+			mathematics::Vector delta{ deltaS, deltaS, deltaS, 0.f };
+			myLight.Direction = XMVector3Normalize(XMVector4Transform(XMVector3Normalize(myLight.Direction), dirTrans));
 
-		myLight.Direction = DirectX::XMVector4Transform(DirectX::XMVector3Normalize(myLight.Direction), dirTrans);
-		myLight.Up = DirectX::XMVector4Transform(DirectX::XMVector3Normalize(myLight.Up), dirTrans);
-		auto xDir = DirectX::XMVector3Cross(myLight.Direction, myLight.Up);
+			const auto aabb = scene->getSceneAABB();
+			//std::cout << "(" << aabb.Min.m128_f32[0] << ", " << aabb.Min.m128_f32[1] << ", " << aabb.Min.m128_f32[2] << ") - ("
+			//		  << aabb.Max.m128_f32[0] << ", " << aabb.Max.m128_f32[1] << ", " << aabb.Max.m128_f32[2] << ")" << std::endl;
+			auto closestPoint = aabb.getClosestToDirection(-myLight.Direction);
 
-		myLight.AreaDimensions = Vector2(
-			myLight.AreaDimensions.x * DirectX::XMVector3Length(xDir).m128_f32[0],
-			myLight.AreaDimensions.y * DirectX::XMVector3Length(myLight.Up).m128_f32[0]
-		); // TODO: Check if this actually works
+			// Create plane
+			Plane plane (closestPoint, myLight.Direction);
+			myLight.Up = plane.Basis.V;
+			myLight.Right = plane.Basis.U;
+			mathematics::AABB planeAABB;
 
-		myLight.Direction = DirectX::XMVector3Normalize(myLight.Direction);
-		myLight.Up = DirectX::XMVector3Normalize(myLight.Up);
+			for (size_t i = 0; i < 8; ++i)
+			{
+				auto cornerPoint = aabb.getCornerPoint(i);
+				auto uvPoint = plane.projectPointInUVSpace(cornerPoint);
+				planeAABB.contain(uvPoint);
+			}
+
+			myLight.Position = XMVectorMultiplyAdd(delta, -myLight.Direction, plane.pointFromUV(planeAABB.Min - delta));
+			XMStoreFloat2(&myLight.AreaDimensions, planeAABB.getDimensions() + delta * 2.f);
+
+			//// Test
+			//plane = Plane(myLight.Position, myLight.Direction);
+			//auto p1 = plane.pointFromUV(XMVectorSet(0.f, 0.f, 0.f, 0.f));
+			//auto p2 = plane.pointFromUV(XMLoadFloat2(&myLight.AreaDimensions));
+
+			//std::cout << "(" << p1.m128_f32[0] << ", " << p1.m128_f32[1] << ", " << p1.m128_f32[2] << ") - ("
+			//	<< p2.m128_f32[0] << ", " << p2.m128_f32[1] << ", " << p2.m128_f32[2] << ")" << std::endl;
+
+			// Graphical Testing
+			//plane = Plane(myLight.Position, myLight.Direction);
+			//Vector3 vec3;
+			//mathematics::Vector uvCoords = XMVectorSet(0, myLight.AreaDimensions.y, 0, 0);
+			//auto tempVec = myLight.Position + uvCoords.m128_f32[0] * myLight.Right + uvCoords.m128_f32[1] * myLight.Up;
+			//XMStoreFloat3(&vec3, tempVec);
+			//vertices.push_back(vec3);
+
+			//uvCoords = XMVectorSet(0, 0, 0, 0);
+			//tempVec = myLight.Position + uvCoords.m128_f32[0] * myLight.Right + uvCoords.m128_f32[1] * myLight.Up;
+			//XMStoreFloat3(&vec3, tempVec);
+			//vertices.push_back(vec3);
+
+			//uvCoords = XMVectorSet(myLight.AreaDimensions.x, myLight.AreaDimensions.y, 0, 0);
+			//tempVec = myLight.Position + uvCoords.m128_f32[0] * myLight.Right + uvCoords.m128_f32[1] * myLight.Up;
+			//XMStoreFloat3(&vec3, tempVec);
+			//vertices.push_back(vec3);
+
+			//vertices.push_back(vertices.back());
+			//vertices.push_back(vertices[vertices.size() - 3]);
+
+			//uvCoords = XMVectorSet(myLight.AreaDimensions.x, 0, 0, 0);
+			//tempVec = myLight.Position + uvCoords.m128_f32[0] * myLight.Right + uvCoords.m128_f32[1] * myLight.Up;
+			//XMStoreFloat3(&vec3, tempVec);
+			//vertices.push_back(vec3);
+
+			//// Test
+			//plane = Plane(myLight.Position, myLight.Direction);
+			//mathematics::AABB planeAABB2;
+
+			//for (size_t i = 0; i < 8; ++i)
+			//{
+			//	const auto cornerPoint = aabb.getCornerPoint(i);
+			//	auto pPoint = plane.projectPointInWorldSpace(cornerPoint);
+			//	/*auto uvw = plane.Basis.getUVW(cornerPoint);
+			//	auto cp2 = plane.Basis.getPoint(uvw);*/
+			//	auto w = plane.Basis.getUVW(cornerPoint - plane.Position).m128_f32[2];
+			//	auto uvPoint = plane.projectPointInUVSpace(cornerPoint);
+			//	//auto cp2 = plane.pointFromUV(uvPoint) + w * myLight.Direction;
+			//	auto cp2 = myLight.Position + uvPoint.m128_f32[0] * myLight.Right
+			//		+ uvPoint.m128_f32[1] * myLight.Up + w * myLight.Direction;
+			//	planeAABB2.contain(uvPoint);
+			//	std::cout << "(" << pPoint.m128_f32[0] << ", " << pPoint.m128_f32[1] << ", " << pPoint.m128_f32[2] << ") - ("
+			//		<< cp2.m128_f32[0] << ", " << cp2.m128_f32[1] << ", " << cp2.m128_f32[2] << ")" << std::endl;
+			//}
+			//std::cout << std::endl;
+
+			//auto ad = myLight.AreaDimensions;
+			//auto p2a = planeAABB2.getDimensions();
+			//std::cout << "(" << ad.x << ", " << ad.y <<  ") - ("
+			//	<< p2a.m128_f32[0] << ", " << p2a.m128_f32[1] << ")" << std::endl << std::endl;
+		}
+		else if (myLight.Type == LT_AREA)
+		{
+			myLight.Position = XMVector3Transform(myLight.Position, transform);
+			myLight.Direction = XMVector4Transform(XMVector3Normalize(myLight.Direction), dirTrans);
+			myLight.Up = XMVector4Transform(XMVector3Normalize(myLight.Up), dirTrans);
+			auto xDir = XMVector3Cross(myLight.Direction, myLight.Up);
+
+			myLight.AreaDimensions = Vector2(
+				myLight.AreaDimensions.x * XMVector3Length(xDir).m128_f32[0],
+				myLight.AreaDimensions.y * XMVector3Length(myLight.Up).m128_f32[0]
+			); // TODO: Check if this actually works
+
+			myLight.Direction = XMVector3Normalize(myLight.Direction);
+			myLight.Up = XMVector3Normalize(myLight.Up);
+		}
 
 		myLight.Position.m128_f32[3] = 1.f;
 		myLight.Direction.m128_f32[3] = 0.f;
 		myLight.Up.m128_f32[3] = 0.f;
 	}
+	//eoDebug.setVertices(std::move(vertices));
 	return tempLights;
 }
 

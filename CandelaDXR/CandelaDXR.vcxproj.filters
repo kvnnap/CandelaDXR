@@ -219,6 +219,18 @@
     <ClCompile Include="Animation\KeyBasedAnimation.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Mathematics\AABB.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Mathematics\Plane.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Mathematics\OrthonormalBasis.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Renderer\ExternalObjectDebugShading.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Exception\GeneralException.h">
@@ -485,6 +497,18 @@
     <ClInclude Include="Animation\KeyBasedAnimation.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Mathematics\AABB.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Mathematics\Plane.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Mathematics\OrthonormalBasis.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Renderer\ExternalObjectDebugShading.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="Shader\PixelShader.hlsl" />
@@ -503,6 +527,8 @@
     <FxCompile Include="Shader\FilterComputeShader.hlsl" />
     <FxCompile Include="Shader\RayTracingAOShader.hlsl" />
     <FxCompile Include="Shader\DenoiserPassShader.hlsl" />
+    <FxCompile Include="Shader\ExternalObjectVS.hlsl" />
+    <FxCompile Include="Shader\ExternalObjectPS.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Shader\Utils.hlsli" />
@@ -511,5 +537,6 @@
     <None Include="Shader\LightTracingVars.hlsli" />
     <None Include="Shader\RayTracingUtils.hlsli" />
     <None Include="Shader\AccumulatorShader.hlsli" />
+    <None Include="Shader\LightTracingLightCodeSection.hlsli" />
   </ItemGroup>
 </Project>

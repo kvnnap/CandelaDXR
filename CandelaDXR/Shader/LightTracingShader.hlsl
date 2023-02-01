@@ -55,12 +55,23 @@ void rayGen()
 		lightIndex -= cBuffer.numLights;
 		ExternalLight eLight = eLights[lightIndex];
 
+		localContribution *= eLight.Diffuse;
+
 		if (eLight.Type == LT_POINT)
 		{
 			ray.Origin = eLight.Position.xyz;
 			ray.Direction = randomRaySphere(seed, pdf);
-			localContribution *= eLight.Diffuse;
 			localContribution *= 1.f / (eLight.Attenuation[2] * pdf);
+		}
+		else if (eLight.Type == LT_DIRECTIONAL)
+		{
+			// Sample point on light source (rectangle on a plane)
+			float2 r = float2(rand_next(seed), rand_next(seed));
+			const float2 uvPoint = eLight.AreaDimensions * r;
+			const float area = eLight.AreaDimensions.x * eLight.AreaDimensions.y;
+			ray.Origin = eLight.Position.xyz + uvPoint.x * eLight.Right.xyz + uvPoint.y * eLight.Up.xyz;
+			ray.Direction = eLight.Direction.xyz;
+			localContribution *= area / eLight.Attenuation[0]; // 
 		}
 	}
 	else

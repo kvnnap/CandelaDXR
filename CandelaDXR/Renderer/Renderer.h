@@ -27,6 +27,7 @@
 #include "ITransform.h"
 #include "Animation/IAnimation.h"
 #include "Animation/AnimationSequencer.h"
+#include "ExternalObjectDebugShading.h"
 
 namespace candela::renderer
 {
@@ -180,5 +181,7 @@ namespace candela::renderer
 		const bool vsync;
 		const bool exitOnAnimationCompletion;
 		bool shaderAccumulation;
+
+		//ExternalObjectDebugShading eoDebug;
 	};
 }

@@ -15,6 +15,7 @@ using candela::mathematics::Vector;
 using candela::mathematics::Vector2;
 using candela::mathematics::Vector3;
 using candela::mathematics::Matrix;
+using candela::mathematics::AABB;
 
 using candela::scene::Texture;
 using candela::scene::Material;
@@ -51,6 +52,7 @@ void Scene::addMaterial(Material material, const string& name)
 void Scene::startMesh(const string& meshName)
 {
 	posAccumulator = {};
+	aabbAccum = mathematics::AABB();
 	meshes.emplace_back(IndexedSpan{ meshName, indexData.size(), 0 });
 }
 
@@ -78,6 +80,7 @@ size_t Scene::endMesh()
 	index.Size = indexData.size() - index.Start;
 	const float invSize = 1.f / index.Size;
 	index.CentrePosition = DirectX::XMVectorMultiply(posAccumulator, DirectX::XMVectorSet(invSize, invSize, invSize, invSize));
+	index.AxisAlignedBB = aabbAccum;
 
 	return meshes.size() - 1;
 }
@@ -91,7 +94,10 @@ void candela::scene::Scene::addFace(
 	// Add mesh data and vector attributes
 	for (auto i = 0; i < 3; ++i)
 	{
-		posAccumulator = DirectX::XMVectorAdd(posAccumulator, DirectX::XMLoadFloat3(&pos[i]));
+		auto vPos = DirectX::XMLoadFloat3(&pos[i]);
+		posAccumulator = DirectX::XMVectorAdd(posAccumulator, vPos);
+		vPos.m128_f32[3] = 1.f;
+		aabbAccum.contain(vPos);
 
 		array<float, 8> arr = { pos[i].x, pos[i].y, pos[i].z, tex[i].x, tex[i].y, norm[i].x, norm[i].y, norm[i].z };
 		auto it = collisionMap.find(arr);
@@ -257,10 +263,7 @@ Matrix SceneNode::getTransform() const
 void SceneNode::getMeshNodes(vector<SceneNode*>& meshNodes)
 {
 	if (!Meshes.empty())
-	{
 		meshNodes.push_back(this);
-		return;
-	}
 
 	for (auto& child : Children)
 		child->getMeshNodes(meshNodes);
@@ -292,6 +295,17 @@ vector<SingleMeshSceneNode> SceneNode::getFlattenedMeshNodes()
 		}
 	}
 	return nodes;
+}
+
+AABB Scene::getSceneAABB()
+{
+	AABB aabb;
+	for (auto &s : sceneGraph.getFlattenedMeshNodes())
+	{
+		const auto& otherAABB = getMeshIndexedSpan(s.MeshId).AxisAlignedBB;
+		aabb.contain(otherAABB.transform(s.ComputedTransform));
+	}
+	return aabb;
 }
 
 void SceneNode::getAllNodes(vector<SceneNode*>& nodes)

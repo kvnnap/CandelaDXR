@@ -22,7 +22,7 @@ namespace candela::renderer
 
 	struct RendererResources
 	{
-		Renderer* renderer;
+		Renderer* renderer{};
 		wrl::ComPtr<ID3D12Device> pDevice;
 		wrl::ComPtr<ID3D12Resource> sceneBuffer;
 		wrl::ComPtr<ID3D12Resource> materialBuffer;
@@ -35,20 +35,20 @@ namespace candela::renderer
 		wrl::ComPtr<IDXGIAdapter> adapter;
 		std::vector<directx::Resource> textures;
 		wrl::ComPtr<ID3D12DescriptorHeap> pRTVDescriptorHeap;
-		directx::Resource* pRTVRad;
-		directx::Resource* pRTVDiff;
-		directx::Resource* pRTVSpec;
-		directx::CommandQueue* commandQueue;
+		directx::Resource* pRTVRad{};
+		directx::Resource* pRTVDiff{};
+		directx::Resource* pRTVSpec{};
+		directx::CommandQueue* commandQueue{};
 		mathematics::UVector2 winDimensions;
-		UINT numBackBuffers;
-		scene::Scene* scene;
-		Camera* camera;
-		AccelerationStructure* accelerationStructure;
-		UINT currentBackBufferIndex;
+		UINT numBackBuffers{};
+		scene::Scene* scene{};
+		Camera* camera{};
+		AccelerationStructure* accelerationStructure{};
+		UINT currentBackBufferIndex{};
 		std::unique_ptr<directx::ResourceManager> resourceManager;
-		ui::Window* window;
-		std::vector<IDrawable*> *drawables;
-		std::uint64_t frameNumber;
+		ui::Window* window{};
+		std::vector<IDrawable*>* drawables{};
+		std::uint64_t frameNumber{};
 
 		directx::DXResource& getTempResource()
 		{

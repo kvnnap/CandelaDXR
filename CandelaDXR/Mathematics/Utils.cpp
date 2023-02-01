@@ -40,7 +40,7 @@ Vector candela::mathematics::InterpolateVertices(const Vector2& uv, const Vector
 Vector candela::mathematics::GeneratePerpendicularVector(const Vector& vec)
 {
 	return vec.m128_f32[0] != 0.f || vec.m128_f32[1] != 0.f
-		? Vector{ vec.m128_f32[1], -vec.m128_f32[0], 0.f, 0.f }
+		? DirectX::XMVector3Normalize(Vector{ vec.m128_f32[1], -vec.m128_f32[0], 0.f, 0.f })
 		: Vector{ vec.m128_f32[2], 0.f, 0.f, 0.f };
 }
 

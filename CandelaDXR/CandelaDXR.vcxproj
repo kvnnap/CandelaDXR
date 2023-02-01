@@ -90,6 +90,7 @@
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <AdditionalIncludeDirectories>.;$(FEANOR_ROOT)\include;$(NRD_ROOT)\Include;$(NRI_ROOT)\Include</AdditionalIncludeDirectories>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -118,6 +119,7 @@
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <AdditionalIncludeDirectories>.;$(FEANOR_ROOT)\include;$(NRD_ROOT)\Include;$(NRI_ROOT)\Include</AdditionalIncludeDirectories>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -146,6 +148,7 @@
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <AdditionalIncludeDirectories>.;$(FEANOR_ROOT)\include;$(NRD_ROOT)\Include;$(NRI_ROOT)\Include</AdditionalIncludeDirectories>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -174,6 +177,7 @@
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <AdditionalIncludeDirectories>.;$(FEANOR_ROOT)\include;$(NRD_ROOT)\Include;$(NRI_ROOT)\Include</AdditionalIncludeDirectories>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -232,9 +236,13 @@
     <ClCompile Include="Exception\DxgiInfoException.cpp" />
     <ClCompile Include="Exception\Exception.cpp" />
     <ClCompile Include="Exception\WindowException.cpp" />
+    <ClCompile Include="Mathematics\AABB.cpp" />
+    <ClCompile Include="Mathematics\OrthonormalBasis.cpp" />
+    <ClCompile Include="Mathematics\Plane.cpp" />
     <ClCompile Include="Mathematics\Utils.cpp" />
     <ClCompile Include="Renderer\Camera.cpp" />
     <ClCompile Include="Renderer\DenoiserShading.cpp" />
+    <ClCompile Include="Renderer\ExternalObjectDebugShading.cpp" />
     <ClCompile Include="Renderer\RayTracingAOShading.cpp" />
     <ClCompile Include="Renderer\RendererTime.cpp" />
     <ClCompile Include="Renderer\SingleIOComputeShader.cpp" />
@@ -288,11 +296,15 @@
     <ClInclude Include="ImGui\ImGuiManager.h" />
     <ClInclude Include="ImGui\ImGuiRenderer.h" />
     <ClInclude Include="ImGui\ImGuiResourceManager.h" />
+    <ClInclude Include="Mathematics\AABB.h" />
+    <ClInclude Include="Mathematics\OrthonormalBasis.h" />
+    <ClInclude Include="Mathematics\Plane.h" />
     <ClInclude Include="Mathematics\Utils.h" />
     <ClInclude Include="NVIDIA\NRDIntegration.h" />
     <ClInclude Include="NVIDIA\NRDIntegration.hpp" />
     <ClInclude Include="Renderer\ChangeEvent.h" />
     <ClInclude Include="Renderer\DenoiserShading.h" />
+    <ClInclude Include="Renderer\ExternalObjectDebugShading.h" />
     <ClInclude Include="Renderer\ITransform.h" />
     <ClInclude Include="Renderer\RayTracingAOShading.h" />
     <ClInclude Include="Renderer\RendererTime.h" />
@@ -408,6 +420,26 @@
       <EnableUnboundedDescriptorTables Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</EnableUnboundedDescriptorTables>
       <EnableUnboundedDescriptorTables Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</EnableUnboundedDescriptorTables>
       <EnableUnboundedDescriptorTables Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</EnableUnboundedDescriptorTables>
+    </FxCompile>
+    <FxCompile Include="Shader\ExternalObjectPS.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
+      <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(OutDir)Shaders/%(Filename).cso</ObjectFileOutput>
+      <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(OutDir)Shaders/%(Filename).cso</ObjectFileOutput>
+      <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)Shaders/%(Filename).cso</ObjectFileOutput>
+      <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(OutDir)Shaders/%(Filename).cso</ObjectFileOutput>
+    </FxCompile>
+    <FxCompile Include="Shader\ExternalObjectVS.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
+      <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(OutDir)Shaders/%(Filename).cso</ObjectFileOutput>
+      <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(OutDir)Shaders/%(Filename).cso</ObjectFileOutput>
+      <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)Shaders/%(Filename).cso</ObjectFileOutput>
+      <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(OutDir)Shaders/%(Filename).cso</ObjectFileOutput>
     </FxCompile>
     <FxCompile Include="Shader\FilterComputeShader.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compute</ShaderType>

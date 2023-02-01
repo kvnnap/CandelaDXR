@@ -303,6 +303,7 @@ void rayGen()
 					{
 						shadowRay.Direction = -eLight.Direction.xyz;
 						shadowRay.TMax = 3.402823e+38;
+						lightCoeff = 1.f / eLight.Attenuation[0];
 						applyInv = false;
 					}
 

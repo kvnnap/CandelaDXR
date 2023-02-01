@@ -89,8 +89,8 @@ void main(uint3 DTid : SV_DispatchThreadID)
 	}
 	else if (mode == 1)
 	{
-		float4 diffResult;
-		float4 specResult;
+		float4 diffResult = 0.f;
+		float4 specResult = 0.f;
 		if (denoiserSelected == 0)
 		{
 			diffResult = REBLUR_BackEnd_UnpackRadianceAndNormHitDist(out_diff_radiance_hitdist[DTid.xy]);
