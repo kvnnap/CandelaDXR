@@ -66,12 +66,10 @@ void rayGen()
 		else if (eLight.Type == LT_DIRECTIONAL)
 		{
 			// Sample point on light source (rectangle on a plane)
-			float2 r = float2(rand_next(seed), rand_next(seed));
-			const float2 uvPoint = eLight.AreaDimensions * r;
-			const float area = eLight.AreaDimensions.x * eLight.AreaDimensions.y;
+			const float2 uvPoint = eLight.AreaDimensions * float2(rand_next(seed), rand_next(seed));
 			ray.Origin = eLight.Position.xyz + uvPoint.x * eLight.Right.xyz + uvPoint.y * eLight.Up.xyz;
 			ray.Direction = eLight.Direction.xyz;
-			localContribution *= area / eLight.Attenuation[0]; // 
+			localContribution *= (eLight.AreaDimensions.x * eLight.AreaDimensions.y) / eLight.Attenuation[0];
 		}
 	}
 	else

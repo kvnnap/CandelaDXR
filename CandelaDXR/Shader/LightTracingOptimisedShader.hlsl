@@ -127,10 +127,12 @@ void rayGen()
 		lightIndex -= cBuffer.numLights;
 		ExternalLight eLight = eLights[lightIndex];
 
+		localContribution *= eLight.Diffuse;
+
 		if (eLight.Type == LT_POINT)
 		{
 			ray.Origin = eLight.Position.xyz;
-			localContribution *= eLight.Diffuse / eLight.Attenuation[2];
+			localContribution *= 1.f / eLight.Attenuation[2];
 
 			if (!sampleDiffuse(seed, ray, localContribution, causticsPath, specularPrimitiveId, ray.Direction, true))
 				return;
@@ -140,6 +142,15 @@ void rayGen()
 				ray.Direction = randomRaySphere(seed, pdf);
 				localContribution *= 1.f / pdf;
 			}
+		}
+		else if (eLight.Type == LT_DIRECTIONAL)
+		{
+			// Sample point on light source (rectangle on a plane)
+			const float2 uvPoint = eLight.AreaDimensions * float2(rand_next(seed), rand_next(seed));
+			ray.Origin = eLight.Position.xyz + uvPoint.x * eLight.Right.xyz + uvPoint.y * eLight.Up.xyz;
+			ray.Direction = eLight.Direction.xyz;
+			localContribution *= (eLight.AreaDimensions.x * eLight.AreaDimensions.y) / eLight.Attenuation[0];
+			performChecks = false;
 		}
 	}
 	else
