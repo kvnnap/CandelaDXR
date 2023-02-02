@@ -39,8 +39,7 @@ void LTRasterGuidedShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12Grap
 	rasterShader.setComputeRadiance(false); // Set this after init!
 
 	rtaoShading.init(rRes, pCurrentCommandList, resRegFn);
-
-	cdfs.resize(storePerLightCDF ? rendererResources->scene->getLights().size() : 1);
+	cdfs.resize(storePerLightCDF ? rendererResources->scene->getLights().size() + rendererResources->scene->getExternalLights().size() : 1);
 	resources.resize(cdfs.size());
 	for (std::size_t i = 0; i < cdfs.size(); ++i)
 		cdfs[i] = resources[i] = & rendererResources->resourceManager->createResource(
@@ -105,43 +104,75 @@ uint32_t LTRasterGuidedShading::getDistanceMetricMode() const
 	return distanceComputerShader.getMode();
 }
 
+bool LTRasterGuidedShading::isExternalLight(uint32_t lightIndex) const
+{
+	return lightIndex >= rendererResources->scene->getLights().size();
+}
+
 void LTRasterGuidedShading::generateCDF(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, uint32_t currentBackBufferIndex, uint32_t lightIndex)
 {
-	// Logic for choosing light and setting up camera from light
-	auto scene = rendererResources->scene;
-	auto& indices = scene->getIndices();
-	auto& vertices = scene->getVertices();
-	auto& normals = scene->getNormals();
+	using namespace DirectX;
+	auto rRes = rendererResources;
+	DirectX::XMVECTOR pos, nor;
+	if (isExternalLight(lightIndex))
+	{
+		const auto index = lightIndex - rRes->scene->getLights().size();
+		const auto& extLights = rRes->scene->getExternalLights();
+		const auto& extLight = extLights[index];
 
-	// Choose light
-	auto& lights = scene->getLights();
-	auto& light = lights[lightIndex]; // lights[0]
-	auto lightIndexId = light.PrimitiveId * 3;
-	auto i0 = indices[lightIndexId + 0];
-	auto i1 = indices[lightIndexId + 1];
-	auto i2 = indices[lightIndexId + 2];
+		auto transform = extLight.Node->getTransform();
+		//auto dirTrans = XMMatrixTranspose(XMMatrixInverse(nullptr, transform));
 
-	Vector2 uv;//  = SamplePointOnTriangle(*sampler);
-	uv.x = uv.y = 1.f / 3.f;
+		if (extLight.Light.Type == LT_POINT)
+		{
+			auto sceneCentre = rRes->scene->getSceneAABB().getCentre();
+			pos = XMVector3Transform(extLight.Light.Position, transform);
+			nor = XMVector3Normalize(sceneCentre - pos);
+		}
+		else
+		{
+			return; // Shader will not look-up cdfs for these types
+		}
+	}
+	else
+	{
+		// Logic for choosing light and setting up camera from light
+		auto scene = rendererResources->scene;
+		auto& indices = scene->getIndices();
+		auto& vertices = scene->getVertices();
+		auto& normals = scene->getNormals();
 
-	DirectX::XMVECTOR pos = InterpolateVertices(uv,
-		DirectX::XMLoadFloat3(&vertices[i0]),
-		DirectX::XMLoadFloat3(&vertices[i1]),
-		DirectX::XMLoadFloat3(&vertices[i2]));
-	pos.m128_f32[3] = 1.f;
+		// Choose light
+		auto& lights = scene->getLights();
+		auto& light = lights[lightIndex]; // lights[0]
+		auto lightIndexId = light.PrimitiveId * 3;
+		auto i0 = indices[lightIndexId + 0];
+		auto i1 = indices[lightIndexId + 1];
+		auto i2 = indices[lightIndexId + 2];
 
-	DirectX::XMVECTOR nor = InterpolateVertices(uv,
-		DirectX::XMLoadFloat3(&normals[i0]),
-		DirectX::XMLoadFloat3(&normals[i1]),
-		DirectX::XMLoadFloat3(&normals[i2]));
+		Vector2 uv;//  = SamplePointOnTriangle(*sampler);
+		uv.x = uv.y = 1.f / 3.f;
 
-	auto& sceneNode = scene->getSceneGraph();
-	const auto& lightTransform = sceneNode.getFlattenedMeshNodes()[light.InstanceIndex].ComputedTransform;
-	const auto normalTransform = DirectX::XMMatrixTranspose(DirectX::XMMatrixInverse(nullptr, lightTransform));
+		pos = InterpolateVertices(uv,
+			DirectX::XMLoadFloat3(&vertices[i0]),
+			DirectX::XMLoadFloat3(&vertices[i1]),
+			DirectX::XMLoadFloat3(&vertices[i2]));
+		pos.m128_f32[3] = 1.f;
 
-	// Apply necessary transforms
-	pos = DirectX::XMVector4Transform(pos, lightTransform);
-	nor = DirectX::XMVector4Transform(nor, normalTransform);
+		nor = InterpolateVertices(uv,
+			DirectX::XMLoadFloat3(&normals[i0]),
+			DirectX::XMLoadFloat3(&normals[i1]),
+			DirectX::XMLoadFloat3(&normals[i2]));
+
+		auto& sceneNode = scene->getSceneGraph();
+		const auto& lightTransform = sceneNode.getFlattenedMeshNodes()[light.InstanceIndex].ComputedTransform;
+		const auto normalTransform = DirectX::XMMatrixTranspose(DirectX::XMMatrixInverse(nullptr, lightTransform));
+
+		// Apply necessary transforms
+		pos = DirectX::XMVector4Transform(pos, lightTransform);
+		nor = DirectX::XMVector4Transform(nor, normalTransform);
+	}
+
 	auto up = GeneratePerpendicularVector(nor);
 
 	// Alter Camera
@@ -156,7 +187,7 @@ void LTRasterGuidedShading::generateCDF(wrl::ComPtr<ID3D12GraphicsCommandList> p
 
 	// Generate CDF
 	rasterShader.draw(pCurrentCommandList, currentBackBufferIndex);
-	if(getDistanceMetricMode() == 2)
+	if (getDistanceMetricMode() == 2)
 		rtaoShading.draw(pCurrentCommandList, currentBackBufferIndex);
 	if (cumulativeDistributionTexture->getState() != D3D12_RESOURCE_STATE_UNORDERED_ACCESS)
 		cumulativeDistributionTexture->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);

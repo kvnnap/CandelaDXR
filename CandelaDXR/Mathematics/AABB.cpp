@@ -51,6 +51,12 @@ Vector AABB::getClosestToDirection(const Vector& dir) const
 	};
 }
 
+Vector AABB::getCentre() const
+{
+	using namespace DirectX;
+	return 0.5f * (Min + Max);
+}
+
 Vector AABB::getDimensions() const
 {
 	return DirectX::XMVectorSubtract(Max, Min);

@@ -18,6 +18,7 @@ namespace candela::mathematics
 		// pointIndex cannot be larger than 7
 		Vector getCornerPoint(std::size_t pointIndex) const;
 		Vector getClosestToDirection(const Vector& dir) const;
+		Vector getCentre() const;
 		Vector getDimensions() const;
 
 		// Data

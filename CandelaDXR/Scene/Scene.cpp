@@ -1,4 +1,5 @@
 #include <stdexcept>
+#include <ranges>
 
 #include "Scene.h"
 
@@ -357,6 +358,13 @@ const vector<Material>& Scene::getMaterials() const { return materials; }
 string Scene::getMaterialName(size_t matId) const { return materialNames.at(matId); }
 vector<Material>& Scene::getMaterials() { return materials; }
 const vector<AreaLight>& Scene::getLights() const { return lights; }
+const vector<Scene::LightNode> Scene::getNonDirectionalExternalLights() const
+{
+	auto ret = externalLights | std::ranges::views::filter([](const Scene::LightNode& ln) {
+		return ln.Light.Type != LT_DIRECTIONAL;
+	});
+	return vector<Scene::LightNode>(ret.begin(), ret.end());
+}
 const vector<Scene::LightNode>& Scene::getExternalLights() const { return externalLights; }
 const vector<SpecularPrimitive>& Scene::getSpeculars() const { return speculars; }
 const vector<FaceAttributes>& Scene::getFaceAttributes() const { return faceAttributes; }

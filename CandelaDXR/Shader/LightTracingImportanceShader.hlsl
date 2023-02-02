@@ -138,9 +138,6 @@ void rayGen()
 	// Dimensions - the previous x,y point is contained within these dimensions
 	const uint2 launchDim = DispatchRaysDimensions().xy;
 
-	//AddContribution(launchIndex.y * cBuffer.winDim.x + launchIndex.x, cdf[launchIndex]);
-	//return;
-
 	// Early-exit checks
 	if (cBuffer.numLights == 0)
 		return;
@@ -151,94 +148,61 @@ void rayGen()
 		cBuffer.seeds.y + launchDim.y * (cBuffer.frameNumber + 0) + launchIndex.y);
 
 	// Choose light source
-	const uint lightIndex = lBuff.lightIndex == UINT_MAX ? chooseInRange(seed, 0, cBuffer.numLights - 1) : lBuff.lightIndex;
-	const uint lightIndexId = lights[lightIndex].PrimitiveId * 3;
-	AreaLight areaLight = lights[lightIndex];
-	Material lightMat = materials[areaLight.MaterialId];
-	const bool lightDirectional = lightMat.EmissiveType == 1;
-
-	// Compute light vertices
-	float3 lv[3];
-	getVertexWorldCoordinates(lv, lightIndexId, areaLight.InstanceIndex);
-
-	// Generate a point on the light
-	float2 lightBary;
-	const float3 pointOnLightSource = samplePointOnTriangle(seed, lv, lightBary);
-
-	// Compute MC Coefficients
-	float3 localContribution = lightMat.Emissive;
-	localContribution *= getTriangleArea(lv) * cBuffer.numLights;
-
-	if (lightMat.EmissiveTextureId >= 0)
-		localContribution *= gTextures[lightMat.EmissiveTextureId].SampleLevel(gSampler, getTextureLocation(lightBary, lightIndexId), 0);
-
-	// First check if light normal is the right way round wrt camera
-	const float3 unitLightNormal = getUnitNormal(lightBary, lightIndexId, areaLight.InstanceIndex);
-
-	// Construct ray from light source to camera origin
-	RayDesc shadowRay;
-	shadowRay.TMin = 0.001f;
-	shadowRay.TMax = 1.f;
-	shadowRay.Origin = pointOnLightSource;
-	shadowRay.Direction = cBuffer.position - pointOnLightSource;
-	float invShadowDistance = 1.f / length(shadowRay.Direction);
-	float3 unitShadowRayDirection = shadowRay.Direction * invShadowDistance;
-
-	uint2 pixel = uint2(0, 0);
-	float lightDot = dot(unitShadowRayDirection, unitLightNormal);
-	float cameraDot = -dot(unitShadowRayDirection, cBuffer.w);
-
-	ShadowPayload shadowPayload;
-
-	uint i = 1;
-
-	// Path filter
+	uint lightIndex = lBuff.lightIndex == UINT_MAX ? chooseInRange(seed, 0, cBuffer.numTotalLights - 1) : lBuff.lightIndex;
+	
+	const bool isExternalLight = lightIndex >= cBuffer.numLights;
 	PathInteraction prevStateFlags = Light;
-
-	if (false && (prevStateFlags & cBuffer.pathFilter) != 0 && i >= cBuffer.minBounces && (i <= cBuffer.maxBounces || cBuffer.maxBounces == 0) && !lightDirectional && lightDot > 0.f && cameraDot > 0.f)
-	{
-		if (getPixel(shadowRay, cBuffer.winDim, pixel))
-		{
-			// Add direct light contribution
-			shadowPayload.occluded = true;
-			TraceRay(
-				gRtScene,	// Acceleration Structure
-				RAY_FLAG_FORCE_OPAQUE
-				| RAY_FLAG_SKIP_CLOSEST_HIT_SHADER
-				| RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH,			// Ray flags
-				0xFF,		// Instance inclusion Mask (0xFF includes everything)
-				1,			// RayContributionToHitGroupIndex (calls shadowAnyHit)
-				1,			// MultiplierForGeometryContributionToShaderIndex (We only have 1 hit group)
-				1,			// Miss shader index (within the shader table) (calls shadowMiss)
-				shadowRay,
-				shadowPayload);
-
-			if (!shadowPayload.occluded)
-			{
-				const uint pixLaunchIndex = pixel.y * cBuffer.winDim.x + pixel.x;
-				float3 contrib = localContribution * lightDot * invShadowDistance * invShadowDistance * cameraDot;
-				AddContribution(pixLaunchIndex, contrib);
-			}
-		}
-	}
-
-	// Construct ray from light source to random scene point
+	uint2 pixel = uint2(0, 0);
+	uint i = 1;
 	float pdf;
+	float3 localContribution = cBuffer.numTotalLights; // Chose a light!
+	ShadowPayload shadowPayload;
+	RayDesc shadowRay;
 	RayDesc ray;
 	ray.TMin = 0.001f;
 	ray.TMax = 3.402823e+38;
-	ray.Origin = shadowRay.Origin;
-	ray.Direction = unitLightNormal;
-	if (!lightDirectional)
+
+	if (isExternalLight)
 	{
-		ray.Direction = randomRayLobe(seed, unitLightNormal, 1, pdf);
+		lightIndex -= cBuffer.numLights;
+		ExternalLight eLight = eLights[lightIndex];
 
-		float coeff = 1.f;
+		localContribution *= eLight.Diffuse;
 
-		// If this succeeds, ray.Direction, coeff and pdf will be updated
-		sampleImpMapWithCosCDF(seed, ray, pdf, coeff, unitLightNormal, lBuff.lightIndex == UINT_MAX ? lightIndex : 0);
+		if (eLight.Type == LT_POINT)
+		{
+			// TODO: need to use CDF here
+			ray.Origin = eLight.Position.xyz;
+			ray.Direction = randomRaySphere(seed, pdf);
 
-		localContribution *= dot(unitLightNormal, ray.Direction) * coeff / pdf;
+			localContribution *= 1.f / (eLight.Attenuation[2] * pdf);
+		}
+		else if (eLight.Type == LT_DIRECTIONAL)
+		{
+			// Sample point on light source (rectangle on a plane)
+			const float2 uvPoint = eLight.AreaDimensions * float2(rand_next(seed), rand_next(seed));
+			ray.Origin = eLight.Position.xyz + uvPoint.x * eLight.Right.xyz + uvPoint.y * eLight.Up.xyz;
+			ray.Direction = eLight.Direction.xyz;
+			localContribution *= (eLight.AreaDimensions.x * eLight.AreaDimensions.y) / eLight.Attenuation[0];
+		}
+	}
+	else
+	{
+
+		#include "LightTracingLightCodeSection.hlsli"
+
+		if (!lightDirectional)
+		{
+			// This handles the part of the hemisphere that is not covered by the rectangle boundary
+			ray.Direction = randomRayLobe(seed, unitLightNormal, 1, pdf);
+
+			float coeff = 1.f;
+
+			// If this succeeds, ray.Direction, coeff and pdf will be updated
+			sampleImpMapWithCosCDF(seed, ray, pdf, coeff, unitLightNormal, lBuff.lightIndex == UINT_MAX ? lightIndex : 0);
+
+			localContribution *= dot(unitLightNormal, ray.Direction) * coeff / pdf;
+		}
 	}
 
 	// Number of entries in transmissive materials
@@ -305,10 +269,10 @@ void rayGen()
 			// Check contribution to eye
 			shadowRay.Origin = intersectionPoint;
 			shadowRay.Direction = cBuffer.position - intersectionPoint;
-			invShadowDistance = 1.f / length(shadowRay.Direction);
-			unitShadowRayDirection = shadowRay.Direction * invShadowDistance;
+			float invShadowDistance = 1.f / length(shadowRay.Direction);
+			float3 unitShadowRayDirection = shadowRay.Direction * invShadowDistance;
 			float surfaceDot = dot(unitShadowRayDirection, unitFaceNormal);
-			cameraDot = -dot(unitShadowRayDirection, cBuffer.w);
+			float cameraDot = -dot(unitShadowRayDirection, cBuffer.w);
 
 			if (surfaceDot > 0.f && cameraDot > 0.f)
 			{

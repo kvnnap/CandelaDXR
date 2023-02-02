@@ -210,6 +210,7 @@ namespace candela::scene
 			SceneNode* Node;
 		};
 
+		const std::vector<LightNode> getNonDirectionalExternalLights() const;
 		const std::vector<LightNode>& getExternalLights() const;
 		void addExternalLight(const LightNode& light);
 
