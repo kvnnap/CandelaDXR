@@ -16,7 +16,7 @@ using candela::directx::DXUtil;
 using candela::directx::RootSignatureManager;
 
 ExternalObjectDebugShading::ExternalObjectDebugShading()
-	: scissorRect(CD3DX12_RECT(0, 0, LONG_MAX, LONG_MAX))
+	: bufferView{}, scissorRect(CD3DX12_RECT(0, 0, LONG_MAX, LONG_MAX)), viewport{}, dsvDescriptorSize{}, pDepthBuffer{}
 {
 	
 }
@@ -150,7 +150,7 @@ void ExternalObjectDebugShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCu
 		D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER,
 		D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
 	pCurrentCommandList->SetGraphicsRootConstantBufferView(0u, constantBuffer->GetGPUVirtualAddress()); // Const buff (includes Cam)
-	pCurrentCommandList->DrawInstanced(vertices.size(), 1u, 0u, 0u);
+	pCurrentCommandList->DrawInstanced(static_cast<UINT>(vertices.size()), 1u, 0u, 0u);
 }
 
 void ExternalObjectDebugShading::onChange(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList,

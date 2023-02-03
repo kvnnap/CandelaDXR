@@ -76,9 +76,11 @@ void LTRasterGuidedShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12Grap
 	float x = sensorDim.m128_f32[0] * 0.5f;
 	float y = sensorDim.m128_f32[1] * 0.5f;
 	constBuffer.lightCamPdf = f1Definite(-x, x, -y, y, sensorDim.m128_f32[2]) * candela::mathematics::constants::OneOverPi;
-	float hemiSphericalCoverAreaPercent = f2Definite(-x, x, -y, y, sensorDim.m128_f32[2]) * candela::mathematics::constants::OneOverTwoPi;
+	constBuffer.lightCamPdfPoint = f2Definite(-x, x, -y, y, sensorDim.m128_f32[2]) * candela::mathematics::constants::OneOverFourPi;
+	//float hemiSphericalCoverAreaPercent = f2Definite(-x, x, -y, y, sensorDim.m128_f32[2]) * candela::mathematics::constants::OneOverTwoPi;
 	constBuffer.plane = DirectX::XMVectorScale(sensorDim, 1 / sensorDim.m128_f32[2]);
 	constBuffer.lightCamDim = cdfSize;
+	constBuffer.sceneCentre = rRes->scene->getSceneAABB().getCentre();
 	constantBuffer = DXUtil::uploadDataToDefaultHeap(rendererResources->pDevice, pCurrentCommandList, rendererResources->getTempResource(), &constBuffer, sizeof(constBuffer), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 	constantBuffer->SetName(L"LT Raster Guided Constant Buffer");
 }
@@ -241,6 +243,7 @@ void LTRasterGuidedShading::accept(IVisitor* visitor)
 void LTRasterGuidedShading::onChange(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, uint32_t currentBackBufferIndex, ChangeEvent_t changeEvent)
 {
 	rasterShader.onChange(pCurrentCommandList, currentBackBufferIndex, changeEvent);
+	constBuffer.sceneCentre = rendererResources->scene->getSceneAABB().getCentre();
 	if (!storePerLightCDF)
 		return;
 	if (changeEvent)// & (static_cast<ChangeEvent_t>(ChangeEvent::Transformation) | static_cast<ChangeEvent_t>(ChangeEvent::SceneChange)))

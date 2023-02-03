@@ -276,3 +276,4 @@ jobs:
       with:
         name: CandelaDXR
         path: ${{github.workspace}}\${{env.OUT_DIR}}\
+        retention-days: 14

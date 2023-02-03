@@ -27,9 +27,11 @@ namespace candela::renderer
 		struct alignas(16) ConstBuff
 		{
 			DirectX::XMVECTOR plane; // x, y and z (distance from point to plane)
+			DirectX::XMVECTOR sceneCentre; // Scene centre in world coordinates
 			mathematics::UVector2 lightCamDim;
 			std::uint32_t lightIndex;
-			float lightCamPdf;
+			float lightCamPdf;	// the pdf of hitting the square in a cosine-weighted sphere - cos/pi
+			float lightCamPdfPoint; // the pdf of hitting the square in a uniform pdf sphere - 1/4pi
 		} constBuffer;
 
 		// IDrawable

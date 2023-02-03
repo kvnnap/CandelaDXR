@@ -9,11 +9,14 @@ struct ConstBuff2
 {
 	// Light Camera
 	float3 plane; // sensor dimensions (z contains distance to sensor plane)
+	float3 sceneCentre; // Scene centre in world coordinates
 
 	// Other
 	uint2 lightCamDim;
 	uint lightIndex;
 	float lightCamPdf;
+	float lightCamPdfPoint;
+	uint2 padding;
 };
 
 // CBVs
@@ -76,7 +79,7 @@ uint2 sampleImportanceMap(inout uint seed, out float pdf, uint cdfIndex)
 	return uv;
 }
 
-bool sampleImpMapWithCosCDF(inout uint seed, inout RayDesc ray, inout float pdf, out float coeff, float3 unitLightNormal, uint cdfIndex)
+bool sampleImpMapWithCosCDF(inout uint seed, inout RayDesc ray, inout float pdf, out float coeff, float probSelectingRect, float3 unitLightNormal, uint cdfIndex)
 {
 	// Light Camera basis
 	float3 w = unitLightNormal;
@@ -123,7 +126,7 @@ bool sampleImpMapWithCosCDF(inout uint seed, inout RayDesc ray, inout float pdf,
 	float invDistance = 1.f / length(ray.Direction);
 	ray.Direction *= invDistance;
 	coeff = dot(w, ray.Direction) * invDistance * invDistance;
-	pdf = localPdf * lBuff.lightCamPdf / texelArea;
+	pdf = localPdf * probSelectingRect / texelArea;
 	return true;
 }
 
@@ -139,7 +142,7 @@ void rayGen()
 	const uint2 launchDim = DispatchRaysDimensions().xy;
 
 	// Early-exit checks
-	if (cBuffer.numLights == 0)
+	if (cBuffer.numTotalLights == 0)
 		return;
 
 	// Initialise seed
@@ -174,8 +177,11 @@ void rayGen()
 			// TODO: need to use CDF here
 			ray.Origin = eLight.Position.xyz;
 			ray.Direction = randomRaySphere(seed, pdf);
+			float coeff = 1.f;
+			const float3 unitLightNormal = normalize(lBuff.sceneCentre - ray.Origin);
+			sampleImpMapWithCosCDF(seed, ray, pdf, coeff, lBuff.lightCamPdfPoint, unitLightNormal, lBuff.lightIndex == UINT_MAX ? lightIndex : 0);
+			localContribution *= coeff / (eLight.Attenuation[2] * pdf);
 
-			localContribution *= 1.f / (eLight.Attenuation[2] * pdf);
 		}
 		else if (eLight.Type == LT_DIRECTIONAL)
 		{
@@ -199,7 +205,7 @@ void rayGen()
 			float coeff = 1.f;
 
 			// If this succeeds, ray.Direction, coeff and pdf will be updated
-			sampleImpMapWithCosCDF(seed, ray, pdf, coeff, unitLightNormal, lBuff.lightIndex == UINT_MAX ? lightIndex : 0);
+			sampleImpMapWithCosCDF(seed, ray, pdf, coeff, lBuff.lightCamPdf, unitLightNormal, lBuff.lightIndex == UINT_MAX ? lightIndex : 0);
 
 			localContribution *= dot(unitLightNormal, ray.Direction) * coeff / pdf;
 		}
