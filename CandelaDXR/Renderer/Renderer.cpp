@@ -228,7 +228,8 @@ void Renderer::init()
 		.resourceManager = std::move(rendererResources.resourceManager),
 		.window = window.get(),
 		.drawables = &drawables,
-		.frameNumber = 0
+		.frameNumber = 0,
+		.processedExternalLights = std::move(rendererResources.processedExternalLights)
 	};
 
 	initShaders();
@@ -359,7 +360,8 @@ void Renderer::renderFrame()
 			flags);
 
 		// Update Lights
-		auto eLights = getTransformedExternalLights();
+		rendererResources.processedExternalLights = getTransformedExternalLights();
+		const auto& eLights = rendererResources.processedExternalLights;
 		if (!eLights.empty())
 		{
 			DXUtil::updateDataInDefaultHeap(
@@ -368,7 +370,7 @@ void Renderer::renderFrame()
 				externalLights,
 				getTempResource(),
 				eLights.data(),
-				sizeof(decltype(eLights)::value_type) * eLights.size(),
+				sizeof(candela::scene::Light) * eLights.size(),
 				flags,
 				flags);
 		}
@@ -669,11 +671,12 @@ void Renderer::initSceneResources()
 	normalMatrices->SetName(L"Normal Matrices Buffer");
 
 	// Copy lights
-	auto eLights = getTransformedExternalLights();
-	const auto& eLightsTemp = eLights.empty() ? decltype(eLights)(1ULL) : eLights;
+	rendererResources.processedExternalLights = getTransformedExternalLights();
+	const auto& eLights = rendererResources.processedExternalLights;
+	const auto& eLightsTemp = eLights.empty() ? std::vector<candela::scene::Light>(1ULL) : eLights;
 	wrl::ComPtr<ID3D12Resource> tempELight;
 	externalLights = DXUtil::uploadDataToDefaultHeap(pDevice, pCurrentCommandList, tempELight,
-		eLightsTemp.data(), sizeof(decltype(eLights)::value_type) * eLightsTemp.size(), flags);
+		eLightsTemp.data(), sizeof(std::vector<candela::scene::Light>::value_type) * eLightsTemp.size(), flags);
 	externalLights->SetName(L"External Lights");
 
 	// Upload textures
@@ -850,8 +853,6 @@ vector<candela::scene::Light> Renderer::getTransformedExternalLights()
 			myLight.Direction = XMVector3Normalize(XMVector4Transform(XMVector3Normalize(myLight.Direction), dirTrans));
 
 			const auto aabb = scene->getSceneAABB();
-			//std::cout << "(" << aabb.Min.m128_f32[0] << ", " << aabb.Min.m128_f32[1] << ", " << aabb.Min.m128_f32[2] << ") - ("
-			//		  << aabb.Max.m128_f32[0] << ", " << aabb.Max.m128_f32[1] << ", " << aabb.Max.m128_f32[2] << ")" << std::endl;
 			auto closestPoint = aabb.getClosestToDirection(-myLight.Direction);
 
 			// Create plane
@@ -869,66 +870,6 @@ vector<candela::scene::Light> Renderer::getTransformedExternalLights()
 
 			myLight.Position = XMVectorMultiplyAdd(delta, -myLight.Direction, plane.pointFromUV(planeAABB.Min - delta));
 			XMStoreFloat2(&myLight.AreaDimensions, planeAABB.getDimensions() + delta * 2.f);
-
-			//// Test
-			//plane = Plane(myLight.Position, myLight.Direction);
-			//auto p1 = plane.pointFromUV(XMVectorSet(0.f, 0.f, 0.f, 0.f));
-			//auto p2 = plane.pointFromUV(XMLoadFloat2(&myLight.AreaDimensions));
-
-			//std::cout << "(" << p1.m128_f32[0] << ", " << p1.m128_f32[1] << ", " << p1.m128_f32[2] << ") - ("
-			//	<< p2.m128_f32[0] << ", " << p2.m128_f32[1] << ", " << p2.m128_f32[2] << ")" << std::endl;
-
-			// Graphical Testing
-			//plane = Plane(myLight.Position, myLight.Direction);
-			//Vector3 vec3;
-			//mathematics::Vector uvCoords = XMVectorSet(0, myLight.AreaDimensions.y, 0, 0);
-			//auto tempVec = myLight.Position + uvCoords.m128_f32[0] * myLight.Right + uvCoords.m128_f32[1] * myLight.Up;
-			//XMStoreFloat3(&vec3, tempVec);
-			//vertices.push_back(vec3);
-
-			//uvCoords = XMVectorSet(0, 0, 0, 0);
-			//tempVec = myLight.Position + uvCoords.m128_f32[0] * myLight.Right + uvCoords.m128_f32[1] * myLight.Up;
-			//XMStoreFloat3(&vec3, tempVec);
-			//vertices.push_back(vec3);
-
-			//uvCoords = XMVectorSet(myLight.AreaDimensions.x, myLight.AreaDimensions.y, 0, 0);
-			//tempVec = myLight.Position + uvCoords.m128_f32[0] * myLight.Right + uvCoords.m128_f32[1] * myLight.Up;
-			//XMStoreFloat3(&vec3, tempVec);
-			//vertices.push_back(vec3);
-
-			//vertices.push_back(vertices.back());
-			//vertices.push_back(vertices[vertices.size() - 3]);
-
-			//uvCoords = XMVectorSet(myLight.AreaDimensions.x, 0, 0, 0);
-			//tempVec = myLight.Position + uvCoords.m128_f32[0] * myLight.Right + uvCoords.m128_f32[1] * myLight.Up;
-			//XMStoreFloat3(&vec3, tempVec);
-			//vertices.push_back(vec3);
-
-			//// Test
-			//plane = Plane(myLight.Position, myLight.Direction);
-			//mathematics::AABB planeAABB2;
-
-			//for (size_t i = 0; i < 8; ++i)
-			//{
-			//	const auto cornerPoint = aabb.getCornerPoint(i);
-			//	auto pPoint = plane.projectPointInWorldSpace(cornerPoint);
-			//	/*auto uvw = plane.Basis.getUVW(cornerPoint);
-			//	auto cp2 = plane.Basis.getPoint(uvw);*/
-			//	auto w = plane.Basis.getUVW(cornerPoint - plane.Position).m128_f32[2];
-			//	auto uvPoint = plane.projectPointInUVSpace(cornerPoint);
-			//	//auto cp2 = plane.pointFromUV(uvPoint) + w * myLight.Direction;
-			//	auto cp2 = myLight.Position + uvPoint.m128_f32[0] * myLight.Right
-			//		+ uvPoint.m128_f32[1] * myLight.Up + w * myLight.Direction;
-			//	planeAABB2.contain(uvPoint);
-			//	std::cout << "(" << pPoint.m128_f32[0] << ", " << pPoint.m128_f32[1] << ", " << pPoint.m128_f32[2] << ") - ("
-			//		<< cp2.m128_f32[0] << ", " << cp2.m128_f32[1] << ", " << cp2.m128_f32[2] << ")" << std::endl;
-			//}
-			//std::cout << std::endl;
-
-			//auto ad = myLight.AreaDimensions;
-			//auto p2a = planeAABB2.getDimensions();
-			//std::cout << "(" << ad.x << ", " << ad.y <<  ") - ("
-			//	<< p2a.m128_f32[0] << ", " << p2a.m128_f32[1] << ")" << std::endl << std::endl;
 		}
 		else if (myLight.Type == LT_AREA)
 		{

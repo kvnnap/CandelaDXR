@@ -49,6 +49,7 @@ namespace candela::renderer
 		ui::Window* window{};
 		std::vector<IDrawable*>* drawables{};
 		std::uint64_t frameNumber{};
+		std::vector<candela::scene::Light> processedExternalLights{};
 
 		directx::DXResource& getTempResource()
 		{

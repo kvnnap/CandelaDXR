@@ -130,6 +130,27 @@ bool sampleImpMapWithCosCDF(inout uint seed, inout RayDesc ray, inout float pdf,
 	return true;
 }
 
+void sampleImpMapForDirectionalLight(inout uint seed, inout RayDesc ray, inout float pdf, out float coeff, float2 adPlane, float3 u, float3 v, uint cdfIndex)
+{
+	coeff = 0.f;
+
+	float localPdf;
+	uint2 texel = sampleImportanceMap(seed, localPdf, cdfIndex);
+	if (localPdf == 0.f)
+		return;
+
+	float2 halfPlane = adPlane * 0.5f;
+	float2 ratio = adPlane / lBuff.lightCamDim; // lightCamDim is the texture size in pixels
+	float texelArea = ratio.x * ratio.y;
+	ratio.y = -ratio.y;
+
+	// Convert texel boundary coordinates to world space 
+	float2 planePt = float2(-halfPlane.x, halfPlane.y) + ratio * (texel + float2(rand_next(seed), rand_next(seed)));
+	ray.Origin += planePt.x * u + planePt.y * v;
+	coeff = 1.f;
+	pdf = localPdf / texelArea;
+}
+
 // Kernels
 
 [shader("raygeneration")]
@@ -165,31 +186,33 @@ void rayGen()
 	ray.TMin = 0.001f;
 	ray.TMax = 3.402823e+38;
 
+	const uint cdfIndex = lBuff.lightIndex == UINT_MAX ? lightIndex : 0;
+
 	if (isExternalLight)
 	{
 		lightIndex -= cBuffer.numLights;
 		ExternalLight eLight = eLights[lightIndex];
 
 		localContribution *= eLight.Diffuse;
+		float coeff = 1.f;
 
 		if (eLight.Type == LT_POINT)
 		{
-			// TODO: need to use CDF here
 			ray.Origin = eLight.Position.xyz;
 			ray.Direction = randomRaySphere(seed, pdf);
-			float coeff = 1.f;
 			const float3 unitLightNormal = normalize(lBuff.sceneCentre - ray.Origin);
-			sampleImpMapWithCosCDF(seed, ray, pdf, coeff, lBuff.lightCamPdfPoint, unitLightNormal, lBuff.lightIndex == UINT_MAX ? lightIndex : 0);
+			sampleImpMapWithCosCDF(seed, ray, pdf, coeff, lBuff.lightCamPdfPoint, unitLightNormal, cdfIndex);
 			localContribution *= coeff / (eLight.Attenuation[2] * pdf);
 
 		}
 		else if (eLight.Type == LT_DIRECTIONAL)
 		{
 			// Sample point on light source (rectangle on a plane)
-			const float2 uvPoint = eLight.AreaDimensions * float2(rand_next(seed), rand_next(seed));
+			const float2 uvPoint = 0.5f * eLight.AreaDimensions;
 			ray.Origin = eLight.Position.xyz + uvPoint.x * eLight.Right.xyz + uvPoint.y * eLight.Up.xyz;
 			ray.Direction = eLight.Direction.xyz;
-			localContribution *= (eLight.AreaDimensions.x * eLight.AreaDimensions.y) / eLight.Attenuation[0];
+			sampleImpMapForDirectionalLight(seed, ray, pdf, coeff, eLight.AreaDimensions, eLight.Right.xyz, eLight.Up.xyz, cdfIndex);
+			localContribution *= coeff / (eLight.Attenuation[0] * pdf);
 		}
 	}
 	else
@@ -205,7 +228,7 @@ void rayGen()
 			float coeff = 1.f;
 
 			// If this succeeds, ray.Direction, coeff and pdf will be updated
-			sampleImpMapWithCosCDF(seed, ray, pdf, coeff, lBuff.lightCamPdf, unitLightNormal, lBuff.lightIndex == UINT_MAX ? lightIndex : 0);
+			sampleImpMapWithCosCDF(seed, ray, pdf, coeff, lBuff.lightCamPdf, unitLightNormal, cdfIndex);
 
 			localContribution *= dot(unitLightNormal, ray.Direction) * coeff / pdf;
 		}

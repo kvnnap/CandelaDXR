@@ -12,17 +12,27 @@ using DirectX::XMMatrixLookToRH;
 using DirectX::XMMatrixTranspose;
 using DirectX::XMVectorSet;
 using DirectX::XMMatrixPerspectiveRH;
+using DirectX::XMMatrixOrthographicRH;
 using DirectX::operator+=;
 using DirectX::operator+;
 using DirectX::operator*;
 
 Camera::Camera(const XMVECTOR& position, const XMVECTOR& direction, float nearWidth, float nearHeight, float nearZ, float farZ, const DirectX::XMVECTOR& up)
-	: position(position), direction(XMVector3Normalize(direction)), up(up), nearWidth(nearWidth), nearHeight(nearHeight), nearZ(nearZ), farZ(farZ), viewMatrix(), changed()
+	: position(position), direction(XMVector3Normalize(direction)), up(up), nearWidth(nearWidth), nearHeight(nearHeight), nearZ(nearZ), farZ(farZ), viewMatrix(), orthographic(), changed()
 {
+	setNearPlaneDimensions(nearWidth, nearHeight, nearZ, farZ);
 	lookTo(direction, up);
-	perspectiveMatrix = XMMatrixPerspectiveRH(nearWidth, nearHeight, nearZ, farZ);
+	changed = false;
 	origPosition = position;
 	origDirection = this->direction;
+}
+
+void Camera::setPerspOrthMatrix()
+{
+	perspectiveMatrix = orthographic ? 
+		XMMatrixOrthographicRH(nearWidth, nearHeight, nearZ, farZ) : 
+		XMMatrixPerspectiveRH(nearWidth, nearHeight, nearZ, farZ);
+	changed = true;
 }
 
 void Camera::recalculateViewMatrix()
@@ -49,10 +59,32 @@ void Camera::lookTo(const XMVECTOR& p_pos, const XMVECTOR& p_dir, const XMVECTOR
 	lookTo(p_dir, up);
 }
 
+void Camera::setOrthographic(bool ortho)
+{
+	orthographic = ortho;
+	setPerspOrthMatrix();
+}
+
+void Camera::setNearPlaneDimensions(float p_nearWidth, float p_nearHeight)
+{
+	nearWidth = p_nearWidth;
+	nearHeight = p_nearHeight;
+	setPerspOrthMatrix();
+}
+
+void Camera::setNearPlaneDimensions(float p_nearWidth, float p_nearHeight, float p_nearZ, float p_farZ)
+{
+	nearWidth = p_nearWidth;
+	nearHeight = p_nearHeight;
+	nearZ = p_nearZ;
+	farZ = p_farZ;
+	setPerspOrthMatrix();
+}
+
 void Camera::setAspectRatio(float aspectRatio)
 {
 	nearWidth = aspectRatio * nearHeight;
-	perspectiveMatrix = XMMatrixPerspectiveRH(nearWidth, nearHeight, nearZ, farZ);
+	setPerspOrthMatrix();
 }
 
 void Camera::setPosition(const XMVECTOR& p_pos)

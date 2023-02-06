@@ -116,9 +116,12 @@ void LTRasterGuidedShading::generateCDF(wrl::ComPtr<ID3D12GraphicsCommandList> p
 	using namespace DirectX;
 	auto rRes = rendererResources;
 	DirectX::XMVECTOR pos, nor;
+
 	if (isExternalLight(lightIndex))
 	{
 		const auto index = lightIndex - rRes->scene->getLights().size();
+		auto& procLights = rRes->processedExternalLights;
+		auto& procLight = procLights[index];
 		const auto& extLights = rRes->scene->getExternalLights();
 		const auto& extLight = extLights[index];
 
@@ -128,12 +131,19 @@ void LTRasterGuidedShading::generateCDF(wrl::ComPtr<ID3D12GraphicsCommandList> p
 		if (extLight.Light.Type == LT_POINT)
 		{
 			auto sceneCentre = rRes->scene->getSceneAABB().getCentre();
-			pos = XMVector3Transform(extLight.Light.Position, transform);
+			pos = procLight.Position;
 			nor = XMVector3Normalize(sceneCentre - pos);
 		}
-		else
+		else if (extLight.Light.Type == LT_DIRECTIONAL)
 		{
-			return; // Shader will not look-up cdfs for these types
+			pos = procLight.Position + 0.5f * (procLight.AreaDimensions.x * procLight.Right + procLight.AreaDimensions.y * procLight.Up);
+			nor = procLight.Direction;
+			//up = procLight.Up; --> same result
+			lightCamera->setNearPlaneDimensions(procLight.AreaDimensions.x, procLight.AreaDimensions.y);
+			lightCamera->setOrthographic(true);
+			distanceComputerShader.distConstBuffer.orthographic = true;
+			distanceComputerShader.distConstBuffer.planeU = procLight.Right;
+			distanceComputerShader.distConstBuffer.planeV = procLight.Up;
 		}
 	}
 	else
@@ -199,6 +209,11 @@ void LTRasterGuidedShading::generateCDF(wrl::ComPtr<ID3D12GraphicsCommandList> p
 	normalisationComputeShader.compute(pCurrentCommandList);
 	normalisationPass2ComputeShader.compute(pCurrentCommandList);
 	cumulativeDistributionTexture->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+
+	// Reset state
+	lightCamera->setNearPlaneDimensions(0.125f, 0.125f);
+	lightCamera->setOrthographic(false);
+	distanceComputerShader.distConstBuffer.orthographic = false;
 }
 
 void LTRasterGuidedShading::regenerateCDFs(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, uint32_t currentBackBufferIndex)

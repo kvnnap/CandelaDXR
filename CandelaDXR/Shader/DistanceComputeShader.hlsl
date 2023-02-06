@@ -11,10 +11,13 @@ cbuffer CB1 : register(b0, space1)
 {
 	float3 LightPosition;
 	float3 LightPlane;
+	float3 LightPlaneU;
+	float3 LightPlaneV;
 	float3 CamPosition;
 	float3 CamUnitDir;
 	uint padding;
 	uint Mode;
+	uint Orthographic;
 }
 
 Texture2D<float4> input[] : register(t0);
@@ -34,23 +37,34 @@ void main( uint3 DTid : SV_DispatchThreadID )
 		return;
 
 	// Generate coefficient - can generate on the host one-time (more precise and less computation on the gpu)
+	float result = 1.f;
+	float3 lightPos = LightPosition;
+
 	float2 ratio = LightPlane.xy / ScreenDim;
 	ratio.y = -ratio.y;
 	float2 halfPlane = LightPlane.xy * 0.5f;
-	float2 planePt = float2(-halfPlane.x, halfPlane.y) + ratio * DTid.xy;
-	float3 worldPt = float3(planePt, LightPlane.z); // Origin is (0,0,0) and normal (0,0,1)
-	float3 vecDir = worldPt;
-	float invDistance = 1.f / length(vecDir);
-	vecDir *= invDistance;
-	float coeff = vecDir.z * vecDir.z * invDistance * invDistance; // cos weighted solid angle approx
-	float result = coeff;
+	float2 planePt = float2(-halfPlane.x, halfPlane.y) + ratio * DTid.xy; // UVs relative to the centre of the plane
+
+	if (Orthographic == 0)
+	{
+		float3 worldPt = float3(planePt, LightPlane.z); // Origin is (0,0,0) and normal (0,0,1)
+		float3 vecDir = worldPt;
+		float invDistance = 1.f / length(vecDir);
+		vecDir *= invDistance;
+		float coeff = vecDir.z * vecDir.z * invDistance * invDistance; // cos weighted solid angle approx
+		result = coeff;
+	}
+	else
+	{
+		lightPos += planePt.x * LightPlaneU + planePt.y * LightPlaneV;
+	}
 
 	// Load gBuffer values
 	const float4 inData = input[InputIndex][DTid.xy];
 	const float3 gPos = inData.xyz;
 	const float3 gNorm = gNormals[DTid.xy].xyz;
 	const Material gMat = materials[meshInfo[DTid.xy].x];
-	const float3 dir = gPos - LightPosition;
+	const float3 dir = gPos - lightPos;
 	const float lenDir = length(dir);
 	const float noValue = 0.015625f;
 

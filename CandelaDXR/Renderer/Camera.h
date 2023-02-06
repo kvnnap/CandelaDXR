@@ -17,6 +17,10 @@ namespace candela::renderer
 		void lookTo(const DirectX::XMVECTOR& direction, const DirectX::XMVECTOR& up = DirectX::XMVectorSet(0.f, 1.f, 0.f, 0.f));
 		void lookTo(const DirectX::XMVECTOR& position, const DirectX::XMVECTOR& direction, const DirectX::XMVECTOR& up);
 
+		void setOrthographic(bool ortho);
+		void setNearPlaneDimensions(float nearWidth, float nearHeight);
+		void setNearPlaneDimensions(float nearWidth, float nearHeight, float nearZ, float farZ);
+
 		// This method will vary the width of the sensor and keep its height intact
 		void setAspectRatio(float aspectRatio);
 		void setPosition(const DirectX::XMVECTOR& p_pos);
@@ -45,6 +49,7 @@ namespace candela::renderer
 		const DirectX::XMVECTOR getCentrePosition() const override;
 
 	private:
+		void setPerspOrthMatrix();
 		void recalculateViewMatrix();
 		DirectX::XMVECTOR getCrossVector() const;
 
@@ -56,7 +61,7 @@ namespace candela::renderer
 		DirectX::XMVECTOR up;
 		DirectX::XMVECTOR origPosition;
 		DirectX::XMVECTOR origDirection;
-		
+
 		float nearWidth;
 		float nearHeight;
 		float nearZ;
@@ -65,6 +70,7 @@ namespace candela::renderer
 		DirectX::XMMATRIX viewMatrix;
 		DirectX::XMMATRIX perspectiveMatrix;
 
+		bool orthographic;
 		bool changed;
 	};
 }

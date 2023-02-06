@@ -78,9 +78,12 @@ namespace candela::renderer
 		{
 			DirectX::XMVECTOR position;
 			DirectX::XMVECTOR plane;
+			DirectX::XMVECTOR planeU;
+			DirectX::XMVECTOR planeV;
 			DirectX::XMVECTOR camPosition;
 			DirectX::XMVECTOR camUnitDir;
 			std::uint32_t mode;
+			std::uint32_t orthographic;
 		} distConstBuffer;
 	private:
 		directx::Resource* faceIndexResource;

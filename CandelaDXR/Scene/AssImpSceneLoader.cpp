@@ -244,12 +244,14 @@ void AssImpSceneLoader::loadScene()
 
 		constexpr float cdToInt = 1.f / 683.f;
 		float coeff = pLight->mType == aiLightSource_POINT ? cdToInt : 1.f;
+		float attQuad = pLight->mAttenuationQuadratic == 0.f ? 1.f : pLight->mAttenuationQuadratic;
+		float attConst = pLight->mAttenuationConstant == 0.f ? 1.f : pLight->mAttenuationConstant;
 
 		scene->addExternalLight({ Light{
 			.Position = DirectX::XMVectorSet(pLight->mPosition.x, pLight->mPosition.y, pLight->mPosition.z, 1.f),
 			.Direction = DirectX::XMVector3Normalize(DirectX::XMVectorSet(pLight->mDirection.x, pLight->mDirection.y, pLight->mDirection.z, 0.f)),
 			.Up = DirectX::XMVector3Normalize(DirectX::XMVectorSet(pLight->mUp.x, pLight->mUp.y, pLight->mUp.z, 0.f)),
-			.Attenuation = Vector3(pLight->mAttenuationConstant, pLight->mAttenuationLinear, pLight->mAttenuationQuadratic),
+			.Attenuation = Vector3(attConst, pLight->mAttenuationLinear, attQuad),
 			.Type = static_cast<uint32_t>(pLight->mType),
 			.Diffuse = Vector3(pLight->mColorDiffuse.r * coeff, pLight->mColorDiffuse.g * coeff, pLight->mColorDiffuse.b * coeff),
 			.InnerConeAngle = pLight->mAngleInnerCone,
