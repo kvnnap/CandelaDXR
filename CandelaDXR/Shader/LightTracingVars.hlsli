@@ -25,7 +25,7 @@ struct ConstBuff
 	uint minBounces;
 	uint maxBounces;
 	uint seperateCaustics;
-	uint2 padding;
+	uint padding;
 };
 
 // UAVs

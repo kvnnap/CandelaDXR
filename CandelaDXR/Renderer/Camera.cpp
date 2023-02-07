@@ -22,7 +22,6 @@ Camera::Camera(const XMVECTOR& position, const XMVECTOR& direction, float nearWi
 {
 	setNearPlaneDimensions(nearWidth, nearHeight, nearZ, farZ);
 	lookTo(direction, up);
-	changed = false;
 	origPosition = position;
 	origDirection = this->direction;
 }

@@ -15,7 +15,7 @@ using candela::mathematics::Vector3;
 using candela::mathematics::Vector;
 
 ImGuiSceneNode::ImGuiSceneNode(SceneNode &p_sceneNode, const RendererTime& rendererTime)
-	: sceneNode(p_sceneNode), rendererTime(rendererTime), position{}, rotation{}, scale{ 1.f, 1.f, 1.f }, changed(), useModelCentre(true)
+	: sceneNode(p_sceneNode), rendererTime(rendererTime), position{}, rotation{}, scale{ 1.f, 1.f, 1.f }, changed(), useModelCentre()
 {
 	Vector scale, rot, trans;
 	DirectX::XMMatrixDecompose(&scale, &rot, &trans, sceneNode.Transform);

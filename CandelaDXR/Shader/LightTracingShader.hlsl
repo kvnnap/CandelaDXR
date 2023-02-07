@@ -46,6 +46,8 @@ void rayGen()
 	float3 localContribution = cBuffer.numTotalLights; // Chose a light!
 	ShadowPayload shadowPayload;
 	RayDesc shadowRay;
+	shadowRay.TMin = 0.001f;
+	shadowRay.TMax = 1.f;
 	RayDesc ray;
 	ray.TMin = 0.001f;
 	ray.TMax = 3.402823e+38;

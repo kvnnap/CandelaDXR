@@ -22,8 +22,6 @@
 		const float3 unitLightNormal = getUnitNormal(lightBary, lightIndexId, areaLight.InstanceIndex);
 
 		// Construct ray from light source to camera origin
-		shadowRay.TMin = 0.001f;
-		shadowRay.TMax = 1.f;
 		shadowRay.Origin = pointOnLightSource;
 		shadowRay.Direction = cBuffer.position - pointOnLightSource;
 		float invShadowDistance = 1.f / length(shadowRay.Direction);

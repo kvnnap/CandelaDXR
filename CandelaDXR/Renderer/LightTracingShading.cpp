@@ -109,7 +109,7 @@ void LightTracingShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12Graphi
 
 	// Create Shader resources
 	createShaderResources(pCurrentCommandList);
-
+	
 	// Constant buffer
 	constantBuffer = DXUtil::uploadDataToDefaultHeap(rRes->pDevice, pCurrentCommandList, rendererResources->getTempResource(), &constBuffer, sizeof(constBuffer), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 	constantBuffer->SetName(L"LT Constant Buffer");
@@ -448,7 +448,7 @@ void LightTracingShading::onChange(wrl::ComPtr<ID3D12GraphicsCommandList> pCurre
 	for (auto& ltShader : ltShaders)
 		if (ltShader.component)
 			ltShader.component->onChange(pCurrentCommandList, currentBackBufferIndex, changeEvent);
-
+	
 	clear = true;
 }
 
