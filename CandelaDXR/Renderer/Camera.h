@@ -31,6 +31,7 @@ namespace candela::renderer
 		void incrementDirection(float rotationY, float rotationZ);
 		void setName(const std::string& name);
 
+		float getAspectRatio() const;
 		const DirectX::XMVECTOR& getPosition() const;
 		const DirectX::XMVECTOR& getDirection() const;
 		const DirectX::XMVECTOR& getUp() const;
@@ -42,6 +43,7 @@ namespace candela::renderer
 		const std::string& getName() const;
 
 		bool hasChanged() const;
+		bool hasSensorChanged() const;
 		void setChanged();
 		void resetChanged();
 
@@ -72,5 +74,6 @@ namespace candela::renderer
 
 		bool orthographic;
 		bool changed;
+		bool sensorChanged;
 	};
 }

@@ -18,7 +18,7 @@ using DirectX::operator+;
 using DirectX::operator*;
 
 Camera::Camera(const XMVECTOR& position, const XMVECTOR& direction, float nearWidth, float nearHeight, float nearZ, float farZ, const DirectX::XMVECTOR& up)
-	: position(position), direction(XMVector3Normalize(direction)), up(up), nearWidth(nearWidth), nearHeight(nearHeight), nearZ(nearZ), farZ(farZ), viewMatrix(), orthographic(), changed()
+	: position(position), direction(XMVector3Normalize(direction)), up(up), nearWidth(nearWidth), nearHeight(nearHeight), nearZ(nearZ), farZ(farZ), viewMatrix(), orthographic(), changed(), sensorChanged()
 {
 	setNearPlaneDimensions(nearWidth, nearHeight, nearZ, farZ);
 	lookTo(direction, up);
@@ -32,6 +32,7 @@ void Camera::setPerspOrthMatrix()
 		XMMatrixOrthographicRH(nearWidth, nearHeight, nearZ, farZ) : 
 		XMMatrixPerspectiveRH(nearWidth, nearHeight, nearZ, farZ);
 	changed = true;
+	sensorChanged = true;
 }
 
 void Camera::recalculateViewMatrix()
@@ -124,6 +125,11 @@ void Camera::setName(const std::string& name)
 	this->name = name;
 }
 
+float Camera::getAspectRatio() const
+{
+	return static_cast<float>(nearWidth) / nearHeight;
+}
+
 const XMVECTOR& Camera::getPosition() const
 {
 	return position;
@@ -175,14 +181,21 @@ bool Camera::hasChanged() const
 	return changed;
 }
 
+bool Camera::hasSensorChanged() const
+{
+	return sensorChanged;
+}
+
 void Camera::setChanged()
 {
 	changed = true;
+	sensorChanged = true;
 }
 
 void Camera::resetChanged()
 {
 	changed = false;
+	sensorChanged = false;
 }
 
 void Camera::transform(const mathematics::Matrix& trans)

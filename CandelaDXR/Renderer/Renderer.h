@@ -3,6 +3,8 @@
 #include <memory>
 #include <vector>
 #include <string>
+#include <functional>
+#include <queue>
 
 #include "DirectX/Types.h"
 #include <dxgi1_6.h>
@@ -164,6 +166,9 @@ namespace candela::renderer
 		wrl::ComPtr<ID3D12RootSignature> computeRootSignature;
 		wrl::ComPtr<ID3D12PipelineState> computePipelineState;
 		wrl::ComPtr<ID3D12DescriptorHeap> computeDescriptorHeap;
+
+		//
+		std::queue<std::function<void()>> postFrameActions;
 
 		// TEST AREA
 		std::vector<IDrawable*> drawables;

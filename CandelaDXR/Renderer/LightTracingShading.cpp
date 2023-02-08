@@ -444,6 +444,12 @@ void LightTracingShading::onChange(wrl::ComPtr<ID3D12GraphicsCommandList> pCurre
 		createShaderTable(pCurrentCommandList);
 	}
 
+	if ((changeEvent & static_cast<ChangeEvent_t>(ChangeEvent::Camera)) && rendererResources->camera->hasSensorChanged())
+	{
+		generateIrrToRadTexture(pCurrentCommandList, rendererResources->getTempResource());
+		createShaderResources(pCurrentCommandList);
+	}
+
 	// Process components
 	for (auto& ltShader : ltShaders)
 		if (ltShader.component)

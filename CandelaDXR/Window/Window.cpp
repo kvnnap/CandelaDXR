@@ -36,6 +36,19 @@ LRESULT CALLBACK Window::WndProcThunk(HWND hwnd, UINT msg, WPARAM wParam, LPARAM
 	return window->wndProc(hwnd, msg, wParam, lParam);
 }
 
+bool Window::getCorrectedRect(int width, int height, long dwStyle, RECT &rect) const noexcept
+{
+	rect = {};
+	rect.right = width;
+	rect.bottom = height;
+	return AdjustWindowRect(&rect, dwStyle, false) != 0;
+}
+
+long Window::getWindowStyle() const
+{
+	return GetWindowLong(hWnd, GWL_STYLE);
+}
+
 std::optional<int> Window::ProcessMessages(bool blocking)
 {
 	MSG msg = {};
@@ -122,12 +135,10 @@ void Window::cleanup(bool destroying)
 Window::Window(const string& windowName, int width, int height, feanor::io::IKeyWriter* keyboardWriter, feanor::io::IMouseWriter* mouseWriter, bool resizeable)
 	: hWnd(), keyboardWriter(keyboardWriter), mouseWriter(mouseWriter)
 {
-	auto dwClass = resizeable ? WS_OVERLAPPEDWINDOW : WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU;
+	auto dwStyle = resizeable ? WS_OVERLAPPEDWINDOW : WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU;
 
-	RECT rect = {};
-	rect.right = width;
-	rect.bottom = height;
-	if (!AdjustWindowRect(&rect, dwClass, false))
+	RECT rect;
+	if (!getCorrectedRect(width, height, dwStyle, rect))
 		ThrowException("Cannot adjust client area");
 
 	HINSTANCE hInstance = GetModuleHandle(NULL);
@@ -135,7 +146,7 @@ Window::Window(const string& windowName, int width, int height, feanor::io::IKey
 	hWnd = CreateWindowEx(NULL,
 		wndClass.getClassName().c_str(),
 		windowName.c_str(),
-		dwClass,
+		dwStyle,
 		CW_USEDEFAULT, CW_USEDEFAULT, rect.right - rect.left, rect.bottom - rect.top,
 		NULL,
 		NULL,
@@ -165,6 +176,32 @@ HWND Window::getHandle() const
 void candela::ui::Window::setWindowName(const std::string& windowName) const
 {
 	SetWindowText(hWnd, windowName.c_str());
+}
+
+void Window::setClientWindowSize(int width, int height) const
+{
+	RECT rect;
+	if (!getCorrectedRect(width, height, getWindowStyle(), rect))
+		ThrowException("Cannot adjust client area");
+	if (!SetWindowPos(hWnd, HWND_TOP, 0, 0, rect.right - rect.left, rect.bottom - rect.top, SWP_NOOWNERZORDER | SWP_NOMOVE))
+		ThrowException("Cannot resize window");
+}
+
+void Window::setAspectRatio(float aspectRatio) const
+{
+	RECT rect;
+	GetClientRect(hWnd, &rect);
+	auto clientHeight = static_cast<int>(rect.bottom - rect.top);
+	auto clientWidth = static_cast<int>(aspectRatio * clientHeight);
+	setClientWindowSize(clientWidth, clientHeight);
+}
+
+void Window::getClientWindowSize(int& width, int& height) const
+{
+	RECT rect;
+	GetClientRect(hWnd, &rect);
+	width = static_cast<int>(rect.right - rect.left);
+	height = static_cast<int>(rect.bottom - rect.top);
 }
 
 void Window::addWndProcCallback(WNDCALLBACKFN a)

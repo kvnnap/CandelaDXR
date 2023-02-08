@@ -321,7 +321,7 @@ void Renderer::renderFrame()
 					}
 				}
 			}
-			changeEvent |= static_cast<ChangeEvent_t>(ChangeEvent::Transformation);
+			changeEvent |= static_cast<ChangeEvent_t>(ChangeEvent::Transformation) | static_cast<ChangeEvent_t>(ChangeEvent::Animation);
 		}
 
 		if (animationSequencer.isEnabled())
@@ -373,6 +373,17 @@ void Renderer::renderFrame()
 				sizeof(candela::scene::Light) * eLights.size(),
 				flags,
 				flags);
+		}
+
+		// Update camera
+		for (auto& cam : scene->getCameras())
+		{
+			if (cam.Camera.getName() == camera->getName())
+			{
+				camera->transform(cam.Node->getTransform());
+				changeEvent |= static_cast<ChangeEvent_t>(ChangeEvent::Camera);
+				break;
+			}
 		}
 	}
 
@@ -578,6 +589,13 @@ void Renderer::renderFrame()
 	// Reset camera
 	camera->resetChanged();
 	++rendererResources.frameNumber;
+
+	// Run post-frame actions
+	while (!postFrameActions.empty())
+	{
+		postFrameActions.front()();
+		postFrameActions.pop();
+	}
 }
 
 void Renderer::setShaderAccumulation(bool p_shaderAccumulation)
@@ -592,8 +610,15 @@ bool Renderer::getShaderAccumulation() const
 
 void Renderer::setCameraCopy(const Camera& p_camera)
 {
-	*camera = p_camera;
-	camera->setChanged();
+	postFrameActions.push([&, p_camera] () {
+		*camera = p_camera;
+		camera->setChanged();
+		window->setAspectRatio(camera->getAspectRatio());
+	});
+	
+	//int width, height;
+	//window->getClientWindowSize(width, height);
+	//camera->setAspectRatio(static_cast<float>(width) / height);
 }
 
 const Scene& Renderer::getScene() const
@@ -771,6 +796,9 @@ void Renderer::updateCamera()
 		return keyboard.isKeyPressed(key) ? value : 0.f;
 	};
 
+	if (camera->hasChanged())
+		return;
+
 	constexpr float unitsPerSec = 3.f;
 
 	float deltaUnits = fpsCounter.getLastFrameTime() / 1000.f * unitsPerSec;
@@ -784,6 +812,10 @@ void Renderer::updateCamera()
 		camera->incrementDirection(getValueIfPressed('L', -deltaUnits), getValueIfPressed('I', deltaUnits));
 	if (keyboard.isKeyPressed('J') || keyboard.isKeyPressed('K'))
 		camera->incrementDirection(getValueIfPressed('J', deltaUnits), getValueIfPressed('K', -deltaUnits));
+
+	// This disassociates the renderer camera so that further transforms do not affect this camera
+	if (camera->hasChanged())
+		camera->setName("_Candela_Default_Camera_");
 }
 
 void Renderer::resize()

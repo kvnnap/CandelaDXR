@@ -25,6 +25,9 @@ namespace candela::ui
 		// Methods
 		HWND getHandle() const;
 		void setWindowName(const std::string& windowName) const;
+		void setClientWindowSize(int width, int height) const;
+		void setAspectRatio(float aspectRatio) const;
+		void getClientWindowSize(int& width, int& height) const;
 		void addWndProcCallback(WNDCALLBACKFN fn);
 		void addWndProcCallback(WNDCALLBACKFN2 fn, LRESULT acceptedValue);
 
@@ -34,6 +37,8 @@ namespace candela::ui
 	private:
 		static LRESULT CALLBACK WndProcSetup(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) noexcept;
 		static LRESULT CALLBACK WndProcThunk(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) noexcept;
+		bool getCorrectedRect(int width, int height, long dwStyle, RECT &rect) const noexcept;
+		long getWindowStyle() const;
 
 		// Private methods
 		LRESULT wndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) noexcept;
