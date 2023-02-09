@@ -29,6 +29,7 @@ namespace candela::renderer::imgui
 		void visit(PathTracingShading*) override;
 		void visit(RasterRTShadowsShading*) override;
 		void visit(DenoiserShading*) override;
+		void visit(ExternalObjectDebugShading*) override;
 
 	private:
 		enum PathInteraction : std::uint32_t
@@ -86,6 +87,11 @@ namespace candela::renderer::imgui
 				bool specularOnly;
 				int pathBounces[2];
 				bool pathPathFlags[4];
+			};
+
+			// External Debug
+			struct {
+				bool displaySceneAabb;
 			};
 		};
 	};

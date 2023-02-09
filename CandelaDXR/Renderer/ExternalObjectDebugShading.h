@@ -10,6 +10,7 @@
 #include "Scene/Scene.h"
 
 #include "Mathematics/Types.h"
+#include "Mathematics/AABB.h"
 
 #include "Camera.h"
 
@@ -29,10 +30,15 @@ namespace candela::renderer
 		void onResize() override;
 		void accept(IVisitor* visitor) override;
 		std::uint32_t getBufferUsage() const override;
+		void setEnabled(bool p_enabled) override;
 		void setVertices(std::vector<mathematics::Vector3>&& vertices);
+
+		void setDisplaySceneAabb(bool p_disp);
+		bool getDisplaySceneAabb() const;
 
 	private:
 		void updateBuffer(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList);
+		void appendAabb(const mathematics::AABB& aabb);
 		RendererResources* rendererResources{};
 
 		struct alignas(16) ConstBuff
@@ -58,5 +64,8 @@ namespace candela::renderer
 
 		// Vertex Data
 		std::vector<mathematics::Vector3> vertices;
+
+		bool needsUpdate;
+		bool displaySceneAabb;
 	};
 }

@@ -187,6 +187,6 @@ namespace candela::renderer
 		const bool exitOnAnimationCompletion;
 		bool shaderAccumulation;
 
-		//ExternalObjectDebugShading eoDebug;
+		ExternalObjectDebugShading eoDebug;
 	};
 }

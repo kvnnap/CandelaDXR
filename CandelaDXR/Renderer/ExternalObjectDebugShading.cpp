@@ -6,6 +6,8 @@
 
 #include "ExternalObjectDebugShading.h"
 
+#include "Mathematics/Plane.h"
+
 using std::uint32_t;
 using std::make_shared;
 using Microsoft::WRL::ComPtr;
@@ -14,9 +16,10 @@ using candela::renderer::ExternalObjectDebugShading;
 using candela::mathematics::Vector3;
 using candela::directx::DXUtil;
 using candela::directx::RootSignatureManager;
+using candela::mathematics::Plane;
 
 ExternalObjectDebugShading::ExternalObjectDebugShading()
-	: bufferView{}, scissorRect(CD3DX12_RECT(0, 0, LONG_MAX, LONG_MAX)), viewport{}, dsvDescriptorSize{}, pDepthBuffer{}
+	: bufferView{}, scissorRect(CD3DX12_RECT(0, 0, LONG_MAX, LONG_MAX)), viewport{}, dsvDescriptorSize{}, pDepthBuffer{}, needsUpdate{}, displaySceneAabb{}
 {
 	
 }
@@ -118,6 +121,9 @@ void ExternalObjectDebugShading::init(RendererResources* rRes, wrl::ComPtr<ID3D1
 
 void ExternalObjectDebugShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, std::uint32_t currentBackBufferIndex)
 {
+	if (needsUpdate)
+		updateBuffer(pCurrentCommandList);
+
 	// Clear Depth
 	CD3DX12_CPU_DESCRIPTOR_HANDLE dsvDescriptorHandle(pDepthDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), 0, dsvDescriptorSize);
 	pCurrentCommandList->ClearDepthStencilView(dsvDescriptorHandle, D3D12_CLEAR_FLAG_DEPTH, 1.f, 0, 0, nullptr);
@@ -174,6 +180,7 @@ void ExternalObjectDebugShading::onResize()
 
 void ExternalObjectDebugShading::accept(IVisitor* visitor)
 {
+	visitor->visit(this);
 }
 
 uint32_t ExternalObjectDebugShading::getBufferUsage() const
@@ -181,88 +188,92 @@ uint32_t ExternalObjectDebugShading::getBufferUsage() const
 	return BufferUsage::Radiance;
 }
 
+void ExternalObjectDebugShading::setEnabled(bool p_enabled)
+{
+	Drawable::setEnabled(p_enabled);
+	if (!isEnabled())
+		return;
+	needsUpdate = true;
+	//auto cq = rendererResources->commandQueue;
+	//cq->flush();
+	//auto list = cq->getCommandList();
+	//updateBuffer(list);
+	//cq->executeCommandList(list);
+}
+
 void ExternalObjectDebugShading::setVertices(std::vector<mathematics::Vector3>&& verts)
 {
-	vertices = std::move(verts);
+}
 
-	// Preview AABB
-	//vertices.clear();
-	//if (!rendererResources)
-	//	return;
-	//auto aabb = rendererResources->scene->getSceneAABB();
-	//std::vector<Vector3> v (8);
-	//for (int i = 0; i < 8; ++i)
-	//	DirectX::XMStoreFloat3(&v[i], aabb.getCornerPoint(i));
-	//
-	//// Front
-	//vertices.push_back(v[0]);
-	//vertices.push_back(v[1]);
-	//vertices.push_back(v[2]);
+void ExternalObjectDebugShading::setDisplaySceneAabb(bool p_disp)
+{
+	displaySceneAabb = p_disp;
+	needsUpdate = true;
+}
 
-	//vertices.push_back(v[2]);
-	//vertices.push_back(v[1]);
-	//vertices.push_back(v[3]);
-
-	//// Left
-	//vertices.push_back(v[4]);
-	//vertices.push_back(v[0]);
-	//vertices.push_back(v[6]);
-
-	//vertices.push_back(v[6]);
-	//vertices.push_back(v[0]);
-	//vertices.push_back(v[2]);
-
-	//// Back
-	//vertices.push_back(v[5]);
-	//vertices.push_back(v[4]);
-	//vertices.push_back(v[7]);
-
-	//vertices.push_back(v[7]);
-	//vertices.push_back(v[4]);
-	//vertices.push_back(v[6]);
-
-	//// Right
-	//vertices.push_back(v[1]);
-	//vertices.push_back(v[5]);
-	//vertices.push_back(v[3]);
-
-	//vertices.push_back(v[3]);
-	//vertices.push_back(v[5]);
-	//vertices.push_back(v[7]);
-
-	//// Top
-	//vertices.push_back(v[2]);
-	//vertices.push_back(v[3]);
-	//vertices.push_back(v[6]);
-
-	//vertices.push_back(v[6]);
-	//vertices.push_back(v[3]);
-	//vertices.push_back(v[7]);
-
-	//// Bottom
-	//vertices.push_back(v[4]);
-	//vertices.push_back(v[5]);
-	//vertices.push_back(v[0]);
-
-	//vertices.push_back(v[0]);
-	//vertices.push_back(v[5]);
-	//vertices.push_back(v[1]);
-
+bool ExternalObjectDebugShading::getDisplaySceneAabb() const
+{
+	return displaySceneAabb;
 }
 
 void ExternalObjectDebugShading::updateBuffer(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList)
 {
-	//vertices.push_back(Vector3(-1, 1, 0));
-	//vertices.push_back(Vector3(-1, 0, 0));
-	//vertices.push_back(Vector3( 1, 0, 0));
-
-	if (vertices.empty())
+	if (!isEnabled())
 		return;
 
-	auto pDevice = rendererResources->pDevice;
+	using namespace DirectX;
+
+	vertices.clear();
+
+	const auto aabb = rendererResources->scene->getSceneAABB();
+	if (displaySceneAabb)
+		appendAabb(aabb);
+
+	for (const auto& myLight : rendererResources->processedExternalLights)
+	{
+		if (myLight.Type == LT_POINT)
+		{
+			mathematics::AABB pointAABB;
+			constexpr float deltaP = 0.01f;
+			pointAABB.contain(myLight.Position);
+			pointAABB.contain(myLight.Position - mathematics::Vector{ deltaP, deltaP, deltaP, 0.f });
+			pointAABB.contain(myLight.Position + mathematics::Vector{ deltaP, deltaP, deltaP, 0.f });
+			appendAabb(pointAABB);
+		}
+		else if (myLight.Type == LT_DIRECTIONAL)
+		{
+			auto plane = Plane(myLight.Position, myLight.Direction);
+			Vector3 vec3;
+			mathematics::Vector uvCoords = XMVectorSet(0, myLight.AreaDimensions.y, 0, 0);
+			auto tempVec = myLight.Position + uvCoords.m128_f32[0] * myLight.Right + uvCoords.m128_f32[1] * myLight.Up;
+			XMStoreFloat3(&vec3, tempVec);
+			vertices.push_back(vec3);
+
+			uvCoords = XMVectorSet(0, 0, 0, 0);
+			tempVec = myLight.Position + uvCoords.m128_f32[0] * myLight.Right + uvCoords.m128_f32[1] * myLight.Up;
+			XMStoreFloat3(&vec3, tempVec);
+			vertices.push_back(vec3);
+
+			uvCoords = XMVectorSet(myLight.AreaDimensions.x, myLight.AreaDimensions.y, 0, 0);
+			tempVec = myLight.Position + uvCoords.m128_f32[0] * myLight.Right + uvCoords.m128_f32[1] * myLight.Up;
+			XMStoreFloat3(&vec3, tempVec);
+			vertices.push_back(vec3);
+
+			vertices.push_back(vertices.back());
+			vertices.push_back(vertices[vertices.size() - 3]);
+
+			uvCoords = XMVectorSet(myLight.AreaDimensions.x, 0, 0, 0);
+			tempVec = myLight.Position + uvCoords.m128_f32[0] * myLight.Right + uvCoords.m128_f32[1] * myLight.Up;
+			XMStoreFloat3(&vec3, tempVec);
+			vertices.push_back(vec3);
+		}
+	}
+
+	// need to flush when replacing buffer (or keep old one around until it is not used anymore)
+	rendererResources->commandQueue->flush();
 	
 	vertexBuffer = std::make_unique<directx::Resource>(directx::Resource::createCommittedResource(
-		pDevice, vertices.size() * sizeof(Vector3), D3D12_RESOURCE_STATE_COMMON));
+		rendererResources->pDevice, vertices.size() * sizeof(Vector3), D3D12_RESOURCE_STATE_COMMON));
 	vertexBuffer->write(pCurrentCommandList, rendererResources->getTempResource(), vertices.data());
 	vertexBuffer->setName("External Object Vertex Buffer");
 	ID3D12Resource* pt = *vertexBuffer;
@@ -273,5 +284,68 @@ void ExternalObjectDebugShading::updateBuffer(wrl::ComPtr<ID3D12GraphicsCommandL
 		.SizeInBytes = static_cast<std::uint32_t>(vertices.size() * sizeof(Vector3)),
 		.StrideInBytes = sizeof(Vector3)
 	};
+
+	needsUpdate = false;
+}
+
+void ExternalObjectDebugShading::appendAabb(const mathematics::AABB& aabb)
+{
+	std::vector<Vector3> v(8);
+	for (int i = 0; i < 8; ++i)
+		DirectX::XMStoreFloat3(&v[i], aabb.getCornerPoint(i));
+
+	// Front
+	vertices.push_back(v[0]);
+	vertices.push_back(v[1]);
+	vertices.push_back(v[2]);
+
+	vertices.push_back(v[2]);
+	vertices.push_back(v[1]);
+	vertices.push_back(v[3]);
+
+	// Left
+	vertices.push_back(v[4]);
+	vertices.push_back(v[0]);
+	vertices.push_back(v[6]);
+
+	vertices.push_back(v[6]);
+	vertices.push_back(v[0]);
+	vertices.push_back(v[2]);
+
+	// Back
+	vertices.push_back(v[5]);
+	vertices.push_back(v[4]);
+	vertices.push_back(v[7]);
+
+	vertices.push_back(v[7]);
+	vertices.push_back(v[4]);
+	vertices.push_back(v[6]);
+
+	// Right
+	vertices.push_back(v[1]);
+	vertices.push_back(v[5]);
+	vertices.push_back(v[3]);
+
+	vertices.push_back(v[3]);
+	vertices.push_back(v[5]);
+	vertices.push_back(v[7]);
+
+	// Top
+	vertices.push_back(v[2]);
+	vertices.push_back(v[3]);
+	vertices.push_back(v[6]);
+
+	vertices.push_back(v[6]);
+	vertices.push_back(v[3]);
+	vertices.push_back(v[7]);
+
+	// Bottom
+	vertices.push_back(v[4]);
+	vertices.push_back(v[5]);
+	vertices.push_back(v[0]);
+
+	vertices.push_back(v[0]);
+	vertices.push_back(v[5]);
+	vertices.push_back(v[1]);
 }
 

@@ -9,6 +9,7 @@
 #include "Renderer/PathTracingShading.h"
 #include "Renderer/RasterRTShadowsShading.h"
 #include "Renderer/DenoiserShading.h"
+#include "Renderer/ExternalObjectDebugShading.h"
 
 #include "ImGuiShading.h"
 
@@ -33,8 +34,10 @@ void ImGuiShading::drawUi()
 	changed = false;
 	ImGui::PushID(drawable);
 	drawable->accept(this); // Calls the appropriate visit method
-	changed |= ImGui::Checkbox("Enabled", &enabled);
-	drawable->setEnabled(enabled);
+	auto enabledChanged = ImGui::Checkbox("Enabled", &enabled);
+	changed |= enabledChanged;
+	if (enabledChanged)
+		drawable->setEnabled(enabled);
 	ImGui::PopID();
 	initialised = true;
 }
@@ -133,6 +136,21 @@ void ImGuiShading::visit(DenoiserShading* denShading)
 			changed |= ImGui::DragFloat("thresholdMin", &reblur.antilagHitDistanceSettings.thresholdMin, 0.01f, 0.01f, 1.f);
 			changed |= ImGui::DragFloat("thresholdMax", &reblur.antilagHitDistanceSettings.thresholdMax, 0.01f, 0.01f, 1.f);
 		}
+	}
+}
+
+void ImGuiShading::visit(ExternalObjectDebugShading* eoDebug)
+{
+	if (!initialised)
+	{
+		displaySceneAabb = eoDebug->getDisplaySceneAabb();
+	}
+
+	ImGui::Text("ExternalObjectDebugShading");
+
+	if (ImGui::Checkbox("Scene AABB", &displaySceneAabb))
+	{
+		eoDebug->setDisplaySceneAabb(displaySceneAabb);
 	}
 }
 

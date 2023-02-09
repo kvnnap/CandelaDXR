@@ -89,7 +89,8 @@ Renderer::Renderer(Scene *scene, Camera *camera, const UVector2 &windowDimension
 	  exitOnAnimationCompletion(exitOnAnimCompl),
 	  shaderAccumulation(shaderAccumulation)
 {
-	//drawables.push_back(&eoDebug);
+	eoDebug.setEnabled(false);
+	drawables.push_back(&eoDebug);
 }
 
 Renderer::~Renderer()
