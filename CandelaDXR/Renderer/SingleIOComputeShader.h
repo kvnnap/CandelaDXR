@@ -84,6 +84,7 @@ namespace candela::renderer
 			DirectX::XMVECTOR camUnitDir;
 			std::uint32_t mode;
 			std::uint32_t orthographic;
+			std::uint32_t singlePointSource;
 		} distConstBuffer;
 	private:
 		directx::Resource* faceIndexResource;

@@ -133,6 +133,7 @@ void LTRasterGuidedShading::generateCDF(wrl::ComPtr<ID3D12GraphicsCommandList> p
 			auto sceneCentre = rRes->scene->getSceneAABB().getCentre();
 			pos = procLight.Position;
 			nor = XMVector3Normalize(sceneCentre - pos);
+			distanceComputerShader.distConstBuffer.singlePointSource = true;
 		}
 		else if (extLight.Light.Type == LT_DIRECTIONAL)
 		{
@@ -142,6 +143,7 @@ void LTRasterGuidedShading::generateCDF(wrl::ComPtr<ID3D12GraphicsCommandList> p
 			lightCamera->setNearPlaneDimensions(procLight.AreaDimensions.x, procLight.AreaDimensions.y);
 			lightCamera->setOrthographic(true);
 			distanceComputerShader.distConstBuffer.orthographic = true;
+			distanceComputerShader.distConstBuffer.singlePointSource = true;
 			distanceComputerShader.distConstBuffer.planeU = procLight.Right;
 			distanceComputerShader.distConstBuffer.planeV = procLight.Up;
 		}
@@ -214,6 +216,7 @@ void LTRasterGuidedShading::generateCDF(wrl::ComPtr<ID3D12GraphicsCommandList> p
 	lightCamera->setNearPlaneDimensions(0.125f, 0.125f);
 	lightCamera->setOrthographic(false);
 	distanceComputerShader.distConstBuffer.orthographic = false;
+	distanceComputerShader.distConstBuffer.singlePointSource = false;
 }
 
 void LTRasterGuidedShading::regenerateCDFs(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, uint32_t currentBackBufferIndex)
@@ -232,7 +235,7 @@ void LTRasterGuidedShading::regenerateCDFs(wrl::ComPtr<ID3D12GraphicsCommandList
 
 void LTRasterGuidedShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, uint32_t currentBackBufferIndex)
 {
-	constBuffer.lightIndex = storePerLightCDF ? UINT_MAX : static_cast<uint32_t>(sampler->chooseInRange(0, rendererResources->scene->getLights().size() - 1));
+	constBuffer.lightIndex = storePerLightCDF ? UINT_MAX : static_cast<uint32_t>(sampler->chooseInRange(0, rendererResources->scene->getLights().size() + rendererResources->scene->getExternalLights().size() - 1));
 	DXUtil::updateDataInDefaultHeap(rendererResources->pDevice, pCurrentCommandList, constantBuffer, rendererResources->getTempResource(),
 		&constBuffer, sizeof(constBuffer), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 

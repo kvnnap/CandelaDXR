@@ -18,6 +18,7 @@ cbuffer CB1 : register(b0, space1)
 	uint padding;
 	uint Mode;
 	uint Orthographic;
+	uint SinglePointSource;
 }
 
 Texture2D<float4> input[] : register(t0);
@@ -66,7 +67,7 @@ void main( uint3 DTid : SV_DispatchThreadID )
 	const Material gMat = materials[meshInfo[DTid.xy].x];
 	const float3 dir = gPos - lightPos;
 	const float lenDir = length(dir);
-	const float noValue = 0.015625f;
+	const float noValue = SinglePointSource == 0 ? 0.015625f : 0.f;
 
 	//
 	if (Mode == 0)
