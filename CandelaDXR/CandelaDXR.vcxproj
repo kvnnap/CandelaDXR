@@ -211,6 +211,7 @@
     <ClCompile Include="DirectX\ResourceManager.cpp" />
     <ClCompile Include="DirectX\RootSignatureManager.cpp" />
     <ClCompile Include="DirectX\ShadingTable.cpp" />
+    <ClCompile Include="DirectX\TimeStampQuery.cpp" />
     <ClCompile Include="Environment\Environment.cpp" />
     <ClCompile Include="Factory\AnimationFactory.cpp" />
     <ClCompile Include="Factory\AssImpSceneLoaderFactory.cpp" />
@@ -289,6 +290,7 @@
     <ClInclude Include="DirectX\ResourceManager.h" />
     <ClInclude Include="DirectX\RootSignatureManager.h" />
     <ClInclude Include="DirectX\ShadingTable.h" />
+    <ClInclude Include="DirectX\TimeStampQuery.h" />
     <ClInclude Include="DirectX\Types.h" />
     <ClInclude Include="Factory\AnimationFactory.h" />
     <ClInclude Include="Factory\AssImpSceneLoaderFactory.h" />

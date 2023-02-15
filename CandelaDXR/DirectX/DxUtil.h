@@ -110,5 +110,8 @@ namespace candela::directx
 			AccelerationStructureBuffers& tlasBuffers);
 
 		static D3D12_STATIC_SAMPLER_DESC getDefaultSamplerDesc();
+
+		// Queries
+		static Microsoft::WRL::ComPtr<ID3D12QueryHeap> createQueryHeap(Microsoft::WRL::ComPtr<ID3D12Device> pDevice, UINT heapSize);
 	};
 }

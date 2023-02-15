@@ -30,5 +30,7 @@ unique_ptr<IDrawable> PathTracingDrawableFactory::create(const ConfigurationNode
 	auto specularOnly = confObject.keyExists("SpecularOnly")
 		? confObject["SpecularOnly"].read<bool>()
 		: false;
-	return make_unique<PathTracingShading>(move(instance), specularOnly);
+	auto pt = make_unique<PathTracingShading>(move(instance), specularOnly);
+	pt->setName(confObject["Name"].read<std::string>());
+	return pt;
 }

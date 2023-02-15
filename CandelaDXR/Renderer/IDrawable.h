@@ -43,5 +43,8 @@ namespace candela::renderer
 		// Accumulation
 		virtual bool shouldClearAccumulation() const = 0;
 		virtual std::uint32_t getBufferUsage() const = 0;
+
+		// Name
+		virtual const char* getName() const = 0;
 	};
 }

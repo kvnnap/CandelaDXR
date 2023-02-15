@@ -33,5 +33,7 @@ unique_ptr<IDrawable> LightTracingDrawableFactory::create(const ConfigurationNod
 	auto lightSamples = UVector2();
 	if (confObject.keyExists("LightSamples"))
 		lightSamples = *UVector2Factory().create(confObject["LightSamples"]);
-	return make_unique<LightTracingShading>(move(instance), lightSamples);
+	auto lt = make_unique<LightTracingShading>(move(instance), lightSamples);
+	lt->setName(confObject["Name"].read<std::string>());
+	return lt;
 }

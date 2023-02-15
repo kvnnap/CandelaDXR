@@ -34,6 +34,8 @@ namespace candela::renderer
 		virtual void appendToShaderTable(directx::ShadingTable* shadingTable) override;
 		virtual void appendToDescHeapManager(directx::DescriptorHeap* descriptorHeap) override;
 
+
+		const char* getName() const override;
 	private:
 		RendererResources* rendererResources;
 

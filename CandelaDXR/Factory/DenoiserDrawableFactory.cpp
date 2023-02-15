@@ -24,5 +24,7 @@ unique_ptr<IDrawable> DenoiserDrawableFactory::create() const
 
 unique_ptr<IDrawable> DenoiserDrawableFactory::create(const ConfigurationNode& config) const
 {
-	return make_unique<DenoiserShading>();
+	auto den = make_unique<DenoiserShading>();
+	den->setName(config["Name"].read<std::string>());
+	return den;
 }

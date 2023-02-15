@@ -659,3 +659,15 @@ D3D12_STATIC_SAMPLER_DESC DXUtil::getDefaultSamplerDesc()
 
 	return sampler;
 }
+
+ComPtr<ID3D12QueryHeap> DXUtil::createQueryHeap(ComPtr<ID3D12Device> pDevice, UINT heapSize)
+{
+	HRESULT hr{};
+	ComPtr<ID3D12QueryHeap> queryHeap;
+	D3D12_QUERY_HEAP_DESC heapDesc{
+		.Type = D3D12_QUERY_HEAP_TYPE_TIMESTAMP,
+		.Count = heapSize
+	};
+	GFXTHROWIFFAILED(pDevice->CreateQueryHeap(&heapDesc, IID_PPV_ARGS(&queryHeap)));
+	return queryHeap;
+}

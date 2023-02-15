@@ -27,5 +27,7 @@ unique_ptr<IDrawable> RasterRTShadowsDrawableFactory::create(const Configuration
 	auto instance = confObject.keyExists("Sampler")
 		? UniformSamplerFactory().create(confObject["Sampler"])
 		: UniformSamplerFactory().create();
-	return make_unique<RasterRTShadowsShading>(move(instance));
+	auto rrt = make_unique<RasterRTShadowsShading>(move(instance));
+	rrt->setName(confObject["Name"].read<std::string>());
+	return rrt;
 }

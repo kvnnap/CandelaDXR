@@ -71,6 +71,10 @@ void ImGuiRenderer::drawUi()
 		}
 	}
 
+	ImGui::Text("Profiling");
+	for (const auto& profilingItem : renderer.getProfilingData())
+		ImGui::Text("%s: %.2f ms",profilingItem.ProfileName.c_str(), profilingItem.TimeMs);
+
 	/*if (ImGui::ListBox("Shader", &shaderIndex, shaderNames.data(), static_cast<int>(shaderNames.size())))
 	{
 		lightTracingShader->setCurrentShaderIndex(static_cast<uint32_t>(shaderIndex));

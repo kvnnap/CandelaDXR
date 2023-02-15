@@ -27,5 +27,6 @@ unique_ptr<IDrawable> RasterDrawableFactory::create(const ConfigurationNode& con
 		rs->setComputeRadiance(confObject["ComputeRadiance"].read<bool>());
 	if (confObject.keyExists("ComputeEmissiveIfRadOff"))
 		rs->setComputeEmissiveIfRadOff(confObject["ComputeEmissiveIfRadOff"].read<bool>());
+	rs->setName(confObject["Name"].read<std::string>());
 	return rs;
 }

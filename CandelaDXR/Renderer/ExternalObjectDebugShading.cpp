@@ -21,7 +21,7 @@ using candela::mathematics::Plane;
 ExternalObjectDebugShading::ExternalObjectDebugShading()
 	: bufferView{}, scissorRect(CD3DX12_RECT(0, 0, LONG_MAX, LONG_MAX)), viewport{}, dsvDescriptorSize{}, pDepthBuffer{}, needsUpdate{}, displaySceneAabb{}
 {
-	
+	setName("EODebug");
 }
 
 void ExternalObjectDebugShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12GraphicsCommandList>& pCurrentCommandList, ResourceRegFunction& resRegFn)

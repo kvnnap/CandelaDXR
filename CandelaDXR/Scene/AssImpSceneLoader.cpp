@@ -243,7 +243,7 @@ void AssImpSceneLoader::loadScene()
 		myLightNode->Lights.push_back(offsets.light + i);
 
 		constexpr float cdToInt = 1.f / 683.f;
-		float coeff = pLight->mType == aiLightSource_POINT ? cdToInt : 1.f;
+		float coeff = pLight->mType == aiLightSource_POINT ? cdToInt : cdToInt;
 		float attQuad = pLight->mAttenuationQuadratic == 0.f ? 1.f : pLight->mAttenuationQuadratic;
 		float attConst = pLight->mAttenuationConstant == 0.f ? 1.f : pLight->mAttenuationConstant;
 

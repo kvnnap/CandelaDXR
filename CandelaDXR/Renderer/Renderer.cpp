@@ -49,6 +49,7 @@ using candela::directx::RootSignatureManager;
 using candela::directx::DescriptorHeap;
 using candela::directx::Resource;
 using candela::directx::ResourceManager;
+using candela::directx::ProfileItem;
 
 using candela::mathematics::Vector2;
 using candela::mathematics::UVector2;
@@ -238,6 +239,10 @@ void Renderer::init()
 
 	pCurrentCommandList = commandQueue->getCommandList();
 
+	// Queries
+	for (UINT i = 0; i < NumBackBuffers; ++i)
+		timeStampQuery[i].init(pDevice, rendererResources.resourceManager.get(), commandQueue, pCurrentCommandList);
+
 	// Init Resources
 	for (auto &resource : resources)
 		resource->init(&rendererResources, pCurrentCommandList);
@@ -284,6 +289,10 @@ void Renderer::renderFrame()
 	else
 		updateCamera();
 	
+	// Read previous "resolve"d query
+	auto& tsQuery = timeStampQuery[currentBackBufferIndex];
+	tsQuery.load();
+
 	ChangeEvent_t changeEvent = imguiManager.processChangeEvent();
 	changeEvent |= camera->hasChanged() ? static_cast<ChangeEvent_t>(ChangeEvent::Camera) : 0;
 
@@ -423,59 +432,63 @@ void Renderer::renderFrame()
 	const auto grabRadiancePressed = keyboard.hasKeyChanged('P') && keyboard.isKeyPressed('P') || (animationSequencer.isEnabled() && animationSequencer.isNewFrame());
 	const auto& dim = windowDimensions;
 
+	tsQuery.addTimeStampQuery(pCurrentCommandList, "Begin");
+
 	for (size_t i = 0; i < drawables.size(); ++i)
 	{
 		auto drawable = drawables[i];
 		if (changeEvent || !shaderAccumulation)
 			drawable->onChange(pCurrentCommandList, currentBackBufferIndex, changeEvent);
-		if (!drawable->isEnabled())
-			continue;
-
-		uint32_t buffUsage = first == i ? 0xFF : drawable->getBufferUsage();
-
-		// Clear the RadRTV 
-		auto rtvDescHandle = rtvDescriptorHandle;
-		for (uint32_t j = 0; j < 3; ++j)
+		if (drawable->isEnabled())
 		{
-			if (buffUsage & (BufferUsage::Radiance << j)) // Clear the RadRTV, RTVDiff, RTVSpec
-				pCurrentCommandList->ClearRenderTargetView(rtvDescHandle, color, 0, nullptr);
-			rtvDescHandle.Offset(rtvDescriptorSize);
-		}
+			uint32_t buffUsage = first == i ? 0xFF : drawable->getBufferUsage();
 
-		drawable->draw(pCurrentCommandList, currentBackBufferIndex);
-		pRTVRad->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-		pRTVDiff->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-		pRTVSpec->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-
-		// Copy - per loop - testing here
-		bindComputePipeline();
-		uint32_t flags{};
-		flags |= first == i || drawable->shouldClearAccumulation() ? ACC_CLEAR : ACC_NONE;
-		flags |= ACC_ACCUMULATE;
-		//flags |= !grabRadiancePressed && last == i ? ACC_TONEMAP | ACC_LINEARTOSRGB : ACC_NONE;
-		AccumConstBuff c32Data{};
-		uint32_t bUsageIndex{}; // Accumulate rtvRad, rtvDiff and rtvSpec into their accumulators and optionnally clear.
-		for (uint32_t bUI = 0; bUI < 3; ++bUI)
-		{
-			if (buffUsage & (BufferUsage::Radiance << bUI))
+			// Clear the RadRTV 
+			auto rtvDescHandle = rtvDescriptorHandle;
+			for (uint32_t j = 0; j < 3; ++j)
 			{
-				c32Data.InIndex[bUsageIndex] = static_cast<AccumResource>(AccumResource::RTVRad + bUI);
-				c32Data.OutIndex[bUsageIndex] = static_cast<AccumResource>(AccumResource::RadAccumulator + bUI);
-				++bUsageIndex;
+				if (buffUsage & (BufferUsage::Radiance << j)) // Clear the RadRTV, RTVDiff, RTVSpec
+					pCurrentCommandList->ClearRenderTargetView(rtvDescHandle, color, 0, nullptr);
+				rtvDescHandle.Offset(rtvDescriptorSize);
 			}
+
+			drawable->draw(pCurrentCommandList, currentBackBufferIndex);
+			pRTVRad->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+			pRTVDiff->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+			pRTVSpec->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+
+			// Copy - per loop - testing here
+			bindComputePipeline();
+			uint32_t flags{};
+			flags |= first == i || drawable->shouldClearAccumulation() ? ACC_CLEAR : ACC_NONE;
+			flags |= ACC_ACCUMULATE;
+			//flags |= !grabRadiancePressed && last == i ? ACC_TONEMAP | ACC_LINEARTOSRGB : ACC_NONE;
+			AccumConstBuff c32Data{};
+			uint32_t bUsageIndex{}; // Accumulate rtvRad, rtvDiff and rtvSpec into their accumulators and optionnally clear.
+			for (uint32_t bUI = 0; bUI < 3; ++bUI)
+			{
+				if (buffUsage & (BufferUsage::Radiance << bUI))
+				{
+					c32Data.InIndex[bUsageIndex] = static_cast<AccumResource>(AccumResource::RTVRad + bUI);
+					c32Data.OutIndex[bUsageIndex] = static_cast<AccumResource>(AccumResource::RadAccumulator + bUI);
+					++bUsageIndex;
+				}
+			}
+			c32Data.PairCount = bUsageIndex;
+			c32Data.Flags = flags;
+
+			pCurrentCommandList->SetComputeRoot32BitConstants(0u, sizeof(AccumConstBuff) / sizeof(uint32_t), &c32Data, 0);
+			pCurrentCommandList->Dispatch(dim.x / 8 + (dim.x % 8 == 0 ? 0 : 1), dim.y / 8 + (dim.y % 8 == 0 ? 0 : 1), 1);
+
+			pRTVSpec->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);
+			pRTVDiff->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);
+			pRTVRad->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);
+			pRadAccumulator->uavBarrier(pCurrentCommandList);
+			pDiffAccumulator->uavBarrier(pCurrentCommandList);
+			pSpecAccumulator->uavBarrier(pCurrentCommandList);
 		}
-		c32Data.PairCount = bUsageIndex;
-		c32Data.Flags = flags;
 
-		pCurrentCommandList->SetComputeRoot32BitConstants(0u, sizeof(AccumConstBuff) / sizeof(uint32_t), &c32Data, 0);
-		pCurrentCommandList->Dispatch(dim.x / 8 + (dim.x % 8 == 0 ? 0 : 1), dim.y / 8 + (dim.y % 8 == 0 ? 0 : 1), 1);
-
-		pRTVSpec->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);
-		pRTVDiff->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);
-		pRTVRad->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);
-		pRadAccumulator->uavBarrier(pCurrentCommandList);
-		pDiffAccumulator->uavBarrier(pCurrentCommandList);
-		pSpecAccumulator->uavBarrier(pCurrentCommandList);
+		tsQuery.addTimeStampQuery(pCurrentCommandList, drawable->getName());
 	}
 
 	// Merge Spec and Diff towards Rad Accumulator
@@ -551,8 +564,17 @@ void Renderer::renderFrame()
 		pCurrentCommandList->ClearRenderTargetView(rtvDescriptorHandle, color, 0, nullptr);
 	}
 
+	// Measure copy stuff
+	tsQuery.addTimeStampQuery(pCurrentCommandList, "TM and RTV Copies");
+
 	// ImGui Render
 	imguiManager.draw(pCurrentCommandList, currentBackBufferIndex);
+
+	// Measure ImGui stuff
+	tsQuery.addTimeStampQuery(pCurrentCommandList, "ImGui");
+
+	// Add query resolve to command list
+	tsQuery.resolve(pCurrentCommandList);
 
 	// End frame
 	pRTVBackBuffers[currentBackBufferIndex]->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_PRESENT);
@@ -607,6 +629,11 @@ void Renderer::setShaderAccumulation(bool p_shaderAccumulation)
 bool Renderer::getShaderAccumulation() const
 {
 	return shaderAccumulation;
+}
+
+const vector<ProfileItem>& Renderer::getProfilingData() const
+{
+	return timeStampQuery[currentBackBufferIndex].getLoadedItems();
 }
 
 void Renderer::setCameraCopy(const Camera& p_camera)

@@ -61,6 +61,8 @@ namespace candela::renderer
 		void setDistanceMetricMode(std::uint32_t mode);
 		std::uint32_t getDistanceMetricMode() const;
 
+		//
+		const char* getName() const override;
 	private:
 		bool isExternalLight(std::uint32_t lightIndex) const;
 		void generateCDF(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, std::uint32_t currentBackBufferIndex, std::uint32_t lightIndex);

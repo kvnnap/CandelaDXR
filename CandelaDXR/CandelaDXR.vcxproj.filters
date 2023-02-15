@@ -231,6 +231,9 @@
     <ClCompile Include="Renderer\ExternalObjectDebugShading.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="DirectX\TimeStampQuery.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Exception\GeneralException.h">
@@ -507,6 +510,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Renderer\ExternalObjectDebugShading.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="DirectX\TimeStampQuery.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

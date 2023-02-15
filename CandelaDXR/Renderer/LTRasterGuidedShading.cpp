@@ -106,6 +106,11 @@ uint32_t LTRasterGuidedShading::getDistanceMetricMode() const
 	return distanceComputerShader.getMode();
 }
 
+const char* LTRasterGuidedShading::getName() const
+{
+	return "Unnamed";
+}
+
 bool LTRasterGuidedShading::isExternalLight(uint32_t lightIndex) const
 {
 	return lightIndex >= rendererResources->scene->getLights().size();

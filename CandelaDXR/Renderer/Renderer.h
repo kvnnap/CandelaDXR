@@ -16,6 +16,7 @@
 #include "DirectX/CommandQueue.h"
 #include "DirectX/RootSignatureManager.h"
 #include "DirectX/Resource.h"
+#include "DirectX/TimeStampQuery.h"
 #include "FpsCounter.h"
 #include "RendererTime.h"
 #include "Scene/Scene.h"
@@ -57,6 +58,8 @@ namespace candela::renderer
 		void renderFrame() override;
 		void setShaderAccumulation(bool shaderAccumulation);
 		bool getShaderAccumulation() const;
+
+		const std::vector<directx::ProfileItem>& getProfilingData() const;
 
 		void setCameraCopy(const Camera& camera);
 		const scene::Scene& getScene() const;
@@ -169,6 +172,9 @@ namespace candela::renderer
 
 		//
 		std::queue<std::function<void()>> postFrameActions;
+
+		// Queries
+		directx::TimeStampQuery timeStampQuery[NumBackBuffers];
 
 		// TEST AREA
 		std::vector<IDrawable*> drawables;

@@ -87,3 +87,8 @@ void LTOptimisedComponent::appendToShaderTable(directx::ShadingTable* shadingTab
 void LTOptimisedComponent::appendToDescHeapManager(directx::DescriptorHeap* descriptorHeap)
 {
 }
+
+const char* LTOptimisedComponent::getName() const
+{
+	return "Unnamed";
+}
