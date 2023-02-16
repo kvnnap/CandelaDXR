@@ -48,6 +48,9 @@ namespace candela::renderer
 		std::uint32_t getPathFilter() const;
 		void setPathFilter(std::uint32_t pathFilter);
 
+		bool getAllowClearCaustics() const;
+		void setAllowClearCautics(bool p_allowClearCaustics);
+
 		std::uint32_t getMinBounces() const;
 		void setMinBounces(std::uint32_t minBounces);
 		std::uint32_t getMaxBounces() const;
@@ -119,7 +122,10 @@ namespace candela::renderer
 
 		directx::Resource* irradianceTexture;
 		std::unique_ptr<sampler::ISampler> sampler;
+		std::uint32_t frameNumberCaustics;
 		bool clear;
+		bool clearCaustics;
+		bool allowClearCaustics;
 
 		// Compute shader
 		wrl::ComPtr<ID3D12DescriptorHeap> computeDescriptorHeap;

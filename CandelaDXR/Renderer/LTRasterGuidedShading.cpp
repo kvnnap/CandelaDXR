@@ -269,7 +269,8 @@ void LTRasterGuidedShading::onChange(wrl::ComPtr<ID3D12GraphicsCommandList> pCur
 	constBuffer.sceneCentre = rendererResources->scene->getSceneAABB().getCentre();
 	if (!storePerLightCDF)
 		return;
-	if (changeEvent)// & (static_cast<ChangeEvent_t>(ChangeEvent::Transformation) | static_cast<ChangeEvent_t>(ChangeEvent::SceneChange)))
+	// TODO: We should only regenerate wrt camera when neccessary
+	if (changeEvent & ~static_cast<ChangeEvent_t>(ChangeEvent::Clear))
 		regenerateCDFFlag = true;
 }
 

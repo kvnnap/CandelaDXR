@@ -175,6 +175,7 @@ void ImGuiShading::visit(LightTracingShading* lightTracingShader)
 
 		currentComponent = ltShaderInfo[shaderIndex].component;
 		seperateCaustics = lightTracingShader->getSeperateCaustics();
+		allowClearCaustics = lightTracingShader->getAllowClearCaustics();
 	}
 	ImGui::Text("LightTracingShading");
 	if (ImGui::DragInt2("LightSamples", &lightSamples[0], 1.f, 0, 4096))
@@ -213,6 +214,12 @@ void ImGuiShading::visit(LightTracingShading* lightTracingShader)
 	if (ImGui::Checkbox("Seperate Caustics", &seperateCaustics))
 	{
 		lightTracingShader->seperateCaustics(seperateCaustics ? 1u : 0u);
+		changed = true;
+	}
+
+	if (ImGui::Checkbox("Allow Clearing Caustics", &allowClearCaustics))
+	{
+		lightTracingShader->setAllowClearCautics(allowClearCaustics);
 		changed = true;
 	}
 }

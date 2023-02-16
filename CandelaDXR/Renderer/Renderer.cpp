@@ -294,7 +294,10 @@ void Renderer::renderFrame()
 	tsQuery.load();
 
 	ChangeEvent_t changeEvent = imguiManager.processChangeEvent();
-	changeEvent |= camera->hasChanged() ? static_cast<ChangeEvent_t>(ChangeEvent::Camera) : 0;
+	if (camera->hasChanged())
+		changeEvent |= static_cast<ChangeEvent_t>(ChangeEvent::Camera);
+	if (!shaderAccumulation)
+		changeEvent |= static_cast<ChangeEvent_t>(ChangeEvent::Clear);
 
 	constexpr auto flags = D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE;
 	
@@ -418,30 +421,20 @@ void Renderer::renderFrame()
 		if (changeEvent)
 			resource->onChange(pCurrentCommandList, currentBackBufferIndex, changeEvent);
 
-	// Draw
-	int32_t first = -1, last = -1;
-	for (int32_t i = 0; i < static_cast<int>(drawables.size()); ++i)
-	{
-		if (!drawables[i]->isEnabled()) continue;
-		if (first == -1)
-			first = i;
-		if (i > last)
-			last = i;
-	}
-
 	const auto grabRadiancePressed = keyboard.hasKeyChanged('P') && keyboard.isKeyPressed('P') || (animationSequencer.isEnabled() && animationSequencer.isNewFrame());
 	const auto& dim = windowDimensions;
 
 	tsQuery.addTimeStampQuery(pCurrentCommandList, "Begin");
 
+	bool isFirst = true;
 	for (size_t i = 0; i < drawables.size(); ++i)
 	{
 		auto drawable = drawables[i];
-		if (changeEvent || !shaderAccumulation)
+		if (changeEvent)
 			drawable->onChange(pCurrentCommandList, currentBackBufferIndex, changeEvent);
 		if (drawable->isEnabled())
 		{
-			uint32_t buffUsage = first == i ? 0xFF : drawable->getBufferUsage();
+			const uint32_t buffUsage = isFirst ? 0xFF : drawable->getBufferUsage();
 
 			// Clear the RadRTV 
 			auto rtvDescHandle = rtvDescriptorHandle;
@@ -460,9 +453,8 @@ void Renderer::renderFrame()
 			// Copy - per loop - testing here
 			bindComputePipeline();
 			uint32_t flags{};
-			flags |= first == i || drawable->shouldClearAccumulation() ? ACC_CLEAR : ACC_NONE;
+			flags |= isFirst || drawable->shouldClearAccumulation() ? ACC_CLEAR : ACC_NONE;
 			flags |= ACC_ACCUMULATE;
-			//flags |= !grabRadiancePressed && last == i ? ACC_TONEMAP | ACC_LINEARTOSRGB : ACC_NONE;
 			AccumConstBuff c32Data{};
 			uint32_t bUsageIndex{}; // Accumulate rtvRad, rtvDiff and rtvSpec into their accumulators and optionnally clear.
 			for (uint32_t bUI = 0; bUI < 3; ++bUI)
@@ -486,6 +478,7 @@ void Renderer::renderFrame()
 			pRadAccumulator->uavBarrier(pCurrentCommandList);
 			pDiffAccumulator->uavBarrier(pCurrentCommandList);
 			pSpecAccumulator->uavBarrier(pCurrentCommandList);
+			isFirst = false;
 		}
 
 		tsQuery.addTimeStampQuery(pCurrentCommandList, drawable->getName());
@@ -549,7 +542,7 @@ void Renderer::renderFrame()
 	rtvDescriptorHandle.Offset(rtvDescriptorSize* (currentBackBufferIndex - NumBackBuffers));
 
 	// Copy 8-bit Texture to swap-chain 8-bit back buffer
-	if (first != -1)
+	if (!isFirst)
 	{
 		pRTVBackBuffers[currentBackBufferIndex]->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_COPY_DEST);
 		pRTV8Bit->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_COPY_SOURCE);

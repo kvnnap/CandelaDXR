@@ -7,6 +7,8 @@ cbuffer CB1 : register(b0)
 	uint LightSamples;
 	uint FrameNumber;
 	uint Clear;
+	uint FrameNumberCaustics;
+	uint ClearCaustics;
 }
 
 RWTexture2D<float4> gOutput : register(u0);
@@ -31,7 +33,9 @@ void main( uint3 DTid : SV_DispatchThreadID )
 		return;
 
 	if (Clear)
-		gIrradiance[DTid.xy] = gIrradianceCaustics[DTid.xy] = float4(0.f, 0.f, 0.f, 0.f);
+		gIrradiance[DTid.xy] = 0.f;
+	if (ClearCaustics)
+		gIrradianceCaustics[DTid.xy] = 0.f;
 
 	const uint flatLaunchIndex = DTid.y * ScreenDim.x + DTid.x;
 	float4 result = fixedToFloat(gIrradianceDS[flatLaunchIndex].value, ConvRangeBits);
@@ -43,9 +47,11 @@ void main( uint3 DTid : SV_DispatchThreadID )
 
 	const float sampleRatio = 1.f / (LightSamples * (float)FrameNumber);
 	const float coeff = gIrrToRad[DTid.xy] * sampleRatio;
+	const float sampleRatioCaust = 1.f / (LightSamples * (float)FrameNumberCaustics);
+	const float coeffCaust = gIrrToRad[DTid.xy] * sampleRatioCaust;
 	float4 prevRayHitT = gRayHitT[DTid.xy];
 	//prevRayHitT.w = 1.f; // this serves for viewing the texture
-	gRayHitT[DTid.xy] = float4(gIrradiance[DTid.xy].w * coeff, prevRayHitT.y, gIrradianceCaustics[DTid.xy].w * coeff, prevRayHitT.w);
+	gRayHitT[DTid.xy] = float4(gIrradiance[DTid.xy].w * coeff, prevRayHitT.y, gIrradianceCaustics[DTid.xy].w * coeffCaust, prevRayHitT.w);
 	gOutput[DTid.xy] = float4(gIrradiance[DTid.xy].xyz * coeff, 1.f);
-	gOutputCaustics[DTid.xy] = float4(gIrradianceCaustics[DTid.xy].xyz * coeff, 1.f);
+	gOutputCaustics[DTid.xy] = float4(gIrradianceCaustics[DTid.xy].xyz * coeffCaust, 1.f);
 }

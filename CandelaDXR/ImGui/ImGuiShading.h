@@ -80,6 +80,7 @@ namespace candela::renderer::imgui
 				int filterSize;
 				int distanceMetricMode;
 				bool seperateCaustics;
+				bool allowClearCaustics;
 			};
 
 			// Path Shading

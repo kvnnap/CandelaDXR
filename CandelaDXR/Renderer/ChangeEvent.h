@@ -13,6 +13,7 @@ namespace candela::renderer
 		Statistics = 0x08,		// Update stats only
 		Camera = 0x10,			// Camera updated
 		Animation = 0x20,		// Animation update
+		Clear = 0x40,			// Clear Shader Accumulation
 	};
 
 	using ChangeEvent_t = std::underlying_type<ChangeEvent>::type;

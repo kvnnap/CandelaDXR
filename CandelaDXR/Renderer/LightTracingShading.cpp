@@ -56,7 +56,8 @@ using candela::util::StringToWString;
 LightTracingShading::LightTracingShading(unique_ptr<ISampler> sampler, UVector2 lightSamples)
 	: rendererResources(), constBuffer(), lightSamples(lightSamples), 
 	irradianceDataStructure(), irrToRad(), rayHitT(), irradianceCaustics(),
-	outputCaustics(), irradianceTexture(), sampler(std::move(sampler)), clear(), currentShader()
+	outputCaustics(), irradianceTexture(), sampler(std::move(sampler)), frameNumberCaustics(),
+	clear(), clearCaustics(), allowClearCaustics(true), currentShader()
 {
 }
 
@@ -143,7 +144,10 @@ void LightTracingShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> currentCom
 	constBuffer.winDimensions = rendererResources->winDimensions;
 	if (clear)
 		constBuffer.frameNumber = 0;
+	if (clearCaustics)
+		frameNumberCaustics = 0;
 	++constBuffer.frameNumber;
+	++frameNumberCaustics;
 	DXUtil::updateDataInDefaultHeap(rendererResources->pDevice, currentCommandList, constantBuffer, rendererResources->getTempResource(),
 		&constBuffer, sizeof(constBuffer), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
@@ -167,10 +171,10 @@ void LightTracingShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> currentCom
 	currentCommandList->SetDescriptorHeaps(1u, computeDescriptorHeap.GetAddressOf());
 	currentCommandList->SetComputeRootDescriptorTable(0u, computeDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
 	auto& dim = rendererResources->winDimensions;
-	uint32_t c32data[5] = { dim.x, dim.y, rayDimensions.x * rayDimensions.y, constBuffer.frameNumber, clear ? 1u : 0u };
-	currentCommandList->SetComputeRoot32BitConstants(1u, 5u, &c32data[0], 0);
+	uint32_t c32data[7] = { dim.x, dim.y, rayDimensions.x * rayDimensions.y, constBuffer.frameNumber, clear ? 1u : 0u, frameNumberCaustics, clearCaustics ? 1u : 0u };
+	currentCommandList->SetComputeRoot32BitConstants(1u, static_cast<UINT>(std::size(c32data)), &c32data[0], 0);
 	currentCommandList->Dispatch(dim.x / 8 + (dim.x % 8 == 0 ? 0 : 1), dim.y / 8 + (dim.y % 8 == 0 ? 0 : 1), 1);
-	clear = false;
+	clear = clearCaustics = false;
 
 	// After
 	backBuff->transistionBarrier(currentCommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);
@@ -292,7 +296,7 @@ void LightTracingShading::buildPipeline()
 	computeRSM->addDescriptorRange("ComputeData", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 6, 0)); // gOutput, gIrradianceDataStructure, gIrradiance, rayhitt, irrC, outC
 	computeRSM->addDescriptorRange("ComputeData", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0)); // gIrrToRad
 	computeRSM->setDescriptorTableParameter("ComputeDataDescTable", "ComputeData");
-	param.InitAsConstants(5u, 0u); computeRSM->setParameter("ComputeConstants", param); // winDimensions (x,y), lightSamples, numFrames, clear
+	param.InitAsConstants(7u, 0u); computeRSM->setParameter("ComputeConstants", param); // winDimensions (x,y), lightSamples, numFrames, clear
 	computeRSM->addParametersToRootSignature("ComputeRootSignature", { "ComputeDataDescTable", "ComputeConstants" });
 	computeRootSignature = computeRSM->generateRootSignature("ComputeRootSignature", rendererResources->pDevice, D3D12_ROOT_SIGNATURE_FLAG_NONE);
 
@@ -456,6 +460,7 @@ void LightTracingShading::onChange(wrl::ComPtr<ID3D12GraphicsCommandList> pCurre
 			ltShader.component->onChange(pCurrentCommandList, currentBackBufferIndex, changeEvent);
 	
 	clear = true;
+	clearCaustics = (changeEvent & ~static_cast<ChangeEvent_t>(ChangeEvent::Clear)) || allowClearCaustics;
 }
 
 void LightTracingShading::onResize()
@@ -468,7 +473,7 @@ void LightTracingShading::onResize()
 		if (ltShader.component)
 			ltShader.component->onResize();
 	createShaderResources(commandList);
-	clear = true;
+	clear = clearCaustics = true;
 
 	// Wait
 	auto fV = rendererResources->commandQueue->executeCommandList(commandList);
@@ -514,6 +519,16 @@ uint32_t LightTracingShading::getPathFilter() const
 void LightTracingShading::setPathFilter(uint32_t pathFilter)
 {
 	constBuffer.pathFilter = pathFilter;
+}
+
+bool LightTracingShading::getAllowClearCaustics() const
+{
+	return allowClearCaustics;
+}
+
+void LightTracingShading::setAllowClearCautics(bool p_allowClearCaustics)
+{
+	allowClearCaustics = p_allowClearCaustics;
 }
 
 uint32_t LightTracingShading::getMinBounces() const
