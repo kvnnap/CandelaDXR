@@ -56,25 +56,7 @@ void SingleIOComputeShader::init(RendererResources* rendererResources, wrl::ComP
 	// Create descriptor heap
 	descHeapManager = std::make_unique<DescriptorHeap>(rsm, "IODescTable", "IO1", pDevice);
 
-	// Bind resources
-	uint32_t entryNum{};
-	{
-		D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
-		srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-		//srvDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
-		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
-		srvDesc.Texture2D.MipLevels = 1u;
-		for (uint32_t i = numOutputs; i < numInputs + numOutputs; ++i)
-			descHeapManager->setSRV(entryNum++, srvDesc, pDevice, *(*resources)[i]);
-	}
-
-	{
-		D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc{};
-		uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
-		uavDesc.Format = DXGI_FORMAT_R32_FLOAT;
-		for (uint32_t i = 0; i < numOutputs; ++i)
-			descHeapManager->setUAV(entryNum++, uavDesc, pDevice, *(*resources)[i]);
-	}
+	bindResources();
 
 	// Load Shader
 	HRESULT hr;
@@ -185,6 +167,29 @@ void SingleIOComputeShader::initComponent(RendererResources* rendererResources, 
 {
 }
 
+void SingleIOComputeShader::bindResources()
+{
+	// Bind resources
+	uint32_t entryNum{};
+	{
+		D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc{};
+		srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+		//srvDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;
+		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+		srvDesc.Texture2D.MipLevels = 1u;
+		for (uint32_t i = numOutputs; i < numInputs + numOutputs; ++i)
+			descHeapManager->setSRV(entryNum++, srvDesc, pDevice, *(*resources)[i]);
+	}
+
+	{
+		D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc{};
+		uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
+		//uavDesc.Format = DXGI_FORMAT_R32_FLOAT;
+		for (uint32_t i = 0; i < numOutputs; ++i)
+			descHeapManager->setUAV(entryNum++, uavDesc, pDevice, *(*resources)[i]);
+	}
+}
+
 // Prefix sum
 using candela::renderer::PrefixSumComputeShader;
 
@@ -213,7 +218,10 @@ void PrefixSumComputeShader::bindAdditionalResources(UINT baseIndex)
 	auto reqSize = getLaunchDimensions(dim).x;
 
 	// Create resouce
-	scratchResource = &resourceManager->createResource(D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, reqSize * sizeof(float));
+	if (scratchResource)
+		scratchResource->resize(reqSize * sizeof(float), 1u);
+	else
+		scratchResource = &resourceManager->createResource(D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, reqSize * sizeof(float));
 	
 	// Describe resource and add to descriptor heap
 	D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc{};
@@ -253,7 +261,7 @@ void PrefixSumComputeShader::dispatch(wrl::ComPtr<ID3D12GraphicsCommandList> cur
 }
 
 FilterComputeShader::FilterComputeShader()
-	: SingleIOComputeShader("./Shaders/FilterComputeShader.cso"), cbvResource(), scratchResource(), changed()
+	: SingleIOComputeShader("./Shaders/FilterComputeShader.cso"), cbvResource(), scratchResource(), scratchResFormat(DXGI_FORMAT_R32_FLOAT), changed()
 {
 	setAdditionalConstantBuffer(nullptr, sizeof(std::uint32_t) * 2); // Send gausian size and pass number
 	setFiltersize(InitialSize);
@@ -276,12 +284,15 @@ void FilterComputeShader::bindAdditionalResources(UINT baseIndex)
 
 	// Create resouce
 	auto dim = inputTexture->getDimensions();
-	scratchResource = &resourceManager->createResource(D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, dim.x, dim.y, DXGI_FORMAT_R32_FLOAT);
+	if (scratchResource)
+		scratchResource->resize(dim.x, dim.y);
+	else
+		scratchResource = &resourceManager->createResource(D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, dim.x, dim.y, scratchResFormat);
 
 	// Describe resource and add to descriptor heap
 	D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc{};
 	uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
-	uavDesc.Format = DXGI_FORMAT_R32_FLOAT;
+	uavDesc.Format = scratchResFormat;
 	descHeapManager->setUAV(baseIndex++, uavDesc, pDevice, *scratchResource);
 }
 
@@ -318,6 +329,11 @@ void FilterComputeShader::initComponent(RendererResources* rendererResources, wr
 	cbvResource->setName("Gaussian Constant Data");
 	cbvResource->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 	changed = true;
+}
+
+void FilterComputeShader::setDxgiFormat(DXGI_FORMAT format)
+{
+	scratchResFormat = format;
 }
 
 void FilterComputeShader::setFiltersize(std::uint32_t filterSize)
@@ -366,7 +382,8 @@ void DistanceComputeShader::bindAdditionalResources(UINT baseIndex)
 	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
 	srvDesc.Texture2D.MipLevels = 1u;
 	faceIndexResource = resourceManager->getNamedResource("ltr_gMeshInfo");
-	constBufferResource = &resourceManager->createResource(D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_FLAG_NONE, sizeof(distConstBuffer));
+	if (!constBufferResource)
+		constBufferResource = &resourceManager->createResource(D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_FLAG_NONE, sizeof(distConstBuffer));
 	descHeapManager->setSRV(baseIndex++, srvDesc, pDevice, *faceIndexResource);
 	
 	srvDesc.Format = DXGI_FORMAT_R32G32B32A32_FLOAT;

@@ -21,6 +21,7 @@
 
 #include "Drawable.h"
 #include "ILightTracingComponent.h"
+#include "SingleIOComputeShader.h"
 
 namespace candela::renderer
 {
@@ -50,6 +51,9 @@ namespace candela::renderer
 
 		bool getAllowClearCaustics() const;
 		void setAllowClearCautics(bool p_allowClearCaustics);
+
+		void setCausticsBlurSize(std::uint32_t cSize);
+		std::uint32_t getCausticsBlurSize() const;
 
 		std::uint32_t getMinBounces() const;
 		void setMinBounces(std::uint32_t minBounces);
@@ -138,5 +142,9 @@ namespace candela::renderer
 		// My helpers
 		std::shared_ptr<directx::RootSignatureManager> computeRSM;
 		std::uint32_t currentShader;
+
+		// Gaussian filter for the casutics texture (2nd compute shader)
+		FilterComputeShader guassianCS;
+		std::vector<directx::Resource*> guassResources;
 	};
 }

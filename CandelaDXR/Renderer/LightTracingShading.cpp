@@ -117,6 +117,17 @@ void LightTracingShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12Graphi
 
 	// Build shading table
 	createShaderTable(pCurrentCommandList);
+
+	// To blur caustics
+	guassResources = { 
+		outputCaustics, // this is the input AND output
+		irradianceCaustics // This is a dummy
+	};
+	guassianCS.setDxgiFormat(DXGI_FORMAT_R32G32B32A32_FLOAT);
+	guassianCS.init(rendererResources, pCurrentCommandList, &guassResources);
+	guassianCS.setOutputTexture(0u);
+	guassianCS.setInputTexture(static_cast<uint32_t>(guassResources.size() - 1));
+	guassianCS.setFiltersize(17);
 }
 
 void LightTracingShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> currentCommandList, uint32_t currentBackBufferIndex)
@@ -175,6 +186,10 @@ void LightTracingShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> currentCom
 	currentCommandList->SetComputeRoot32BitConstants(1u, static_cast<UINT>(std::size(c32data)), &c32data[0], 0);
 	currentCommandList->Dispatch(dim.x / 8 + (dim.x % 8 == 0 ? 0 : 1), dim.y / 8 + (dim.y % 8 == 0 ? 0 : 1), 1);
 	clear = clearCaustics = false;
+
+	// Caustics blur
+	if (constBuffer.seperateCaustics)
+		guassianCS.compute(currentCommandList);
 
 	// After
 	backBuff->transistionBarrier(currentCommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);
@@ -468,6 +483,9 @@ void LightTracingShading::onResize()
 	auto commandList = rendererResources->commandQueue->getCommandList();
 	wrl::ComPtr<ID3D12Resource> irrToRadTempBuffer;
 	generateIrrToRadTexture(commandList, irrToRadTempBuffer);
+	guassianCS.bindResources();
+	guassianCS.setInputTexture(static_cast<uint32_t>(guassResources.size() - 1));
+
 	// Process components
 	for (auto& ltShader : ltShaders)
 		if (ltShader.component)
@@ -529,6 +547,16 @@ bool LightTracingShading::getAllowClearCaustics() const
 void LightTracingShading::setAllowClearCautics(bool p_allowClearCaustics)
 {
 	allowClearCaustics = p_allowClearCaustics;
+}
+
+void LightTracingShading::setCausticsBlurSize(std::uint32_t cSize)
+{
+	guassianCS.setFiltersize(cSize);
+}
+
+uint32_t LightTracingShading::getCausticsBlurSize() const
+{
+	return guassianCS.getFiltersize();
 }
 
 uint32_t LightTracingShading::getMinBounces() const

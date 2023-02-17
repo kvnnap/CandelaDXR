@@ -164,6 +164,7 @@ void ImGuiShading::visit(LightTracingShading* lightTracingShader)
 		shaderIndex = static_cast<int>(lightTracingShader->getCurrentShaderIndex());
 		causticsRatio = -1.f;
 		filterSize = -1;
+		causticsBlurSize = lightTracingShader->getCausticsBlurSize();
 		memset(lightPathFlags, true, sizeof(lightPathFlags));
 		for (const auto& ltShadInfo : lightTracingShader->getLTShaderInfo())
 		{
@@ -215,6 +216,12 @@ void ImGuiShading::visit(LightTracingShading* lightTracingShader)
 	{
 		lightTracingShader->seperateCaustics(seperateCaustics ? 1u : 0u);
 		changed = true;
+	}
+
+	if (seperateCaustics && ImGui::DragInt("Caustics Blur Size", &causticsBlurSize, 2.f, 1, FilterComputeShader::MaxSize))
+	{
+		lightTracingShader->setCausticsBlurSize(causticsBlurSize);
+		causticsBlurSize = lightTracingShader->getCausticsBlurSize();
 	}
 
 	if (ImGui::Checkbox("Allow Clearing Caustics", &allowClearCaustics))

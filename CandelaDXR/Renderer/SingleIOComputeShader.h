@@ -31,6 +31,9 @@ namespace candela::renderer
 
 		void compute(wrl::ComPtr<ID3D12GraphicsCommandList> currentCommandList);
 
+		// Call if resources change size
+		void bindResources();
+
 		static constexpr auto ThreadGroupDim = 8u;
 	protected:
 		virtual mathematics::UVector2 getLaunchDimensions(const mathematics::UVector2& originalDimensions) const;
@@ -104,6 +107,7 @@ namespace candela::renderer
 		void dispatch(wrl::ComPtr<ID3D12GraphicsCommandList> currentCommandList) override;
 		void initComponent(RendererResources* rendererResources, wrl::ComPtr<ID3D12GraphicsCommandList>& pCurrentCommandList) override;
 
+		void setDxgiFormat(DXGI_FORMAT format);
 		void setFiltersize(std::uint32_t filterSize);
 		std::uint32_t getFiltersize() const;
 		
@@ -114,6 +118,7 @@ namespace candela::renderer
 	private:
 		directx::Resource* cbvResource;
 		directx::Resource* scratchResource;
+		DXGI_FORMAT scratchResFormat;
 		std::vector<float> linearFilterCoeff;
 		bool changed;
 	};

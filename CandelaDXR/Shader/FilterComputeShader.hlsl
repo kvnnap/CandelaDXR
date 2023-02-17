@@ -11,11 +11,11 @@ cbuffer CB2 : register(b1)
 	uint FilterSize; // Linear Size
 }
 
-Texture2D<float> input[] : register(t0);
-RWTexture2D<float> output[] : register(u0);
+Texture2D<float4> input[] : register(t0);
+RWTexture2D<float4> output[] : register(u0);
 
 // Set in subclass
-RWTexture2D<float> scratch : register(u0, space1);
+RWTexture2D<float4> scratch : register(u0, space1);
 Buffer<float> filterCoeff : register(t0, space1);
 
 
@@ -28,7 +28,7 @@ void main(uint3 DTid : SV_DispatchThreadID)
 		return;
 
 	const uint halfSize = FilterSize >> 1;
-	float result = 0.f;
+	float4 result = 0.f;
 
 	if (PassNumber == 0)
 	{

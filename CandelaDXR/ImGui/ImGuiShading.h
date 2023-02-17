@@ -79,6 +79,7 @@ namespace candela::renderer::imgui
 				ILightTracingComponent* currentComponent;
 				int filterSize;
 				int distanceMetricMode;
+				int causticsBlurSize;
 				bool seperateCaustics;
 				bool allowClearCaustics;
 			};
