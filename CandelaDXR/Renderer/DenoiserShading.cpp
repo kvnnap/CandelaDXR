@@ -12,8 +12,8 @@
 #include "NRIDescs.h"
 #include "Extensions/NRIHelper.h"
 #include "Extensions/NRIWrapperD3D12.h"
-#include "NVIDIA/NRDIntegration.h"
-#include "NVIDIA/NRDIntegration.hpp"
+#include "NRDIntegration.h"
+#include "NRDIntegration.hpp"
 
 using std::make_unique;
 using std::make_shared;
@@ -276,7 +276,7 @@ void DenoiserShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentComman
 
 	memcpy(&nrdCommonSettings.worldToViewMatrix, &viewMatrix, sizeof(nrdCommonSettings.worldToViewMatrix));
 	memcpy(&nrdCommonSettings.viewToClipMatrix, &persMatrix, sizeof(nrdCommonSettings.viewToClipMatrix));
-	
+
 	//nrdReblurSettings.checkerboardMode = nrd::CheckerboardMode::WHITE;
 	//nrdReblurSettings.diffusePrepassBlurRadius = 1.f;
 	//nrdReblurSettings.blurRadius = .5f;
@@ -285,11 +285,13 @@ void DenoiserShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentComman
 	//nrdReblurSettings.historyFixFrameNum = 0;
 	//nrdReblurSettings.hitDistanceParameters;
 	//nrdReblurSettings.hitDistanceReconstructionMode; --- NEED FOR LightTracing!
-
+	
+	NRD[denoiserSelected]->NewFrame(nrdCommonSettings.frameIndex);
+	NRD[denoiserSelected]->SetCommonSettings(nrdCommonSettings);
 	if (denoiserSelected == 0)
-		NRD[denoiserSelected]->SetMethodSettings(nrd::Method::REBLUR_DIFFUSE_SPECULAR, &nrdReblurSettings);
+		NRD[denoiserSelected]->SetDenoiserSettings(denoiserSelected, &nrdReblurSettings);
 	else 
-		NRD[denoiserSelected]->SetMethodSettings(nrd::Method::RELAX_DIFFUSE_SPECULAR, &nrdRelaxSettings);
+		NRD[denoiserSelected]->SetDenoiserSettings(denoiserSelected, &nrdRelaxSettings);
 	
 	// Populate the user pool
 	NrdUserPool userPool = {};
@@ -302,7 +304,8 @@ void DenoiserShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentComman
 		NrdIntegration_SetResource(userPool, denResource.resourceType, tex);
 	}
 	
-	NRD[denoiserSelected]->Denoise(currentBackBufferIndex, *cmdBuffer, nrdCommonSettings, userPool, false);
+	const nrd::Identifier denoisers[] = { denoiserSelected };
+	NRD[denoiserSelected]->Denoise(denoisers, std::size(denoisers), *cmdBuffer, userPool, false);
 	
 	// Sync states
 	for (uint32_t i = 0; i < N; i++)
@@ -509,18 +512,18 @@ void DenoiserShading::setupDenoiser()
 	for (uint32_t i = 0; i < NRD.size(); ++i)
 	{
 
-		const nrd::MethodDesc methodDescs[] =
+		const nrd::DenoiserDesc denoiserDescs[] =
 		{
 			// put neeeded methods here, like:
-			{ i == 0 ? nrd::Method::REBLUR_DIFFUSE_SPECULAR : nrd::Method::RELAX_DIFFUSE_SPECULAR, static_cast<uint16_t>(rRes->winDimensions.x), static_cast<uint16_t>(rRes->winDimensions.y) }
+			{ i, i == 0 ? nrd::Denoiser::REBLUR_DIFFUSE_SPECULAR : nrd::Denoiser::RELAX_DIFFUSE_SPECULAR, static_cast<uint16_t>(rRes->winDimensions.x), static_cast<uint16_t>(rRes->winDimensions.y) }
 		};
 
-		nrd::DenoiserCreationDesc denoiserCreationDesc = {};
-		denoiserCreationDesc.requestedMethods = methodDescs;
-		denoiserCreationDesc.requestedMethodsNum = static_cast<uint32_t>(std::size(methodDescs));
+		nrd::InstanceCreationDesc instanceCreationDesc = {};
+		instanceCreationDesc.denoisers = denoiserDescs;
+		instanceCreationDesc.denoisersNum = static_cast<uint32_t>(std::size(denoiserDescs));
 
 		NRD[i] = make_unique<NrdIntegration>(rRes->numBackBuffers);
-		bool res = NRD[i]->Initialize(denoiserCreationDesc, *nriDevice, *NRI, *NRI);
+		bool res = NRD[i]->Initialize(instanceCreationDesc, *nriDevice, *NRI, *NRI);
 	}
 }
 

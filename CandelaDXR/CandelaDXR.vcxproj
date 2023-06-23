@@ -242,7 +242,12 @@
     <ClCompile Include="Mathematics\Plane.cpp" />
     <ClCompile Include="Mathematics\Utils.cpp" />
     <ClCompile Include="Renderer\Camera.cpp" />
-    <ClCompile Include="Renderer\DenoiserShading.cpp" />
+    <ClCompile Include="Renderer\DenoiserShading.cpp">
+      <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">.;$(FEANOR_ROOT)\include;$(NRD_ROOT)\Include;$(NRD_ROOT)\Integration;$(NRI_ROOT)\Include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">.;$(FEANOR_ROOT)\include;$(NRD_ROOT)\Include;$(NRD_ROOT)\Integration;$(NRI_ROOT)\Include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">.;$(FEANOR_ROOT)\include;$(NRD_ROOT)\Include;$(NRD_ROOT)\Integration;$(NRI_ROOT)\Include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Release|x64'">.;$(FEANOR_ROOT)\include;$(NRD_ROOT)\Include;$(NRD_ROOT)\Integration;$(NRI_ROOT)\Include</AdditionalIncludeDirectories>
+    </ClCompile>
     <ClCompile Include="Renderer\ExternalObjectDebugShading.cpp" />
     <ClCompile Include="Renderer\RayTracingAOShading.cpp" />
     <ClCompile Include="Renderer\RendererTime.cpp" />
@@ -302,8 +307,6 @@
     <ClInclude Include="Mathematics\OrthonormalBasis.h" />
     <ClInclude Include="Mathematics\Plane.h" />
     <ClInclude Include="Mathematics\Utils.h" />
-    <ClInclude Include="NVIDIA\NRDIntegration.h" />
-    <ClInclude Include="NVIDIA\NRDIntegration.hpp" />
     <ClInclude Include="Renderer\ChangeEvent.h" />
     <ClInclude Include="Renderer\DenoiserShading.h" />
     <ClInclude Include="Renderer\ExternalObjectDebugShading.h" />

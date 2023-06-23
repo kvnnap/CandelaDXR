@@ -197,7 +197,7 @@ jobs:
         git submodule update --init --recursive
         cmake -B _Compiler -DNRD_INTERPROCEDURAL_OPTIMIZATION:BOOL=ON -DDXC_SPIRV_PATH:FILEPATH="${{github.workspace}}\dxc\bin\x64\dxc.exe"
         cmake --build _Compiler --parallel --config Release
-        & ".\3-Prepare NRD SDK.bat" --no-pause --no-shaders --no-integration
+        & ".\3-Prepare NRD SDK.bat" --no-pause --no-shaders --integration
         cd ..
   
   build:

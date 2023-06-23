@@ -476,12 +476,6 @@
     <ClInclude Include="Animation\AnimationSequencer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="NVIDIA\NRDIntegration.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="NVIDIA\NRDIntegration.hpp">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="Renderer\DenoiserShading.h">
       <Filter>Header Files</Filter>
     </ClInclude>
