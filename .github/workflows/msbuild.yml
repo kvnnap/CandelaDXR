@@ -140,6 +140,7 @@ jobs:
         cmake -B _Compiler
         cmake --build _Compiler --parallel --config Release
         & ".\3-Prepare NRI SDK.bat"
+        Copy-Item -Path _Compiler\Release\NRI.lib -Destination _NRI_SDK\Lib\Release
         cd ..
         
   build-nvidia-nrd:
@@ -198,6 +199,7 @@ jobs:
         cmake -B _Compiler -DNRD_INTERPROCEDURAL_OPTIMIZATION:BOOL=ON -DDXC_SPIRV_PATH:FILEPATH="${{github.workspace}}\dxc\bin\x64\dxc.exe"
         cmake --build _Compiler --parallel --config Release
         & ".\3-Prepare NRD SDK.bat" --no-pause --no-shaders --integration
+        Copy-Item -Path _Compiler\Release\NRD.lib -Destination _NRD_SDK\Lib\Release
         cd ..
   
   build:

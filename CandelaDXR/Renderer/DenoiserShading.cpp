@@ -166,19 +166,18 @@ void DenoiserShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12GraphicsCo
 	// --- NVIDIA Wrap device
 	nri::DeviceCreationD3D12Desc deviceDesc = {};
 	deviceDesc.d3d12Device = rRes->pDevice.Get();
-	deviceDesc.d3d12PhysicalAdapter = rRes->adapter.Get();
 	deviceDesc.d3d12GraphicsQueue = rRes->commandQueue->getCommandQueue().Get();
 	deviceDesc.enableNRIValidation = false;
 
 	// Wrap the device
-	nri::Result result = nri::CreateDeviceFromD3D12Device(deviceDesc, nriDevice);
+	nri::Result result = nri::nriCreateDeviceFromD3D12Device(deviceDesc, nriDevice);
 
 	// Get needed functionality
-	result = nri::GetInterface(*nriDevice, NRI_INTERFACE(nri::CoreInterface), (nri::CoreInterface*)NRI.get());
-	result = nri::GetInterface(*nriDevice, NRI_INTERFACE(nri::HelperInterface), (nri::HelperInterface*)NRI.get());
+	result = nri::nriGetInterface(*nriDevice, NRI_INTERFACE(nri::CoreInterface), (nri::CoreInterface*)NRI.get());
+	result = nri::nriGetInterface(*nriDevice, NRI_INTERFACE(nri::HelperInterface), (nri::HelperInterface*)NRI.get());
 
 	// Get needed "wrapper" extension, XXX - can be D3D11, D3D12 or VULKAN
-	result = nri::GetInterface(*nriDevice, NRI_INTERFACE(nri::WrapperD3D12Interface), (nri::WrapperD3D12Interface*)NRI.get());
+	result = nri::nriGetInterface(*nriDevice, NRI_INTERFACE(nri::WrapperD3D12Interface), (nri::WrapperD3D12Interface*)NRI.get());
 
 	NRD = std::vector<std::unique_ptr<NrdIntegration>>(2);
 	setupDenoiser();

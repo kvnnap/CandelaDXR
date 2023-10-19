@@ -128,14 +128,11 @@ void ImGuiShading::visit(DenoiserShading* denShading)
 		changed |= ImGui::DragFloat("stabilizationStrength", &reblur.stabilizationStrength, 0.01f, 0.01f, 1.f);
 
 		// AntiLag
-		changed |= ImGui::Checkbox("AntiLagHitDist", &reblur.antilagHitDistanceSettings.enable);
-		if (reblur.antilagHitDistanceSettings.enable)
-		{
-			changed |= ImGui::DragFloat("sensitivityToDarkness", &reblur.antilagHitDistanceSettings.sensitivityToDarkness, 0.01f, 0.01f, 1.f);
-			changed |= ImGui::DragFloat("sigmaScale", &reblur.antilagHitDistanceSettings.sigmaScale, 0.01f, 0.01f, 2.f);
-			changed |= ImGui::DragFloat("thresholdMin", &reblur.antilagHitDistanceSettings.thresholdMin, 0.01f, 0.01f, 1.f);
-			changed |= ImGui::DragFloat("thresholdMax", &reblur.antilagHitDistanceSettings.thresholdMax, 0.01f, 0.01f, 1.f);
-		}
+		ImGui::Text("AntiLagHitDist");
+		changed |= ImGui::DragFloat("hitDistanceAntilagPower", &reblur.antilagSettings.hitDistanceAntilagPower, 0.01f, 0.01f, 1.f);
+		changed |= ImGui::DragFloat("hitDistanceSigmaScale", &reblur.antilagSettings.hitDistanceSigmaScale, 0.01f, 0.01f, 2.f);
+		changed |= ImGui::DragFloat("luminanceAntilagPower", &reblur.antilagSettings.luminanceAntilagPower, 0.01f, 0.01f, 0.5f);
+		changed |= ImGui::DragFloat("luminanceSigmaScale", &reblur.antilagSettings.luminanceSigmaScale, 0.01f, 0.01f, 2.f);
 	}
 }
 
