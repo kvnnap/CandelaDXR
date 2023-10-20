@@ -217,6 +217,7 @@
     <ClCompile Include="Factory\AssImpSceneLoaderFactory.cpp" />
     <ClCompile Include="Factory\CameraFactory.cpp" />
     <ClCompile Include="Factory\DenoiserDrawableFactory.cpp" />
+    <ClCompile Include="Factory\LightFactory.cpp" />
     <ClCompile Include="Factory\LightTracingDrawableFactory.cpp" />
     <ClCompile Include="Factory\PathTracingDrawableFactory.cpp" />
     <ClCompile Include="Factory\RasterDrawableFactory.cpp" />
@@ -300,6 +301,7 @@
     <ClInclude Include="Factory\AnimationFactory.h" />
     <ClInclude Include="Factory\AssImpSceneLoaderFactory.h" />
     <ClInclude Include="Factory\DenoiserDrawableFactory.h" />
+    <ClInclude Include="Factory\LightFactory.h" />
     <ClInclude Include="ImGui\ImGuiManager.h" />
     <ClInclude Include="ImGui\ImGuiRenderer.h" />
     <ClInclude Include="ImGui\ImGuiResourceManager.h" />
