@@ -168,9 +168,10 @@ float3 randomRayHemisphere(inout uint s, float3 unitNormal) {
 	return randomRayLobe(s, unitNormal, 0, p);
 }
 
-float3 randomRaySphere(inout uint s, inout float p)
+// Phi_Constant ranges from 0 (top of sphere) to PI (bottom of sphere)
+float3 randomRaySphericalCapBase(inout uint s, inout float p, float oneMinusCosPhiConstant)
 {
-	const float cosPhi = 1.f - 2.f * rand_next(s);
+    const float cosPhi = 1.f - oneMinusCosPhiConstant * rand_next(s);
 	const float sinPhi = sqrt(1.f - cosPhi * cosPhi);
 	const float theta = 2.f * PI * rand_next(s);
 
@@ -178,8 +179,19 @@ float3 randomRaySphere(inout uint s, inout float p)
 	float cosTheta;
 	sincos(theta, sinTheta, cosTheta);
 
-	p = 1.f / (4.f * PI);
+    p = 1.f / (2.f * oneMinusCosPhiConstant * PI);
 	return float3(sinPhi * cosTheta, cosPhi, sinPhi * sinTheta);
+}
+
+float3 randomRaySphere(inout uint s, inout float p)
+{
+	// 1.f - cos(pi) = 2.f
+    return randomRaySphericalCapBase(s, p, 2.f);
+}
+
+float3 randomRaySphericalCap(inout uint s, inout float p, float oneMinusCosPhiConstant, float3 unitNormal)
+{
+    return transformPointToBasis(unitNormal, randomRaySphericalCapBase(s, p, oneMinusCosPhiConstant));
 }
 
 static const uint ConvRangeBits = 24;

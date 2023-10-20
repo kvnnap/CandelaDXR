@@ -44,6 +44,7 @@ namespace candela::scene
 		std::vector<std::size_t> Meshes;
 		std::vector<std::size_t> Cameras;
 		std::vector<std::size_t> Lights;
+		mathematics::Vector InitialCentrePosition{};
 
 		// Methods
 		std::size_t assignNewNodeId();

@@ -898,6 +898,11 @@ vector<candela::scene::Light> Renderer::getTransformedExternalLights()
 		{
 			myLight.Position = XMVector3Transform(myLight.Position, transform);
 		}
+		else if (myLight.Type == LT_SPOT)
+		{
+			myLight.Position = XMVector3Transform(myLight.Position, transform);
+			myLight.Direction = XMVector4Transform(XMVector3Normalize(myLight.Direction), dirTrans);
+		}
 		else if (myLight.Type == LT_DIRECTIONAL)
 		{
 			// Get scene boundaries

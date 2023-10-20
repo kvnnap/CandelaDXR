@@ -56,7 +56,11 @@ unique_ptr<Light> LightFactory::create(const ConfigurationNode& config) const
 	light->Attenuation = Vector3(1.f, 1.f, 1.f);
 
 	setVec("Position", 1.f, light->Position);
-	setVec("Direction", 0.f, light->Direction);
+	if (configObject.keyExists("Direction"))
+	{
+		setVec("Direction", 0.f, light->Direction);
+		light->Direction = DirectX::XMVector3Normalize(light->Direction);
+	}
 	setVec("Up", 0.f, light->Up);
 
 	setVec3("Attenuation", light->Attenuation);
@@ -64,10 +68,10 @@ unique_ptr<Light> LightFactory::create(const ConfigurationNode& config) const
 	setVec3("Specular", light->Specular);
 
 	if (configObject.keyExists("InnerConeAngle"))
-		light->InnerConeAngle = config["InnerConeAngle"].read<float>();
+		light->InnerConeAngle = 1.f - cosf(config["InnerConeAngle"].read<float>());
 
 	if (configObject.keyExists("OuterConeAngle"))
-		light->OuterConeAngle = config["OuterConeAngle"].read<float>();
+		light->OuterConeAngle = 1.f - cosf(config["OuterConeAngle"].read<float>());
 
 	if (configObject.keyExists("AreaDimensions"))
 		light->AreaDimensions = *Vector2Factory().create(config["AreaDimensions"]);

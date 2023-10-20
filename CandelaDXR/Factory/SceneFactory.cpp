@@ -36,6 +36,7 @@ unique_ptr<Scene> SceneFactory::create(const ConfigurationNode& config) const
 		{
 			auto externalLight = LightFactory().create(configLight);
 			auto &lightNode = scene->getSceneGraph().addChild("_config_light_" + std::to_string(count++));
+			lightNode.InitialCentrePosition = externalLight->Position;
 			scene->addExternalLight({ *externalLight, &lightNode });
 		}
 	}

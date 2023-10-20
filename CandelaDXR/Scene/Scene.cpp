@@ -325,7 +325,7 @@ vector<SceneNode*> SceneNode::getAllNodes()
 
 const Vector SceneNode::getCentrePosition() const
 {
-	Vector accum{};
+	Vector accum = InitialCentrePosition;
 	auto mySize = Children.size() + Meshes.size();
 	if (mySize == 0)
 		return accum;

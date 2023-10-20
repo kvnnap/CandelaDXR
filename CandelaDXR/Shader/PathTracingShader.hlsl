@@ -293,39 +293,53 @@ void rayGen()
 					ExternalLight eLight = eLights[lightIndex];
 					float lightCoeff = 1.f;
 					bool applyInv = true;
+                    bool proceed = true;
 
-					if (eLight.Type == LT_POINT)
+                    if (eLight.Type == LT_POINT || eLight.Type == LT_SPOT)
 					{
 						shadowRay.Direction = eLight.Position.xyz - intersectionPoint;
 						lightCoeff = 1.f / eLight.Attenuation[2];
-					}
+						
+                        if (eLight.Type == LT_SPOT)
+                        {
+                            const float lightDot = -dot(normalize(shadowRay.Direction), eLight.Direction.xyz);
+                            proceed = (1.f - lightDot) <= eLight.InnerConeAngle;
+                        }
+                    }
 					else if (eLight.Type == LT_DIRECTIONAL)
 					{
 						shadowRay.Direction = -eLight.Direction.xyz;
 						shadowRay.TMax = 3.402823e+38;
 						lightCoeff = 1.f / eLight.Attenuation[0];
 						applyInv = false;
-					}
+                    }
+                    else
+                    {
+                        proceed = false;
+                    }
 
-					float invShadowDistance = 1.f / length(shadowRay.Direction);
-					float3 unitShadowRayDirection = shadowRay.Direction * invShadowDistance;
-					float surfaceLightDot = dot(unitShadowRayDirection, unitFaceNormal);
+					if (proceed)
+                    {
+                        float invShadowDistance = 1.f / length(shadowRay.Direction);
+                        float3 unitShadowRayDirection = shadowRay.Direction * invShadowDistance;
+                        float surfaceLightDot = dot(unitShadowRayDirection, unitFaceNormal);
 
-					if (surfaceLightDot > 0.f)
-					{
-						if (!isOccluded(shadowRay))
-						{
-							invShadowDistance = applyInv ? invShadowDistance : 1.f;
-							// Assuming Intensity value
-							float3 lightRadiance = eLight.Diffuse * (cBuffer.numTotalLights * surfaceLightDot * lightCoeff * invShadowDistance * invShadowDistance);
-							float3 brdfDiff = mat.Diffuse * OneOverPI;
-							if (mat.DiffuseTextureId >= 0)
-								brdfDiff *= gTextures[mat.DiffuseTextureId].SampleLevel(gSampler, getTextureLocation(rayPayload.bary, vertIndex), 0);
-							fr = fresnel(surfaceLightDot, n1, n2);
-							radiance += localCoefficient * lightRadiance * brdfDiff * (1.f - fr);
-						}
-					}
-				}
+                        if (surfaceLightDot > 0.f)
+                        {
+                            if (!isOccluded(shadowRay))
+                            {
+                                invShadowDistance = applyInv ? invShadowDistance : 1.f;
+								// Assuming Intensity value
+                                float3 lightRadiance = eLight.Diffuse * (cBuffer.numTotalLights * surfaceLightDot * lightCoeff * invShadowDistance * invShadowDistance);
+                                float3 brdfDiff = mat.Diffuse * OneOverPI;
+                                if (mat.DiffuseTextureId >= 0)
+                                    brdfDiff *= gTextures[mat.DiffuseTextureId].SampleLevel(gSampler, getTextureLocation(rayPayload.bary, vertIndex), 0);
+                                fr = fresnel(surfaceLightDot, n1, n2);
+                                radiance += localCoefficient * lightRadiance * brdfDiff * (1.f - fr);
+                            }
+                        }
+                    }
+                }
 				else
 				{
 					// NES - Cast a shadow ray and collect light
