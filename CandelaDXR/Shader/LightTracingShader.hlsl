@@ -62,9 +62,10 @@ void rayGen()
         if (eLight.Type == LT_POINT || eLight.Type == LT_SPOT)
 		{
 			ray.Origin = eLight.Position.xyz;
-            ray.Direction = eLight.Type == LT_POINT ?
-				randomRaySphere(seed, pdf) :
-				randomRaySphericalCap(seed, pdf, eLight.InnerConeAngle, eLight.Direction.xyz);
+            if (eLight.Type == LT_POINT)
+                ray.Direction = randomRaySphere(seed, pdf);
+            else
+                ray.Direction = randomRaySphericalCap(seed, pdf, eLight.InnerConeAngle, eLight.Direction.xyz);
 			localContribution *= 1.f / (eLight.Attenuation[2] * pdf);
 		}
 		else if (eLight.Type == LT_DIRECTIONAL)
