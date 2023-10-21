@@ -131,8 +131,8 @@ void Renderer::init()
 	// Chains - TODO: Configurable through Factory
 	chain.clear();
 	auto fileOutput = make_unique<FileOutput>();
-	//fileOutput->setFileType(FileOutput::RAW);
-	//chain.push_back(std::move(fileOutput));
+	fileOutput->setFileType(FileOutput::RAW);
+	chain.push_back(std::move(fileOutput));
 	chain.push_back(make_unique<ToneMapping>());
 	chain.push_back(make_unique<AlphaCorrection>());
 	fileOutput = make_unique<FileOutput>();
