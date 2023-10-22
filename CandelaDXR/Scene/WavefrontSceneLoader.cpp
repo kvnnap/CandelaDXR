@@ -8,6 +8,8 @@
 #include "Exception/Exception.h"
 #include "WavefrontSceneLoader.h"
 
+#include "Factory/TextureFactory.h"
+
 using std::string;
 using std::vector;
 using std::runtime_error;
@@ -27,7 +29,7 @@ using candela::mathematics::Vector2;
 using candela::mathematics::Vector3;
 
 using candela::scene::WavefrontSceneLoader;
-using candela::scene::StbTexture;
+using candela::scene::factory::TextureFactory;
 using candela::mathematics::Vector3;
 
 WavefrontSceneLoader::WavefrontSceneLoader(Scene* scene)
@@ -65,9 +67,9 @@ void WavefrontSceneLoader::loadScene()
         int32_t currentDiffTexId = -1;
         int32_t currentSpecTexId = -1;
         if (!tinyMat.diffuse_texname.empty())
-            currentDiffTexId = static_cast<int>(scene->addTexture(make_unique<StbTexture>(getConcatPath(basePath, tinyMat.diffuse_texname).string())));
+            currentDiffTexId = static_cast<int>(scene->addTexture(TextureFactory().create(getConcatPath(basePath, tinyMat.diffuse_texname).string())));
         if (!tinyMat.specular_texname.empty())
-            currentSpecTexId = static_cast<int>(scene->addTexture(make_unique<StbTexture>(getConcatPath(basePath, tinyMat.specular_texname).string())));
+            currentSpecTexId = static_cast<int>(scene->addTexture(TextureFactory().create(getConcatPath(basePath, tinyMat.specular_texname).string())));
         
         // Materials point to textures using the identifier
         scene->addMaterial(Material{

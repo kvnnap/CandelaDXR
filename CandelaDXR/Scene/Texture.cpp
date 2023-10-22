@@ -2,8 +2,6 @@
 
 #include "Texture.h"
 
-#include "Exception/Exception.h"
-
 using candela::scene::Texture;
 using candela::scene::MemoryTexture;
 using candela::scene::StbTexture;
@@ -28,13 +26,16 @@ const unsigned char* MemoryTexture::data() const
 	return dataBuffer.get();
 }
 
+bool MemoryTexture::loaded() const
+{
+	return !!dataBuffer;
+}
+
 StbTexture::StbTexture(const std::string& fileName)
 	: dataBuffer(nullptr, stbImageDeleter)
 {
 	int imageChannels;
 	dataBuffer = StbImagePtr(stbi_load(fileName.c_str(), &width, &height, &imageChannels, channels = STBI_rgb_alpha), stbImageDeleter);
-	if (!dataBuffer)
-		ThrowException("Texture '" + fileName + "' cannot be loaded");
 }
 
 StbTexture::StbTexture(const void* imageData, std::size_t len)
@@ -42,13 +43,16 @@ StbTexture::StbTexture(const void* imageData, std::size_t len)
 {
 	int imageChannels;
 	dataBuffer = StbImagePtr(stbi_load_from_memory(reinterpret_cast<const stbi_uc*>(imageData), static_cast<int>(len), &width, &height, &imageChannels, channels = STBI_rgb_alpha), stbImageDeleter);
-	if (!dataBuffer)
-		ThrowException("Texture cannot be loaded");
 }
 
 const unsigned char* StbTexture::data() const
 {
 	return dataBuffer.get();
+}
+
+bool StbTexture::loaded() const
+{
+	return !!dataBuffer;
 }
 
 void StbTexture::stbImageDeleter(unsigned char* image)

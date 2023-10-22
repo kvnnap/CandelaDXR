@@ -13,6 +13,8 @@ namespace candela::scene
 		virtual ~Texture() = default;
 
 		virtual const unsigned char* data() const = 0;
+		virtual bool loaded() const = 0;
+
 		int getWidth() const;
 		int getHeight() const;
 		int getChannels() const;
@@ -31,6 +33,7 @@ namespace candela::scene
 		MemoryTexture(const void* imageData, int width, int height, int bytesPerPixel = 4);
 
 		const unsigned char* data() const override;
+		bool loaded() const override;
 
 	private:
 		std::unique_ptr<unsigned char[]> dataBuffer;
@@ -44,6 +47,7 @@ namespace candela::scene
 		StbTexture(const void* imageData, std::size_t len);
 
 		const unsigned char* data() const override;
+		bool loaded() const override;
 
 		static void stbImageDeleter(unsigned char* image);
 		using StbImagePtr = std::unique_ptr<unsigned char, decltype(&stbImageDeleter)>;

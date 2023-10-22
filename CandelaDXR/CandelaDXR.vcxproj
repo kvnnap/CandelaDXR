@@ -223,6 +223,7 @@
     <ClCompile Include="Factory\RasterDrawableFactory.cpp" />
     <ClCompile Include="Factory\RasterRTShadowsDrawableFactory.cpp" />
     <ClCompile Include="Factory\RendererFactory.cpp" />
+    <ClCompile Include="Factory\TextureFactory.cpp" />
     <ClCompile Include="Factory\UniformSamplerFactory.cpp" />
     <ClCompile Include="Factory\VectorFactory.cpp" />
     <ClCompile Include="ImGui\ImGuiManager.cpp" />
@@ -302,6 +303,7 @@
     <ClInclude Include="Factory\AssImpSceneLoaderFactory.h" />
     <ClInclude Include="Factory\DenoiserDrawableFactory.h" />
     <ClInclude Include="Factory\LightFactory.h" />
+    <ClInclude Include="Factory\TextureFactory.h" />
     <ClInclude Include="ImGui\ImGuiManager.h" />
     <ClInclude Include="ImGui\ImGuiRenderer.h" />
     <ClInclude Include="ImGui\ImGuiResourceManager.h" />

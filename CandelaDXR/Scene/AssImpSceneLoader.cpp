@@ -11,6 +11,7 @@
 #include <math.h>
 
 #include "Animation/KeyBasedAnimation.h"
+#include "Factory/TextureFactory.h"
 
 using std::filesystem::path;
 using std::array;
@@ -20,9 +21,7 @@ using candela::scene::AssImpSceneLoader;
 using candela::scene::SceneNode;
 using candela::scene::Scene;
 using candela::scene::AssImpOffsets;
-using candela::scene::Texture;
-using candela::scene::MemoryTexture;
-using candela::scene::StbTexture;
+using candela::scene::factory::TextureFactory;
 using candela::mathematics::Vector2;
 using candela::mathematics::Vector3;
 using candela::renderer::Camera;
@@ -59,13 +58,13 @@ static int32_t addTextureToScene(Scene* scene, path basePath, const aiScene* pSc
 	if (emDiffTex)
 	{
 		if (emDiffTex->mHeight == 0)
-			currentTexId = static_cast<int32_t>(scene->addTexture(make_unique<StbTexture>(emDiffTex->pcData, emDiffTex->mWidth)));
+			currentTexId = static_cast<int32_t>(scene->addTexture(TextureFactory().create(emDiffTex->pcData, emDiffTex->mWidth)));
 		else
-			currentTexId = static_cast<int32_t>(scene->addTexture(make_unique<MemoryTexture>(emDiffTex->pcData, emDiffTex->mWidth, emDiffTex->mHeight)));
+			currentTexId = static_cast<int32_t>(scene->addTexture(TextureFactory().createRaw(emDiffTex->pcData, emDiffTex->mWidth, emDiffTex->mHeight)));
 	}
 	else
 	{
-		currentTexId = static_cast<int32_t>(scene->addTexture(make_unique<StbTexture>(getConcatPath(basePath, texFileName.C_Str()).string())));
+		currentTexId = static_cast<int32_t>(scene->addTexture(TextureFactory().create(getConcatPath(basePath, texFileName.C_Str()).string())));
 	}
 
 	return currentTexId;
