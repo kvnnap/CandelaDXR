@@ -30,5 +30,7 @@ unique_ptr<ISceneLoader> AssImpSceneLoaderFactory::create(const ConfigurationNod
 	sceneLoader->setFilePath(config["FilePath"].read<std::string>());
 	if (config.asObject().keyExists("AlwaysComputeNormals"))
 		sceneLoader->setAlwaysComputeNormals(config["AlwaysComputeNormals"].read<bool>());
+	if (config.asObject().keyExists("LoadLights"))
+		sceneLoader->setLoadLights(config["LoadLights"].read<bool>());
 	return sceneLoader;
 }

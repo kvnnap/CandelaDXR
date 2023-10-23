@@ -417,7 +417,7 @@ ComPtr<ID3D12Resource> DXUtil::uploadDataToDefaultHeap(ComPtr<ID3D12Device> pDev
 	return defaultResource;
 }
 
-ComPtr<ID3D12Resource> DXUtil::uploadTextureDataToDefaultHeap(ComPtr<ID3D12Device> device, ComPtr<ID3D12GraphicsCommandList> pCommandList, ComPtr<ID3D12Resource>& tempResource, const void* ptData, std::size_t width, std::size_t height, std::size_t sizePerPixel, DXGI_FORMAT format, D3D12_RESOURCE_STATES finalState)
+ComPtr<ID3D12Resource> DXUtil::uploadTextureDataToDefaultHeap(ComPtr<ID3D12Device> device, ComPtr<ID3D12GraphicsCommandList> pCommandList, ComPtr<ID3D12Resource>& tempResource, const void* ptData, std::size_t width, std::size_t height, std::size_t bitsPerPixel, DXGI_FORMAT format, D3D12_RESOURCE_STATES finalState)
 {
 	// create texture
 	ComPtr<ID3D12Resource> texResource = createTextureCommittedResource(device, D3D12_HEAP_TYPE_DEFAULT, width, static_cast<UINT>(height), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_FLAG_NONE, format);
@@ -429,7 +429,7 @@ ComPtr<ID3D12Resource> DXUtil::uploadTextureDataToDefaultHeap(ComPtr<ID3D12Devic
 	tempResource = DXUtil::createCommittedResource(device, D3D12_HEAP_TYPE_UPLOAD, uploadBufferSize, D3D12_RESOURCE_STATE_GENERIC_READ);
 	D3D12_SUBRESOURCE_DATA subresourceData = {};
 	subresourceData.pData = ptData;
-	subresourceData.RowPitch = width * sizePerPixel;
+	subresourceData.RowPitch = (width * bitsPerPixel) / 8;
 	subresourceData.SlicePitch = subresourceData.RowPitch * height;
 	UpdateSubresources(pCommandList.Get(), texResource.Get(), tempResource.Get(), 0, 0, 1, &subresourceData);
 

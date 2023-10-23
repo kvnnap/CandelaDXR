@@ -304,7 +304,7 @@ void DenoiserShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentComman
 	}
 	
 	const nrd::Identifier denoisers[] = { denoiserSelected };
-	NRD[denoiserSelected]->Denoise(denoisers, std::size(denoisers), *cmdBuffer, userPool, false);
+	NRD[denoiserSelected]->Denoise(denoisers, static_cast<uint32_t>(std::size(denoisers)), *cmdBuffer, userPool, false);
 	
 	// Sync states
 	for (uint32_t i = 0; i < N; i++)

@@ -7,7 +7,7 @@
 #include <map>
 #include <memory>
 
-#include "Texture.h"
+#include "Scene/Texture/Texture.h"
 #include "Mathematics/Types.h"
 #include "Mathematics/AABB.h"
 #include "Renderer/ITransform.h"

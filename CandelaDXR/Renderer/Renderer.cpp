@@ -737,8 +737,8 @@ void Renderer::initSceneResources()
 			texture->data(),
 			texture->getWidth(),
 			texture->getHeight(),
-			texture->getChannels(),
-			DXGI_FORMAT_R8G8B8A8_UNORM, flags), flags);
+			texture->getBitsPerPixel(),
+			texture->getTextureDXGIFormat(), flags), flags);
 		textures.back().setName(L"Texture");
 	}
 

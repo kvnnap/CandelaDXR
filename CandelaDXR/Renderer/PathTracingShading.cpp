@@ -317,11 +317,14 @@ void PathTracingShading::createShaderResources()
 	// Textures
 	srvDesc = {};
 	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-	srvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
 	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
 	srvDesc.Texture2D.MipLevels = 1;
 	for (const auto& texture : rendererResources->textures)
+	{
+		const directx::DXResource& texRes = texture;
+		srvDesc.Format = texRes->GetDesc().Format;
 		descHeapManager->setSRV(entryNumber++, srvDesc, rendererResources->pDevice, texture);
+	}
 }
 
 void PathTracingShading::createShaderTable(wrl::ComPtr<ID3D12GraphicsCommandList>& commandList, wrl::ComPtr<ID3D12Resource>& tempBuffer)

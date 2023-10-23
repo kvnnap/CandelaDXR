@@ -116,12 +116,13 @@ void RasterShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12GraphicsComm
 	auto descHeapManager = DescriptorHeap(rootSignatureManager, "TexturesDescTable", "Textures1", rendererResources->pDevice);
 	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
 	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-	srvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
 	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
 	srvDesc.Texture2D.MipLevels = 1;
 	for (size_t i = 0; i < rendererResources->textures.size(); ++i)
 	{
 		const auto& texture = rendererResources->textures[i];
+		const directx::DXResource& texRes = texture;
+		srvDesc.Format = texRes->GetDesc().Format;
 		descHeapManager.setSRV(i, srvDesc, rendererResources->pDevice, texture);
 	}
 	rootDescriptorHeap = descHeapManager.getDescriptorHeap();

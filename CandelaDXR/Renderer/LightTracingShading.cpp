@@ -53,8 +53,8 @@ using candela::sampler::ISampler;
 
 using candela::util::StringToWString;
 
-LightTracingShading::LightTracingShading(unique_ptr<ISampler> sampler, UVector2 lightSamples)
-	: rendererResources(), constBuffer(), lightSamples(lightSamples), 
+LightTracingShading::LightTracingShading(unique_ptr<ISampler> sampler, UVector2 lightSamples, LTComponents ltComponents)
+	: ltComponentsToLoad(ltComponents), rendererResources(), constBuffer(), lightSamples(lightSamples),
 	irradianceDataStructure(), irrToRad(), rayHitT(), irradianceCaustics(),
 	outputCaustics(), irradianceTexture(), sampler(std::move(sampler)), frameNumberCaustics(),
 	clear(), clearCaustics(), allowClearCaustics(true), currentShader()
@@ -75,9 +75,12 @@ void LightTracingShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12Graphi
 
 	rendererResources = rRes;
 
-	ltShaders.emplace_back(LTShader{ "./Shaders/LightTracingShader.cso" });
-	ltShaders.emplace_back(LTShader{ "./Shaders/LightTracingOptimisedShader.cso", make_unique<LTOptimisedComponent>()});
-	ltShaders.emplace_back(LTShader{ "./Shaders/LightTracingImportanceShader.cso", make_unique<LTRasterGuidedShading>(sampler.get(), true)});
+	if (ltComponentsToLoad.normal)
+		ltShaders.emplace_back(LTShader{ "./Shaders/LightTracingShader.cso" });
+	if (ltComponentsToLoad.optimised)
+		ltShaders.emplace_back(LTShader{ "./Shaders/LightTracingOptimisedShader.cso", make_unique<LTOptimisedComponent>()});
+	if (ltComponentsToLoad.importance)
+		ltShaders.emplace_back(LTShader{ "./Shaders/LightTracingImportanceShader.cso", make_unique<LTRasterGuidedShading>(sampler.get(), true)});
 	constBuffer.numLights = static_cast<uint32_t>(rRes->scene->getLights().size());
 	constBuffer.numTotalLights = constBuffer.numLights + static_cast<uint32_t>(rRes->scene->getExternalLights().size());
 	constBuffer.frameNumber = 0;
@@ -377,11 +380,14 @@ void LightTracingShading::createShaderResources(wrl::ComPtr<ID3D12GraphicsComman
 		// Textures
 		srvDesc = {};
 		srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-		srvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
 		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
 		srvDesc.Texture2D.MipLevels = 1;
 		for (const auto& texture : rendererResources->textures)
+		{
+			const directx::DXResource& texRes = texture;
+			srvDesc.Format = texRes->GetDesc().Format;
 			descHeapManager->setSRV(entryNumber++, srvDesc, rendererResources->pDevice, texture);
+		}
 
 		if (ltShader.component)
 			ltShader.component->appendToDescHeapManager(descHeapManager.get());

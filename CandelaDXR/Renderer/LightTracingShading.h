@@ -31,7 +31,14 @@ namespace candela::renderer
 		: public Drawable
 	{
 	public:
-		LightTracingShading(std::unique_ptr<sampler::ISampler> sampler, mathematics::UVector2 lightSamples);
+		struct LTComponents
+		{
+			bool normal;
+			bool optimised;
+			bool importance;
+		};
+
+		LightTracingShading(std::unique_ptr<sampler::ISampler> sampler, mathematics::UVector2 lightSamples, LTComponents ltComponents);
 
 		void init(RendererResources* rendererResources, wrl::ComPtr<ID3D12GraphicsCommandList> &pCurrentCommandList, ResourceRegFunction& resRegFn) override;
 		void draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, std::uint32_t currentBackBufferIndex) override;
@@ -79,6 +86,8 @@ namespace candela::renderer
 
 		mathematics::Vector2 toSensorSpace(std::uint32_t x, std::uint32_t y) const;
 		float cosIntegral(std::uint32_t x, std::uint32_t y) const;
+
+		LTComponents ltComponentsToLoad;
 
 		// Common renderer resources
 		RendererResources* rendererResources;

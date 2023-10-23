@@ -269,7 +269,10 @@
     <ClCompile Include="Scene\AssImpSceneLoader.cpp" />
     <ClCompile Include="Scene\Scene.cpp" />
     <ClCompile Include="Factory\SceneFactory.cpp" />
-    <ClCompile Include="Scene\Texture.cpp" />
+    <ClCompile Include="Scene\Texture\DDSTexture.cpp" />
+    <ClCompile Include="Scene\Texture\MemoryTexture.cpp" />
+    <ClCompile Include="Scene\Texture\StbTexture.cpp" />
+    <ClCompile Include="Scene\Texture\Texture.cpp" />
     <ClCompile Include="Scene\WavefrontSceneLoader.cpp" />
     <ClCompile Include="Factory\WavefrontSceneLoaderFactory.cpp" />
     <ClCompile Include="System\DllManager.cpp" />
@@ -363,7 +366,10 @@
     <ClInclude Include="Scene\ISceneLoader.h" />
     <ClInclude Include="Scene\Scene.h" />
     <ClInclude Include="Factory\SceneFactory.h" />
-    <ClInclude Include="Scene\Texture.h" />
+    <ClInclude Include="Scene\Texture\DDSTexture.h" />
+    <ClInclude Include="Scene\Texture\MemoryTexture.h" />
+    <ClInclude Include="Scene\Texture\StbTexture.h" />
+    <ClInclude Include="Scene\Texture\Texture.h" />
     <ClInclude Include="Scene\WavefrontSceneLoader.h" />
     <ClInclude Include="Factory\WavefrontSceneLoaderFactory.h" />
     <ClInclude Include="System\DllManager.h" />

@@ -22,6 +22,7 @@ namespace candela::scene
 		void loadScene() override;
 		void setFilePath(const std::string& filePath);
 		void setAlwaysComputeNormals(bool value);
+		void setLoadLights(bool value);
 	private:
 		Scene* scene{};
 		std::string filePath;
@@ -29,5 +30,6 @@ namespace candela::scene
 		AssImpOffsets offsets{};
 		
 		bool alwaysComputeNormals = false;
+		bool loadLights = true;
 	};
 }

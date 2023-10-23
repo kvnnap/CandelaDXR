@@ -113,6 +113,9 @@ void AssImpSceneLoader::loadScene()
 		ret = mat->Get(AI_MATKEY_OPACITY, opacity);
 		ret = mat->Get(AI_MATKEY_REFRACTI, ior);
 
+		if (!loadLights)
+			emis.r = emis.g = emis.b = 0.0;
+
 		// Load textures
 		int32_t currentDiffTexId = -1;
 		int32_t currentSpecTexId = -1;
@@ -229,35 +232,38 @@ void AssImpSceneLoader::loadScene()
 	}
 
 	// Add lights
-	offsets.light = scene->getLights().size();
-	for (auto i = 0u; i < pScene->mNumLights; ++i)
+	if (loadLights)
 	{
-		auto pLight = pScene->mLights[i];
-		const auto name = string(pLight->mName.C_Str());
+		offsets.light = scene->getLights().size();
+		for (auto i = 0u; i < pScene->mNumLights; ++i)
+		{
+			auto pLight = pScene->mLights[i];
+			const auto name = string(pLight->mName.C_Str());
 
-		// Transform according to scene graph
-		auto myLightNode = *std::find_if(mySceneNodes.begin(), mySceneNodes.end(), [&name](const SceneNode* n) -> bool {
-			return n->NodeName == name;
-		});
-		myLightNode->Lights.push_back(offsets.light + i);
+			// Transform according to scene graph
+			auto myLightNode = *std::find_if(mySceneNodes.begin(), mySceneNodes.end(), [&name](const SceneNode* n) -> bool {
+				return n->NodeName == name;
+				});
+			myLightNode->Lights.push_back(offsets.light + i);
 
-		constexpr float cdToInt = 1.f / 683.f;
-		float coeff = pLight->mType == aiLightSource_POINT ? cdToInt : cdToInt;
-		float attQuad = pLight->mAttenuationQuadratic == 0.f ? 1.f : pLight->mAttenuationQuadratic;
-		float attConst = pLight->mAttenuationConstant == 0.f ? 1.f : pLight->mAttenuationConstant;
+			constexpr float cdToInt = 1.f / 683.f;
+			float coeff = pLight->mType == aiLightSource_POINT ? cdToInt : cdToInt;
+			float attQuad = pLight->mAttenuationQuadratic == 0.f ? 1.f : pLight->mAttenuationQuadratic;
+			float attConst = pLight->mAttenuationConstant == 0.f ? 1.f : pLight->mAttenuationConstant;
 
-		scene->addExternalLight({ Light{
-			.Position = DirectX::XMVectorSet(pLight->mPosition.x, pLight->mPosition.y, pLight->mPosition.z, 1.f),
-			.Direction = DirectX::XMVector3Normalize(DirectX::XMVectorSet(pLight->mDirection.x, pLight->mDirection.y, pLight->mDirection.z, 0.f)),
-			.Up = DirectX::XMVector3Normalize(DirectX::XMVectorSet(pLight->mUp.x, pLight->mUp.y, pLight->mUp.z, 0.f)),
-			.Attenuation = Vector3(attConst, pLight->mAttenuationLinear, attQuad),
-			.Type = static_cast<uint32_t>(pLight->mType),
-			.Diffuse = Vector3(pLight->mColorDiffuse.r * coeff, pLight->mColorDiffuse.g * coeff, pLight->mColorDiffuse.b * coeff),
-			.InnerConeAngle = pLight->mAngleInnerCone,
-			.Specular = Vector3(pLight->mColorSpecular.r * coeff, pLight->mColorSpecular.g * coeff, pLight->mColorSpecular.b * coeff),
-			.OuterConeAngle = pLight->mAngleOuterCone,
-			.AreaDimensions = Vector2(pLight->mSize.x, pLight->mSize.y)
-		}, myLightNode });
+			scene->addExternalLight({ Light{
+				.Position = DirectX::XMVectorSet(pLight->mPosition.x, pLight->mPosition.y, pLight->mPosition.z, 1.f),
+				.Direction = DirectX::XMVector3Normalize(DirectX::XMVectorSet(pLight->mDirection.x, pLight->mDirection.y, pLight->mDirection.z, 0.f)),
+				.Up = DirectX::XMVector3Normalize(DirectX::XMVectorSet(pLight->mUp.x, pLight->mUp.y, pLight->mUp.z, 0.f)),
+				.Attenuation = Vector3(attConst, pLight->mAttenuationLinear, attQuad),
+				.Type = static_cast<uint32_t>(pLight->mType),
+				.Diffuse = Vector3(pLight->mColorDiffuse.r * coeff, pLight->mColorDiffuse.g * coeff, pLight->mColorDiffuse.b * coeff),
+				.InnerConeAngle = pLight->mAngleInnerCone,
+				.Specular = Vector3(pLight->mColorSpecular.r * coeff, pLight->mColorSpecular.g * coeff, pLight->mColorSpecular.b * coeff),
+				.OuterConeAngle = pLight->mAngleOuterCone,
+				.AreaDimensions = Vector2(pLight->mSize.x, pLight->mSize.y)
+			}, myLightNode });
+		}
 	}
 
 	// Add animations
@@ -332,5 +338,10 @@ void AssImpSceneLoader::setFilePath(const std::string& p_filePath)
 void AssImpSceneLoader::setAlwaysComputeNormals(bool value)
 {
 	alwaysComputeNormals = value;
+}
+
+void AssImpSceneLoader::setLoadLights(bool value)
+{
+	loadLights = value;
 }
 

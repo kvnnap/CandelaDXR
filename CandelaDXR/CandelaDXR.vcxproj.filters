@@ -48,7 +48,7 @@
     <ClCompile Include="Scene\WavefrontSceneLoader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Scene\Texture.cpp">
+    <ClCompile Include="Scene\Texture\Texture.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Factory\WavefrontSceneLoaderFactory.cpp">
@@ -237,6 +237,18 @@
     <ClCompile Include="Factory\LightFactory.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Factory\TextureFactory.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Scene\Texture\StbTexture.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Scene\Texture\MemoryTexture.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Scene\Texture\DDSTexture.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Exception\GeneralException.h">
@@ -287,7 +299,7 @@
     <ClInclude Include="Mathematics\Types.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Scene\Texture.h">
+    <ClInclude Include="Scene\Texture\Texture.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Factory\WavefrontSceneLoaderFactory.h">
@@ -513,6 +525,18 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Factory\LightFactory.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Factory\TextureFactory.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Scene\Texture\StbTexture.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Scene\Texture\MemoryTexture.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Scene\Texture\DDSTexture.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

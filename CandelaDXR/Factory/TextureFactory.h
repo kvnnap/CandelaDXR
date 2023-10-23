@@ -1,7 +1,7 @@
 #pragma once
 
 #include "feanor/core/factory/factory.h"
-#include "Scene/Scene.h"
+#include "Scene/Texture/Texture.h"
 
 namespace candela::scene::factory
 {
