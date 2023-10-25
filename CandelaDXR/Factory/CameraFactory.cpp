@@ -27,6 +27,10 @@ unique_ptr<Camera> CameraFactory::create(const ConfigurationNode& config) const
 {
     auto position = Vector3Factory().create(config["Position"]);
     auto direction = Vector3Factory().create(config["Direction"]);
+    auto up = Vector3Factory().create();
+    up->y = 1.f;
+    if (config.asObject().keyExists("Up"))
+        up = Vector3Factory().create(config["Up"]);
     auto sensorSize = Vector2Factory().create(config["SensorDimensions"]);
     auto nearZ = config["Distance"].read<float>();
     auto farZ = config["MaxDistance"].read<float>();
@@ -34,5 +38,6 @@ unique_ptr<Camera> CameraFactory::create(const ConfigurationNode& config) const
     return make_unique<Camera>(
         DirectX::XMVectorSet(position->x, position->y, position->z, 1.f), 
         DirectX::XMVectorSet(direction->x, direction->y, direction->z, 0.f), 
-        sensorSize->x, sensorSize->y, nearZ, farZ);
+        sensorSize->x, sensorSize->y, nearZ, farZ,
+        DirectX::XMVectorSet(up->x, up->y, up->z, 0.f));
 }
