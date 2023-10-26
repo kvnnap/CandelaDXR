@@ -15,6 +15,7 @@
 #include "factory/DenoiserDrawableFactory.h"
 #include "factory/CameraFactory.h"
 #include "factory/AnimationFactory.h"
+#include "Factory/ChainFactory.h"
 
 using candela::environment::Environment;
 using candela::environment::ConfigurationManager;
@@ -24,6 +25,7 @@ using candela::environment::SceneManager;
 using candela::environment::RendererManager;
 using candela::environment::DrawableManager;
 using candela::environment::AnimationManager;
+using candela::environment::ChainManager;
 
 using feanor::configuration::ObjectNode;
 using feanor::configuration::LiteralNode;
@@ -41,6 +43,8 @@ using candela::renderer::factory::PathTracingDrawableFactory;
 using candela::renderer::factory::DenoiserDrawableFactory;
 using candela::renderer::factory::CameraFactory;
 using candela::animation::factory::AnimationFactory;
+
+using candela::chain::factory::ChainFactory;
 
 using std::string;
 using std::make_unique;
@@ -91,11 +95,16 @@ void Environment::bootstrap(const string& configPath)
         sceneLoader->loadScene();
 
     // Load animations
-    animationManager.loadSection("Animations", configuration);
+    if (configuration->asObject().keyExists("Animations"))
+        animationManager.loadSection("Animations", configuration);
 
     // Load Drawables - Passes
     drawableManager.loadSection("Drawables", configuration);
 
+    // Load chains
+    if (configuration->asObject().keyExists("Chains"))
+        chainManager.loadSection("Chains", configuration);
+    
     // Load renderers
     rendererManager.loadSection("Renderers", configuration);
 }
@@ -133,6 +142,9 @@ void Environment::loadCoreFactories()
 
     // Animation
     animationManager.getFactoryManager().registerItem<AnimationFactory>("Animation");
+
+    // Chains
+    chainManager.getFactoryManager().registerItem<ChainFactory>("Chain");
 }
 
 ConfigurationManager& Environment::getConfigurationManager() { return configurationManager; }
@@ -142,3 +154,5 @@ SceneManager& Environment::getSceneManager() { return sceneManager; }
 RendererManager& Environment::getRendererManager() { return rendererManager; }
 DrawableManager& Environment::getDrawableManager() { return drawableManager; }
 AnimationManager& Environment::getAnimationManager() { return animationManager; }
+ChainManager& Environment::getChainManager() { return chainManager; }
+

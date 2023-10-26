@@ -12,6 +12,7 @@
 #include "Scene/Scene.h"
 #include "Scene/ISceneLoader.h"
 #include "Animation/IAnimation.h"
+#include "Chain/IChain.h"
 
 namespace candela::environment
 {
@@ -22,6 +23,7 @@ namespace candela::environment
     using RendererManager = feanor::environment::ResourceManager<renderer::IRenderer>;
     using DrawableManager = feanor::environment::ResourceManager<renderer::IDrawable>;
     using AnimationManager = feanor::environment::ResourceManager<animation::IAnimation>;
+    using ChainManager = feanor::environment::ResourceManager<chain::CFList>;
 
     class Environment
     {
@@ -36,6 +38,7 @@ namespace candela::environment
         RendererManager& getRendererManager();
         DrawableManager& getDrawableManager();
         AnimationManager& getAnimationManager();
+        ChainManager& getChainManager();
 
         static Environment& getInstance();
     private:
@@ -52,5 +55,6 @@ namespace candela::environment
         DrawableManager drawableManager;
         AnimationManager animationManager;
         RendererManager rendererManager;
+        ChainManager chainManager;
     };
 }

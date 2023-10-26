@@ -10,4 +10,6 @@ namespace candela::chain
         virtual ~IChain() = default;
         virtual void process(renderer::RadianceBuffer& buffer) = 0;
     };
+
+    using CFList = std::vector<std::unique_ptr<chain::IChain>>;
 }

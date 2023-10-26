@@ -42,17 +42,20 @@ unique_ptr<IRenderer> RendererFactory::create(const ConfigurationNode& config) c
 	auto camera = &env.getCameraManager().getInstanceManager().get(config["Camera"]);
 	// Gen animation mapping
 	vector<AnimationRecord> animationMapping;
-	for (const auto& animConfig : config["Animations"].asList())
+	if (config.asObject().keyExists("Animations"))
 	{
-		auto anim = &env.getAnimationManager().getInstanceManager().get(animConfig["Name"]);
-		for (const auto& targetNode : animConfig["Targets"].asList())
+		for (const auto& animConfig : config["Animations"].asList())
 		{
-			auto targetName = targetNode.read<string>();
-			if (config["Camera"].read<string>() == targetName)
-				animationMapping.push_back({ camera, anim, targetName, true });
-			for (auto node : scene->getSceneGraph().getAllNodes())
-				if (node->NodeName == targetName)
-					animationMapping.push_back({ node, anim, targetName, true });
+			auto anim = &env.getAnimationManager().getInstanceManager().get(animConfig["Name"]);
+			for (const auto& targetNode : animConfig["Targets"].asList())
+			{
+				auto targetName = targetNode.read<string>();
+				if (config["Camera"].read<string>() == targetName)
+					animationMapping.push_back({ camera, anim, targetName, true });
+				for (auto node : scene->getSceneGraph().getAllNodes())
+					if (node->NodeName == targetName)
+						animationMapping.push_back({ node, anim, targetName, true });
+			}
 		}
 	}
 
@@ -95,6 +98,13 @@ unique_ptr<IRenderer> RendererFactory::create(const ConfigurationNode& config) c
 		animSeq.setTimeDeltaMs(timeDeltaMs);
 		animSeq.setMaxTimeMs(maxTimeMs);
 		animSeq.setEnabled(enabled);
+	}
+
+	// Chain
+	if (config.asObject().keyExists("Chain"))
+	{
+		auto chain = &env.getChainManager().getInstanceManager().get(config["Chain"]);
+		renderer->setChain(chain);
 	}
 
 	return renderer;

@@ -100,6 +100,28 @@
       "Name": "Den"
     }
   ],
+  "Chains": [
+    {
+      "Name": "Chain",
+      "Type": "Chain",
+      "Chain": [
+        {
+          "_Type": "FileOutput",
+          "FileType": "EXR"
+        },
+        {
+          "Type": "ToneMapping"
+        },
+        {
+          "Type": "AlphaCorrection"
+        },
+        {
+          "Type": "FileOutput",
+          "FileType": "PNG"
+        }
+      ]
+    }
+  ],
   "Renderers": [
     {
       "Type": "Renderer",
@@ -109,6 +131,7 @@
       "VSync": false,
       "Scene": "Scene",
       "Camera": "Camera",
+      "Chain": "Chain",
       "ShaderAccumulation": false,
       "Drawables": [
         "Raster",

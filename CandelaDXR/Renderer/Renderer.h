@@ -64,6 +64,8 @@ namespace candela::renderer
 		void setCameraCopy(const Camera& camera);
 		const scene::Scene& getScene() const;
 
+		void setChain(chain::CFList* chain);
+
 		// Promote to interface?
 		RendererTime& getRendererTime();
 		void setAnimationRecords(std::vector<AnimationRecord>&& animationRecords);
@@ -162,7 +164,7 @@ namespace candela::renderer
 		std::vector<directx::Resource> textures;
 
 		// Chain
-		std::vector<std::unique_ptr<chain::IChain>> chain;
+		chain::CFList* chain;
 
 		// Shaders
 		std::shared_ptr<directx::RootSignatureManager> computeRSM;

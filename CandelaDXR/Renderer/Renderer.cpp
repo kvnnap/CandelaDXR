@@ -83,6 +83,7 @@ Renderer::Renderer(Scene *scene, Camera *camera, const UVector2 &windowDimension
 	  currentBackBufferIndex(),
 	  scene(scene),
 	  camera(camera),
+	  chain(),
 	  drawables(std::move(p_drawables)),
 	  debugEnabled(debugEnabled),
 	  breakEnabled(breakEnabled),
@@ -100,7 +101,8 @@ Renderer::~Renderer()
 		commandQueue->flush();
 
 	// Cannot destroy swapchain in full screen mode
-	pSwapChain->SetFullscreenState(false, nullptr);
+	if (pSwapChain)
+		pSwapChain->SetFullscreenState(false, nullptr);
 	
 	// Uncomment to analyse resources
 	//if (debugEnabled)
@@ -127,17 +129,6 @@ void Renderer::init()
 	window = make_unique<Window>("CandelaDXR", windowDimensions.x, windowDimensions.y, &keyboard, &mouse, !animationSequencer.isEnabled());
 	using namespace std::placeholders;
 	window->addWndProcCallback(std::bind(&Renderer::wndCallback, this, _1, _2, _3, _4), 0);
-
-	// Chains - TODO: Configurable through Factory
-	chain.clear();
-	auto fileOutput = make_unique<FileOutput>();
-	fileOutput->setFileType(FileOutput::RAW);
-	chain.push_back(std::move(fileOutput));
-	chain.push_back(make_unique<ToneMapping>());
-	chain.push_back(make_unique<AlphaCorrection>());
-	fileOutput = make_unique<FileOutput>();
-	fileOutput->setFileType(FileOutput::PNG);
-	chain.push_back(std::move(fileOutput));
 
 	// Allocate 
 	pRTVBackBuffers.resize(NumBackBuffers);
@@ -517,8 +508,11 @@ void Renderer::renderFrame()
 		RadianceBuffer radBuffer = pRadAccumulator->read(commandQueue);
 
 		// Execute Chain to output data
-		for (auto& chainItem : chain)
-			chainItem->process(radBuffer);
+		if (chain != nullptr)
+		{
+			for (auto& chainItem : *chain)
+				chainItem->process(radBuffer);
+		}
 
 		// Get another command list
 		pCurrentCommandList = commandQueue->getCommandList();
@@ -582,8 +576,11 @@ void Renderer::renderFrame()
 		RadianceBuffer radBuffer = resourceToSave->read(commandQueue);
 
 		// Execute Chain to output data
-		for (auto& chainItem : chain)
-			chainItem->process(radBuffer);
+		if (chain != nullptr)
+		{
+			for (auto& chainItem : *chain)
+				chainItem->process(radBuffer);
+		}
 	}
 
 	HRESULT hr;
@@ -645,6 +642,11 @@ void Renderer::setCameraCopy(const Camera& p_camera)
 const Scene& Renderer::getScene() const
 {
 	return *scene;
+}
+
+void Renderer::setChain(chain::CFList* chain)
+{
+	this->chain = chain;
 }
 
 RendererTime& Renderer::getRendererTime()

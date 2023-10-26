@@ -11,7 +11,7 @@ DDSTexture::DDSTexture(const std::string& fileName)
 	{
 		width = image.width;
 		height = image.height;
-		bitsPerPixel = (image.mipmaps.front().size() * 8) / (image.width * image.height);
+		bitsPerPixel = static_cast<int>((image.mipmaps.front().size() * 8) / (image.width * image.height));
 		if (image.dimension != dds::ResourceDimension::Texture2D)
 			ThrowException("DDS Image dimension not 2D");
 	}
