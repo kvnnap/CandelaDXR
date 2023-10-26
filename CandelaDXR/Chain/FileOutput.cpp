@@ -18,6 +18,8 @@ using candela::renderer::RadianceBuffer;
 using std::runtime_error;
 using std::uint8_t;
 using std::clamp;
+using std::array;
+using std::vector;
 
 FileOutput::FileOutput()
     : filePath("output"), sequenceNumber(), fileType()
@@ -39,7 +41,10 @@ void FileOutput::process(RadianceBuffer& radianceBuffer)
 {
     auto fileName = filePath + "_" + std::to_string(sequenceNumber++);
 
-    std::vector<uint8_t> buffer;
+    const auto width = static_cast<int>(radianceBuffer.getWidth());
+    const auto height = static_cast<int>(radianceBuffer.getHeight());
+
+    vector<uint8_t> buffer;
     if (fileType == PPM || fileType == PNG)
     {
         buffer.reserve(radianceBuffer.getWidth() * radianceBuffer.getHeight() * 3);
@@ -76,8 +81,8 @@ void FileOutput::process(RadianceBuffer& radianceBuffer)
         fileName += ".png";
         stbi_write_png(
             fileName.c_str(),
-            static_cast<int>(radianceBuffer.getWidth()),
-            static_cast<int>(radianceBuffer.getHeight()),
+            width,
+            height,
             3,
             buffer.data(),
             static_cast<int>(radianceBuffer.getWidth() * 3)
@@ -89,10 +94,8 @@ void FileOutput::process(RadianceBuffer& radianceBuffer)
         FILE* fp = fopen(fileName.c_str(), "wb");
         if (fp == nullptr)
             throw runtime_error("Could not open file: " + fileName);
-        int w = static_cast<int>(radianceBuffer.getWidth());
-        int h = static_cast<int>(radianceBuffer.getHeight());
-        fwrite(&w, sizeof(int), 1, fp); // Write width
-        fwrite(&h, sizeof(int), 1, fp); // Write height
+        fwrite(&width, sizeof(int), 1, fp); // Write w
+        fwrite(&height, sizeof(int), 1, fp); // Write h
         fwrite(radianceBuffer.getInternalBuffer().data(), sizeof(RgbSpectrum), radianceBuffer.getInternalBuffer().size(), fp);
         fclose(fp);
     }
@@ -105,44 +108,44 @@ void FileOutput::process(RadianceBuffer& radianceBuffer)
 
         EXRImage image;
         InitEXRImage(&image);
+        constexpr int numChannels = 3;
 
-        image.num_channels = 3;
-        auto width = radianceBuffer.getWidth();
-        auto height = radianceBuffer.getHeight();
+        image.num_channels = numChannels;
+        auto w = radianceBuffer.getWidth();
+        auto h = radianceBuffer.getHeight();
         auto rgb = radianceBuffer.getInternalBuffer().data();
 
-        std::vector<float> images[3];
-        images[0].resize(width * height);
-        images[1].resize(width * height);
-        images[2].resize(width * height);
+        array<vector<float>, numChannels> images{};
+        for (int i = 0; i < numChannels; ++i)
+            images[i].resize(w * h);
 
-        for (int i = 0; i < width * height; i++) 
+        for (std::size_t i = 0; i < w * h; i++) 
         {
-            images[0][i] = rgb[i].x;
-            images[1][i] = rgb[i].y;
-            images[2][i] = rgb[i].z;
+            for (int j = 0; j < numChannels; ++j)
+                images[j][i] = (&rgb[i].x)[j];
         }
 
-        float* image_ptr[3];
-        image_ptr[0] = &(images[2].at(0)); // B
-        image_ptr[1] = &(images[1].at(0)); // G
-        image_ptr[2] = &(images[0].at(0)); // R
+        array<float*, numChannels> image_ptr{};
+        for (int i = 0; i < numChannels; ++i) // B G R
+            image_ptr[i] = &(images[numChannels - (i + 1)].at(0));
 
-        image.images = (unsigned char**)image_ptr;
+        image.images = (unsigned char**)image_ptr.data();
         image.width = width;
         image.height = height;
 
-        constexpr int numChannels = 3;
         header.num_channels = numChannels;
-        std::array<EXRChannelInfo, numChannels> exrChannelInfo{};
+        array<EXRChannelInfo, numChannels> exrChannelInfo{};
         header.channels = exrChannelInfo.data();
         // Must be BGR(A) order, since most of EXR viewers expect this channel order.
-        strncpy(header.channels[0].name, "B", 255); header.channels[0].name[strlen("B")] = '\0';
-        strncpy(header.channels[1].name, "G", 255); header.channels[1].name[strlen("G")] = '\0';
-        strncpy(header.channels[2].name, "R", 255); header.channels[2].name[strlen("R")] = '\0';
+        array<const char*, numChannels> bgr = { "B", "G", "R" };
+        for (int i = 0; i < numChannels; ++i) // B G R
+        {
+            strncpy(header.channels[i].name, bgr[i], 255);
+            header.channels[i].name[strlen(bgr[i])] = '\0';
+        }
 
-        std::array<int, numChannels> pixelTypes{};
-        std::array<int, numChannels> requestedPixelTypes{};
+        array<int, numChannels> pixelTypes{};
+        array<int, numChannels> requestedPixelTypes{};
         header.pixel_types = pixelTypes.data();
         header.requested_pixel_types = requestedPixelTypes.data();
         for (int i = 0; i < header.num_channels; i++) 
