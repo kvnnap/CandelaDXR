@@ -285,7 +285,7 @@ void DenoiserShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentComman
 	//nrdReblurSettings.hitDistanceParameters;
 	//nrdReblurSettings.hitDistanceReconstructionMode; --- NEED FOR LightTracing!
 	
-	NRD[denoiserSelected]->NewFrame(nrdCommonSettings.frameIndex);
+	NRD[denoiserSelected]->NewFrame();
 	NRD[denoiserSelected]->SetCommonSettings(nrdCommonSettings);
 	if (denoiserSelected == 0)
 		NRD[denoiserSelected]->SetDenoiserSettings(denoiserSelected, &nrdReblurSettings);
@@ -304,7 +304,7 @@ void DenoiserShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentComman
 	}
 	
 	const nrd::Identifier denoisers[] = { denoiserSelected };
-	NRD[denoiserSelected]->Denoise(denoisers, static_cast<uint32_t>(std::size(denoisers)), *cmdBuffer, userPool, false);
+	NRD[denoiserSelected]->Denoise(denoisers, static_cast<uint32_t>(std::size(denoisers)), *cmdBuffer, userPool);
 	
 	// Sync states
 	for (uint32_t i = 0; i < N; i++)
@@ -521,7 +521,7 @@ void DenoiserShading::setupDenoiser()
 		instanceCreationDesc.denoisers = denoiserDescs;
 		instanceCreationDesc.denoisersNum = static_cast<uint32_t>(std::size(denoiserDescs));
 
-		NRD[i] = make_unique<NrdIntegration>(rRes->numBackBuffers);
+		NRD[i] = make_unique<NrdIntegration>(rRes->numBackBuffers, false);
 		bool res = NRD[i]->Initialize(instanceCreationDesc, *nriDevice, *NRI, *NRI);
 	}
 }
