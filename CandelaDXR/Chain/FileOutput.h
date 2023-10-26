@@ -15,7 +15,8 @@ namespace candela::chain
         {
             PPM = 0,
             PNG = 1,
-            RAW = 2
+            RAW = 2,
+            EXR = 3
         };
 
         FileOutput();
