@@ -1,6 +1,6 @@
 name: MSBuild
 
-on: [push]
+on: [workflow_dispatch]
 
 # on:
 #   push:
