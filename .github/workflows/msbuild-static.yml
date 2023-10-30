@@ -15,7 +15,7 @@ env:
   # You can convert this to a build matrix if you need coverage of multiple configuration types.
   # https://docs.github.com/actions/learn-github-actions/managing-complex-workflows#using-a-build-matrix
   BUILD_CONFIGURATION: Release
-  BUILD_SHARED: ON
+  
   OUT_DIR: dist
   GITLAB_TOKEN: ${{ secrets.GITLAB_TOKEN }}
   FEANOR_CORE_ID: 11660029
@@ -59,8 +59,8 @@ jobs:
     - name: Build and install Feanor Core
       if: steps.cache-core.outputs.cache-hit != 'true'
       run: |
-        cmake -S feanor-core -B feanor-core/build -DCMAKE_INSTALL_PREFIX:PATH="${{github.workspace}}\installed-core" -DBUILD_SHARED_LIBS:BOOL=${{env.BUILD_SHARED}}
-        cmake --build feanor-core/build --config ${{env.BUILD_CONFIGURATION}} --parallel --target install
+        cmake -S feanor-core -B feanor-core/build -DCMAKE_INSTALL_PREFIX:PATH="${{github.workspace}}\installed-core" -DBUILD_SHARED_LIBS:BOOL=OFF
+        cmake --build feanor-core/build --config Release --parallel --target install
         
   build-feanor-external:
     runs-on: windows-2022
@@ -101,7 +101,7 @@ jobs:
       if: steps.cache-external.outputs.cache-hit != 'true'
       working-directory: ${{github.workspace}}\feanor-external
       run: |
-        .\install.ps1 "${{github.workspace}}\installed-external" ${{env.BUILD_SHARED}}
+        .\install.ps1 "${{github.workspace}}\installed-external" OFF
         
   build-nvidia-nri:
     runs-on: windows-2022
@@ -267,16 +267,6 @@ jobs:
       # See https://docs.microsoft.com/visualstudio/msbuild/msbuild-command-line-reference
       run: msbuild /m /p:Configuration=${{env.BUILD_CONFIGURATION}} /p:ForceImportBeforeCppTargets=${{github.workspace}}\MyProps.props /p:OutDir=${{github.workspace}}\${{env.OUT_DIR}}\ ${{env.SOLUTION_FILE_PATH}}
       
-    - name: Copy Feanor Core and External DLLs
-      if: env.BUILD_SHARED == 'ON'
-      run: |
-        Copy-Item ".\installed\bin\Core.dll" -Destination "${{github.workspace}}\${{env.OUT_DIR}}\"
-        Copy-Item ".\installed\bin\assimp-vc143-mt.dll" -Destination "${{github.workspace}}\${{env.OUT_DIR}}\"
-        Copy-Item ".\installed\bin\imgui.dll" -Destination "${{github.workspace}}\${{env.OUT_DIR}}\"
-        Copy-Item ".\installed\bin\stb.dll" -Destination "${{github.workspace}}\${{env.OUT_DIR}}\"
-        Copy-Item ".\installed\bin\tinyexr.dll" -Destination "${{github.workspace}}\${{env.OUT_DIR}}\"
-        Copy-Item ".\installed\bin\tinyobjloader.dll" -Destination "${{github.workspace}}\${{env.OUT_DIR}}\"
-
     - name: Copy NRI and NRD DLL
       run: |
         Copy-Item ".\NRI\_NRI_SDK\Lib\Release\NRI.dll" -Destination "${{github.workspace}}\${{env.OUT_DIR}}\"
