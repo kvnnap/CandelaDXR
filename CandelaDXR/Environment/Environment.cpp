@@ -4,17 +4,18 @@
 #include "Environment.h"
 
 #include "feanor/core/configuration/parser/json_configuration_parser.h"
-#include "factory/SceneFactory.h"
-#include "factory/WavefrontSceneLoaderFactory.h"
-#include "factory/AssImpSceneLoaderFactory.h"
-#include "factory/RendererFactory.h"
-#include "factory/RasterDrawableFactory.h"
-#include "factory/RasterRTShadowsDrawableFactory.h"
-#include "factory/LightTracingDrawableFactory.h"
-#include "factory/PathTracingDrawableFactory.h"
-#include "factory/DenoiserDrawableFactory.h"
-#include "factory/CameraFactory.h"
-#include "factory/AnimationFactory.h"
+#include "Factory/SceneFactory.h"
+#include "Factory/WavefrontSceneLoaderFactory.h"
+#include "Factory/AssImpSceneLoaderFactory.h"
+#include "Factory/SceneModifierFactory.h"
+#include "Factory/RendererFactory.h"
+#include "Factory/RasterDrawableFactory.h"
+#include "Factory/RasterRTShadowsDrawableFactory.h"
+#include "Factory/LightTracingDrawableFactory.h"
+#include "Factory/PathTracingDrawableFactory.h"
+#include "Factory/DenoiserDrawableFactory.h"
+#include "Factory/CameraFactory.h"
+#include "Factory/AnimationFactory.h"
 #include "Factory/ChainFactory.h"
 
 using candela::environment::Environment;
@@ -35,6 +36,7 @@ using feanor::configuration::parser::JsonConfigurationParserFactory;
 using candela::scene::factory::SceneFactory;
 using candela::scene::factory::WavefrontSceneLoaderFactory;
 using candela::scene::factory::AssImpSceneLoaderFactory;
+using candela::scene::factory::SceneModifierFactory;
 using candela::renderer::factory::RendererFactory;
 using candela::renderer::factory::RasterDrawableFactory;
 using candela::renderer::factory::RasterRTShadowsDrawableFactory;
@@ -90,9 +92,16 @@ void Environment::bootstrap(const string& configPath)
     sceneManager.loadSection("Scenes", configuration);
     sceneLoaderManager.loadSection("SceneLoaders", configuration);
 
+    if (configuration->asObject().keyExists("SceneModifiers"))
+        sceneModifierManager.loadSection("SceneModifiers", configuration);
+
     // Invoke scene loaders - this will populate shapes and primitives
     for (auto sceneLoader : sceneLoaderManager.getInstanceManager().asList())
         sceneLoader->loadScene();
+
+    // Invoke scene modifiers - this will modify the scene materials/lights/etc
+    for (auto sceneModifier : sceneModifierManager.getInstanceManager().asList())
+        sceneModifier->modifyScene();
 
     // Load animations
     if (configuration->asObject().keyExists("Animations"))
@@ -126,6 +135,9 @@ void Environment::loadCoreFactories()
     // Register Scene Loaders
     sceneLoaderManager.getFactoryManager().registerItem<WavefrontSceneLoaderFactory>("WavefrontSceneLoader", *this);
     sceneLoaderManager.getFactoryManager().registerItem<AssImpSceneLoaderFactory>("AssImpSceneLoader", *this);
+
+    // Register Scene Modifiers
+    sceneModifierManager.getFactoryManager().registerItem<SceneModifierFactory>("SceneModifier", *this);
 
     // Renderers
     rendererManager.getFactoryManager().registerItem<RendererFactory>("Renderer", *this);

@@ -224,6 +224,7 @@
     <ClCompile Include="Factory\RasterDrawableFactory.cpp" />
     <ClCompile Include="Factory\RasterRTShadowsDrawableFactory.cpp" />
     <ClCompile Include="Factory\RendererFactory.cpp" />
+    <ClCompile Include="Factory\SceneModifierFactory.cpp" />
     <ClCompile Include="Factory\TextureFactory.cpp" />
     <ClCompile Include="Factory\UniformSamplerFactory.cpp" />
     <ClCompile Include="Factory\VectorFactory.cpp" />
@@ -270,6 +271,7 @@
     <ClCompile Include="Scene\AssImpSceneLoader.cpp" />
     <ClCompile Include="Scene\Scene.cpp" />
     <ClCompile Include="Factory\SceneFactory.cpp" />
+    <ClCompile Include="Scene\SceneModifier.cpp" />
     <ClCompile Include="Scene\Texture\DDSTexture.cpp" />
     <ClCompile Include="Scene\Texture\MemoryTexture.cpp" />
     <ClCompile Include="Scene\Texture\StbTexture.cpp" />
@@ -308,6 +310,7 @@
     <ClInclude Include="Factory\ChainFactory.h" />
     <ClInclude Include="Factory\DenoiserDrawableFactory.h" />
     <ClInclude Include="Factory\LightFactory.h" />
+    <ClInclude Include="Factory\SceneModifierFactory.h" />
     <ClInclude Include="Factory\TextureFactory.h" />
     <ClInclude Include="ImGui\ImGuiManager.h" />
     <ClInclude Include="ImGui\ImGuiRenderer.h" />
@@ -366,8 +369,10 @@
     <ClInclude Include="Sampler\UniformSampler.h" />
     <ClInclude Include="Scene\AssImpSceneLoader.h" />
     <ClInclude Include="Scene\ISceneLoader.h" />
+    <ClInclude Include="Scene\ISceneModifier.h" />
     <ClInclude Include="Scene\Scene.h" />
     <ClInclude Include="Factory\SceneFactory.h" />
+    <ClInclude Include="Scene\SceneModifier.h" />
     <ClInclude Include="Scene\Texture\DDSTexture.h" />
     <ClInclude Include="Scene\Texture\MemoryTexture.h" />
     <ClInclude Include="Scene\Texture\StbTexture.h" />

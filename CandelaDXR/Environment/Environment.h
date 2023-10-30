@@ -11,6 +11,7 @@
 #include "Renderer/IDrawable.h"
 #include "Scene/Scene.h"
 #include "Scene/ISceneLoader.h"
+#include "Scene/ISceneModifier.h"
 #include "Animation/IAnimation.h"
 #include "Chain/IChain.h"
 
@@ -20,6 +21,7 @@ namespace candela::environment
     using CameraManager = feanor::environment::ResourceManager<renderer::Camera>;
     using SceneManager = feanor::environment::ResourceManager<scene::Scene>;
     using SceneLoaderManager = feanor::environment::ResourceManager<scene::ISceneLoader>;
+    using SceneModifierManager = feanor::environment::ResourceManager<scene::ISceneModifier>;
     using RendererManager = feanor::environment::ResourceManager<renderer::IRenderer>;
     using DrawableManager = feanor::environment::ResourceManager<renderer::IDrawable>;
     using AnimationManager = feanor::environment::ResourceManager<animation::IAnimation>;
@@ -52,6 +54,7 @@ namespace candela::environment
         CameraManager cameraManager;
         SceneManager sceneManager;
         SceneLoaderManager sceneLoaderManager;
+        SceneModifierManager sceneModifierManager;
         DrawableManager drawableManager;
         AnimationManager animationManager;
         RendererManager rendererManager;
