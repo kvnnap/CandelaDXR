@@ -207,7 +207,7 @@ void AssImpSceneLoader::loadScene()
 		const auto camera = pScene->mCameras[i];
 
 		// Construct camera
-		auto nearWidth = 2.f * camera->mClipPlaneNear * std::tan(camera->mHorizontalFOV * 0.5f);
+		auto nearWidth = 2.f * camera->mClipPlaneNear * std::tan(camera->mHorizontalFOV);
 		auto nearHeight = nearWidth / camera->mAspect;
 		Camera myCamera = Camera(
 			DirectX::XMVectorSet(camera->mPosition.x, camera->mPosition.y, camera->mPosition.z, 1.f),
