@@ -56,6 +56,8 @@ void SceneModifier::modifyScene()
 				mat->TransmissiveFilter = p.Data;
 		}
 	}
+
+	scene->recalculateLightsAndFaceAttributes();
 }
 
 
