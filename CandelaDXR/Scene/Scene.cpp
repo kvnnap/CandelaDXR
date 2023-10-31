@@ -179,6 +179,9 @@ void Scene::recalculateLightsAndFaceAttributes()
 
 void Scene::addExternalLight(const LightNode& light)
 {
+	const auto lightType = light.Light.Type;
+	if (lightType == LT_UNDEFINED || lightType == LT_AMBIENT || lightType == LT_AREA || lightType > LT_AREA)
+		ThrowException("Adding unsupported Light Type: " + std::to_string(lightType));
 	externalLights.push_back(light);
 }
 
