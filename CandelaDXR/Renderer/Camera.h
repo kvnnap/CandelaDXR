@@ -11,6 +11,7 @@ namespace candela::renderer
 		: public ITransform
 	{
 	public:
+		Camera(const Camera& other) = default;
 		Camera(const DirectX::XMVECTOR& position, const DirectX::XMVECTOR& direction, float nearWidth, float nearHeight, float nearZ, float farZ, const DirectX::XMVECTOR& up = DirectX::XMVectorSet(0.f, 1.f, 0.f, 0.f));
 
 		// Methods

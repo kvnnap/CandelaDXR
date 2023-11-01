@@ -125,7 +125,8 @@ Renderer::~Renderer()
 
 void Renderer::init()
 {
-	camera->setAspectRatio(static_cast<float>(windowDimensions.x) / windowDimensions.y);
+	//camera->setAspectRatio(static_cast<float>(windowDimensions.x) / windowDimensions.y);
+	windowDimensions.x = static_cast<uint32_t>(windowDimensions.y * camera->getAspectRatio());
 	window = make_unique<Window>("CandelaDXR", windowDimensions.x, windowDimensions.y, &keyboard, &mouse, !animationSequencer.isEnabled());
 	using namespace std::placeholders;
 	window->addWndProcCallback(std::bind(&Renderer::wndCallback, this, _1, _2, _3, _4), 0);

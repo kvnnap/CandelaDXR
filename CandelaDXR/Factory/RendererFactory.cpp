@@ -4,6 +4,7 @@
 #include "Renderer/Renderer.h"
 #include "Renderer/IDrawable.h"
 #include "Animation/Animation.h"
+#include "Exception/Exception.h"
 #include "VectorFactory.h"
 
 #include <vector>
@@ -24,6 +25,7 @@ using candela::renderer::ITransform;
 using candela::animation::Animation;
 using candela::animation::AnimationSequencer;
 using candela::renderer::factory::RendererFactory;
+using candela::renderer::Camera;
 using candela::mathematics::factory::UVector2Factory;
 
 RendererFactory::RendererFactory(Environment& env)
@@ -39,7 +41,24 @@ unique_ptr<IRenderer> RendererFactory::create() const
 unique_ptr<IRenderer> RendererFactory::create(const ConfigurationNode& config) const
 {
 	auto scene = &env.getSceneManager().getInstanceManager().get(config["Scene"]);
-	auto camera = &env.getCameraManager().getInstanceManager().get(config["Camera"]);
+	
+	auto& cameraInstMg = env.getCameraManager().getInstanceManager();
+	auto cameraName = config["Camera"].read<string>();
+	Camera* camera{};
+	if (cameraInstMg.exists(cameraName))
+	{
+		camera = &cameraInstMg.get(cameraName);
+	}
+	else // Fallback to scene camera
+	{
+		const auto& v = scene->getCameras();
+		auto it = std::find_if(v.begin(), v.end(), [&cameraName](const candela::scene::Scene::CameraNode& obj) { return obj.Camera.getName() == cameraName; });
+		if (it == v.end())
+			ThrowException("Could not find camera: " + cameraName);
+		auto cameraId = cameraInstMg.registerItem(make_unique<Camera>(it->Camera));
+		camera = &cameraInstMg.get(cameraId);
+	}
+
 	// Gen animation mapping
 	vector<AnimationRecord> animationMapping;
 	if (config.asObject().keyExists("Animations"))
