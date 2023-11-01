@@ -21,3 +21,18 @@ void TransformComponents::setFromMatrix(const Matrix& matrix)
 	const auto& rot = QuaternionToRotationXYZ(Rotate);
 	Rotate = DirectX::XMLoadFloat3(&rot);
 }
+
+void TransformComponents::addComponents(const TransformComponents& other)
+{
+	Translate = DirectX::XMVectorAdd(Translate, other.Translate);
+	Scale = DirectX::XMVectorAdd(Scale, other.Scale);
+	Rotate = DirectX::XMVectorAdd(Rotate, other.Rotate);
+}
+
+void TransformComponents::lerp(const TransformComponents& target, float t)
+{
+	Translate = DirectX::XMVectorLerp(Translate, target.Translate, t);
+	Scale = DirectX::XMVectorLerp(Scale, target.Scale, t);
+	Rotate = DirectX::XMVectorLerp(Rotate, target.Rotate, t);
+}
+

@@ -27,11 +27,8 @@ Matrix Animation::animate(std::uint32_t timeMs, const DirectX::XMVECTOR& centreT
 	const MeshState& stateCurrent = meshStates[lower->MeshStateId];
 
 	auto t = static_cast<float>(timeMs - (current.CumulativeTimeMS - current.TimeMS)) / current.TimeMS;
-	MeshState computedMS = {
-		.Translate = DirectX::XMVectorLerp(statePrev.Translate, stateCurrent.Translate, t),
-		.Scale = DirectX::XMVectorLerp(statePrev.Scale, stateCurrent.Scale, t),
-		.Rotate = DirectX::XMVectorLerp(statePrev.Rotate, stateCurrent.Rotate, t)
-	};
+	MeshState computedMS{ statePrev };
+	computedMS.lerp(stateCurrent, t);
 
 	return computedMS.transform(centreTranslation, translationAbsolute);
 }

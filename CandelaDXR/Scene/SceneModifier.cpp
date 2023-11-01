@@ -3,7 +3,9 @@
 #include <unordered_map>
 
 using candela::scene::SceneModifier;
+using candela::mathematics::Vector;
 using candela::mathematics::Vector3;
+using candela::mathematics::TransformComponents;
 
 SceneModifier::SceneModifier(Scene* scene)
 	: scene(scene)
@@ -18,6 +20,11 @@ void SceneModifier::addProperty(const Property<float>& prop)
 void SceneModifier::addProperty(const Property<Vector3>& prop)
 {
 	vec3Properties.emplace_back(prop);
+}
+
+void SceneModifier::addProperty(const Property<TransformComponents>& prop)
+{
+	transComponentsProperties.emplace_back(prop);
 }
 
 void SceneModifier::modifyScene()
@@ -58,6 +65,35 @@ void SceneModifier::modifyScene()
 	}
 
 	scene->recalculateLightsAndFaceAttributes();
+
+	// Modify Transforms
+	for (const auto& p : transComponentsProperties)
+	{
+		if (p.Type == "SceneNode")
+		{
+			if (p.PropertyName == "Transform")
+			{
+				auto useCentrePosition = p.ExtraConfig.at("UseCentrePosition") == "True";
+				auto translationAbsolute = p.ExtraConfig.at("TranslationAbsolute") == "True";
+				auto relativeComponents = p.ExtraConfig.at("RelativeComponents") == "True";
+				auto node = scene->getSceneGraph().getNode(p.Name);
+
+				TransformComponents dataCopy = p.Data;
+
+				if (relativeComponents)
+				{
+					TransformComponents tc{};
+					tc.setFromMatrix(node->Transform);
+					dataCopy.addComponents(tc);
+				}
+
+				node->Transform = dataCopy.transform(
+					useCentrePosition ? node->getCentrePosition() : Vector{},
+					translationAbsolute
+				);
+			}
+		}
+	}
 }
 
 
