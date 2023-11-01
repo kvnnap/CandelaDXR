@@ -20,6 +20,8 @@ env:
   GITLAB_TOKEN: ${{ secrets.GITLAB_TOKEN }}
   FEANOR_CORE_ID: 11660029
   FEANOR_EXTERNAL_ID: 13987704
+  NRI_TAG: v1.100
+  NRD_TAG: v4.3.5
   
 jobs:
   build-feanor-core:
@@ -110,7 +112,7 @@ jobs:
     steps:
     - name: Get NVIDIA NRI details
       run: |
-        curl --location --output nri.sha "https://api.github.com/repos/NVIDIAGameWorks/NRI/commits/main"
+        curl --location --output nri.sha "https://api.github.com/repos/NVIDIAGameWorks/NRI/commits/${{env.NRI_TAG}}"
     
     - name: Read NVIDIA NRI Json from file
       id: read-nri-json
@@ -133,7 +135,7 @@ jobs:
     - name: Get NVIDIA NRI
       if: steps.cache-nri.outputs.cache-hit != 'true'
       run: |
-        git clone --branch v1.100 https://github.com/NVIDIAGameWorks/NRI
+        git clone --branch ${{env.NRI_TAG}} https://github.com/NVIDIAGameWorks/NRI
         cd NRI
         git checkout ${{ steps.nri-sha.outputs.sha }}
         git submodule update --init --recursive
@@ -149,7 +151,7 @@ jobs:
     steps:
     - name: Get NVIDIA NRD details
       run: |
-        curl --location --output nrd.sha "https://api.github.com/repos/NVIDIAGameWorks/RayTracingDenoiser/commits/master"
+        curl --location --output nrd.sha "https://api.github.com/repos/NVIDIAGameWorks/RayTracingDenoiser/commits/${{env.NRD_TAG}}"
 
     - name: Read NVIDIA NRD Json from file
       id: read-nrd-json
@@ -191,7 +193,7 @@ jobs:
     - name: Get NVIDIA NRD
       if: steps.cache-nrd.outputs.cache-hit != 'true'
       run: |
-        git clone --branch v4.3.5 https://github.com/NVIDIAGameWorks/RayTracingDenoiser
+        git clone --branch ${{env.NRD_TAG}} https://github.com/NVIDIAGameWorks/RayTracingDenoiser
         cd RayTracingDenoiser
         git checkout ${{ steps.nrd-sha.outputs.sha }}
         git submodule update --init --recursive
