@@ -5,16 +5,11 @@
 #include <cstdint>
 
 #include "IAnimation.h"
-#include "Mathematics/Types.h"
+#include "Mathematics/TransformComponents.h"
 
 namespace candela::animation
 {
-	struct MeshState
-	{
-		DirectX::XMVECTOR Translate;
-		DirectX::XMVECTOR Scale;
-		DirectX::XMVECTOR Rotate;
-	};
+	using MeshState = mathematics::TransformComponents;
 
 	struct Transition
 	{

@@ -15,14 +15,9 @@ using candela::mathematics::Vector3;
 using candela::mathematics::Vector;
 
 ImGuiSceneNode::ImGuiSceneNode(SceneNode &p_sceneNode, const RendererTime& rendererTime)
-	: sceneNode(p_sceneNode), rendererTime(rendererTime), position{}, rotation{}, scale{ 1.f, 1.f, 1.f }, changed(), useModelCentre()
+	: sceneNode(p_sceneNode), rendererTime(rendererTime), transformComponents{}, changed(), useModelCentre()
 {
-	Vector scale, rot, trans;
-	DirectX::XMMatrixDecompose(&scale, &rot, &trans, sceneNode.Transform);
-	DirectX::XMStoreFloat3(&this->scale, scale);
-	DirectX::XMStoreFloat3(&this->position, trans);
-	rotation = QuaternionToRotationXYZ(rot);
-	
+	transformComponents.setFromMatrix(sceneNode.Transform);
 	for (auto& sceneChild : p_sceneNode.Children)
 		children.emplace_back(*sceneChild, rendererTime);
 }
@@ -42,9 +37,9 @@ void ImGuiSceneNode::drawUi()
 		if (sceneNode.isLeaf())
 			ImGui::Text(sceneNode.NodeName.c_str());
 
-		changed = ImGui::DragFloat3("Position", &position.x, 0.01f);
-		changed |= ImGui::DragFloat3("Rotation", &rotation.x, 0.01f);
-		changed |= ImGui::DragFloat3("Scale", &scale.x, 0.01f, 0.f, 1000.f);
+		changed = ImGui::DragFloat3("Position", &transformComponents.Translate.m128_f32[0], 0.01f);
+		changed |= ImGui::DragFloat3("Rotation", &transformComponents.Rotate.m128_f32[0], 0.01f);
+		changed |= ImGui::DragFloat3("Scale", &transformComponents.Scale.m128_f32[0], 0.01f, 0.f, 1000.f);
 		changed |= ImGui::Checkbox("Rotate/scale around Model Centre", &useModelCentre);
 
 		for (auto& nodeChild : children)
@@ -57,17 +52,9 @@ void ImGuiSceneNode::drawUi()
 
 	if (changed || (useModelCentre && hasChanged()))
 	{
-		Vector3 localModelCentre{};
-		if (useModelCentre)
-			DirectX::XMStoreFloat3(&localModelCentre, sceneNode.getCentrePosition());
-		sceneNode.Transform =
-			  DirectX::XMMatrixTranslation(-localModelCentre.x, -localModelCentre.y, -localModelCentre.z)
-			* DirectX::XMMatrixScaling(scale.x, scale.y, scale.z)
-			* DirectX::XMMatrixRotationX(rotation.x)
-			* DirectX::XMMatrixRotationY(rotation.y)
-			* DirectX::XMMatrixRotationZ(rotation.z)
-			* DirectX::XMMatrixTranslation(localModelCentre.x + position.x, localModelCentre.y + position.y, localModelCentre.z + position.z)
-			;
+		sceneNode.Transform = useModelCentre ? 
+			transformComponents.transform(sceneNode.getCentrePosition()) : 
+			transformComponents.transform();
 	}
 }
 

@@ -3,6 +3,7 @@
 #include "Scene/Scene.h"
 #include "Renderer/RendererTime.h"
 #include "Mathematics/Types.h"
+#include "Mathematics/TransformComponents.h"
 
 namespace candela::renderer::imgui
 {
@@ -19,9 +20,7 @@ namespace candela::renderer::imgui
 		const RendererTime& rendererTime;
 		std::vector<ImGuiSceneNode> children;
 
-		mathematics::Vector3 position;
-		mathematics::Vector3 rotation;
-		mathematics::Vector3 scale;
+		mathematics::TransformComponents transformComponents;
 
 		bool changed;
 		bool useModelCentre;

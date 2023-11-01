@@ -27,19 +27,13 @@ Matrix Animation::animate(std::uint32_t timeMs, const DirectX::XMVECTOR& centreT
 	const MeshState& stateCurrent = meshStates[lower->MeshStateId];
 
 	auto t = static_cast<float>(timeMs - (current.CumulativeTimeMS - current.TimeMS)) / current.TimeMS;
-	auto translate = DirectX::XMVectorLerp(statePrev.Translate, stateCurrent.Translate, t);
-	auto rotate = DirectX::XMVectorLerp(statePrev.Rotate, stateCurrent.Rotate, t);
-	auto scale = DirectX::XMVectorLerp(statePrev.Scale, stateCurrent.Scale, t);
+	MeshState computedMS = {
+		.Translate = DirectX::XMVectorLerp(statePrev.Translate, stateCurrent.Translate, t),
+		.Scale = DirectX::XMVectorLerp(statePrev.Scale, stateCurrent.Scale, t),
+		.Rotate = DirectX::XMVectorLerp(statePrev.Rotate, stateCurrent.Rotate, t)
+	};
 
-	if (!translationAbsolute)
-		translate = DirectX::XMVectorAdd(centreTranslation, translate);
-
-	return DirectX::XMMatrixTranslationFromVector(DirectX::XMVectorNegate(centreTranslation))
-		* DirectX::XMMatrixScalingFromVector(scale)
-		* DirectX::XMMatrixRotationX(rotate.m128_f32[0])
-		* DirectX::XMMatrixRotationY(rotate.m128_f32[1])
-		* DirectX::XMMatrixRotationZ(rotate.m128_f32[2])
-		* DirectX::XMMatrixTranslationFromVector(translate);
+	return computedMS.transform(centreTranslation, translationAbsolute);
 }
 
 uint32_t Animation::getTotalTimeMs() const

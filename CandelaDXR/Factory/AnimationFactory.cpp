@@ -1,7 +1,7 @@
 #include "AnimationFactory.h"
 #include "Animation/Animation.h"
 #include "Environment/Environment.h"
-#include "VectorFactory.h"
+#include "MathematicsFactory.h"
 
 #include <unordered_map>
 
@@ -17,7 +17,7 @@ using candela::animation::MeshState;
 using candela::animation::Transition;
 using candela::animation::factory::AnimationFactory;
 
-using candela::mathematics::factory::Vector3Factory;
+using candela::mathematics::factory::TransformComponentsFactory;
 
 unique_ptr<IAnimation> AnimationFactory::create() const
 {
@@ -39,15 +39,7 @@ unique_ptr<IAnimation> AnimationFactory::create(const ConfigurationNode& config)
         const auto& stateObject = state.asObject();
         if (stateObject.keyExists("Name"))
             stateMap[stateObject["Name"].read<std::string>()] = i;
-        if (stateObject.keyExists("Translation"))
-            meshState.Translate = DirectX::XMLoadFloat3(&*Vector3Factory().create(stateObject["Translation"]));
-        if (stateObject.keyExists("Scale"))
-            meshState.Scale = DirectX::XMLoadFloat3(&*Vector3Factory().create(stateObject["Scale"]));
-        else 
-            meshState.Scale = DirectX::XMVectorSet(1.f, 1.f, 1.f, 0.f);
-        if (stateObject.keyExists("Rotation"))
-            meshState.Rotate = DirectX::XMLoadFloat3(&*Vector3Factory().create(stateObject["Rotation"]));
-
+        meshState = *TransformComponentsFactory().create(state);
         animation->addMeshState(meshState);
         ++i;
     }

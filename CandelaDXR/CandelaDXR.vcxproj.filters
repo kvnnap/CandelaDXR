@@ -258,6 +258,12 @@
     <ClCompile Include="Factory\SceneModifierFactory.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Factory\MathematicsFactory.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Mathematics\TransformComponents.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Exception\GeneralException.h">
@@ -558,6 +564,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Factory\SceneModifierFactory.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Factory\MathematicsFactory.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Mathematics\TransformComponents.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

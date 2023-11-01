@@ -220,6 +220,7 @@
     <ClCompile Include="Factory\DenoiserDrawableFactory.cpp" />
     <ClCompile Include="Factory\LightFactory.cpp" />
     <ClCompile Include="Factory\LightTracingDrawableFactory.cpp" />
+    <ClCompile Include="Factory\MathematicsFactory.cpp" />
     <ClCompile Include="Factory\PathTracingDrawableFactory.cpp" />
     <ClCompile Include="Factory\RasterDrawableFactory.cpp" />
     <ClCompile Include="Factory\RasterRTShadowsDrawableFactory.cpp" />
@@ -244,6 +245,7 @@
     <ClCompile Include="Mathematics\AABB.cpp" />
     <ClCompile Include="Mathematics\OrthonormalBasis.cpp" />
     <ClCompile Include="Mathematics\Plane.cpp" />
+    <ClCompile Include="Mathematics\TransformComponents.cpp" />
     <ClCompile Include="Mathematics\Utils.cpp" />
     <ClCompile Include="Renderer\Camera.cpp" />
     <ClCompile Include="Renderer\DenoiserShading.cpp">
@@ -310,6 +312,7 @@
     <ClInclude Include="Factory\ChainFactory.h" />
     <ClInclude Include="Factory\DenoiserDrawableFactory.h" />
     <ClInclude Include="Factory\LightFactory.h" />
+    <ClInclude Include="Factory\MathematicsFactory.h" />
     <ClInclude Include="Factory\SceneModifierFactory.h" />
     <ClInclude Include="Factory\TextureFactory.h" />
     <ClInclude Include="ImGui\ImGuiManager.h" />
@@ -318,6 +321,7 @@
     <ClInclude Include="Mathematics\AABB.h" />
     <ClInclude Include="Mathematics\OrthonormalBasis.h" />
     <ClInclude Include="Mathematics\Plane.h" />
+    <ClInclude Include="Mathematics\TransformComponents.h" />
     <ClInclude Include="Mathematics\Utils.h" />
     <ClInclude Include="Renderer\ChangeEvent.h" />
     <ClInclude Include="Renderer\DenoiserShading.h" />
