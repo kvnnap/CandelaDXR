@@ -114,5 +114,25 @@ unique_ptr<IChain> FileOutputChainFactory::create(const ConfigurationNode& confi
 			ThrowException("Wrong FileType. Must be PPM/PNG/RAW/EXR");
 	}
 
+	if (configObj.keyExists("CompressionType"))
+	{
+		auto cTypeStr = configObj["CompressionType"].read<std::string>();
+		std::transform(cTypeStr.begin(), cTypeStr.end(), cTypeStr.begin(),
+			[](unsigned char c) { return std::tolower(c); });
+		if (cTypeStr == "none")
+			fileOutput->setCompressionType(FileOutput::NONE);
+		else if (cTypeStr == "rle")
+			fileOutput->setCompressionType(FileOutput::RLE);
+		else if (cTypeStr == "zips")
+			fileOutput->setCompressionType(FileOutput::ZIPS);
+		else if (cTypeStr == "zip")
+			fileOutput->setCompressionType(FileOutput::ZIP);
+		else if (cTypeStr == "piz")
+			fileOutput->setCompressionType(FileOutput::PIZ);
+		else
+			ThrowException("Wrong Compression Type. Must be NONE/RLE/ZIPS/ZIP/PIZ");
+	}
+		
+
 	return fileOutput;
 }

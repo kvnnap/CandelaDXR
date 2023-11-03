@@ -22,9 +22,8 @@ using std::array;
 using std::vector;
 
 FileOutput::FileOutput()
-    : filePath("output"), sequenceNumber(), fileType()
+    : filePath("output"), sequenceNumber(), compressionType(), fileType()
 {
-
 }
 
 void FileOutput::setFilePath(const std::string& p_filePath)
@@ -146,6 +145,16 @@ void FileOutput::process(RadianceBuffer& radianceBuffer)
 
         array<int, numChannels> pixelTypes{};
         array<int, numChannels> requestedPixelTypes{};
+
+        switch (compressionType)
+        {
+            case NONE : header.compression_type = TINYEXR_COMPRESSIONTYPE_NONE; break;
+            case RLE  : header.compression_type = TINYEXR_COMPRESSIONTYPE_RLE;  break;
+            case ZIPS : header.compression_type = TINYEXR_COMPRESSIONTYPE_ZIPS; break;
+            case ZIP  : header.compression_type = TINYEXR_COMPRESSIONTYPE_ZIP;  break;
+            case PIZ  : header.compression_type = TINYEXR_COMPRESSIONTYPE_PIZ;  break;
+        }
+
         header.pixel_types = pixelTypes.data();
         header.requested_pixel_types = requestedPixelTypes.data();
         for (int i = 0; i < header.num_channels; i++) 
@@ -164,4 +173,9 @@ void FileOutput::process(RadianceBuffer& radianceBuffer)
         break;
     }
 
+}
+
+void FileOutput::setCompressionType(CompressionType cType)
+{
+    compressionType = cType;
 }
