@@ -15,7 +15,7 @@ using candela::mathematics::Vector3;
 using candela::mathematics::Vector;
 
 ImGuiSceneNode::ImGuiSceneNode(SceneNode &p_sceneNode, const RendererTime& rendererTime)
-	: sceneNode(p_sceneNode), rendererTime(rendererTime), transformComponents{}, changed(), useModelCentre()
+	: sceneNode(p_sceneNode), rendererTime(rendererTime), transformComponents{}, changed(), useModelCentre(), translationAbsolute()
 {
 	transformComponents.setFromMatrix(sceneNode.Transform);
 	for (auto& sceneChild : p_sceneNode.Children)
@@ -41,6 +41,8 @@ void ImGuiSceneNode::drawUi()
 		changed |= ImGui::DragFloat3("Rotation", &transformComponents.Rotate.m128_f32[0], 0.01f);
 		changed |= ImGui::DragFloat3("Scale", &transformComponents.Scale.m128_f32[0], 0.01f, 0.f, 1000.f);
 		changed |= ImGui::Checkbox("Rotate/scale around Model Centre", &useModelCentre);
+		if (useModelCentre)
+			changed |= ImGui::Checkbox("Translation Absolute", &translationAbsolute);
 
 		for (auto& nodeChild : children)
 			nodeChild.drawUi();
@@ -52,9 +54,7 @@ void ImGuiSceneNode::drawUi()
 
 	if (changed || (useModelCentre && hasChanged()))
 	{
-		sceneNode.Transform = useModelCentre ? 
-			transformComponents.transform(sceneNode.getCentrePosition()) : 
-			transformComponents.transform();
+		sceneNode.Transform = transformComponents.transform(useModelCentre ? sceneNode.getCentrePosition() : Vector{}, translationAbsolute);
 	}
 }
 

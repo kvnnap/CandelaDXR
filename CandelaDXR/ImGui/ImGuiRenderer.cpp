@@ -4,11 +4,11 @@
 
 #include "Renderer/Renderer.h"
 
-
 using candela::renderer::imgui::ImGuiRenderer;
+using std::to_string;
 
 ImGuiRenderer::ImGuiRenderer(Renderer& renderer)
-	: renderer(renderer), changed(), animating(), shaderAccumulation(), timeMs()
+	: renderer(renderer), changed(), animating(), shaderAccumulation(), showLights(), timeMs()
 {
 	animating = renderer.getRendererTime().isRunning();
 }
@@ -70,6 +70,19 @@ void ImGuiRenderer::drawUi()
 			renderer.setCameraCopy(camCopy);
 		}
 	}
+
+	const auto& extLights = renderer.getScene().getExternalLights();
+	ImGui::Text(("Scene Lights (External): " + to_string(extLights.size())).c_str());
+	if (!extLights.empty() && ImGui::Checkbox("Show Lights", &showLights))
+	{
+		for (const auto& lightNode : renderer.getScene().getExternalLights())
+		{
+			ImGui::Text(("Name" + lightNode.Node->NodeName).c_str());
+			ImGui::Text(("Type" + to_string(lightNode.Light.Type)).c_str());
+			ImGui::Text("Value: {%f, %f, %f}", lightNode.Light.Diffuse.x, lightNode.Light.Diffuse.y, lightNode.Light.Diffuse.z);
+		}
+	}
+	
 
 	ImGui::Text("Profiling");
 	for (const auto& profilingItem : renderer.getProfilingData())
