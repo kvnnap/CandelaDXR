@@ -73,13 +73,17 @@ void ImGuiRenderer::drawUi()
 
 	const auto& extLights = renderer.getScene().getExternalLights();
 	ImGui::Text(("Scene Lights (External): " + to_string(extLights.size())).c_str());
-	if (!extLights.empty() && ImGui::Checkbox("Show Lights", &showLights))
+	if (!extLights.empty())
 	{
-		for (const auto& lightNode : renderer.getScene().getExternalLights())
+		ImGui::Checkbox("Show Lights", &showLights);
+		if (showLights)
 		{
-			ImGui::Text(("Name" + lightNode.Node->NodeName).c_str());
-			ImGui::Text(("Type" + to_string(lightNode.Light.Type)).c_str());
-			ImGui::Text("Value: {%f, %f, %f}", lightNode.Light.Diffuse.x, lightNode.Light.Diffuse.y, lightNode.Light.Diffuse.z);
+			for (const auto& lightNode : renderer.getScene().getExternalLights())
+			{
+				ImGui::Text(("Name" + lightNode.Node->NodeName).c_str());
+				ImGui::Text(("Type" + to_string(lightNode.Light.Type)).c_str());
+				ImGui::Text("Value: {%f, %f, %f}", lightNode.Light.Diffuse.x, lightNode.Light.Diffuse.y, lightNode.Light.Diffuse.z);
+			}
 		}
 	}
 	
