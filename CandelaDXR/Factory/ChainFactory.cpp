@@ -7,7 +7,7 @@
 #include "Chain/ToneMapping.h"
 #include "Exception/Exception.h"
 
-#include <algorithm>
+#include "Util/StringUtil.h"
 
 using std::unique_ptr;
 using std::make_unique;
@@ -27,6 +27,7 @@ using candela::mathematics::factory::Vector3Factory;
 using candela::mathematics::factory::Vector2Factory;
 using candela::mathematics::Vector;
 using candela::mathematics::Vector3;
+using candela::util::ToLower;
 
 unique_ptr<CFList> ChainFactory::create() const
 {
@@ -99,9 +100,7 @@ unique_ptr<IChain> FileOutputChainFactory::create(const ConfigurationNode& confi
 
 	if (configObj.keyExists("FileType"))
 	{
-		auto fileTypeStr = configObj["FileType"].read<std::string>();
-		std::transform(fileTypeStr.begin(), fileTypeStr.end(), fileTypeStr.begin(),
-			[](unsigned char c) { return std::tolower(c); });
+		auto fileTypeStr = ToLower(configObj["FileType"].read<std::string>());
 		if (fileTypeStr == "ppm")
 			fileOutput->setFileType(FileOutput::PPM);
 		else if (fileTypeStr == "png")
@@ -116,9 +115,7 @@ unique_ptr<IChain> FileOutputChainFactory::create(const ConfigurationNode& confi
 
 	if (configObj.keyExists("CompressionType"))
 	{
-		auto cTypeStr = configObj["CompressionType"].read<std::string>();
-		std::transform(cTypeStr.begin(), cTypeStr.end(), cTypeStr.begin(),
-			[](unsigned char c) { return std::tolower(c); });
+		auto cTypeStr = ToLower(configObj["CompressionType"].read<std::string>());
 		if (cTypeStr == "none")
 			fileOutput->setCompressionType(FileOutput::NONE);
 		else if (cTypeStr == "rle")

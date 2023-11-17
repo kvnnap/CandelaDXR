@@ -2,6 +2,7 @@
 
 #include "StringUtil.h"
 
+#include <algorithm>
 #include <codecvt>
 
 using std::string;
@@ -17,4 +18,11 @@ string candela::util::WStringToString(const wstring& str)
 wstring candela::util::StringToWString(const string& str)
 {
 	return wstring_convert<codecvt_utf8<wchar_t>, wchar_t>().from_bytes(str).c_str();
+}
+
+string candela::util::ToLower(const string& str)
+{
+	string ret (str.size(), '\0');
+	std::transform(str.begin(), str.end(), ret.begin(), [](unsigned char c) { return std::tolower(c); });
+	return ret;
 }
