@@ -23,6 +23,8 @@ namespace candela::scene
 		void setFilePath(const std::string& filePath);
 		void setAlwaysComputeNormals(bool value);
 		void setLoadLights(bool value);
+
+		std::string getFileFormat() const;
 	private:
 		Scene* scene{};
 		std::string filePath;

@@ -12,6 +12,7 @@
 
 #include "Animation/KeyBasedAnimation.h"
 #include "Factory/TextureFactory.h"
+#include "Util/StringUtil.h"
 
 using std::filesystem::path;
 using std::array;
@@ -25,6 +26,7 @@ using candela::scene::factory::TextureFactory;
 using candela::mathematics::Vector2;
 using candela::mathematics::Vector3;
 using candela::renderer::Camera;
+using candela::util::ToLower;
 
 static path getConcatPath(path base, path other)
 {
@@ -201,13 +203,18 @@ void AssImpSceneLoader::loadScene()
 
 	// NOTE - Lights and cameras are not instanced in Assimp
 	// Add cameras
+	// HACK - using flag to determine correct fov... Remove if Assimp solves this
+	// https://github.com/assimp/assimp/issues/4435
+	// https://github.com/assimp/assimp/issues/2256
+	const auto fileFormat = getFileFormat();
+	bool isGLTF = fileFormat == ".gltf" || fileFormat == ".glb";
 	offsets.camera = scene->getCameras().size();
 	for (unsigned int i = 0; i < pScene->mNumCameras; ++i)
 	{
 		const auto camera = pScene->mCameras[i];
 
 		// Construct camera
-		auto nearWidth = 2.f * camera->mClipPlaneNear * std::tan(camera->mHorizontalFOV);
+		auto nearWidth = 2.f * camera->mClipPlaneNear * std::tan(camera->mHorizontalFOV * (isGLTF ? 0.5f : 1.f));
 		auto nearHeight = nearWidth / camera->mAspect;
 		Camera myCamera = Camera(
 			DirectX::XMVectorSet(camera->mPosition.x, camera->mPosition.y, camera->mPosition.z, 1.f),
@@ -343,5 +350,10 @@ void AssImpSceneLoader::setAlwaysComputeNormals(bool value)
 void AssImpSceneLoader::setLoadLights(bool value)
 {
 	loadLights = value;
+}
+
+std::string AssImpSceneLoader::getFileFormat() const
+{
+	return ToLower(path(filePath).extension().string());
 }
 
