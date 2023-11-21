@@ -84,7 +84,8 @@ void AssImpSceneLoader::loadScene()
 		aiProcess_Triangulate |
 		aiProcess_JoinIdenticalVertices |
 		aiProcess_SortByPType |
-		aiProcess_GenNormals
+		aiProcess_GenNormals |
+		(alwaysComputeNormals ? aiProcess_ForceGenNormals : 0)
 	);
 
 	if (!pScene || !pScene->mRootNode || pScene->mFlags & AI_SCENE_FLAGS_INCOMPLETE)
