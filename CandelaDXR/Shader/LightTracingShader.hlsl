@@ -115,13 +115,24 @@ void rayGen()
 		const uint vertIndex = rayPayload.faceIndex * 3;
 
 		// Get face unit normal
-		const float3 unitFaceNormal = getUnitNormal(rayPayload.bary, vertIndex, rayPayload.instanceIndex);
+        float3 triVerts[3];
+        getVertexWorldCoordinates(triVerts, vertIndex, rayPayload.instanceIndex);
+        const float3 flatFaceNormal = getUnitNormal(triVerts);
+        const float flatWiDot = dot(ray.Direction, flatFaceNormal);
+        if (flatWiDot == 0.f)
+            break;
+		
+		// Get interpolated unit normal
+        const float3 unitFaceNormal = getUnitNormal(rayPayload.bary, vertIndex, rayPayload.instanceIndex);
 		const float wiDot = dot(ray.Direction, unitFaceNormal);
+		const bool isInternal = wiDot > 0.f;
+		
+		// Account for interpolated normals - The light tracing algorithm assumes flat normals
+		// as it works with the geometry of the mesh
+        localContribution *= wiDot / flatWiDot;
 
 		// Get appropriate BRDF - assuming Diffuse (Will handle Reflective and Transmissive later)
 		const Material mat = materials[fAttr.MaterialId];
-
-		const bool isInternal = wiDot > 0.f;
 
 		// Setup Fresnel coeff
 		float n1, n2, coeff;
@@ -154,7 +165,8 @@ void rayGen()
 			shadowRay.Direction = cBuffer.position - intersectionPoint;
 			float invShadowDistance = 1.f / length(shadowRay.Direction);
 			float3 unitShadowRayDirection = shadowRay.Direction * invShadowDistance;
-			float surfaceDot = dot(unitShadowRayDirection, unitFaceNormal);
+			// This needs to use the geometrical (flat) normal
+            float surfaceDot = dot(unitShadowRayDirection, flatFaceNormal);
 			float cameraDot = -dot(unitShadowRayDirection, cBuffer.w);
 
 			if (surfaceDot > 0.f && cameraDot > 0.f)

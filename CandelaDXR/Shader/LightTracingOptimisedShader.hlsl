@@ -198,11 +198,23 @@ void rayGen()
 		performChecks = false;
 
 		const uint vertIndex = rayPayload.faceIndex * 3;
-
+		
 		// Get face unit normal
+        float3 triVerts[3];
+        getVertexWorldCoordinates(triVerts, vertIndex, rayPayload.instanceIndex);
+        const float3 flatFaceNormal = getUnitNormal(triVerts);
+        const float flatWiDot = dot(ray.Direction, flatFaceNormal);
+        if (flatWiDot == 0.f)
+            break;
+
+		// Get interpolated unit normal
 		const float3 unitFaceNormal = getUnitNormal(rayPayload.bary, vertIndex, rayPayload.instanceIndex);
 		const float wiDot = dot(ray.Direction, unitFaceNormal);
 		const bool isInternal = wiDot > 0.f;
+		
+		// Account for interpolated normals - The light tracing algorithm assumes flat normals
+		// as it works with the geometry of the mesh
+        localContribution *= wiDot / flatWiDot;
 		
 		float3 intersectionPoint = ray.Origin + rayPayload.t * ray.Direction;
 
@@ -237,7 +249,8 @@ void rayGen()
 			shadowRay.Direction = cBuffer.position - intersectionPoint;
 			float invShadowDistance = 1.f / length(shadowRay.Direction);
 			float3 unitShadowRayDirection = shadowRay.Direction * invShadowDistance;
-			float surfaceDot = dot(unitShadowRayDirection, unitFaceNormal);
+			// This needs to use the geometrical (flat) normal
+			float surfaceDot = dot(unitShadowRayDirection, flatFaceNormal);
 			float cameraDot = -dot(unitShadowRayDirection, cBuffer.w);
 
 			if (surfaceDot > 0.f && cameraDot > 0.f)
