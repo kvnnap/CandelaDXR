@@ -277,7 +277,7 @@ void rayGen()
 		
 		// Account for interpolated normals - The light tracing algorithm assumes flat normals
 		// as it works with the geometry of the mesh
-        localContribution *= wiDot / flatWiDot;
+        localContribution *= abs(wiDot / flatWiDot);
 
 		// Get appropriate BRDF - assuming Diffuse (Will handle Reflective and Transmissive later)
 		const Material mat = materials[fAttr.MaterialId];
@@ -314,7 +314,8 @@ void rayGen()
 			float invShadowDistance = 1.f / length(shadowRay.Direction);
 			float3 unitShadowRayDirection = shadowRay.Direction * invShadowDistance;
             // This needs to use the geometrical (flat) normal
-			float surfaceDot = dot(unitShadowRayDirection, flatFaceNormal);
+			float surfaceDot = dot(unitShadowRayDirection, unitFaceNormal);
+            float flatSurfaceDot = abs(dot(unitShadowRayDirection, flatFaceNormal));
 			float cameraDot = -dot(unitShadowRayDirection, cBuffer.w);
 
 			if (surfaceDot > 0.f && cameraDot > 0.f)
@@ -340,7 +341,7 @@ void rayGen()
 						float3 brdfDiff = mat.Diffuse * OneOverPI;
 						if (mat.DiffuseTextureId >= 0)
 							brdfDiff *= gTextures[mat.DiffuseTextureId].SampleLevel(gSampler, getTextureLocation(rayPayload.bary, vertIndex), 0);
-						float3 contrib = (localContribution * brdfDiff) * ((1.f - fr) * mat.Dissolve * surfaceDot * invShadowDistance * invShadowDistance * cameraDot);
+                        float3 contrib = (localContribution * brdfDiff) * ((1.f - fr) * mat.Dissolve * flatSurfaceDot * invShadowDistance * invShadowDistance * cameraDot);
 						if (!cBuffer.seperateCaustics || (prevStateFlags & (Reflect | Refract)) == 0)
 							AddContribution(pixLaunchIndex, contrib, rayPayload.t);
 						else
