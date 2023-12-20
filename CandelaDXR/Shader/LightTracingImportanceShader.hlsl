@@ -236,9 +236,6 @@ void rayGen()
 		}
 	}
 
-	// Number of entries in transmissive materials
-	int numEntries = 0;
-
 	// Traverse scene to another surface
 	RayPayload rayPayload;
 	while (TraceRay(
@@ -300,11 +297,7 @@ void rayGen()
 
 		// Beer's law
 		if (isInternal)
-		{
-			if (numEntries <= 0)
-				return;
 			localContribution *= exp((-rayPayload.t) * mat.TransmissiveFilter);
-		}
 		
 		if ((prevStateFlags & cBuffer.pathFilter) != 0 && i >= cBuffer.minBounces)
 		{
@@ -388,7 +381,6 @@ void rayGen()
 			if (any(dir))
 			{
 				ray.Direction = dir;
-				numEntries += isInternal ? -1 : 1;
 				prevStateFlags = Refract;
 			}
 			else

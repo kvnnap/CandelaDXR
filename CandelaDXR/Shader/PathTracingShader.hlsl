@@ -132,9 +132,6 @@ void rayGen()
 	ray.Origin = cBuffer.position;
 	ray.Direction = normalize(pointOnObjectPlane - ray.Origin);
 
-	// Number of entries in transmissive materials
-	int numEntries = 0;
-
 	// Path segment index
 	uint i = 1;
 
@@ -207,7 +204,6 @@ void rayGen()
 				ray.Direction = dir;
 				fr = fresnel(-dot(unitFaceNormal, ray.Direction), n2, n1);
 				localCoefficient *= (1.f - fr) * (1.f - mat.Dissolve);
-				++numEntries;
 				prevInteraction = Refract;
 			}
 			else break; // Should never happen
@@ -218,8 +214,6 @@ void rayGen()
 		// Beer's law
 		if (isInternal)
 		{
-			if (numEntries <= 0)
-				break;
 			localCoefficient *= exp((-rayPayload.t) * mat.TransmissiveFilter);
 
 			// Fresnel
@@ -444,7 +438,6 @@ void rayGen()
 				float3 dir = refract(ray.Direction, coeff * unitFaceNormal, n1 / n2);
 				if (any(dir))
 				{
-					numEntries += 1;
 					prevInteraction = Refract;
 					fr = fresnel(-coeff * dot(unitFaceNormal, dir), n2, n1);
 					localCoefficient *= brdfDiff * dot(unitFaceNormal, ray.Direction) * (1.f - fr) / (pdf * (1.f - prDiffRef));
@@ -462,7 +455,6 @@ void rayGen()
 			if (any(dir))
 			{
 				ray.Direction = dir;
-				numEntries += isInternal ? -1 : 1;
 				prevInteraction = Refract;
 				fr = fresnel(-coeff * dot(unitFaceNormal, ray.Direction), n2, n1);
 				localCoefficient *= (1.f - fr) * (1.f - mat.Dissolve) / (1.f - dissolve);
