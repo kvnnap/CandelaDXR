@@ -233,7 +233,11 @@ void rayGen()
 
 		// Beer's law
 		if (isInternal)
-			localContribution *= exp((-rayPayload.t) * mat.TransmissiveFilter);
+        {
+            if (mat.Dissolve >= 1.f && mat.RefractiveIndex <= 1.f)
+                break;
+            localContribution *= exp((-rayPayload.t) * mat.TransmissiveFilter);
+        }
 		
 		if ((prevStateFlags & cBuffer.pathFilter) != 0 && i >= cBuffer.minBounces)
 		{

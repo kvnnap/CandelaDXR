@@ -214,6 +214,8 @@ void rayGen()
 		// Beer's law
 		if (isInternal)
 		{
+            if (mat.Dissolve >= 1.f && mat.RefractiveIndex <= 1.f)
+                break;
 			localCoefficient *= exp((-rayPayload.t) * mat.TransmissiveFilter);
 
 			// Fresnel
