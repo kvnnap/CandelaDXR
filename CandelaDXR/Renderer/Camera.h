@@ -64,6 +64,7 @@ namespace candela::renderer
 		DirectX::XMVECTOR up;
 		DirectX::XMVECTOR origPosition;
 		DirectX::XMVECTOR origDirection;
+		DirectX::XMVECTOR origUp;
 
 		float nearWidth;
 		float nearHeight;

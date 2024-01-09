@@ -24,6 +24,7 @@ Camera::Camera(const XMVECTOR& position, const XMVECTOR& direction, float nearWi
 	lookTo(direction, up);
 	origPosition = position;
 	origDirection = this->direction;
+	origUp = this->up;
 }
 
 void Camera::setPerspOrthMatrix()
@@ -203,6 +204,7 @@ void Camera::transform(const mathematics::Matrix& trans)
 	position = DirectX::XMVector3Transform(origPosition, trans);
 	auto dirTrans = DirectX::XMMatrixTranspose(DirectX::XMMatrixInverse(nullptr, trans));
 	direction = XMVector3Normalize(DirectX::XMVector4Transform(origDirection, dirTrans));
+	up = XMVector3Normalize(DirectX::XMVector4Transform(origUp, dirTrans));
 	recalculateViewMatrix();
 }
 
