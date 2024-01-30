@@ -110,6 +110,8 @@ namespace candela::renderer
 		void resize();
 		void refreshMaterialResources();
 		void bindComputePipeline();
+		bool isRecording() const;
+		void recordingChange();
 		directx::DXResource& getTempResource();
 		std::vector<DirectX::XMFLOAT3X4> getMatrices();
 		std::vector<DirectX::XMFLOAT3X3> getNormalMatrices();

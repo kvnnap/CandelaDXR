@@ -129,7 +129,7 @@ void Renderer::init()
 {
 	//camera->setAspectRatio(static_cast<float>(windowDimensions.x) / windowDimensions.y);
 	windowDimensions.x = static_cast<uint32_t>(windowDimensions.y * camera->getAspectRatio());
-	window = make_unique<Window>("CandelaDXR", windowDimensions.x, windowDimensions.y, &keyboard, &mouse, !animationSequencer.isEnabled());
+	window = make_unique<Window>("CandelaDXR", windowDimensions.x, windowDimensions.y, &keyboard, &mouse, !isRecording());
 	using namespace std::placeholders;
 	window->addWndProcCallback(std::bind(&Renderer::wndCallback, this, _1, _2, _3, _4), 0);
 
@@ -259,9 +259,9 @@ void Renderer::init()
 	// Clear temporary buffers
 	rendererResources.resourceManager->clearTemporaryBuffers(currentBackBufferIndex);
 
-	// Anim
-	if (animationSequencer.isEnabled())
-		dxgiFactory->MakeWindowAssociation(window->getHandle(), DXGI_MWA_NO_ALT_ENTER);
+	// Setup stuff if in recording mode
+	if (isRecording())
+		recordingChange();
 }
 
 void Renderer::renderFrame()
@@ -273,15 +273,19 @@ void Renderer::renderFrame()
 	// Initially points to 32-bit RTV
 	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvDescriptorHandle(pRTVDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), NumBackBuffers, rtvDescriptorSize);
 	FLOAT color[] = { 0.f, 0.f, 0.f, 0.0f };
-
-	// ImGui
-	if (keyboard.hasKeyChanged('Q') && keyboard.isKeyPressed('Q'))
-		imguiManager.setEnabled(!imguiManager.isEnabled());
 	
-	if (animationSequencer.isEnabled())
+	const auto recordingInitialState = isRecording();
+	bool recordingChanged = false;
+	if (recordingInitialState)
+	{
 		imguiManager.setEnabled(false);
+	}
 	else
+	{
+		if (keyboard.hasKeyChanged('Q') && keyboard.isKeyPressed('Q'))
+			imguiManager.setEnabled(!imguiManager.isEnabled());
 		updateCamera();
+	}
 	
 	// Read previous "resolve"d query
 	auto& tsQuery = timeStampQuery[currentBackBufferIndex];
@@ -334,10 +338,7 @@ void Renderer::renderFrame()
 		if (animationSequencer.isEnabled())
 		{
 			animationSequencer.tick();
-			if (exitOnAnimationCompletion && animationSequencer.isCompleted())
-				PostQuitMessage(0);
-			if (!animationSequencer.isEnabled())
-				dxgiFactory->MakeWindowAssociation(window->getHandle(), 0);
+			recordingChanged |= animationSequencer.isCompleted();
 		}
 	}
 
@@ -417,8 +418,13 @@ void Renderer::renderFrame()
 
 	// Check which frame to save, if any
 	const bool needToGrab = std::binary_search(frameNumbersForGrab.begin(), frameNumbersForGrab.end(), fpsCounter.getFrameCount() + 1);
+	if (needToGrab && frameNumbersForGrab.back() == fpsCounter.getFrameCount() + 1)
+	{
+		frameNumbersForGrab.clear();
+		recordingChanged = true;
+	}
 
-	const auto grabRadiance = chain != nullptr && !buffersToGrab.empty() && (keyboard.hasKeyChanged('P') && keyboard.isKeyPressed('P') || (animationSequencer.isEnabled() && animationSequencer.isNewFrame()) || needToGrab);
+	const auto grabRadiance = chain != nullptr && !buffersToGrab.empty() && (!recordingInitialState && keyboard.hasKeyChanged('P') && keyboard.isKeyPressed('P') || (animationSequencer.isEnabled() && animationSequencer.isNewFrame()) || needToGrab);
 	const auto& dim = windowDimensions;
 
 	tsQuery.addTimeStampQuery(pCurrentCommandList, "Begin");
@@ -607,6 +613,10 @@ void Renderer::renderFrame()
 	// Reset camera
 	camera->resetChanged();
 	++rendererResources.frameNumber;
+
+	// Process Recording change
+	if (recordingChanged)
+		recordingChange();
 
 	// Run post-frame actions
 	while (!postFrameActions.empty())
@@ -998,6 +1008,26 @@ void Renderer::bindComputePipeline()
 	pCurrentCommandList->SetComputeRootSignature(computeRootSignature.Get());
 	pCurrentCommandList->SetDescriptorHeaps(1u, computeDescriptorHeap.GetAddressOf());
 	pCurrentCommandList->SetComputeRootDescriptorTable(1u, computeDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
+}
+
+bool Renderer::isRecording() const
+{
+	return animationSequencer.isEnabled() || !frameNumbersForGrab.empty();
+}
+
+void Renderer::recordingChange()
+{
+	if (isRecording())
+	{
+		dxgiFactory->MakeWindowAssociation(window->getHandle(), DXGI_MWA_NO_ALT_ENTER);
+	}
+	else 
+	{
+		//  && animationSequencer.isCompleted()
+		if (exitOnAnimationCompletion)
+			PostQuitMessage(0);
+		dxgiFactory->MakeWindowAssociation(window->getHandle(), 0);
+	}
 }
 
 candela::directx::DXResource& Renderer::getTempResource()
