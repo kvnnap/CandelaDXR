@@ -1,7 +1,11 @@
 #include "RadianceBuffer.h"
 
+#include "Util/StringUtil.h"
+
 using candela::renderer::RadianceBuffer;
 using candela::renderer::RgbSpectrum;
+
+using candela::util::WStringToString;
 
 using std::size_t;
 
@@ -11,7 +15,7 @@ RadianceBuffer::RadianceBuffer()
 }
 
 RadianceBuffer::RadianceBuffer(directx::ResourceData&& resourceData)
-    : width (resourceData.Width), height (resourceData.Height)
+    : name(WStringToString(resourceData.Name)), width (resourceData.Width), height (resourceData.Height)
 {
     radiance.reserve(width * height);
     for (auto& datum : resourceData.data)
@@ -39,6 +43,11 @@ std::size_t RadianceBuffer::getHeight() const
 size_t RadianceBuffer::getIndex(std::size_t x, std::size_t y) const
 {
     return y * width + x;
+}
+
+const std::string& RadianceBuffer::getName() const
+{
+    return name;
 }
 
 const RgbSpectrum& RadianceBuffer::get(std::size_t x, std::size_t y) const

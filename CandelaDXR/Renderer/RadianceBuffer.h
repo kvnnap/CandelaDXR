@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <vector>
+#include <string>
 
 #include <DirectXMath.h>
 
@@ -21,6 +22,7 @@ namespace candela::renderer
         std::size_t getWidth() const;
         std::size_t getHeight() const;
 
+        const std::string& getName() const;
         const RgbSpectrum& get(std::size_t x, std::size_t y) const;
         RgbSpectrum& get(std::size_t x, std::size_t y);
         const std::vector<RgbSpectrum>& getInternalBuffer() const;
@@ -28,6 +30,7 @@ namespace candela::renderer
     private:
         size_t getIndex(std::size_t x, std::size_t y) const;
 
+        std::string name;
         std::size_t width;
         std::size_t height;
         std::vector<RgbSpectrum> radiance;

@@ -3,6 +3,7 @@
 #include "IChain.h"
 
 #include <string>
+#include <unordered_map>
 #include <cstdint>
 
 namespace candela::chain
@@ -36,7 +37,7 @@ namespace candela::chain
     private:
         std::string filePath;
 
-        std::uint32_t sequenceNumber;
+        std::unordered_map<std::string, std::uint32_t> sequenceNumberMap;
 
         // Applies only to EXR images
         CompressionType compressionType;

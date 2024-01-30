@@ -130,7 +130,7 @@ void LightTracingShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12Graphi
 	guassianCS.init(rendererResources, pCurrentCommandList, &guassResources);
 	guassianCS.setOutputTexture(0u);
 	guassianCS.setInputTexture(static_cast<uint32_t>(guassResources.size() - 1));
-	guassianCS.setFiltersize(17);
+	//guassianCS.setFiltersize(17);
 }
 
 void LightTracingShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> currentCommandList, uint32_t currentBackBufferIndex)

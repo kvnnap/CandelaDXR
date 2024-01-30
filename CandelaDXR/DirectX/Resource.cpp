@@ -140,7 +140,7 @@ ResourceData Resource::read(DXCommandQueue& commandQueue)
 	destRange.End = 0u;
 	res.resource->Unmap(0u, &destRange);
 
-	return ResourceData{desc.Width, desc.Height, std::move(data)};
+	return ResourceData{getName(), desc.Width, desc.Height, std::move(data)};
 }
 
 void Resource::write(DXCommandList& commandList, DXResource& tempResource, const void* ptData)

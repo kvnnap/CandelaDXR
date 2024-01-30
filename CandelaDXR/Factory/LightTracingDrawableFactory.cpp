@@ -46,5 +46,9 @@ unique_ptr<IDrawable> LightTracingDrawableFactory::create(const ConfigurationNod
 	}
 	auto lt = make_unique<LightTracingShading>(move(instance), lightSamples, components);
 	lt->setName(confObject["Name"].read<std::string>());
+	if (confObject.keyExists("SeparateCaustics"))
+		lt->seperateCaustics(confObject["SeparateCaustics"].read<bool>() ? 1u : 0u);
+	if (confObject.keyExists("CausticsBlurSize"))
+		lt->setCausticsBlurSize(confObject["CausticsBlurSize"].read<std::uint32_t>());
 	return lt;
 }

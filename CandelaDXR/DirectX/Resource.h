@@ -16,6 +16,7 @@ namespace candela::directx
 {
 	struct ResourceData
 	{
+		std::wstring Name;
 		UINT64 Width;
 		UINT Height;
 		std::vector<DirectX::XMFLOAT4> data;

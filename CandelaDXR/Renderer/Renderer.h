@@ -73,6 +73,9 @@ namespace candela::renderer
 
 		animation::AnimationSequencer& getAnimationSequencer();
 
+		void setFramesToGrab(std::vector<std::uint64_t>&& framesToGrab);
+		void setBuffersToGrab(std::vector<std::string>&& buffersToGrab);
+
 	private:
 		// Accum Resource Enum
 		enum AccumResource : std::uint32_t
@@ -165,6 +168,10 @@ namespace candela::renderer
 
 		// Chain
 		chain::CFList* chain;
+
+		// Data dump stuff
+		std::vector<std::uint64_t> frameNumbersForGrab;
+		std::vector<std::string> buffersToGrab;
 
 		// Shaders
 		std::shared_ptr<directx::RootSignatureManager> computeRSM;

@@ -22,7 +22,7 @@ using std::array;
 using std::vector;
 
 FileOutput::FileOutput()
-    : filePath("output"), sequenceNumber(), compressionType(), fileType()
+    : filePath("output"), compressionType(), fileType()
 {
 }
 
@@ -38,7 +38,7 @@ void FileOutput::setFileType(FileType p_fileType)
 
 void FileOutput::process(RadianceBuffer& radianceBuffer)
 {
-    auto fileName = filePath + "_" + std::to_string(sequenceNumber++);
+    auto fileName = filePath + "_" + radianceBuffer.getName() + "_" + std::to_string(sequenceNumberMap[radianceBuffer.getName()]++);
 
     const auto width = static_cast<int>(radianceBuffer.getWidth());
     const auto height = static_cast<int>(radianceBuffer.getHeight());

@@ -22,6 +22,7 @@
 
 #include "Shader/AccumulatorShader.hlsli"
 
+#include <algorithm>
 #include <iostream>
 
 using std::unique_ptr;
@@ -93,6 +94,7 @@ Renderer::Renderer(Scene *scene, Camera *camera, const UVector2 &windowDimension
 {
 	eoDebug.setEnabled(false);
 	drawables.push_back(&eoDebug);
+	buffersToGrab.push_back("rad_acc"); // Default buffer to grab
 }
 
 Renderer::~Renderer()
@@ -413,7 +415,10 @@ void Renderer::renderFrame()
 		if (changeEvent)
 			resource->onChange(pCurrentCommandList, currentBackBufferIndex, changeEvent);
 
-	const auto grabRadiancePressed = keyboard.hasKeyChanged('P') && keyboard.isKeyPressed('P') || (animationSequencer.isEnabled() && animationSequencer.isNewFrame());
+	// Check which frame to save, if any
+	const bool needToGrab = std::binary_search(frameNumbersForGrab.begin(), frameNumbersForGrab.end(), fpsCounter.getFrameCount() + 1);
+
+	const auto grabRadiance = chain != nullptr && !buffersToGrab.empty() && (keyboard.hasKeyChanged('P') && keyboard.isKeyPressed('P') || (animationSequencer.isEnabled() && animationSequencer.isNewFrame()) || needToGrab);
 	const auto& dim = windowDimensions;
 
 	tsQuery.addTimeStampQuery(pCurrentCommandList, "Begin");
@@ -490,7 +495,7 @@ void Renderer::renderFrame()
 		pRadAccumulator->uavBarrier(pCurrentCommandList);
 
 		// Tone map
-		if (!grabRadiancePressed)
+		if (!grabRadiance)
 		{
 			c32Data = { {AccumResource::RadAccumulator}, {AccumResource::RadAccumulator}, 1U, ACC_TONEMAP | ACC_LINEARTOSRGB };
 			pCurrentCommandList->SetComputeRoot32BitConstants(0u, sizeof(AccumConstBuff) / sizeof(uint32_t), &c32Data, 0);
@@ -500,17 +505,19 @@ void Renderer::renderFrame()
 	}
 
 	// Extract radiance values if needed
-	if (grabRadiancePressed)
+	if (grabRadiance)
 	{
 		// Execute prev command list - command lists in same queue are executed in order
 		commandQueue->executeCommandList(pCurrentCommandList);
 
-		// Will cause synchronous behaviour (blocking)
-		RadianceBuffer radBuffer = pRadAccumulator->read(commandQueue);
-
-		// Execute Chain to output data
-		if (chain != nullptr)
+		for (const auto& bufferToGrab : buffersToGrab)
 		{
+			auto buffer = rendererResources.resourceManager->getNamedResource(bufferToGrab);
+
+			// Will cause synchronous behaviour (blocking)
+			RadianceBuffer radBuffer = buffer->read(commandQueue);
+
+			// Execute Chain to output data
 			for (auto& chainItem : *chain)
 				chainItem->process(radBuffer);
 		}
@@ -571,17 +578,14 @@ void Renderer::renderFrame()
 
 	// Process any other resource dumps here (synch) TODO: do it async
 	auto resourceToSave = imguiManager.getResourceToSave();
-	if (resourceToSave)
+	if (resourceToSave && chain != nullptr)
 	{
 		// Will cause synchronous behaviour (blocking)
 		RadianceBuffer radBuffer = resourceToSave->read(commandQueue);
 
 		// Execute Chain to output data
-		if (chain != nullptr)
-		{
-			for (auto& chainItem : *chain)
-				chainItem->process(radBuffer);
-		}
+		for (auto& chainItem : *chain)
+			chainItem->process(radBuffer);
 	}
 
 	HRESULT hr;
@@ -668,6 +672,16 @@ vector<AnimationRecord>& Renderer::getAnimationRecords()
 AnimationSequencer& Renderer::getAnimationSequencer()
 {
 	return animationSequencer;
+}
+
+void Renderer::setFramesToGrab(std::vector<std::uint64_t>&& framesToGrab)
+{
+	this->frameNumbersForGrab = std::move(framesToGrab);
+}
+
+void Renderer::setBuffersToGrab(std::vector<std::string>&& buffersToGrab)
+{
+	this->buffersToGrab = std::move(buffersToGrab);
 }
 
 void Renderer::initSceneResources()

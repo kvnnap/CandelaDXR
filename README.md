@@ -281,6 +281,8 @@ A light tracer.
 - Sampler - Used to set a seed (for predictable debugging)
 - LightSamples - `Vector2` - Size of the samples per frame
 - Components - There are three variants of the light tracer. Normal, Optimised and Importance. These are all enabled by default so that during rendering one can switch from one to the other. However, sometimes it is beneficial to turn a component off. Components is an object with the key as the component name, and the value being a bool signifying wether the component will load at all.
+- SeparateCaustics - Default is false. If set to true will save caustics in their own buffer. The denoiser is needed for caustics to be remerged.
+- CausticsBlurSize - Blurs the caustics buffer. Default is 17. Set to 1 if unaltered caustics are needed
 
 ```json
 {
@@ -292,7 +294,9 @@ A light tracer.
   },
   "Components": {
     "Importance": false
-  }
+  },
+  "SeparateCaustics": false,
+  "CausticsBlurSize": 17
 }
 ```
 
@@ -375,6 +379,8 @@ There is only one renderer type.
 - Animations - A list of objects that connect animations to scene graph nodes
 - AnimationSequencer - `Enabled` is self explantory. `FramesPerAnimation` is the number of frames to render before the `TimeDeltaMs` of the animation is incremented. The chain is also executed at this point. The animation stops after `MaxTimeMs` is surpassed.
 - ExitOnAnimationCompletion - `bool` - Whether to exit when the animation sequencer completes
+- FramesToGrab - A list of frame numbers to grab 
+- BuffersToGrab - A list of buffer names to grab - default is ["rad_acc"]
 
 ```json
 "Renderers": [

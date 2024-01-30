@@ -59,9 +59,11 @@ unique_ptr<IRenderer> RendererFactory::create(const ConfigurationNode& config) c
 		camera = &cameraInstMg.get(cameraId);
 	}
 
+	const auto& confObject = config.asObject();
+
 	// Gen animation mapping
 	vector<AnimationRecord> animationMapping;
-	if (config.asObject().keyExists("Animations"))
+	if (confObject.keyExists("Animations"))
 	{
 		for (const auto& animConfig : config["Animations"].asList())
 		{
@@ -86,18 +88,19 @@ unique_ptr<IRenderer> RendererFactory::create(const ConfigurationNode& config) c
 	bool exitOnAnimCompl = false;
 	bool shaderAccumulation = true;
 	std::uint32_t adapterIndex = 0;
-	if (config.asObject().keyExists("AdapterIndex"))
+	if (confObject.keyExists("AdapterIndex"))
 		adapterIndex = config["AdapterIndex"].read<std::uint32_t>();
-	if (config.asObject().keyExists("Debug"))
+	if (confObject.keyExists("Debug"))
 		debugEnabled = config["Debug"].read<bool>();
-	if (config.asObject().keyExists("Break"))
+	if (confObject.keyExists("Break"))
 		breakEnabled = config["Break"].read<bool>();
-	if (config.asObject().keyExists("VSync"))
+	if (confObject.keyExists("VSync"))
 		vsync = config["VSync"].read<bool>();
-	if (config.asObject().keyExists("ExitOnAnimationCompletion"))
+	if (confObject.keyExists("ExitOnAnimationCompletion"))
 		exitOnAnimCompl = config["ExitOnAnimationCompletion"].read<bool>();
-	if (config.asObject().keyExists("ShaderAccumulation"))
+	if (confObject.keyExists("ShaderAccumulation"))
 		shaderAccumulation = config["ShaderAccumulation"].read<bool>();
+
 	std::vector<IDrawable*> drawables;
 	for (auto& drawableConfig : drawablesConfig)
 		drawables.push_back(&env.getDrawableManager().getInstanceManager().get(drawableConfig));
@@ -105,7 +108,7 @@ unique_ptr<IRenderer> RendererFactory::create(const ConfigurationNode& config) c
 	renderer->setAnimationRecords(std::move(animationMapping));
 
 	// Animation Seq
-	if (config.asObject().keyExists("AnimationSequencer"))
+	if (confObject.keyExists("AnimationSequencer"))
 	{
 		const auto& animSeqConf = config["AnimationSequencer"].asObject();
 		auto enabled = animSeqConf["Enabled"].read<bool>();
@@ -120,10 +123,28 @@ unique_ptr<IRenderer> RendererFactory::create(const ConfigurationNode& config) c
 	}
 
 	// Chain
-	if (config.asObject().keyExists("Chain"))
+	if (confObject.keyExists("Chain"))
 	{
 		auto chain = &env.getChainManager().getInstanceManager().get(config["Chain"]);
 		renderer->setChain(chain);
+	}
+
+	// Frames to grab
+	if (confObject.keyExists("FramesToGrab"))
+	{
+		std::vector<std::uint64_t> framesToGrab;
+		for (const auto& frame : config["FramesToGrab"].asList())
+			framesToGrab.push_back(frame.read<std::uint64_t>());
+		renderer->setFramesToGrab(std::move(framesToGrab));
+	}
+
+	// Buffer names to grab on screenshot
+	if (confObject.keyExists("BuffersToGrab"))
+	{
+		std::vector<std::string> buffersToGrab;
+		for (const auto& frame : config["BuffersToGrab"].asList())
+			buffersToGrab.push_back(frame.read<std::string>());
+		renderer->setBuffersToGrab(std::move(buffersToGrab));
 	}
 
 	return renderer;
