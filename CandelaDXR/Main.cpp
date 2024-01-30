@@ -30,6 +30,7 @@ int main(int argc, char** argv)
 
         // Start environment
         Environment env;
+        env.setArguments(argc, argv);
         env.bootstrap(configFileName);
 
         IRenderer& renderer = env.getRendererManager().getInstanceManager().get(0);

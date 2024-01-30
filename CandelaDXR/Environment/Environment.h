@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <vector>
 
 #include "feanor/core/environment/resource_manager.h"
 #include "feanor/core/configuration/configuration_node.h"
@@ -31,8 +32,11 @@ namespace candela::environment
     {
     public:
         Environment();
+        void setArguments(std::vector<std::string>&& p_argv);
+        void setArguments(int argc, char **argv);
         void bootstrap(const std::string& configPath);
 
+        const std::vector<std::string>& getArguments() const;
         ConfigurationManager& getConfigurationManager();
         CameraManager& getCameraManager();
         SceneLoaderManager& getSceneLoaderManager();
@@ -45,6 +49,9 @@ namespace candela::environment
         static Environment& getInstance();
     private:
         void loadCoreFactories();
+
+        // Main arguments
+        std::vector<std::string> argv;
 
         // Loaded configuration
         feanor::configuration::ConfigurationNodePt configuration;

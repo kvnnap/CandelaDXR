@@ -49,12 +49,23 @@ using candela::animation::factory::AnimationFactory;
 using candela::chain::factory::ChainFactory;
 
 using std::string;
+using std::vector;
 using std::make_unique;
 using std::runtime_error;
 
 Environment::Environment()
 {
     loadCoreFactories();
+}
+
+void Environment::setArguments(vector<string>&& p_argv)
+{
+    argv = std::move(p_argv);
+}
+
+void Environment::setArguments(int argc, char** argv)
+{
+    this->argv = vector<string>(argv, argv + argc);
 }
 
 void Environment::bootstrap(const string& configPath)
@@ -157,6 +168,11 @@ void Environment::loadCoreFactories()
 
     // Chains
     chainManager.getFactoryManager().registerItem<ChainFactory>("Chain");
+}
+
+const vector<string>& Environment::getArguments() const
+{
+    return argv;
 }
 
 ConfigurationManager& Environment::getConfigurationManager() { return configurationManager; }

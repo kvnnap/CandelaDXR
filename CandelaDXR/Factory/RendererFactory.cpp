@@ -42,8 +42,14 @@ unique_ptr<IRenderer> RendererFactory::create(const ConfigurationNode& config) c
 {
 	auto scene = &env.getSceneManager().getInstanceManager().get(config["Scene"]);
 	
+	// Get camera name from argv
+	string cameraName;
+	if (env.getArguments().size() >= 3)
+		cameraName = env.getArguments()[2];
+	else
+		cameraName = config["Camera"].read<string>();
+
 	auto& cameraInstMg = env.getCameraManager().getInstanceManager();
-	auto cameraName = config["Camera"].read<string>();
 	Camera* camera{};
 	if (cameraInstMg.exists(cameraName))
 	{
