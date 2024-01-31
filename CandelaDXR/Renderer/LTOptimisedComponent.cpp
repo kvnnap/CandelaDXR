@@ -25,7 +25,6 @@ void LTOptimisedComponent::init(RendererResources* rRes, wrl::ComPtr<ID3D12Graph
 {
 	rendererResources = rRes;
 	constBuffer.numSpeculars = static_cast<uint32_t>(rRes->scene->getSpeculars().size());
-	constBuffer.causticsRatio = 0.f;
 
 	// Constant buffer
 	constantBuffer = DXUtil::uploadDataToDefaultHeap(rendererResources->pDevice, pCurrentCommandList, rendererResources->getTempResource(), &constBuffer, sizeof(constBuffer), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);

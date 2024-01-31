@@ -53,8 +53,8 @@ using candela::sampler::ISampler;
 
 using candela::util::StringToWString;
 
-LightTracingShading::LightTracingShading(unique_ptr<ISampler> sampler, UVector2 lightSamples, LTComponents ltComponents)
-	: ltComponentsToLoad(ltComponents), rendererResources(), constBuffer(), lightSamples(lightSamples),
+LightTracingShading::LightTracingShading(unique_ptr<ISampler> sampler, UVector2 lightSamples)
+	: rendererResources(), constBuffer(), lightSamples(lightSamples),
 	irradianceDataStructure(), irrToRad(), rayHitT(), irradianceCaustics(),
 	outputCaustics(), irradianceTexture(), sampler(std::move(sampler)), frameNumberCaustics(),
 	clear(), clearCaustics(), allowClearCaustics(true), currentShader()
@@ -74,13 +74,7 @@ void LightTracingShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12Graphi
 	}
 
 	rendererResources = rRes;
-
-	if (ltComponentsToLoad.normal)
-		ltShaders.emplace_back(LTShader{ "./Shaders/LightTracingShader.cso" });
-	if (ltComponentsToLoad.optimised)
-		ltShaders.emplace_back(LTShader{ "./Shaders/LightTracingOptimisedShader.cso", make_unique<LTOptimisedComponent>()});
-	if (ltComponentsToLoad.importance)
-		ltShaders.emplace_back(LTShader{ "./Shaders/LightTracingImportanceShader.cso", make_unique<LTRasterGuidedShading>(sampler.get(), true)});
+	
 	constBuffer.numLights = static_cast<uint32_t>(rRes->scene->getLights().size());
 	constBuffer.numTotalLights = constBuffer.numLights + static_cast<uint32_t>(rRes->scene->getExternalLights().size());
 	constBuffer.frameNumber = 0;
@@ -205,6 +199,11 @@ vector<LightTracingShading::LTShaderInfo> LightTracingShading::getLTShaderInfo()
 		return LTShaderInfo{ .shaderPath = &ltShader.shaderPath, .component = ltShader.component.get() };
 	});
 	return out;
+}
+
+void LightTracingShading::addLtShader(const std::string& shaderPath, std::unique_ptr<ILightTracingComponent> component)
+{
+	ltShaders.emplace_back(LTShader{shaderPath, move(component)});
 }
 
 void LightTracingShading::buildPipeline()

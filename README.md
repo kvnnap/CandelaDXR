@@ -275,12 +275,15 @@ A path tracer.
 
 ### Light Tracer
 
-A light tracer.
+A light tracer. There are three variants of the light tracer. LightTracingShader, LightTracingOptimisedShader and LightTracingImportanceShader.
 
 - Name - Required
 - Sampler - Used to set a seed (for predictable debugging)
 - LightSamples - `Vector2` - Size of the samples per frame
-- Components - There are three variants of the light tracer. Normal, Optimised and Importance. These are all enabled by default so that during rendering one can switch from one to the other. However, sometimes it is beneficial to turn a component off. Components is an object with the key as the component name, and the value being a bool signifying wether the component will load at all.
+- LightTracingShader - The normal light tracer component settings (only Load here)
+- LightTracingOptimisedShader - This light tracer component gives priority to specular items according to the casutics ratio (Load and CausticsRatio from 0 to 1)
+- LightTracingImportanceShader - A light tracer component using imporance map. Accepts metric. 0 for Distance, 1 for Distance + Camera and 2 for Distance + Camera + RT. And a filter size (blurring) for the importance map.
+- ActiveShaderIndex - If all shader components are loaded, 0 is LightTracingShader, 1 is LightTracingOptimisedShader and 2 is LightTracingImportanceShader
 - SeparateCaustics - Default is false. If set to true will save caustics in their own buffer. The denoiser is needed for caustics to be remerged.
 - CausticsBlurSize - Blurs the caustics buffer. Default is 17. Set to 1 if unaltered caustics are needed
 
@@ -296,7 +299,19 @@ A light tracer.
     "Importance": false
   },
   "SeparateCaustics": false,
-  "CausticsBlurSize": 17
+  "CausticsBlurSize": 17,
+  "LightTracingShader" : { 
+    "Load" : true 
+  },
+  "LightTracingOptimisedShader" : { 
+    "Load" : true,
+    "CausticsRatio": 0.5 
+  },
+  "LightTracingImportanceShader" : {
+    "Load" : true,
+    "Metric" : 0,
+    "FilterSize": 17 
+  }
 }
 ```
 
