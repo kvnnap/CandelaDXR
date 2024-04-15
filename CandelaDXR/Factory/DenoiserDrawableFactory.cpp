@@ -26,5 +26,19 @@ unique_ptr<IDrawable> DenoiserDrawableFactory::create(const ConfigurationNode& c
 {
 	auto den = make_unique<DenoiserShading>();
 	den->setName(config["Name"].read<std::string>());
+
+	const auto& configObject = config.asObject();
+	if (configObject.keyExists("DenoiseCaustics"))
+		den->setDenoiseCaustics(configObject["DenoiseCaustics"].read<bool>() ? 1u : 0u);
+	if (configObject.keyExists("Denoiser"))
+	{
+		auto strDen = configObject["Denoiser"].read<std::string>();
+		std::uint32_t denSelected{};
+		if (strDen == "Reblur")
+			denSelected = 0;
+		else if (strDen == "Relax")
+			denSelected = 1;
+		den->setDenoiserSelected(denSelected);
+	}
 	return den;
 }

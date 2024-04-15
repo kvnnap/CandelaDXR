@@ -320,10 +320,16 @@ A light tracer. There are three variants of the light tracer. LightTracingShader
 Most options are configurable during rendering in imgui.
 The denoiser depends on the Rasteriser (with gBuffer computation) and the Light Tracer or Path Tracer.
 
+- Name - Required
+- Denoiser - Reblur, Relax. Default is Reblur
+- DenoiseCaustics - Normally used (and only makes sense) in conjuction with SeparateCaustics (in LT). If true, will denoise the caustics buffer without the diffuse buffer.The buffer "diff_unmerged" will show the raw diffAcc buffer and the "caustics" buffer is overwritten with the denoised signal. If false, the "diff_unmerged" buffer is written with the denoised "diffuse" signal and the "caustics" buffer is untouched. Default: false
+
 ```json
 {
   "Type": "DenoiserDrawable",
-  "Name": "Den"
+  "Name": "Den",
+  "Denoiser": "Reblur",
+  "DenoiseCaustics": false
 }
 ```
 
