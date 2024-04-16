@@ -35,7 +35,7 @@ jobs:
     
     - name: Read Feanor Core Commit SHA JSON to Variable
       id: read-core-sha
-      uses: juliangruber/read-file-action@v1.1.6
+      uses: juliangruber/read-file-action@v1.1.7
       with:
         path: feanor.core.sha
     
@@ -75,7 +75,7 @@ jobs:
 
     - name: Read Feanor External Commit SHA to Variable
       id: read-external-sha
-      uses: juliangruber/read-file-action@v1.1.6
+      uses: juliangruber/read-file-action@v1.1.7
       with:
         path: feanor.external.sha
         
@@ -116,7 +116,7 @@ jobs:
     
     - name: Read NVIDIA NRI Json from file
       id: read-nri-json
-      uses: juliangruber/read-file-action@v1.1.6
+      uses: juliangruber/read-file-action@v1.1.7
       with:
         path: nri.sha
         
@@ -155,7 +155,7 @@ jobs:
 
     - name: Read NVIDIA NRD Json from file
       id: read-nrd-json
-      uses: juliangruber/read-file-action@v1.1.6
+      uses: juliangruber/read-file-action@v1.1.7
       with:
         path: nrd.sha
 
@@ -177,7 +177,7 @@ jobs:
     - name: Read Microsoft DXC Json from file
       if: steps.cache-nrd.outputs.cache-hit != 'true'
       id: read-dxc-json
-      uses: juliangruber/read-file-action@v1.1.6
+      uses: juliangruber/read-file-action@v1.1.7
       with:
         path: microsoft.dxc
 
