@@ -18,6 +18,12 @@ namespace candela::renderer::imgui
 	private:
 		Renderer& renderer;
 
+		// PP stuff
+		bool exposureFlag;
+		bool linearToSrgb;
+		float exposure;
+		int selectedToneMapper;
+
 		bool changed;
 		bool animating;
 		bool shaderAccumulation;

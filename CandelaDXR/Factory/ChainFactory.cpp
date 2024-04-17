@@ -3,6 +3,7 @@
 #include "VectorFactory.h"
 
 #include "Chain/AlphaCorrection.h"
+#include "Chain/Exposure.h"
 #include "Chain/FileOutput.h"
 #include "Chain/ToneMapping.h"
 #include "Exception/Exception.h"
@@ -16,11 +17,13 @@ using feanor::configuration::ConfigurationNode;
 
 using candela::chain::IChain;
 using candela::chain::AlphaCorrection;
+using candela::chain::Exposure;
 using candela::chain::FileOutput;
 using candela::chain::ToneMapping;
 using candela::chain::CFList;
 using candela::chain::factory::ChainFactory;
 using candela::chain::factory::AlphaCorrectionChainFactory;
+using candela::chain::factory::ExposureChainFactory;
 using candela::chain::factory::FileOutputChainFactory;
 using candela::chain::factory::ToneMappingChainFactory;
 using candela::mathematics::factory::Vector3Factory;
@@ -53,6 +56,8 @@ unique_ptr<CFList> ChainFactory::create(const ConfigurationNode& config) const
 			list.emplace_back(FileOutputChainFactory().create(chainItemConfig));
 		else if (chainItemConfig["Type"].read<std::string>() == "ToneMapping")
 			list.emplace_back(ToneMappingChainFactory().create(chainItemConfig));
+		else if (chainItemConfig["Type"].read<std::string>() == "Exposure")
+			list.emplace_back(ExposureChainFactory().create(chainItemConfig));
 		else
 			ThrowException("Invalid chain item type");
 	}
@@ -73,6 +78,19 @@ unique_ptr<IChain> AlphaCorrectionChainFactory::create(const ConfigurationNode& 
 	return alphaCorrection;
 }
 
+unique_ptr<IChain> ExposureChainFactory::create() const
+{
+	return make_unique<Exposure>();
+}
+
+unique_ptr<IChain> ExposureChainFactory::create(const ConfigurationNode& config) const
+{
+	auto exposure = make_unique<Exposure>();
+	if (config.asObject().keyExists("Level"))
+		exposure->setExposure(config["Level"].read<float>());
+	return exposure;
+}
+
 unique_ptr<IChain> ToneMappingChainFactory::create() const
 {
 	return make_unique<ToneMapping>();
@@ -81,7 +99,19 @@ unique_ptr<IChain> ToneMappingChainFactory::create() const
 
 unique_ptr<IChain> ToneMappingChainFactory::create(const ConfigurationNode& config) const
 {
-	return create();
+	ToneMapping::ToneMappingType type = ToneMapping::ToneMappingType::Reinhard;
+	if (config.asObject().keyExists("ToneMapper"))
+	{
+		const auto strType = config["ToneMapper"].read<std::string>();
+		if (strType == "Reinhard")
+			type = ToneMapping::ToneMappingType::Reinhard;
+		else if (strType == "ACES")
+			type = ToneMapping::ToneMappingType::ACES;
+		else
+			ThrowException("Wrong ToneMapper. Must be Reinhard or ACES (Case Sensitive)");
+	}
+
+	return make_unique<ToneMapping>(type);
 }
 
 unique_ptr<IChain> FileOutputChainFactory::create() const

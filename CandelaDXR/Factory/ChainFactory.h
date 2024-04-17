@@ -38,4 +38,12 @@ namespace candela::chain::factory
         std::unique_ptr<chain::IChain> create() const override;
         std::unique_ptr<chain::IChain> create(const feanor::configuration::ConfigurationNode& config) const override;
     };
+
+    class ExposureChainFactory
+        : public feanor::factory::Factory<chain::IChain>
+    {
+    public:
+        std::unique_ptr<chain::IChain> create() const override;
+        std::unique_ptr<chain::IChain> create(const feanor::configuration::ConfigurationNode& config) const override;
+    };
 }

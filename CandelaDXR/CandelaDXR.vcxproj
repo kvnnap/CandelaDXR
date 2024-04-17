@@ -203,6 +203,7 @@
     <ClCompile Include="Animation\AnimationSequencer.cpp" />
     <ClCompile Include="Animation\KeyBasedAnimation.cpp" />
     <ClCompile Include="Chain\AlphaCorrection.cpp" />
+    <ClCompile Include="Chain\Exposure.cpp" />
     <ClCompile Include="Chain\FileOutput.cpp" />
     <ClCompile Include="Chain\ToneMapping.cpp" />
     <ClCompile Include="DirectX\CommandQueue.cpp" />
@@ -294,6 +295,7 @@
     <ClInclude Include="Animation\IAnimation.h" />
     <ClInclude Include="Animation\KeyBasedAnimation.h" />
     <ClInclude Include="Chain\AlphaCorrection.h" />
+    <ClInclude Include="Chain\Exposure.h" />
     <ClInclude Include="Chain\IChain.h" />
     <ClInclude Include="Chain\FileOutput.h" />
     <ClInclude Include="Chain\ToneMapping.h" />

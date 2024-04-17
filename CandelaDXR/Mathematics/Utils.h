@@ -24,4 +24,9 @@ namespace candela::mathematics
 	float f2Definite(float x0, float x1, float y0, float y1, float z);
 
 	Vector3 QuaternionToRotationXYZ(const Vector& quaternion);
+
+	constexpr DirectX::XMVECTOR CreateXMVector(float value)
+	{
+		return { value, value, value, value };
+	}
 }

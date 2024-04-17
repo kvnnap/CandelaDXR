@@ -107,8 +107,25 @@ float3 getCentroid(float3 a[3]) {
 	return (a[0] + a[1] + a[2]) / 3.f;
 }
 
-float3 toneMap(float3 c) {
+float3 exposure(float3 x, float c)
+{
+    return x * pow(2, c);
+}
+
+float3 toneMap(float3 c)
+{
 	return c / (c + 1.f);
+}
+
+float3 toneMapAces(float3 x)
+{
+    x *= 0.6f;
+    const float a = 2.51f;
+    const float b = 0.03f;
+    const float c = 2.43f;
+    const float d = 0.59f;
+    const float e = 0.14f;
+    return saturate((x * (a * x + b)) / (x * (c * x + d) + e));
 }
 
 float3 linearToSrgb(float3 c)

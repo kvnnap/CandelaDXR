@@ -7,6 +7,7 @@ cbuffer CB1 : register(b0)
 	uint4 OutIndex;
 	uint PairCount;
 	uint Flags;
+	float Exposure;
 }
 
 RWTexture2D<float4> gArr[] : register(u0);
@@ -22,10 +23,14 @@ void main( uint3 DTid : SV_DispatchThreadID )
 			gArr[outIdx][DTid.xy] = float4(0.f, 0.f, 0.f, 0.f);
 		if (ACC_IS_SET(Flags, ACC_ACCUMULATE))
 			gArr[outIdx][DTid.xy] += gArr[inIdx][DTid.xy];
+		if (ACC_IS_SET(Flags, ACC_EXPOSURE))
+			gArr[outIdx][DTid.xy] = float4(exposure(gArr[inIdx][DTid.xy].xyz, Exposure), 1.f);
 		if (ACC_IS_SET(Flags, ACC_TONEMAP))
-			gArr[outIdx][DTid.xy] = float4(toneMap(gArr[outIdx][DTid.xy].xyz), 1.f);
+			gArr[outIdx][DTid.xy] = float4(toneMap(gArr[inIdx][DTid.xy].xyz), 1.f);
+		if (ACC_IS_SET(Flags, ACC_TONEMAP_ACES))
+			gArr[outIdx][DTid.xy] = float4(toneMapAces(gArr[inIdx][DTid.xy].xyz), 1.f);
 		if (ACC_IS_SET(Flags, ACC_LINEARTOSRGB))
-			gArr[outIdx][DTid.xy] = float4(linearToSrgb(gArr[outIdx][DTid.xy].xyz), 1.f);
+			gArr[outIdx][DTid.xy] = float4(linearToSrgb(gArr[inIdx][DTid.xy].xyz), 1.f);
 	}
 }
 

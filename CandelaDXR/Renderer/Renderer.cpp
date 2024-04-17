@@ -86,6 +86,7 @@ Renderer::Renderer(Scene *scene, Camera *camera, const UVector2 &windowDimension
 	  camera(camera),
 	  chain(),
 	  drawables(std::move(p_drawables)),
+	  ppParams({ ACC_TONEMAP | ACC_LINEARTOSRGB }),
 	  debugEnabled(debugEnabled),
 	  breakEnabled(breakEnabled),
 	  vsync(vsync),
@@ -503,7 +504,7 @@ void Renderer::renderFrame()
 		// Tone map
 		if (!grabRadiance)
 		{
-			c32Data = { {AccumResource::RadAccumulator}, {AccumResource::RadAccumulator}, 1U, ACC_TONEMAP | ACC_LINEARTOSRGB };
+			c32Data = { {AccumResource::RadAccumulator}, {AccumResource::RadAccumulator}, 1U, ppParams.Flags, ppParams.Exposure };
 			pCurrentCommandList->SetComputeRoot32BitConstants(0u, sizeof(AccumConstBuff) / sizeof(uint32_t), &c32Data, 0);
 			pCurrentCommandList->Dispatch(dim.x / 8 + (dim.x % 8 == 0 ? 0 : 1), dim.y / 8 + (dim.y % 8 == 0 ? 0 : 1), 1);
 			pRadAccumulator->uavBarrier(pCurrentCommandList);
@@ -535,7 +536,7 @@ void Renderer::renderFrame()
 		bindComputePipeline();
 
 		// Perform tone mapping
-		AccumConstBuff c32Data{ {AccumResource::RadAccumulator}, {AccumResource::RadAccumulator }, 1U, ACC_TONEMAP | ACC_LINEARTOSRGB };
+		AccumConstBuff c32Data{ {AccumResource::RadAccumulator}, {AccumResource::RadAccumulator}, 1U, ppParams.Flags, ppParams.Exposure };
 		pCurrentCommandList->SetComputeRoot32BitConstants(0u, sizeof(AccumConstBuff) / sizeof(uint32_t), &c32Data, 0);
 		pCurrentCommandList->Dispatch(dim.x / 8 + (dim.x % 8 == 0 ? 0 : 1), dim.y / 8 + (dim.y % 8 == 0 ? 0 : 1), 1);
 		pRadAccumulator->uavBarrier(pCurrentCommandList);
@@ -634,6 +635,16 @@ void Renderer::setShaderAccumulation(bool p_shaderAccumulation)
 bool Renderer::getShaderAccumulation() const
 {
 	return shaderAccumulation;
+}
+
+const Renderer::PostProcParams& Renderer::getPostProcParams() const
+{
+	return ppParams;
+}
+
+void Renderer::setPostProcParams(const PostProcParams& p_ppParams)
+{
+	ppParams = p_ppParams;
 }
 
 const vector<ProfileItem>& Renderer::getProfilingData() const

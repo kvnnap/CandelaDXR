@@ -48,6 +48,12 @@ namespace candela::renderer
 		: public IRenderer
 	{
 	public:
+		struct PostProcParams
+		{
+			std::uint32_t Flags;
+			float Exposure;
+		};
+
 		Renderer(scene::Scene *scene, Camera *camera, 
 			const mathematics::UVector2& windowDimensions, std::vector<IDrawable*> drawables, 
 			std::uint32_t adapterIndex, bool debugEnabled, bool breakEnabled, bool vsync, bool exitOnAnimCompl
@@ -58,6 +64,8 @@ namespace candela::renderer
 		void renderFrame() override;
 		void setShaderAccumulation(bool shaderAccumulation);
 		bool getShaderAccumulation() const;
+		const PostProcParams& getPostProcParams() const;
+		void setPostProcParams(const PostProcParams& p_ppParams);
 
 		const std::vector<directx::ProfileItem>& getProfilingData() const;
 
@@ -96,6 +104,7 @@ namespace candela::renderer
 			AccumResource OutIndex[4];
 			std::uint32_t PairCount;
 			std::uint32_t Flags;
+			float Exposure;
 		};
 
 		template<class T>
@@ -193,6 +202,7 @@ namespace candela::renderer
 
 		// To pass
 		RendererResources rendererResources;
+		PostProcParams ppParams;
 
 		// Debug
 		std::unique_ptr<directx::DxgiInfoManager> dxgiInfoManager;

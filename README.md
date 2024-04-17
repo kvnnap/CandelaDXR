@@ -159,14 +159,41 @@ A chain is a pipeline executed by each renderer when a frame is finalised. In Ca
 
 The following chain elements are available:
 
+### Exposure
+
+- Type = Exposure
+- Level =  0.0 default - float
+
+This sets the image exposure to use before tone mapping. The formula used is:
+
+```
+x = pow(2, level)
+```
+
 ### Tone Mapping
 
 - Type = ToneMapping
+- ToneMapper = Reinhard (default) / ACES - string
 
-This tone mapper maps the radiance values using the following formula:
+This tone mapper maps the radiance values using the following formula (Reinhard):
 
 ```
 R_m = R_in / (1 + R_in)
+```
+
+or this (ACES):
+
+```
+vec3 aces_approx(vec3 v)
+{
+    v *= 0.6f;
+    float a = 2.51f;
+    float b = 0.03f;
+    float c = 2.43f;
+    float d = 0.59f;
+    float e = 0.14f;
+    return clamp((v*(a*v+b))/(v*(c*v+d)+e), 0.0f, 1.0f);
+}
 ```
 
 ### Alpha Correction (aka Gamma)

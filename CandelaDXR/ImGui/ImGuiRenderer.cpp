@@ -3,6 +3,7 @@
 #include "ImGuiRenderer.h"
 
 #include "Renderer/Renderer.h"
+#include "Shader/AccumulatorShader.hlsli"
 
 using candela::renderer::imgui::ImGuiRenderer;
 using std::to_string;
@@ -11,6 +12,17 @@ ImGuiRenderer::ImGuiRenderer(Renderer& renderer)
 	: renderer(renderer), changed(), animating(), shaderAccumulation(), showLights(), timeMs()
 {
 	animating = renderer.getRendererTime().isRunning();
+
+	// Load initial Post Proc state
+	auto& ppParams = renderer.getPostProcParams();
+	exposureFlag	=	ACC_IS_SET(ACC_EXPOSURE,		ppParams.Flags);
+	selectedToneMapper = 0;
+	if (ACC_IS_SET(ACC_TONEMAP, ppParams.Flags))
+		selectedToneMapper = 1;
+	else if (ACC_IS_SET(ACC_TONEMAP_ACES, ppParams.Flags))
+		selectedToneMapper = 2;
+	linearToSrgb	=	ACC_IS_SET(ACC_LINEARTOSRGB,	ppParams.Flags);
+	exposure = ppParams.Exposure;
 }
 
 void ImGuiRenderer::drawUi()
@@ -20,6 +32,24 @@ void ImGuiRenderer::drawUi()
 	animating = rTime.isRunning();
 	shaderAccumulation = renderer.getShaderAccumulation();
 	
+	// Exposure and tonemapping stuff
+	bool ppChange = false;
+	ppChange |= ImGui::Checkbox("Exposure", &exposureFlag);
+	if (exposureFlag)
+		ppChange |= ImGui::DragFloat("Exposure Val", &exposure, 0.05f, -10.f, 10.f);
+	static const char* items[]{ "None", "Reinhard", "ACES"};
+	ppChange |= ImGui::Combo("ToneMapper", &selectedToneMapper, items, 3);
+	ppChange |= ImGui::Checkbox("LinearToSrgb", &linearToSrgb);
+	if (ppChange)
+		renderer.setPostProcParams({
+			  (exposureFlag	? ACC_EXPOSURE		: 0)
+			| (selectedToneMapper == 1 ? ACC_TONEMAP : selectedToneMapper == 2 ? ACC_TONEMAP_ACES : 0)
+			| (linearToSrgb ? ACC_LINEARTOSRGB	: 0),
+			exposure
+		});
+
+	// End exposure stuff
+
 	if (ImGui::Button("Record"))
 		renderer.getAnimationSequencer().setEnabled(true);
 
