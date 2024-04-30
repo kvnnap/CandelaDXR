@@ -82,6 +82,7 @@ Renderer::Renderer(Scene *scene, Camera *camera, const UVector2 &windowDimension
 	  pRTV8Bit(), pRTVRad(), pRTVDiff(), pRTVSpec(), pRadAccumulator(), pDiffAccumulator(), pSpecAccumulator(),
 	  rtvDescriptorSize(),
 	  currentBackBufferIndex(),
+	  frameGrabCounter(),
 	  scene(scene),
 	  camera(camera),
 	  chain(),
@@ -418,12 +419,13 @@ void Renderer::renderFrame()
 			resource->onChange(pCurrentCommandList, currentBackBufferIndex, changeEvent);
 
 	// Check which frame to save, if any
-	const bool needToGrab = std::binary_search(frameNumbersForGrab.begin(), frameNumbersForGrab.end(), fpsCounter.getFrameCount() + 1);
-	if (needToGrab && frameNumbersForGrab.back() == fpsCounter.getFrameCount() + 1)
+	const bool needToGrab = std::binary_search(frameNumbersForGrab.begin(), frameNumbersForGrab.end(), frameGrabCounter + 1);
+	if (needToGrab && frameNumbersForGrab.back() == frameGrabCounter + 1)
 	{
 		frameNumbersForGrab.clear();
 		recordingChanged = true;
 	}
+	++frameGrabCounter;
 
 	const auto grabRadiance = chain != nullptr && !buffersToGrab.empty() && (!recordingInitialState && keyboard.hasKeyChanged('P') && keyboard.isKeyPressed('P') || (animationSequencer.isEnabled() && animationSequencer.isNewFrame()) || needToGrab);
 	const auto& dim = windowDimensions;

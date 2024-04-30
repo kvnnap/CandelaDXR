@@ -159,6 +159,7 @@ namespace candela::renderer
 		// Stats
 		FpsCounter fpsCounter;
 		RendererTime rendererTime;
+		std::uint64_t frameGrabCounter;
 
 		// Animation
 		std::vector<AnimationRecord> animationRecords;
