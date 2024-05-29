@@ -14,6 +14,7 @@
 #include "Factory/LightTracingDrawableFactory.h"
 #include "Factory/PathTracingDrawableFactory.h"
 #include "Factory/DenoiserDrawableFactory.h"
+#include "Factory/OptixDenoiserDrawableFactory.h"
 #include "Factory/CameraFactory.h"
 #include "Factory/AnimationFactory.h"
 #include "Factory/ChainFactory.h"
@@ -43,6 +44,7 @@ using candela::renderer::factory::RasterRTShadowsDrawableFactory;
 using candela::renderer::factory::LightTracingDrawableFactory;
 using candela::renderer::factory::PathTracingDrawableFactory;
 using candela::renderer::factory::DenoiserDrawableFactory;
+using candela::renderer::factory::OptixDenoiserDrawableFactory;
 using candela::renderer::factory::CameraFactory;
 using candela::animation::factory::AnimationFactory;
 
@@ -159,6 +161,7 @@ void Environment::loadCoreFactories()
     drawableManager.getFactoryManager().registerItem<LightTracingDrawableFactory>("LightTracingDrawable");
     drawableManager.getFactoryManager().registerItem<PathTracingDrawableFactory>("PathTracingDrawable");
     drawableManager.getFactoryManager().registerItem<DenoiserDrawableFactory>("DenoiserDrawable");
+    drawableManager.getFactoryManager().registerItem<OptixDenoiserDrawableFactory>("OptixDenoiserDrawable");
 
     // Cameras
     cameraManager.getFactoryManager().registerItem<CameraFactory>("Camera");

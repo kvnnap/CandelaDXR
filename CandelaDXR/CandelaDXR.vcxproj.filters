@@ -267,6 +267,15 @@
     <ClCompile Include="Chain\Exposure.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Renderer\OptixDenoiserShading.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Factory\OptixDenoiserDrawableFactory.h">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Factory\OptixDenoiserDrawableFactory.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Exception\GeneralException.h">
@@ -576,6 +585,15 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Chain\Exposure.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Renderer\OptixDenoiserShading.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Util\CudaHelper.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Util\OptixHelper.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

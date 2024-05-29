@@ -372,7 +372,7 @@ bool DenoiserShading::shouldClearAccumulation() const
 	return true;
 }
 
-std::uint32_t candela::renderer::DenoiserShading::getBufferUsage() const
+std::uint32_t DenoiserShading::getBufferUsage() const
 {
 	return BufferUsage::Diffuse | BufferUsage::Specular;
 }

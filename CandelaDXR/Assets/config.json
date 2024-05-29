@@ -112,7 +112,7 @@
       "SpecularOnly": true
     },
     {
-      "Type": "DenoiserDrawable",
+      "Type": "OptixDenoiserDrawable",
       "Name": "Den"
     }
   ],

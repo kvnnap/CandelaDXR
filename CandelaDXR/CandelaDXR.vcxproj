@@ -89,14 +89,14 @@
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>.;$(FEANOR_ROOT)\include;$(NRD_ROOT)\Include;$(NRI_ROOT)\Include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>.;$(FEANOR_ROOT)\include;$(NRD_ROOT)\Include;$(NRI_ROOT)\Include;$(CUDA_ROOT)\include;$(OPTIX_ROOT)\include</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);dxguid.lib;d3d12.lib;dxgi.lib;d3dcompiler.lib;wininet.lib;NRD.lib;NRI.lib;Core_d.lib;stb_d.lib;tinyobjloader_d.lib;imgui_d.lib;assimp-vc143-mt_d.lib;zlibstaticd.lib;tinyexr_d.lib</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(FEANOR_ROOT)\lib;$(NRD_ROOT)\Lib\Debug;$(NRI_ROOT)\Lib\Debug</AdditionalLibraryDirectories>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);dxguid.lib;d3d12.lib;dxgi.lib;d3dcompiler.lib;wininet.lib;NRD.lib;NRI.lib;cuda.lib;cudart.lib;Core_d.lib;stb_d.lib;tinyobjloader_d.lib;imgui_d.lib;assimp-vc143-mt_d.lib;zlibstaticd.lib;tinyexr_d.lib</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(FEANOR_ROOT)\lib;$(CUDA_ROOT)\lib\x64;$(NRD_ROOT)\Lib\Debug;$(NRI_ROOT)\Lib\Debug</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
       <Command>xcopy "$(ProjectDir)Assets" "$(OutDir)Assets\" /E /Y</Command>
@@ -118,7 +118,7 @@
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>.;$(FEANOR_ROOT)\include;$(NRD_ROOT)\Include;$(NRI_ROOT)\Include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>.;$(FEANOR_ROOT)\include;$(NRD_ROOT)\Include;$(NRI_ROOT)\Include;$(CUDA_ROOT)\include;$(OPTIX_ROOT)\include</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
@@ -126,8 +126,8 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);dxguid.lib;d3d12.lib;dxgi.lib;d3dcompiler.lib;wininet.lib;NRD.lib;NRI.lib;Core.lib;stb.lib;tinyobjloader.lib;imgui.lib;assimp-vc143-mt.lib;zlibstatic.lib;tinyexr.lib</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(FEANOR_ROOT)\lib;$(NRD_ROOT)\Lib\Release;$(NRI_ROOT)\Lib\Release</AdditionalLibraryDirectories>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);dxguid.lib;d3d12.lib;dxgi.lib;d3dcompiler.lib;wininet.lib;NRD.lib;NRI.lib;cuda.lib;cudart.lib;Core.lib;stb.lib;tinyobjloader.lib;imgui.lib;assimp-vc143-mt.lib;zlibstatic.lib;tinyexr.lib</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(FEANOR_ROOT)\lib;$(CUDA_ROOT)\lib\x64;$(NRD_ROOT)\Lib\Release;$(NRI_ROOT)\Lib\Release</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
       <Command>xcopy "$(ProjectDir)Assets" "$(OutDir)Assets\" /E /Y</Command>
@@ -147,14 +147,14 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>.;$(FEANOR_ROOT)\include;$(NRD_ROOT)\Include;$(NRI_ROOT)\Include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>.;$(FEANOR_ROOT)\include;$(NRD_ROOT)\Include;$(NRI_ROOT)\Include;$(CUDA_ROOT)\include;$(OPTIX_ROOT)\include</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);dxguid.lib;d3d12.lib;dxgi.lib;d3dcompiler.lib;wininet.lib;NRD.lib;NRI.lib;Core_d.lib;stb_d.lib;tinyobjloader_d.lib;imgui_d.lib;assimp-vc143-mt_d.lib;zlibstaticd.lib;tinyexr_d.lib</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(FEANOR_ROOT)\lib;$(NRD_ROOT)\Lib\Debug;$(NRI_ROOT)\Lib\Debug</AdditionalLibraryDirectories>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);dxguid.lib;d3d12.lib;dxgi.lib;d3dcompiler.lib;wininet.lib;NRD.lib;NRI.lib;cuda.lib;cudart.lib;Core_d.lib;stb_d.lib;tinyobjloader_d.lib;imgui_d.lib;assimp-vc143-mt_d.lib;zlibstaticd.lib;tinyexr_d.lib</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(FEANOR_ROOT)\lib;$(CUDA_ROOT)\lib\x64;$(NRD_ROOT)\Lib\Debug;$(NRI_ROOT)\Lib\Debug</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
       <Command>xcopy "$(ProjectDir)Assets" "$(OutDir)Assets\" /E /Y</Command>
@@ -176,7 +176,7 @@
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>.;$(FEANOR_ROOT)\include;$(NRD_ROOT)\Include;$(NRI_ROOT)\Include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>.;$(FEANOR_ROOT)\include;$(NRD_ROOT)\Include;$(NRI_ROOT)\Include;$(CUDA_ROOT)\include;$(OPTIX_ROOT)\include</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
@@ -184,8 +184,8 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);dxguid.lib;d3d12.lib;dxgi.lib;d3dcompiler.lib;wininet.lib;NRD.lib;NRI.lib;Core.lib;stb.lib;tinyobjloader.lib;imgui.lib;assimp-vc143-mt.lib;zlibstatic.lib;tinyexr.lib</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(FEANOR_ROOT)\lib;$(NRD_ROOT)\Lib\Release;$(NRI_ROOT)\Lib\Release</AdditionalLibraryDirectories>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);dxguid.lib;d3d12.lib;dxgi.lib;d3dcompiler.lib;wininet.lib;NRD.lib;NRI.lib;cuda.lib;cudart.lib;Core.lib;stb.lib;tinyobjloader.lib;imgui.lib;assimp-vc143-mt.lib;zlibstatic.lib;tinyexr.lib</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(FEANOR_ROOT)\lib;$(CUDA_ROOT)\lib\x64;$(NRD_ROOT)\Lib\Release;$(NRI_ROOT)\Lib\Release</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
       <Command>xcopy "$(ProjectDir)Assets" "$(OutDir)Assets\" /E /Y</Command>
@@ -222,6 +222,8 @@
     <ClCompile Include="Factory\LightFactory.cpp" />
     <ClCompile Include="Factory\LightTracingDrawableFactory.cpp" />
     <ClCompile Include="Factory\MathematicsFactory.cpp" />
+    <ClCompile Include="Factory\OptixDenoiserDrawableFactory.cpp" />
+    <ClCompile Include="Factory\OptixDenoiserDrawableFactory.h" />
     <ClCompile Include="Factory\PathTracingDrawableFactory.cpp" />
     <ClCompile Include="Factory\RasterDrawableFactory.cpp" />
     <ClCompile Include="Factory\RasterRTShadowsDrawableFactory.cpp" />
@@ -256,6 +258,7 @@
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Release|x64'">.;$(FEANOR_ROOT)\include;$(NRD_ROOT)\Include;$(NRD_ROOT)\Integration;$(NRI_ROOT)\Include</AdditionalIncludeDirectories>
     </ClCompile>
     <ClCompile Include="Renderer\ExternalObjectDebugShading.cpp" />
+    <ClCompile Include="Renderer\OptixDenoiserShading.cpp" />
     <ClCompile Include="Renderer\RayTracingAOShading.cpp" />
     <ClCompile Include="Renderer\RendererTime.cpp" />
     <ClCompile Include="Renderer\SingleIOComputeShader.cpp" />
@@ -329,6 +332,7 @@
     <ClInclude Include="Renderer\DenoiserShading.h" />
     <ClInclude Include="Renderer\ExternalObjectDebugShading.h" />
     <ClInclude Include="Renderer\ITransform.h" />
+    <ClInclude Include="Renderer\OptixDenoiserShading.h" />
     <ClInclude Include="Renderer\RayTracingAOShading.h" />
     <ClInclude Include="Renderer\RendererTime.h" />
     <ClInclude Include="Renderer\SingleIOComputeShader.h" />
@@ -386,7 +390,9 @@
     <ClInclude Include="Scene\WavefrontSceneLoader.h" />
     <ClInclude Include="Factory\WavefrontSceneLoaderFactory.h" />
     <ClInclude Include="System\DllManager.h" />
+    <ClInclude Include="Util\CudaHelper.h" />
     <ClInclude Include="Util\FileUtil.h" />
+    <ClInclude Include="Util\OptixHelper.h" />
     <ClInclude Include="Util\StringUtil.h" />
     <ClInclude Include="Util\WebUtil.h" />
     <ClInclude Include="Version\Version.h" />
