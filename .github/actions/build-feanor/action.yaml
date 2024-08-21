@@ -1,0 +1,85 @@
+# .github/actions/build-feanor/action.yaml
+
+name: "Build Feanor Component"
+description: "Builds and installs a Feanor component."
+inputs:
+  component:
+    description: 'The component to build (e.g., core, external, anvil)'
+    required: true
+  repo_id:
+    description: 'The GitLab project ID'
+    required: true
+  append_key:
+    description: 'Appends this string to the cache key'
+    required: false
+    default: ''
+  install_path:
+    description: 'Path where the component will be installed'
+    required: true
+  submodules:
+    description: 'Whether to update submodules (true/false)'
+    required: false
+    default: 'false'
+  prefix_path:
+    description: 'Optional CMake prefix path'
+    required: false
+    default: ''  # Default is empty if not set
+
+outputs:
+  sha:
+    description: 'The SHA of the built Feanor component repository'
+    value: ${{ steps.sha.outputs.sha }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Get Feanor Component SHA JSON
+      shell: pwsh
+      run: |
+        curl --location --output feanor.${{ inputs.component }}.sha --header "PRIVATE-TOKEN: ${{env.GITLAB_TOKEN}}" "https://gitlab.com/api/v4/projects/${{ inputs.repo_id }}/repository/commits/master"
+    
+    - name: Read Feanor Commit SHA JSON to Variable
+      id: read-sha
+      uses: juliangruber/read-file-action@v1.1.7
+      with:
+        path: feanor.${{ inputs.component }}.sha
+    
+    - name: Set output Feanor SHA
+      id: sha
+      shell: pwsh
+      run: echo "sha=${{ fromJson(steps.read-sha.outputs.content).id }}" | Out-File -FilePath $Env:GITHUB_OUTPUT -Encoding utf-8 -Append
+        
+    - name: Cache Feanor Component
+      id: cache-component
+      uses: actions/cache@v4.0.2
+      with:
+        path: ${{ inputs.install_path }}
+        key: feanor-${{ inputs.component }}-${{ steps.sha.outputs.sha }}${{ inputs.append_key }}
+    
+    - name: Get Feanor Repo
+      if: steps.cache-component.outputs.cache-hit != 'true'
+      shell: pwsh
+      run: |
+        git clone https://oauth2:${{env.GITLAB_TOKEN}}@gitlab.com/cgvg/feanor/${{ inputs.component }} feanor-${{ inputs.component }}
+        Set-Location -Path feanor-${{ inputs.component }}
+        git checkout ${{ steps.sha.outputs.sha }}
+        if ('${{ inputs.submodules }}' -eq 'true') {
+          git submodule update --init --recursive
+        }
+    
+    - name: Build and install Feanor Component
+      if: steps.cache-component.outputs.cache-hit != 'true'
+      shell: pwsh
+      run: |
+        if ('${{ inputs.component }}' -eq 'external') {
+          Set-Location -Path feanor-${{ inputs.component }}
+          .\install.ps1 "${{ github.workspace }}\${{ inputs.install_path }}" ${{env.BUILD_SHARED}}
+        } else {
+          $cmake_cmd = "cmake -S feanor-${{ inputs.component }} -B feanor-${{ inputs.component }}/build -DCMAKE_INSTALL_PREFIX:PATH=`"${{ github.workspace }}\${{ inputs.install_path }}\"" -DBUILD_SHARED_LIBS:BOOL=${{env.BUILD_SHARED}}"
+          if ('${{ inputs.prefix_path }}') {
+            $cmake_cmd += " -DCMAKE_PREFIX_PATH:PATH=`"${{ github.workspace }}\${{ inputs.prefix_path }}`""
+          }
+          Invoke-Expression $cmake_cmd
+          cmake --build feanor-${{ inputs.component }}/build --config ${{env.BUILD_CONFIGURATION}} --parallel --target install
+        }
+

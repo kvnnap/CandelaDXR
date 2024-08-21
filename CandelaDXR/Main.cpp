@@ -7,6 +7,8 @@
 #include "Renderer/IRenderer.h"
 #include "Version/Version.h"
 
+#include "core/anvil.h"
+
 using std::cout;
 using std::endl;
 using std::string;
@@ -18,6 +20,10 @@ using candela::ui::Window;
 
 int main(int argc, char** argv)
 {
+
+    auto &anvil = feanor::anvil::Anvil::getInstance();
+    anvil.clear();
+
     cout << "Version: " << candela::version::CommitSummary() << " Date: " << candela::version::Date << endl;
 
     string err;

@@ -89,13 +89,13 @@
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>.;$(FEANOR_ROOT)\include;$(NRD_ROOT)\Include;$(NRI_ROOT)\Include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>.;$(FEANOR_ROOT)\include;$(FEANOR_ROOT)\include\feanor\core;$(FEANOR_ROOT)\include\feanor\anvil;$(NRD_ROOT)\Include;$(NRI_ROOT)\Include</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);dxguid.lib;d3d12.lib;dxgi.lib;d3dcompiler.lib;wininet.lib;NRD.lib;NRI.lib;Core_d.lib;stb_d.lib;tinyobjloader_d.lib;imgui_d.lib;assimp-vc143-mt_d.lib;zlibstaticd.lib;tinyexr_d.lib</AdditionalDependencies>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);dxguid.lib;d3d12.lib;dxgi.lib;d3dcompiler.lib;wininet.lib;NRD.lib;NRI.lib;Core_d.lib;Anvil_d.lib;stb_d.lib;tinyobjloader_d.lib;imgui_d.lib;assimp-vc143-mt_d.lib;zlibstaticd.lib;tinyexr_d.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(FEANOR_ROOT)\lib;$(NRD_ROOT)\Lib\Debug;$(NRI_ROOT)\Lib\Debug</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
@@ -118,7 +118,7 @@
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>.;$(FEANOR_ROOT)\include;$(NRD_ROOT)\Include;$(NRI_ROOT)\Include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>.;$(FEANOR_ROOT)\include;$(FEANOR_ROOT)\include\feanor\core;$(FEANOR_ROOT)\include\feanor\anvil;$(NRD_ROOT)\Include;$(NRI_ROOT)\Include</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
@@ -126,7 +126,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);dxguid.lib;d3d12.lib;dxgi.lib;d3dcompiler.lib;wininet.lib;NRD.lib;NRI.lib;Core.lib;stb.lib;tinyobjloader.lib;imgui.lib;assimp-vc143-mt.lib;zlibstatic.lib;tinyexr.lib</AdditionalDependencies>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);dxguid.lib;d3d12.lib;dxgi.lib;d3dcompiler.lib;wininet.lib;NRD.lib;NRI.lib;Core.lib;Anvil.lib;stb.lib;tinyobjloader.lib;imgui.lib;assimp-vc143-mt.lib;zlibstatic.lib;tinyexr.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(FEANOR_ROOT)\lib;$(NRD_ROOT)\Lib\Release;$(NRI_ROOT)\Lib\Release</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
@@ -147,13 +147,13 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>.;$(FEANOR_ROOT)\include;$(NRD_ROOT)\Include;$(NRI_ROOT)\Include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>.;$(FEANOR_ROOT)\include;$(FEANOR_ROOT)\include\feanor\core;$(FEANOR_ROOT)\include\feanor\anvil;$(NRD_ROOT)\Include;$(NRI_ROOT)\Include</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);dxguid.lib;d3d12.lib;dxgi.lib;d3dcompiler.lib;wininet.lib;NRD.lib;NRI.lib;Core_d.lib;stb_d.lib;tinyobjloader_d.lib;imgui_d.lib;assimp-vc143-mt_d.lib;zlibstaticd.lib;tinyexr_d.lib</AdditionalDependencies>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);dxguid.lib;d3d12.lib;dxgi.lib;d3dcompiler.lib;wininet.lib;NRD.lib;NRI.lib;Core_d.lib;Anvil_d.lib;stb_d.lib;tinyobjloader_d.lib;imgui_d.lib;assimp-vc143-mt_d.lib;zlibstaticd.lib;tinyexr_d.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(FEANOR_ROOT)\lib;$(NRD_ROOT)\Lib\Debug;$(NRI_ROOT)\Lib\Debug</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
@@ -176,7 +176,7 @@
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>.;$(FEANOR_ROOT)\include;$(NRD_ROOT)\Include;$(NRI_ROOT)\Include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>.;$(FEANOR_ROOT)\include;$(FEANOR_ROOT)\include\feanor\core;$(FEANOR_ROOT)\include\feanor\anvil;$(NRD_ROOT)\Include;$(NRI_ROOT)\Include</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
@@ -184,7 +184,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);dxguid.lib;d3d12.lib;dxgi.lib;d3dcompiler.lib;wininet.lib;NRD.lib;NRI.lib;Core.lib;stb.lib;tinyobjloader.lib;imgui.lib;assimp-vc143-mt.lib;zlibstatic.lib;tinyexr.lib</AdditionalDependencies>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;%(AdditionalDependencies);dxguid.lib;d3d12.lib;dxgi.lib;d3dcompiler.lib;wininet.lib;NRD.lib;NRI.lib;Core.lib;Anvil.lib;stb.lib;tinyobjloader.lib;imgui.lib;assimp-vc143-mt.lib;zlibstatic.lib;tinyexr.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(FEANOR_ROOT)\lib;$(NRD_ROOT)\Lib\Release;$(NRI_ROOT)\Lib\Release</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
