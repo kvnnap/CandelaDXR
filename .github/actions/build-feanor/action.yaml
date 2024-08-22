@@ -73,7 +73,7 @@ runs:
       run: |
         if ('${{ inputs.component }}' -eq 'external') {
           Set-Location -Path feanor-${{ inputs.component }}
-          .\install.ps1 "${{ github.workspace }}\${{ inputs.install_path }}" ${{env.BUILD_SHARED}}
+          .\install.ps1 "${{ github.workspace }}\${{ inputs.install_path }}" ${{env.BUILD_SHARED}} ${{env.BUILD_CONFIGURATION}}
         } else {
           $cmake_cmd = "cmake -S feanor-${{ inputs.component }} -B feanor-${{ inputs.component }}/build -DCMAKE_INSTALL_PREFIX:PATH=`"${{ github.workspace }}\${{ inputs.install_path }}\"" -DBUILD_SHARED_LIBS:BOOL=${{env.BUILD_SHARED}}"
           if ('${{ inputs.prefix_path }}') {

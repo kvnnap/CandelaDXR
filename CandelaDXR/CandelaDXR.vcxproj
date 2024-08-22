@@ -199,6 +199,18 @@
     </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="$(FEANOR_ROOT)\include\imgui\backends\imgui_impl_dx12.cpp">
+      <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(FEANOR_ROOT)\include\imgui</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(FEANOR_ROOT)\include\imgui</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(FEANOR_ROOT)\include\imgui</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(FEANOR_ROOT)\include\imgui</AdditionalIncludeDirectories>
+    </ClCompile>
+    <ClCompile Include="$(FEANOR_ROOT)\include\imgui\backends\imgui_impl_win32.cpp">
+      <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(FEANOR_ROOT)\include\imgui</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(FEANOR_ROOT)\include\imgui</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(FEANOR_ROOT)\include\imgui</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(FEANOR_ROOT)\include\imgui</AdditionalIncludeDirectories>
+    </ClCompile>
     <ClCompile Include="Animation\Animation.cpp" />
     <ClCompile Include="Animation\AnimationSequencer.cpp" />
     <ClCompile Include="Animation\KeyBasedAnimation.cpp" />
@@ -230,13 +242,16 @@
     <ClCompile Include="Factory\TextureFactory.cpp" />
     <ClCompile Include="Factory\UniformSamplerFactory.cpp" />
     <ClCompile Include="Factory\VectorFactory.cpp" />
-    <ClCompile Include="ImGui\ImGuiManager.cpp" />
+    <ClCompile Include="ImGui\ImGuiManager.cpp">
+      <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">.;$(FEANOR_ROOT)\include;$(FEANOR_ROOT)\include\imgui;$(FEANOR_ROOT)\include\feanor\core;$(FEANOR_ROOT)\include\feanor\anvil;$(NRD_ROOT)\Include;$(NRI_ROOT)\Include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">.;$(FEANOR_ROOT)\include;$(FEANOR_ROOT)\include\imgui;$(FEANOR_ROOT)\include\feanor\core;$(FEANOR_ROOT)\include\feanor\anvil;$(NRD_ROOT)\Include;$(NRI_ROOT)\Include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">.;$(FEANOR_ROOT)\include;$(FEANOR_ROOT)\include\imgui;$(FEANOR_ROOT)\include\feanor\core;$(FEANOR_ROOT)\include\feanor\anvil;$(NRD_ROOT)\Include;$(NRI_ROOT)\Include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Release|x64'">.;$(FEANOR_ROOT)\include;$(FEANOR_ROOT)\include\imgui;$(FEANOR_ROOT)\include\feanor\core;$(FEANOR_ROOT)\include\feanor\anvil;$(NRD_ROOT)\Include;$(NRI_ROOT)\Include</AdditionalIncludeDirectories>
+    </ClCompile>
     <ClCompile Include="ImGui\ImGuiMaterial.cpp" />
     <ClCompile Include="ImGui\ImGuiRenderer.cpp" />
     <ClCompile Include="ImGui\ImGuiResourceManager.cpp" />
     <ClCompile Include="ImGui\ImGuiSceneNode.cpp" />
-    <ClCompile Include="ImGui\Backend\imgui_impl_dx12.cpp" />
-    <ClCompile Include="ImGui\Backend\imgui_impl_win32.cpp" />
     <ClCompile Include="ImGui\ImGuiShading.cpp" />
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="DirectX\DxgiInfoManager.cpp" />
@@ -354,8 +369,6 @@
     <ClInclude Include="Factory\RendererFactory.h" />
     <ClInclude Include="ImGui\ImGuiMaterial.h" />
     <ClInclude Include="ImGui\ImGuiSceneNode.h" />
-    <ClInclude Include="ImGui\Backend\imgui_impl_dx12.h" />
-    <ClInclude Include="ImGui\Backend\imgui_impl_win32.h" />
     <ClInclude Include="ImGui\ImGuiShading.h" />
     <ClInclude Include="Mathematics\Constants.h" />
     <ClInclude Include="Mathematics\Types.h" />
