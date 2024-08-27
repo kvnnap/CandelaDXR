@@ -214,6 +214,7 @@
     <ClCompile Include="Animation\Animation.cpp" />
     <ClCompile Include="Animation\AnimationSequencer.cpp" />
     <ClCompile Include="Animation\KeyBasedAnimation.cpp" />
+    <ClCompile Include="Anvil\AnvilRegistrations.cpp" />
     <ClCompile Include="Chain\AlphaCorrection.cpp" />
     <ClCompile Include="Chain\Exposure.cpp" />
     <ClCompile Include="Chain\FileOutput.cpp" />
@@ -309,6 +310,7 @@
     <ClInclude Include="Animation\AnimationSequencer.h" />
     <ClInclude Include="Animation\IAnimation.h" />
     <ClInclude Include="Animation\KeyBasedAnimation.h" />
+    <ClInclude Include="Anvil\AnvilRegistrations.h" />
     <ClInclude Include="Chain\AlphaCorrection.h" />
     <ClInclude Include="Chain\Exposure.h" />
     <ClInclude Include="Chain\IChain.h" />

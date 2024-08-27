@@ -227,7 +227,9 @@ void Renderer::init()
 		.window = window.get(),
 		.drawables = &drawables,
 		.frameNumber = 0,
-		.processedExternalLights = std::move(rendererResources.processedExternalLights)
+		.processedExternalLights = std::move(rendererResources.processedExternalLights),
+		.keyboard = &keyboard,
+		.mouse = &mouse
 	};
 
 	initShaders();
@@ -264,6 +266,11 @@ void Renderer::init()
 	// Setup stuff if in recording mode
 	if (isRecording())
 		recordingChange();
+
+	// Anvil
+	ANVIL_CODE_RAW(
+		initAnvil();
+	)
 }
 
 void Renderer::renderFrame()
@@ -1062,3 +1069,49 @@ LRESULT Renderer::wndCallback(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 	}
 	return 1;
 }
+
+// Anvil
+#include "feanor/anvil/core/anvil.h"
+#include "feanor/anvil/scene/scene.h"
+#include "feanor/anvil/scene/wavefront_loader.h"
+#include "feanor/anvil/core/renderer/opengl_renderer.h"
+#include "feanor/anvil/system/camera_system.h"
+#include "feanor/anvil/visualisation/basic_visualiser.h"
+#include "feanor/anvil/visualisation/path_visualiser.h"
+
+ANVIL_CODE_RAW(
+	bool Renderer::isAnvilEnabled() const
+	{
+		return anvilEnabled;
+	}
+
+	void Renderer::setAnvilEnabled(bool p_anvilEnabled)
+	{
+		anvilEnabled = p_anvilEnabled;
+	}
+
+	void Renderer::initAnvil()
+	{
+		if (!isAnvilEnabled())
+			return;
+
+		using feanor::anvil::Anvil;
+		using feanor::anvil::CameraSystem;
+		using feanor::anvil::scene::Scene;
+		using feanor::anvil::scene::WavefrontLoader;
+		using feanor::anvil::renderer::OpenGLRenderer;
+		using feanor::anvil::visualisation::BasicVisualiser;
+		using feanor::anvil::visualisation::PathVisualiser;
+
+		auto scene = make_shared<Scene>();
+		WavefrontLoader().loadScene(*scene, "Assets/CornellBox-Original.obj");
+		auto glRenderer = make_shared<OpenGLRenderer>(anvilParallel);
+		glRenderer->setScene(scene);
+		glRenderer->render();
+
+		//Anvil::getInstance().addSystem(make_shared<BasicVisualiser>(glRenderer, scene));
+		Anvil::getInstance().addSystem(make_shared<CameraSystem>(glRenderer));
+		Anvil::getInstance().addSystem(make_shared<PathVisualiser>(glRenderer, scene));
+		Anvil::addReflectionEntity("Camera", *camera);
+	}
+)

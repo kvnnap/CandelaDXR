@@ -10,6 +10,13 @@ enum PathInteraction : uint
 	Diffuse = 8
 };
 
+// Anvil
+#ifdef ANVIL_DISABLED
+#define ANVIL_CODE(...)
+#else
+#define ANVIL_CODE(...) __VA_ARGS__
+#endif
+
 struct ConstBuff
 {
 	float3 u, v, w;
@@ -26,8 +33,43 @@ struct ConstBuff
 	PathInteraction pathFilter;
 	uint minBounces;
 	uint maxBounces;
-	uint2 padding;
+	
+	// Anvil
+	ANVIL_CODE(uint4 debugPixel;)
 };
+
+
+ANVIL_CODE(
+	struct PathTracingIntersectionContext {
+		// Ray - XMVECTOR's are pods
+		float4 origin;
+		float4 direction;
+
+		float tMin;
+		float tMax;
+		float tHit;
+		float rayProbability;
+
+		float4 radiance;
+		float4 unitNormal;
+
+		uint rayDepth;
+		uint rayType;
+		uint primitiveId;
+		uint materialId;
+	};
+
+	struct PathTracingPath {
+		uint debugId;
+		uint numRays;
+		uint2 pixel;
+		uint2 seeds;
+		uint2 padding;
+
+		float4 totalRadiance;
+		PathTracingIntersectionContext pathTracingIntersectionContext[16];
+	};
+)
 
 struct RayPayload
 {
@@ -37,13 +79,14 @@ struct RayPayload
 	uint instanceIndex;
 };
 
-
-
 RWTexture2D<float4> gOutputDiff : register(u0);
 RWTexture2D<float4> gOutputSpec : register(u1);
 RWTexture2D<float4> gRadianceDiff : register(u2);
 RWTexture2D<float4> gRadianceSpec : register(u3);
 RWTexture2D<float4> gRayHitT : register(u4);
+
+// Anvil
+ANVIL_CODE(RWStructuredBuffer<PathTracingPath> gAnvilBuffer : register(u5);)
 
 // SRVs
 StructuredBuffer<float3> verts : register(t0);
@@ -108,6 +151,19 @@ void rayGen()
 	// Dimensions - the previous x,y point is contained within these dimensions
 	const uint2 launchDim = DispatchRaysDimensions().xy;
 
+	// Anvil
+	ANVIL_CODE(
+		uint rayNumber = 0;
+		bool isDebugging = cBuffer.debugPixel.z == 1 && cBuffer.debugPixel.x == launchIndex.x && cBuffer.debugPixel.y == launchIndex.y;
+		if (isDebugging)
+		{
+			gAnvilBuffer[0].debugId = cBuffer.frameNumber;
+			gAnvilBuffer[0].numRays = 0;
+			gAnvilBuffer[0].pixel = launchIndex;
+			gAnvilBuffer[0].seeds = cBuffer.seeds;
+		}
+	)
+
 	// Clear output pixel
 	gOutputDiff[launchIndex] = gOutputSpec[launchIndex] = float4(0.f, 0.f, 0.f, 0.f);
 
@@ -168,6 +224,26 @@ void rayGen()
 		const bool isInternal = wiDot > 0.f;
 		const float3 intersectionPoint = ray.Origin + rayPayload.t * ray.Direction;
 		
+		// Anvil
+		ANVIL_CODE(
+			if (isDebugging)
+			{
+				gAnvilBuffer[0].pathTracingIntersectionContext[rayNumber].origin = float4(ray.Origin, 0.f);
+				gAnvilBuffer[0].pathTracingIntersectionContext[rayNumber].direction = float4(ray.Direction, 0.f);
+				gAnvilBuffer[0].pathTracingIntersectionContext[rayNumber].tMin = ray.TMin;
+				gAnvilBuffer[0].pathTracingIntersectionContext[rayNumber].tMax = ray.TMax;
+				gAnvilBuffer[0].pathTracingIntersectionContext[rayNumber].tHit = rayPayload.t;
+				gAnvilBuffer[0].pathTracingIntersectionContext[rayNumber].unitNormal = float4(unitFaceNormal, 0.f);
+				gAnvilBuffer[0].pathTracingIntersectionContext[rayNumber].rayProbability = 1.f;
+				gAnvilBuffer[0].pathTracingIntersectionContext[rayNumber].rayDepth = i - 1;
+				gAnvilBuffer[0].pathTracingIntersectionContext[rayNumber].rayType = i == 1 ? 0 : 2;
+				gAnvilBuffer[0].pathTracingIntersectionContext[rayNumber].primitiveId = fAttr.MeshIndex;
+				gAnvilBuffer[0].pathTracingIntersectionContext[rayNumber].materialId = fAttr.MaterialId;
+				rayNumber = ++gAnvilBuffer[0].numRays;
+				isDebugging = rayNumber < 16;
+			}
+		)
+
 		// Next ray origin
 		ray.Origin = intersectionPoint;
 
@@ -272,13 +348,17 @@ void rayGen()
 		// Diffuse?
 		if (rand_next(seed) <= dissolve)
 		{
+			// Extracted here for Anvil use
+			RayDesc shadowRay;
+			float3 unitLightNormal;
+			float triangleArea = 1.f;
+
 			if ((prevInteraction & cBuffer.pathFilter) != 0 && i >= cBuffer.minBounces)
 			{
 				uint lightIndex = chooseInRange(seed, 0, cBuffer.numTotalLights - 1);
 				bool isExternalLight = lightIndex >= cBuffer.numLights; // i.e. emissive
 
 				// Start constructing shadow ray
-				RayDesc shadowRay;
 				shadowRay.TMin = 0.001f;
 				shadowRay.TMax = 0.999f;
 				shadowRay.Origin = intersectionPoint;
@@ -316,6 +396,9 @@ void rayGen()
 
 					if (proceed)
                     {
+						// Anvil
+						ANVIL_CODE(unitLightNormal = eLight.Direction.xyz;)
+
                         float invShadowDistance = 1.f / length(shadowRay.Direction);
                         float3 unitShadowRayDirection = shadowRay.Direction * invShadowDistance;
                         float surfaceLightDot = dot(unitShadowRayDirection, unitFaceNormal);
@@ -345,11 +428,9 @@ void rayGen()
 					Material lightMat = materials[areaLight.MaterialId];
 					const bool lightDirectional = lightMat.EmissiveType == 1;
 
-					float3 unitLightNormal;
 					float invShadowDistance = 1.f;
 					float3 unitShadowRayDirection;
 					float lightDot = 1.f;
-					float triangleArea = 1.f;
 					float2 lightBary = float2(0.5f, 0.5f);
 
 					if (lightDirectional)
@@ -420,6 +501,25 @@ void rayGen()
 				}
 			}
 
+			// Capture shadowray
+			ANVIL_CODE(
+				if (isDebugging) {
+					gAnvilBuffer[0].pathTracingIntersectionContext[rayNumber].origin = float4(shadowRay.Origin, 0.f);
+					gAnvilBuffer[0].pathTracingIntersectionContext[rayNumber].direction = float4(shadowRay.Direction, 0.f);
+					gAnvilBuffer[0].pathTracingIntersectionContext[rayNumber].tMin = shadowRay.TMin;
+					gAnvilBuffer[0].pathTracingIntersectionContext[rayNumber].tMax = shadowRay.TMax;
+					gAnvilBuffer[0].pathTracingIntersectionContext[rayNumber].tHit = shadowRay.TMax;
+					gAnvilBuffer[0].pathTracingIntersectionContext[rayNumber].rayProbability = 1.f / (cBuffer.numTotalLights * triangleArea);
+					gAnvilBuffer[0].pathTracingIntersectionContext[rayNumber].unitNormal = float4(unitLightNormal, 0.f);
+					gAnvilBuffer[0].pathTracingIntersectionContext[rayNumber].rayType = 1;
+					gAnvilBuffer[0].pathTracingIntersectionContext[rayNumber].rayDepth = i - 1;
+					//gAnvilBuffer[0].pathTracingIntersectionContext[rayNumber].primitiveId = areaLight.primitiveId;
+					//gAnvilBuffer[0].pathTracingIntersectionContext[rayNumber].materialId = areaLight.materialId;
+					rayNumber = ++gAnvilBuffer[0].numRays;
+					isDebugging = rayNumber < 16;
+				}
+			)
+
 			// Proceed with normal diffuse hemispherical
 			float pdf;
 			ray.Direction = randomRayLobe(seed, unitFaceNormal, 1, pdf);
@@ -489,6 +589,12 @@ void rayGen()
 	
 	gOutputDiff[launchIndex] = float4(gRadianceDiff[launchIndex].xyz / cBuffer.frameNumber, 1.f);
 	gOutputSpec[launchIndex] = float4(gRadianceSpec[launchIndex].xyz / cBuffer.frameNumber, 1.f);
+
+	// Anvil
+	ANVIL_CODE(
+		if (isDebugging)
+			gAnvilBuffer[0].totalRadiance = float4(radiance, 0.f);
+	)
 }
 
 // Ray

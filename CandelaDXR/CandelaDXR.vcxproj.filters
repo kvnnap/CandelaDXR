@@ -267,6 +267,9 @@
     <ClCompile Include="$(FEANOR_ROOT)\include\imgui\backends\imgui_impl_win32.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Anvil\AnvilRegistrations.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Exception\GeneralException.h">
@@ -570,6 +573,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Chain\Exposure.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Anvil\AnvilRegistrations.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

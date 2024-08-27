@@ -32,6 +32,8 @@
 #include "Animation/AnimationSequencer.h"
 #include "ExternalObjectDebugShading.h"
 
+#include "feanor/anvil/core/anvil.h"
+
 namespace candela::renderer
 {
 	namespace wrl = Microsoft::WRL;
@@ -83,6 +85,12 @@ namespace candela::renderer
 
 		void setFramesToGrab(std::vector<std::uint64_t>&& framesToGrab);
 		void setBuffersToGrab(std::vector<std::string>&& buffersToGrab);
+
+		// Anvil
+		ANVIL_CODE_RAW(
+			bool isAnvilEnabled() const;
+			void setAnvilEnabled(bool);
+		)
 
 	private:
 		// Accum Resource Enum
@@ -216,5 +224,12 @@ namespace candela::renderer
 		bool shaderAccumulation;
 
 		ExternalObjectDebugShading eoDebug;
+
+		// Anvil
+		ANVIL_CODE_RAW(
+			bool anvilEnabled = true;
+			bool anvilParallel = false;
+			void initAnvil();
+		)
 	};
 }

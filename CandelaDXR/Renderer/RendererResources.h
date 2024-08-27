@@ -11,6 +11,8 @@
 #include "Mathematics/Types.h"
 #include "Camera.h"
 #include "Window/Window.h"
+#include "feanor/core/io/ikeyreader.h"
+#include "feanor/core/io/imousereader.h"
 
 namespace candela::renderer
 {
@@ -50,6 +52,8 @@ namespace candela::renderer
 		std::vector<IDrawable*>* drawables{};
 		std::uint64_t frameNumber{};
 		std::vector<candela::scene::Light> processedExternalLights{};
+		feanor::io::IKeyReader* keyboard;
+		feanor::io::IMouseReader* mouse;
 
 		directx::DXResource& getTempResource()
 		{

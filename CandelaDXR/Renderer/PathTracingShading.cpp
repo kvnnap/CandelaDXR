@@ -12,6 +12,7 @@
 #include "RendererResources.h"
 
 #include "Util/StringUtil.h"
+#include "Renderer/Renderer.h"
 
 using std::uint32_t;
 using std::unique_ptr;
@@ -35,6 +36,8 @@ using candela::renderer::AccelerationStructure;
 using candela::renderer::RendererResources;
 using candela::renderer::ResourceRegFunction;
 using candela::renderer::PathTracingShading;
+
+using feanor::anvil::Anvil;
 
 PathTracingShading::PathTracingShading(unique_ptr<ISampler> sampler, bool specularOnly)
 	: rendererResources(), constBuffer(), sampler(std::move(sampler)), clear()
@@ -76,6 +79,14 @@ void PathTracingShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12Graphic
 	rayHitT = &rRes->resourceManager->createResourceIfNotExists(D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
 		rRes->winDimensions.x, rRes->winDimensions.y, DXGI_FORMAT_R32G32B32A32_FLOAT, true, "ray_hitT");
 
+	// Anvil
+	ANVIL_CODE_RAW(
+		outputAnvilBuffer = &rRes->resourceManager->createResource(D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, sizeof(PathTracingPath), 1U);
+		outputAnvilBuffer->setName("pt_Output_Anvil_Buffer");
+		readbackAnvilBuffer = &rRes->resourceManager->createResource(D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_FLAG_NONE, sizeof(PathTracingPath), 1U, DXGI_FORMAT_UNKNOWN, false, "", D3D12_HEAP_TYPE_READBACK);
+		readbackAnvilBuffer->setName("pt_Readback_Anvil_Buffer");
+	)
+
 	// Create Shader resources
 	createShaderResources();
 
@@ -93,6 +104,13 @@ void PathTracingShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCom
 	rendererResources->pRTVDiff->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 	rendererResources->pRTVSpec->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
+	// Anvil
+	ANVIL_CODE_RAW(
+		const auto anvilEnabled = rendererResources->renderer->isAnvilEnabled();
+		if (anvilEnabled)
+			outputAnvilBuffer->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+	)
+
 	// Copy and update camera
 	auto cam = rendererResources->camera;
 	constBuffer.w = DirectX::XMVector3Normalize(cam->getDirection());
@@ -107,6 +125,21 @@ void PathTracingShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCom
 	if (clear)
 		constBuffer.frameNumber = 0;
 	++constBuffer.frameNumber;
+	
+	// Anvil
+	ANVIL_CODE_RAW(
+		if (anvilEnabled)
+		{
+			auto mouse = rendererResources->mouse;
+			if (mouse->hasKeyChanged(0) && mouse->isKeyPressed(0))
+			{
+				constBuffer.debugPixelCoords[0] = mouse->getX();
+				constBuffer.debugPixelCoords[1] = mouse->getY();
+				constBuffer.debugPixel = 1;
+			}
+		}
+	)
+
 	DXUtil::updateDataInDefaultHeap(rendererResources->pDevice, pCurrentCommandList, constantBuffer, rendererResources->getTempResource(),
 		&constBuffer, sizeof(constBuffer), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
@@ -126,6 +159,29 @@ void PathTracingShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCom
 	// After
 	rendererResources->pRTVSpec->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);
 	rendererResources->pRTVDiff->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);
+
+	// Anvil
+	ANVIL_CODE_RAW(
+		if (anvilEnabled)
+		{
+			outputAnvilBuffer->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_COPY_SOURCE);
+			pCurrentCommandList->CopyResource(*readbackAnvilBuffer, *outputAnvilBuffer);
+
+			// Anvil
+			D3D12_RANGE readbackAnvilBufferRange{ 0, sizeof(PathTracingPath) };
+			PathTracingPath* debugPathTracingPath{};
+			auto& r = *(candela::directx::DXResource*)readbackAnvilBuffer;
+			r->Map(0, &readbackAnvilBufferRange, reinterpret_cast<void**>(&debugPathTracingPath));
+			memcpy(&localDebugPathTracingPath, debugPathTracingPath, sizeof(PathTracingPath));
+
+			readbackAnvilBufferRange.End = 0;
+			r->Unmap(0, &readbackAnvilBufferRange);
+
+			Anvil::getInstance().removeEntities({ pathEntity });
+			pathEntity = Anvil::addReflectionEntity("Path", localDebugPathTracingPath);
+			Anvil::getInstance().tick();
+		}
+	)
 }
 
 void PathTracingShading::onChange(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, std::uint32_t currentBackBufferIndex, ChangeEvent_t changeEvent)
@@ -219,7 +275,7 @@ void PathTracingShading::buildPipeline()
 	hitSubObject.SetHitGroupExport(L"HitGroup");
 
 	// Third - Local Root Signature for Ray Gen shader
-	rootSignatureManager->addDescriptorRange("BVH", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 5, 0)); //gOutputDiff, gOutputSpec, gRadianceDiff, gRadianceSpec, rayHitT
+	rootSignatureManager->addDescriptorRange("BVH", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 5 + ANVIL_CODE_RAW(1), 0)); //gOutputDiff, gOutputSpec, gRadianceDiff, gRadianceSpec, gRayHitT, gAnvilDebug
 	rootSignatureManager->addDescriptorRange("BVH", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 10)); //gRtScene
 	if (!rendererResources->textures.empty())
 		rootSignatureManager->addDescriptorRange("BVH", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, static_cast<UINT>(rendererResources->textures.size()), 12));
@@ -306,6 +362,14 @@ void PathTracingShading::createShaderResources()
 	descHeapManager->setUAV(entryNumber++, uavDesc, rendererResources->pDevice, *diffTexture);
 	descHeapManager->setUAV(entryNumber++, uavDesc, rendererResources->pDevice, *specTexture);
 	descHeapManager->setUAV(entryNumber++, uavDesc, rendererResources->pDevice, *rayHitT);
+
+	// Anvil
+	ANVIL_CODE_RAW(
+		uavDesc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
+		uavDesc.Buffer.NumElements = 1;
+		uavDesc.Buffer.StructureByteStride = sizeof(PathTracingPath);
+		descHeapManager->setUAV(entryNumber++, uavDesc, rendererResources->pDevice, *outputAnvilBuffer);
+	)
 
 	// Create the SRV descriptor in second place (following same order as in root signature)
 	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};

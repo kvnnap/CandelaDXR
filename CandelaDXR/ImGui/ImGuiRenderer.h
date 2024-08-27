@@ -1,5 +1,7 @@
 #pragma once
 
+#include "feanor/anvil/core/anvil.h"
+
 namespace candela::renderer
 {
 	class Renderer;
@@ -30,5 +32,9 @@ namespace candela::renderer::imgui
 		bool showLights;
 
 		int timeMs;
+
+		ANVIL_CODE_RAW(
+			bool anvilEnabled;
+		)
 	};
 }

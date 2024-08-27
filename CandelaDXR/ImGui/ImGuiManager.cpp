@@ -9,6 +9,7 @@
 #include "Renderer/Renderer.h"
 
 #include "ImGuiManager.h"
+#include "feanor/anvil/core/anvil.h"
 
 using std::make_unique;
 
@@ -33,8 +34,13 @@ ImGuiManager::~ImGuiManager()
 	// Cleanup ImGui
 	if (rendererResources == nullptr)
 		return;
-	ImGui_ImplDX12_Shutdown();
-	ImGui_ImplWin32_Shutdown();
+	{
+		ANVIL_IMGUI(
+			ImGui_ImplDX12_Shutdown();
+			ImGui_ImplWin32_Shutdown();
+			ImGui::DestroyContext();
+		);
+	}
 }
 
 ChangeEvent_t ImGuiManager::processChangeEvent()
@@ -43,47 +49,49 @@ ChangeEvent_t ImGuiManager::processChangeEvent()
 	if (!isEnabled())
 		return changeEvent;
 
-	ImGui_ImplDX12_NewFrame();
-	ImGui_ImplWin32_NewFrame();
-	ImGui::NewFrame();
+	ANVIL_IMGUI(
+		ImGui_ImplDX12_NewFrame();
+		ImGui_ImplWin32_NewFrame();
+		ImGui::NewFrame();
 
-	ImGui::Begin("Renderer");
-	imguiRenderer->drawUi();
-	if (imguiRenderer->hasChanged())
-		changeEvent |= static_cast<ChangeEvent_t>(ChangeEvent::Animation);
-	ImGui::End();
+		ImGui::Begin("Renderer");
+		imguiRenderer->drawUi();
+		if (imguiRenderer->hasChanged())
+			changeEvent |= static_cast<ChangeEvent_t>(ChangeEvent::Animation);
+		ImGui::End();
 
-	ImGui::Begin("Transforms");
-	imguiRootSceneNode->drawUi();
-	if (imguiRootSceneNode->hasChanged())
-		changeEvent |= static_cast<ChangeEvent_t>(ChangeEvent::Transformation);
-	ImGui::End();
+		ImGui::Begin("Transforms");
+		imguiRootSceneNode->drawUi();
+		if (imguiRootSceneNode->hasChanged())
+			changeEvent |= static_cast<ChangeEvent_t>(ChangeEvent::Transformation);
+		ImGui::End();
 
-	ImGui::Begin("Materials");
-	for (auto& imguiMaterial : imguiMaterials)
-	{
-		imguiMaterial.drawUi();
-		if (imguiMaterial.hasChanged())
-			changeEvent |= static_cast<ChangeEvent_t>(ChangeEvent::SceneUpdate);
-		if (imguiMaterial.hasMajorChange())
-			changeEvent |= static_cast<ChangeEvent_t>(ChangeEvent::SceneChange);
-	}
-	ImGui::End();
+		ImGui::Begin("Materials");
+		for (auto& imguiMaterial : imguiMaterials)
+		{
+			imguiMaterial.drawUi();
+			if (imguiMaterial.hasChanged())
+				changeEvent |= static_cast<ChangeEvent_t>(ChangeEvent::SceneUpdate);
+			if (imguiMaterial.hasMajorChange())
+				changeEvent |= static_cast<ChangeEvent_t>(ChangeEvent::SceneChange);
+		}
+		ImGui::End();
 
-	ImGui::Begin("Shaders");
-	for (auto& imguiShader : imguiShaders)
-	{
-		imguiShader.drawUi();
-		if (imguiShader.hasChanged())
-			changeEvent |= static_cast<ChangeEvent_t>(ChangeEvent::Statistics);
-	}
-	ImGui::End();
+		ImGui::Begin("Shaders");
+		for (auto& imguiShader : imguiShaders)
+		{
+			imguiShader.drawUi();
+			if (imguiShader.hasChanged())
+				changeEvent |= static_cast<ChangeEvent_t>(ChangeEvent::Statistics);
+		}
+		ImGui::End();
 
-	ImGui::Begin("Resource Manager");
-	imguiResourceManager->drawUi();
-	ImGui::End();
+		ImGui::Begin("Resource Manager");
+		imguiResourceManager->drawUi();
+		ImGui::End();
 
-	ImGui::Render();
+		ImGui::Render();
+	);
 
 	return changeEvent;
 }
@@ -101,12 +109,14 @@ void ImGuiManager::init(RendererResources* rRes, wrl::ComPtr<ID3D12GraphicsComma
 	constexpr auto numEntries = 1u + ImGuiResourceManager::MaxDisplayableResources;
 	pImGuiDescriptorHeap = DXUtil::createDescriptorHeap(rRes->pDevice, numEntries, D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, true);
 	pImGuiDescriptorHeap->SetName(L"ImGui Descriptor Heap");
-	ImGui::CreateContext();
-	ImGui_ImplWin32_Init(rRes->window->getHandle());
-	ImGui_ImplDX12_Init(rRes->pDevice.Get(), rRes->numBackBuffers, DXGI_FORMAT_R8G8B8A8_UNORM, pImGuiDescriptorHeap.Get(),
-		pImGuiDescriptorHeap->GetCPUDescriptorHandleForHeapStart(),
-		pImGuiDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
-	ImGui::StyleColorsDark();
+	ANVIL_IMGUI({
+		ImGui::CreateContext();
+		ImGui_ImplWin32_Init(rRes->window->getHandle());
+		ImGui_ImplDX12_Init(rRes->pDevice.Get(), rRes->numBackBuffers, DXGI_FORMAT_R8G8B8A8_UNORM, pImGuiDescriptorHeap.Get(),
+			pImGuiDescriptorHeap->GetCPUDescriptorHandleForHeapStart(),
+			pImGuiDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
+		ImGui::StyleColorsDark();
+	});
 	rRes->window->addWndProcCallback(ImGui_ImplWin32_WndProcHandler, TRUE);
 	auto scene = rRes->scene;
 	imguiRootSceneNode = make_unique<ImGuiSceneNode>(scene->getSceneGraph(), rRes->renderer->getRendererTime());
@@ -130,8 +140,10 @@ void ImGuiManager::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandLi
 	const auto incrementSize = rendererResources->pDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 	auto rtvDescriptorHandle = CD3DX12_CPU_DESCRIPTOR_HANDLE(rendererResources->pRTVDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), currentBackBufferIndex, incrementSize);
 	pCurrentCommandList->OMSetRenderTargets(1u, &rtvDescriptorHandle, FALSE, nullptr);
-	pCurrentCommandList->SetDescriptorHeaps(1u, pImGuiDescriptorHeap.GetAddressOf());
-	ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), pCurrentCommandList.Get());
+	ANVIL_IMGUI({
+		pCurrentCommandList->SetDescriptorHeaps(1u, pImGuiDescriptorHeap.GetAddressOf());
+		ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), pCurrentCommandList.Get());
+	});
 }
 
 void ImGuiManager::accept(IVisitor* visitor)

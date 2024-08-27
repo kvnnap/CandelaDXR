@@ -20,6 +20,8 @@
 
 #include "Drawable.h"
 
+#include "feanor/anvil/core/anvil.h"
+
 namespace candela::renderer
 {
 	namespace wrl = Microsoft::WRL;
@@ -47,6 +49,38 @@ namespace candela::renderer
 		std::uint32_t getMaxBounces() const;
 		void setMaxBounces(std::uint32_t maxBounces);
 
+		// Anvil
+		ANVIL_CODE_RAW(
+			struct alignas(16) PathTracingIntersectionContext {
+				// Ray - XMVECTOR's are pods
+				DirectX::XMVECTOR origin;
+				DirectX::XMVECTOR direction;
+				float tMin;
+				float tMax;
+				float tHit;
+				float rayProbability;
+
+				DirectX::XMVECTOR radiance;
+				DirectX::XMVECTOR unitNormal;
+
+				uint32_t rayDepth;
+				uint32_t rayType;
+				uint32_t primitiveId;
+				uint32_t materialId;
+			};
+
+			struct alignas(16) PathTracingPath {
+				uint32_t debugId;
+				uint32_t numRays;
+				uint32_t pixelX;
+				uint32_t pixelY;
+				uint32_t seed1;
+				uint32_t seed2;
+				uint32_t padding[2];
+				DirectX::XMVECTOR totalRadiance;
+				PathTracingIntersectionContext pathTracingIntersectionContext[16];
+			};
+		)
 	private:
 		void buildPipeline();
 		void createShaderResources();
@@ -76,6 +110,11 @@ namespace candela::renderer
 			std::uint32_t pathFilter;
 			std::uint32_t minBounces;
 			std::uint32_t maxBounces;
+			ANVIL_CODE_RAW(
+				std::uint32_t debugPixelCoords[2];
+				std::uint32_t debugPixel;
+				std::uint32_t padding;
+			)
 		} constBuffer;
 
 		directx::Resource* diffTexture;
@@ -89,5 +128,13 @@ namespace candela::renderer
 		std::shared_ptr<directx::DescriptorHeap> descHeapManager;
 		std::unique_ptr<directx::ShadingTable> shadingTable;
 		std::shared_ptr<directx::RootSignatureManager> rootSignatureManager;
+
+		// Anvil
+		ANVIL_CODE_RAW(
+			std::shared_ptr<feanor::anvil::Entity> pathEntity;
+			PathTracingPath localDebugPathTracingPath;
+			directx::Resource* outputAnvilBuffer;
+			directx::Resource* readbackAnvilBuffer;
+		)
 	};
 }

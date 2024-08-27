@@ -7,7 +7,7 @@
 #include "Renderer/IRenderer.h"
 #include "Version/Version.h"
 
-#include "core/anvil.h"
+#include "feanor/anvil/core/anvil.h"
 
 using std::cout;
 using std::endl;
@@ -20,10 +20,6 @@ using candela::ui::Window;
 
 int main(int argc, char** argv)
 {
-
-    auto &anvil = feanor::anvil::Anvil::getInstance();
-    anvil.clear();
-
     cout << "Version: " << candela::version::CommitSummary() << " Date: " << candela::version::Date << endl;
 
     string err;
@@ -42,12 +38,23 @@ int main(int argc, char** argv)
         IRenderer& renderer = env.getRendererManager().getInstanceManager().get(0);
         renderer.init();
 
-        while (!Window::ProcessMessages())
+        // Assume always parallel - hence Mutex
+        std::optional<int> exitCode;
+        while (true)
         {
+            ANVIL_IMGUI({
+                exitCode = Window::ProcessMessages();
+            });
+
+            if (exitCode)
+                break;
+
             renderer.renderFrame();
+            
+            feanor::anvil::Anvil::getInstance().tick();
         }
 
-        return EXIT_SUCCESS;
+        return *exitCode;
     }
     catch (const Exception& e) {
         err = "App Exception: \n";
@@ -60,6 +67,9 @@ int main(int argc, char** argv)
     catch (...) {
         err = "Unknown Exception\n";
     }
+
+    // Cleanup Anvil - since it's currently static, do it here
+    feanor::anvil::Anvil::getInstance().clear();
 
     cout << err << endl;
     return EXIT_FAILURE;

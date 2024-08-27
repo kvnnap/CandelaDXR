@@ -12,6 +12,7 @@ ImGuiRenderer::ImGuiRenderer(Renderer& renderer)
 	: renderer(renderer), changed(), animating(), shaderAccumulation(), showLights(), timeMs()
 {
 	animating = renderer.getRendererTime().isRunning();
+	ANVIL_CODE_RAW(anvilEnabled = renderer.isAnvilEnabled();)
 
 	// Load initial Post Proc state
 	auto& ppParams = renderer.getPostProcParams();
@@ -31,6 +32,7 @@ void ImGuiRenderer::drawUi()
 	auto &rTime = renderer.getRendererTime();
 	animating = rTime.isRunning();
 	shaderAccumulation = renderer.getShaderAccumulation();
+	ANVIL_CODE_RAW(anvilEnabled = renderer.isAnvilEnabled();)
 	
 	// Exposure and tonemapping stuff
 	bool ppChange = false;
@@ -128,7 +130,11 @@ void ImGuiRenderer::drawUi()
 		currentComponent = ltShaderInfo[shaderIndex].component;
 		changed = true;
 	}*/
-	
+
+	ANVIL_CODE_RAW(
+		if (ImGui::Checkbox("Anvil Enabled", &anvilEnabled))
+			renderer.setAnvilEnabled(anvilEnabled);
+	)
 }
 
 bool ImGuiRenderer::hasChanged() const
