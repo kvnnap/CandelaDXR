@@ -2,6 +2,9 @@
 #include "Renderer/Camera.h"
 #include "Renderer/PathTracingShading.h"
 #include "reflection/reflect.h"
+#include "feanor/anvil/core/anvil.h"
+
+ANVIL_CODE_RAW(
 
 DirectXVectorWrapper::DirectXVectorWrapper(const DirectX::XMVECTOR& p_vector)
 	: vector(&p_vector)
@@ -63,3 +66,4 @@ addMember("totalRadiance", totalRadiance);
 REFLECT_MEMBER(pathTracingIntersectionContext)
 REFLECT_END()
 
+)

@@ -275,7 +275,9 @@ void PathTracingShading::buildPipeline()
 	hitSubObject.SetHitGroupExport(L"HitGroup");
 
 	// Third - Local Root Signature for Ray Gen shader
-	rootSignatureManager->addDescriptorRange("BVH", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 5 + ANVIL_CODE_RAW(1), 0)); //gOutputDiff, gOutputSpec, gRadianceDiff, gRadianceSpec, gRayHitT, gAnvilDebug
+	int amount = 0;
+	ANVIL_CODE_RAW(amount = 1;)
+	rootSignatureManager->addDescriptorRange("BVH", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 5 + amount, 0)); //gOutputDiff, gOutputSpec, gRadianceDiff, gRadianceSpec, gRayHitT, gAnvilDebug
 	rootSignatureManager->addDescriptorRange("BVH", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 10)); //gRtScene
 	if (!rendererResources->textures.empty())
 		rootSignatureManager->addDescriptorRange("BVH", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, static_cast<UINT>(rendererResources->textures.size()), 12));
