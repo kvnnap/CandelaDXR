@@ -130,6 +130,7 @@ Renderer::~Renderer()
 void Renderer::init()
 {
 	//camera->setAspectRatio(static_cast<float>(windowDimensions.x) / windowDimensions.y);
+	setSceneCameraFromNodeTransform();
 	windowDimensions.x = static_cast<uint32_t>(windowDimensions.y * camera->getAspectRatio());
 	window = make_unique<Window>("CandelaDXR", windowDimensions.x, windowDimensions.y, &keyboard, &mouse, !isRecording());
 	using namespace std::placeholders;
@@ -392,17 +393,8 @@ void Renderer::renderFrame()
 				flags);
 		}
 
-		// Update camera
-		for (auto& cam : scene->getCameras())
-		{
-			if (cam.Camera.getName() == camera->getName())
-			{
-				camera->transform(cam.Node->getTransform());
-				changeEvent |= static_cast<ChangeEvent_t>(ChangeEvent::Camera);
-				break;
+		changeEvent |= setSceneCameraFromNodeTransform();
 			}
-		}
-	}
 
 	// Update material, face attributes and lights
 	if (changeEvent & static_cast<ChangeEvent_t>(ChangeEvent::SceneUpdate))
@@ -856,6 +848,21 @@ void Renderer::createShaderResources()
 	cmpDescHeapManager.setUAV(6, uavDesc, pDevice, *pSpecAccumulator);
 
 	computeDescriptorHeap = cmpDescHeapManager.getDescriptorHeap();
+}
+
+ChangeEvent_t Renderer::setSceneCameraFromNodeTransform()
+{
+	// Update camera
+	for (auto& cam : scene->getCameras())
+	{
+		if (cam.Camera.getName() == camera->getName())
+		{
+			camera->transform(cam.Node->getTransform());
+			return static_cast<ChangeEvent_t>(ChangeEvent::Camera);
+		}
+	}
+
+	return ChangeEvent_t();
 }
 
 void Renderer::updateCamera()

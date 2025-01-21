@@ -122,6 +122,7 @@ namespace candela::renderer
 
 		void initSceneResources();
 		void initShaders();
+		ChangeEvent_t setSceneCameraFromNodeTransform();
 		void createShaderResources();
 		void updateCamera();
 		void resize();
