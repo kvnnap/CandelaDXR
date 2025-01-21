@@ -1,3 +1,6 @@
+#define NOMINMNAX
+#include "feanor/anvil/system/web_system.h"
+
 #include "Renderer.h"
 #include "RadianceBuffer.h"
 
@@ -24,6 +27,8 @@
 
 #include <algorithm>
 #include <iostream>
+
+#include "feanor/anvil/core/anvil.h"
 
 using std::unique_ptr;
 using std::make_unique;
@@ -394,7 +399,7 @@ void Renderer::renderFrame()
 		}
 
 		changeEvent |= setSceneCameraFromNodeTransform();
-			}
+	}
 
 	// Update material, face attributes and lights
 	if (changeEvent & static_cast<ChangeEvent_t>(ChangeEvent::SceneUpdate))
@@ -518,6 +523,15 @@ void Renderer::renderFrame()
 		// Execute prev command list - command lists in same queue are executed in order
 		commandQueue->executeCommandList(pCurrentCommandList);
 
+		ANVIL_CODE_RAW(
+		if (rendererResources.renderer->isAnvilEnabled())
+		{
+			for (auto &e : bufferEntities)
+				feanor::anvil::Anvil::getInstance().removeEntities({ e.entity });
+			bufferEntities.clear();
+		}
+		)
+
 		for (const auto& bufferToGrab : buffersToGrab)
 		{
 			auto buffer = rendererResources.resourceManager->getNamedResource(bufferToGrab);
@@ -528,6 +542,15 @@ void Renderer::renderFrame()
 			// Execute Chain to output data
 			for (auto& chainItem : *chain)
 				chainItem->process(radBuffer);
+
+			ANVIL_CODE_RAW(
+			if (rendererResources.renderer->isAnvilEnabled())
+			{
+				auto &ret = bufferEntities.emplace_back();
+				ret.radBuffer = std::move(radBuffer);
+				ret.entity = feanor::anvil::Anvil::getInstance().addReflectionEntity(ret.radBuffer.getName(), ret.radBuffer, "RgbSpectrum");
+			}
+			)
 		}
 
 		// Get another command list
@@ -626,6 +649,12 @@ void Renderer::renderFrame()
 		postFrameActions.front()();
 		postFrameActions.pop();
 	}
+
+	ANVIL_CODE_RAW(
+		if (rendererResources.renderer->isAnvilEnabled())
+			feanor::anvil::Anvil::getInstance().tick();
+	)
+	
 }
 
 void Renderer::setShaderAccumulation(bool p_shaderAccumulation)
@@ -1078,13 +1107,13 @@ LRESULT Renderer::wndCallback(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 }
 
 // Anvil
-#include "feanor/anvil/core/anvil.h"
 #include "feanor/anvil/scene/scene.h"
 #include "feanor/anvil/scene/wavefront_loader.h"
 #include "feanor/anvil/core/renderer/opengl_renderer.h"
 #include "feanor/anvil/system/camera_system.h"
 #include "feanor/anvil/visualisation/basic_visualiser.h"
 #include "feanor/anvil/visualisation/path_visualiser.h"
+//#include "feanor/anvil/system/web_system.h"
 
 ANVIL_CODE_RAW(
 	bool Renderer::isAnvilEnabled() const
@@ -1109,6 +1138,7 @@ ANVIL_CODE_RAW(
 		using feanor::anvil::renderer::OpenGLRenderer;
 		using feanor::anvil::visualisation::BasicVisualiser;
 		using feanor::anvil::visualisation::PathVisualiser;
+		using feanor::anvil::WebSystem;
 
 		auto scene = make_shared<Scene>();
 		WavefrontLoader().loadScene(*scene, "Assets/CornellBox-Original.obj");
@@ -1119,6 +1149,7 @@ ANVIL_CODE_RAW(
 		//Anvil::getInstance().addSystem(make_shared<BasicVisualiser>(glRenderer, scene));
 		Anvil::getInstance().addSystem(make_shared<CameraSystem>(glRenderer));
 		Anvil::getInstance().addSystem(make_shared<PathVisualiser>(glRenderer, scene));
+		Anvil::getInstance().addSystem(make_shared<WebSystem>());
 		Anvil::addReflectionEntity("Camera", *camera);
 	}
 )

@@ -1,8 +1,10 @@
 #include "AnvilRegistrations.h"
 #include "Renderer/Camera.h"
 #include "Renderer/PathTracingShading.h"
+#include "Renderer/RadianceBuffer.h"
 #include "reflection/reflect.h"
 #include "feanor/anvil/core/anvil.h"
+#include  "feanor/core/reflection/abstract_blob_type.h"
 
 ANVIL_CODE_RAW(
 
@@ -29,6 +31,25 @@ DirectXVectorWrapper cameraDirection(const candela::renderer::Camera& ptp) { ret
 REFLECT_BEGIN(candela::renderer::Camera)
 addMember("Position", cameraPosition);
 addMember("Direction", cameraDirection);
+REFLECT_END()
+
+// Radiance Buffer
+feanor::reflection::Blob<char> extractName(const candela::renderer::RadianceBuffer& a) {
+	return feanor::reflection::Blob((char*)a.getName().c_str(), a.getName().size(), true);
+}
+
+feanor::reflection::Blob<DirectX::XMFLOAT3> extractBuffer(const candela::renderer::RadianceBuffer& a) {
+	return feanor::reflection::Blob((DirectX::XMFLOAT3*)a.getInternalBuffer().data(), a.getInternalBuffer().size());
+}
+
+REFLECT_BEGIN(DirectX::XMFLOAT3)
+REFLECT_END()
+
+REFLECT_BEGIN(candela::renderer::RadianceBuffer)
+addMember("Name", &extractName);
+addMember("Width", &BaseType::getWidth);
+addMember("Height", &BaseType::getHeight);
+addMember("RgbSpectrum", &extractBuffer);
 REFLECT_END()
 
 // TODO:

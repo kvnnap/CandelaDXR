@@ -51,7 +51,8 @@ int main(int argc, char** argv)
 
             renderer.renderFrame();
             
-            feanor::anvil::Anvil::getInstance().tick();
+            // Below moved at end of renderer
+            //feanor::anvil::Anvil::getInstance().tick();
         }
 
         return *exitCode;

@@ -231,6 +231,14 @@ namespace candela::renderer
 			bool anvilEnabled = true;
 			bool anvilParallel = false;
 			void initAnvil();
+
+			struct AnvilCapture
+			{
+				std::shared_ptr<feanor::anvil::Entity> entity;
+				RadianceBuffer radBuffer;
+			};
+
+			std::vector<AnvilCapture> bufferEntities;
 		)
 	};
 }
