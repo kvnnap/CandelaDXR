@@ -82,6 +82,7 @@ namespace candela::renderer::imgui
 				int causticsBlurSize;
 				bool seperateCaustics;
 				bool allowClearCaustics;
+				int rangeBits;
 			};
 
 			// Path Shading

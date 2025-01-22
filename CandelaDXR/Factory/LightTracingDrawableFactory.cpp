@@ -102,11 +102,15 @@ unique_ptr<IDrawable> LightTracingDrawableFactory::create(const ConfigurationNod
 		}
 	}
 
+	uint32_t rangeBits = 24;
 	if (confObject.keyExists("ActiveShaderIndex"))
 		lt->setCurrentShaderIndex(confObject["ActiveShaderIndex"].read<std::uint32_t>());
 	if (confObject.keyExists("SeparateCaustics"))
 		lt->seperateCaustics(confObject["SeparateCaustics"].read<bool>() ? 1u : 0u);
 	if (confObject.keyExists("CausticsBlurSize"))
 		lt->setCausticsBlurSize(confObject["CausticsBlurSize"].read<std::uint32_t>());
+	if (confObject.keyExists("ConvRangeBits"))
+		rangeBits = confObject["ConvRangeBits"].read<std::uint32_t>();
+	lt->setRangeBits(rangeBits);
 	return lt;
 }

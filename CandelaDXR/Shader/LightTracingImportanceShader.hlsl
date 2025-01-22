@@ -340,9 +340,9 @@ void rayGen()
 							brdfDiff *= gTextures[mat.DiffuseTextureId].SampleLevel(gSampler, getTextureLocation(rayPayload.bary, vertIndex), 0);
                         float3 contrib = (localContribution * brdfDiff) * ((1.f - fr) * mat.Dissolve * flatSurfaceDot * invShadowDistance * invShadowDistance * cameraDot);
 						if (!cBuffer.seperateCaustics || (prevStateFlags & (Reflect | Refract)) == 0)
-							AddContribution(pixLaunchIndex, contrib, rayPayload.t);
+							AddContribution(pixLaunchIndex, cBuffer.rangeBits, contrib, rayPayload.t);
 						else
-							AddCausticsContribution(pixLaunchIndex, contrib, rayPayload.t);
+							AddCausticsContribution(pixLaunchIndex, cBuffer.rangeBits, contrib, rayPayload.t);
 					}
 				}
 			}

@@ -25,7 +25,7 @@ struct ConstBuff
 	uint minBounces;
 	uint maxBounces;
 	uint seperateCaustics;
-	uint padding;
+    uint rangeBits;
 };
 
 // UAVs
@@ -91,18 +91,18 @@ bool getPixel(RayDesc ray, uint2 screenDimensions, inout uint2 pixel)
 	return true;
 }
 
-void AddContribution(uint pixLaunchIndex, float3 contrib, float hitT = 0.f)
+void AddContribution(uint pixLaunchIndex, uint rangeBits, float3 contrib, float hitT = 0.f)
 {
-	uint4 uContrib = floatToFixed(float4(contrib, hitT), ConvRangeBits);
+    uint4 uContrib = floatToFixed(float4(contrib, hitT), rangeBits);
 	InterlockedAdd(gIrradianceDS[pixLaunchIndex].value.x, uContrib.x);
 	InterlockedAdd(gIrradianceDS[pixLaunchIndex].value.y, uContrib.y);
 	InterlockedAdd(gIrradianceDS[pixLaunchIndex].value.z, uContrib.z);
 	InterlockedAdd(gIrradianceDS[pixLaunchIndex].value.w, uContrib.w);
 }
 
-void AddCausticsContribution(uint pixLaunchIndex, float3 contrib, float hitT = 0.f)
+void AddCausticsContribution(uint pixLaunchIndex, uint rangeBits, float3 contrib, float hitT = 0.f)
 {
-	uint4 uContrib = floatToFixed(float4(contrib, hitT), ConvRangeBits);
+    uint4 uContrib = floatToFixed(float4(contrib, hitT), rangeBits);
 	InterlockedAdd(gIrradianceDS[pixLaunchIndex].caust.x, uContrib.x);
 	InterlockedAdd(gIrradianceDS[pixLaunchIndex].caust.y, uContrib.y);
 	InterlockedAdd(gIrradianceDS[pixLaunchIndex].caust.z, uContrib.z);

@@ -61,6 +61,8 @@ namespace candela::renderer
 		void setMaxBounces(std::uint32_t maxBounces);
 		std::uint32_t getSeperateCaustics() const;
 		void seperateCaustics(std::uint32_t sepCaustics);
+		std::uint32_t getRangeBits() const;
+		void setRangeBits(std::uint32_t rangeBits);
 
 		struct LTShaderInfo
 		{
@@ -115,6 +117,7 @@ namespace candela::renderer
 			std::uint32_t minBounces;
 			std::uint32_t maxBounces;
 			std::uint32_t seperateCaustics;
+			std::uint32_t rangeBits;
 		} constBuffer;
 		mathematics::UVector2 lightSamples;
 

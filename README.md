@@ -313,6 +313,7 @@ A light tracer. There are three variants of the light tracer. LightTracingShader
 - ActiveShaderIndex - If all shader components are loaded, 0 is LightTracingShader, 1 is LightTracingOptimisedShader and 2 is LightTracingImportanceShader
 - SeparateCaustics - Default is false. If set to true will save caustics in their own buffer. The denoiser is needed for caustics to be remerged.
 - CausticsBlurSize - Blurs the caustics buffer. Default is 17. Set to 1 if unaltered caustics are needed
+- ConvRangeBits - When accumulating irradiance, float values need to be converted from float to int and then back. 2^x is the multiplier used to fit the value in an int, and then 2^(-x) is used to convert it back to float. Default is 24.
 
 ```json
 {

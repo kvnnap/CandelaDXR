@@ -211,8 +211,6 @@ float3 randomRaySphericalCap(inout uint s, inout float p, float oneMinusCosPhiCo
     return transformPointToBasis(unitNormal, randomRaySphericalCapBase(s, p, oneMinusCosPhiConstant));
 }
 
-static const uint ConvRangeBits = 24;
-
 uint4 floatToFixed(float4 value, uint rangeBits)
 {
 	return round(value * pow(2.f, rangeBits));

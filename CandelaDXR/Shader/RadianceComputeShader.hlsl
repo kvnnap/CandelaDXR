@@ -9,6 +9,7 @@ cbuffer CB1 : register(b0)
 	uint Clear;
 	uint FrameNumberCaustics;
 	uint ClearCaustics;
+	uint RangeBits;
 }
 
 RWTexture2D<float4> gOutput : register(u0);
@@ -38,8 +39,8 @@ void main( uint3 DTid : SV_DispatchThreadID )
 		gIrradianceCaustics[DTid.xy] = 0.f;
 
 	const uint flatLaunchIndex = DTid.y * ScreenDim.x + DTid.x;
-	float4 result = fixedToFloat(gIrradianceDS[flatLaunchIndex].value, ConvRangeBits);
-	float4 caust  = fixedToFloat(gIrradianceDS[flatLaunchIndex].caust, ConvRangeBits);
+	float4 result = fixedToFloat(gIrradianceDS[flatLaunchIndex].value, RangeBits);
+	float4 caust  = fixedToFloat(gIrradianceDS[flatLaunchIndex].caust, RangeBits);
 	gIrradiance[DTid.xy] += result;
 	gIrradianceCaustics[DTid.xy] += caust;
 	gIrradianceDS[flatLaunchIndex].value = 0;

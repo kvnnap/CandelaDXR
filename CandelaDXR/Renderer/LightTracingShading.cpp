@@ -179,7 +179,7 @@ void LightTracingShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> currentCom
 	currentCommandList->SetDescriptorHeaps(1u, computeDescriptorHeap.GetAddressOf());
 	currentCommandList->SetComputeRootDescriptorTable(0u, computeDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
 	auto& dim = rendererResources->winDimensions;
-	uint32_t c32data[7] = { dim.x, dim.y, rayDimensions.x * rayDimensions.y, constBuffer.frameNumber, clear ? 1u : 0u, frameNumberCaustics, clearCaustics ? 1u : 0u };
+	uint32_t c32data[8] = { dim.x, dim.y, rayDimensions.x * rayDimensions.y, constBuffer.frameNumber, clear ? 1u : 0u, frameNumberCaustics, clearCaustics ? 1u : 0u, constBuffer.rangeBits };
 	currentCommandList->SetComputeRoot32BitConstants(1u, static_cast<UINT>(std::size(c32data)), &c32data[0], 0);
 	currentCommandList->Dispatch(dim.x / 8 + (dim.x % 8 == 0 ? 0 : 1), dim.y / 8 + (dim.y % 8 == 0 ? 0 : 1), 1);
 	clear = clearCaustics = false;
@@ -313,7 +313,7 @@ void LightTracingShading::buildPipeline()
 	computeRSM->addDescriptorRange("ComputeData", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 6, 0)); // gOutput, gIrradianceDataStructure, gIrradiance, rayhitt, irrC, outC
 	computeRSM->addDescriptorRange("ComputeData", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 0)); // gIrrToRad
 	computeRSM->setDescriptorTableParameter("ComputeDataDescTable", "ComputeData");
-	param.InitAsConstants(7u, 0u); computeRSM->setParameter("ComputeConstants", param); // winDimensions (x,y), lightSamples, numFrames, clear
+	param.InitAsConstants(8u, 0u); computeRSM->setParameter("ComputeConstants", param); // winDimensions (x,y), lightSamples, numFrames, clear
 	computeRSM->addParametersToRootSignature("ComputeRootSignature", { "ComputeDataDescTable", "ComputeConstants" });
 	computeRootSignature = computeRSM->generateRootSignature("ComputeRootSignature", rendererResources->pDevice, D3D12_ROOT_SIGNATURE_FLAG_NONE);
 
@@ -592,6 +592,16 @@ uint32_t LightTracingShading::getSeperateCaustics() const
 void LightTracingShading::seperateCaustics(std::uint32_t sepCaustics)
 {
 	constBuffer.seperateCaustics = sepCaustics;
+}
+
+uint32_t LightTracingShading::getRangeBits() const
+{
+	return constBuffer.rangeBits;
+}
+
+void LightTracingShading::setRangeBits(uint32_t rangeBits)
+{
+	constBuffer.rangeBits = rangeBits;
 }
 
 // Compute constants

@@ -52,7 +52,7 @@
 				{
 					const uint pixLaunchIndex = pixel.y * cBuffer.winDim.x + pixel.x;
 					float3 contrib = localContribution * lightDot * invShadowDistance * invShadowDistance * cameraDot;
-					AddContribution(pixLaunchIndex, contrib);
+					AddContribution(pixLaunchIndex, cBuffer.rangeBits, contrib);
 				}
 			}
 		}

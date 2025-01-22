@@ -174,8 +174,16 @@ void ImGuiShading::visit(LightTracingShading* lightTracingShader)
 		currentComponent = ltShaderInfo[shaderIndex].component;
 		seperateCaustics = lightTracingShader->getSeperateCaustics();
 		allowClearCaustics = lightTracingShader->getAllowClearCaustics();
+		rangeBits = lightTracingShader->getRangeBits();
 	}
 	ImGui::Text("LightTracingShading");
+	
+	if (ImGui::DragInt("ConvRangeBits", &rangeBits, 1.f, 0, 32))
+	{
+		lightTracingShader->setRangeBits(rangeBits);
+		changed = true;
+	}
+
 	if (ImGui::DragInt2("LightSamples", &lightSamples[0], 1.f, 0, 4096))
 	{
 		lightTracingShader->setLightSamples({
