@@ -202,6 +202,8 @@ void rayGen()
 		{
 			ray.Origin = eLight.Position.xyz;
 			ray.Direction = randomRaySphere(seed, pdf);
+			//if (pdf <= 0.f) // Not necessary as pdf always 1/(4Pi) here
+			//	return;
 			const float3 unitLightNormal = normalize(lBuff.sceneCentre - ray.Origin);
 			sampleImpMapWithCosCDF(seed, ray, pdf, coeff, lBuff.lightCamPdfPoint, unitLightNormal, cdfIndex);
 			localContribution *= coeff / (eLight.Attenuation[2] * pdf);
@@ -231,8 +233,10 @@ void rayGen()
 
 			// If this succeeds, ray.Direction, coeff and pdf will be updated
 			sampleImpMapWithCosCDF(seed, ray, pdf, coeff, lBuff.lightCamPdf, unitLightNormal, cdfIndex);
-
-			localContribution *= dot(unitLightNormal, ray.Direction) * coeff / pdf;
+			const float dotLightRayDir = dot(unitLightNormal, ray.Direction);
+			if (pdf <= 0.f || dotLightRayDir <= 0.f)
+				return;
+			localContribution *= dotLightRayDir * coeff / pdf;
 		}
 	}
 
@@ -375,7 +379,10 @@ void rayGen()
 			float3 brdfDiff = mat.Diffuse * OneOverPI;
 			if (mat.DiffuseTextureId >= 0)
 				brdfDiff *= gTextures[mat.DiffuseTextureId].SampleLevel(gSampler, getTextureLocation(rayPayload.bary, vertIndex), 0);
-			localContribution *= brdfDiff * dot(unitFaceNormal, ray.Direction) / pdf;
+			const float dotFaceRayDir = dot(unitFaceNormal, ray.Direction);
+			if (pdf <= 0.f || dotFaceRayDir <= 0.f)
+				break;
+			localContribution *= brdfDiff * dotFaceRayDir / pdf;
 			prevStateFlags = Diffuse;
 		}
 		else

@@ -78,7 +78,10 @@ bool sampleDiffuse(inout uint seed, inout RayDesc ray, inout float3 localContrib
 			// Sample the brdf and generate a new ray
 			float pdf;
 			ray.Direction = randomRayLobe(seed, unitNormal, 1, pdf);
-			localContribution *= dot(unitNormal, ray.Direction) / pdf;
+			const float dotNormalRayDir = dot(unitNormal, ray.Direction);
+			if (pdf <= 0.f || dotNormalRayDir <= 0.f)
+				return false;
+			localContribution *= dotNormalRayDir / pdf;
 		}
 	}
 
@@ -142,6 +145,8 @@ void rayGen()
 			if (!causticsPath)
 			{
 				ray.Direction = randomRaySphere(seed, pdf);
+				//if (pdf <= 0.f) // Not necessary as pdf always 1/(4Pi) here
+				//	return;
 				localContribution *= 1.f / pdf;
 			}
 		}
@@ -308,7 +313,7 @@ void rayGen()
 		{
 			// Sample the brdf and generate a new ray
 			if (!sampleDiffuse(seed, ray, localContribution, causticsPath, specularPrimitiveId, unitFaceNormal))
-				return;
+				break;
 			float3 brdfDiff = mat.Diffuse * OneOverPI;
 			if (mat.DiffuseTextureId >= 0)
 				brdfDiff *= gTextures[mat.DiffuseTextureId].SampleLevel(gSampler, getTextureLocation(rayPayload.bary, vertIndex), 0);

@@ -39,7 +39,8 @@ float rand_next(inout uint s)
 // Range is [a-b] (inclusive), a <= b
 // Gens a num from 0 to 1, scales it, and returns uint
 uint chooseInRange(inout uint s, uint a, uint b) {
-	return a + uint(rand_next(s) * (b - a + 1));
+	const uint res = a + uint(rand_next(s) * (b - a + 1));
+    return res > b ? b : res;
 }
 
 static const float PI = 3.14159265f;

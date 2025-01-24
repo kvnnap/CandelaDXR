@@ -235,6 +235,7 @@ void rayGen()
 				gAnvilBuffer[0].pathTracingIntersectionContext[rayNumber].tHit = rayPayload.t;
 				gAnvilBuffer[0].pathTracingIntersectionContext[rayNumber].unitNormal = float4(unitFaceNormal, 0.f);
 				gAnvilBuffer[0].pathTracingIntersectionContext[rayNumber].rayProbability = 1.f;
+				gAnvilBuffer[0].pathTracingIntersectionContext[rayNumber].radiance = float4(radiance, 0.f);
 				gAnvilBuffer[0].pathTracingIntersectionContext[rayNumber].rayDepth = i - 1;
 				gAnvilBuffer[0].pathTracingIntersectionContext[rayNumber].rayType = i == 1 ? 0 : 2;
 				gAnvilBuffer[0].pathTracingIntersectionContext[rayNumber].primitiveId = fAttr.MeshIndex;
@@ -510,6 +511,7 @@ void rayGen()
 					gAnvilBuffer[0].pathTracingIntersectionContext[rayNumber].tMax = shadowRay.TMax;
 					gAnvilBuffer[0].pathTracingIntersectionContext[rayNumber].tHit = shadowRay.TMax;
 					gAnvilBuffer[0].pathTracingIntersectionContext[rayNumber].rayProbability = 1.f / (cBuffer.numTotalLights * triangleArea);
+					gAnvilBuffer[0].pathTracingIntersectionContext[rayNumber].radiance = float4(radiance, 0.f);
 					gAnvilBuffer[0].pathTracingIntersectionContext[rayNumber].unitNormal = float4(unitLightNormal, 0.f);
 					gAnvilBuffer[0].pathTracingIntersectionContext[rayNumber].rayType = 1;
 					gAnvilBuffer[0].pathTracingIntersectionContext[rayNumber].rayDepth = i - 1;
@@ -523,6 +525,10 @@ void rayGen()
 			// Proceed with normal diffuse hemispherical
 			float pdf;
 			ray.Direction = randomRayLobe(seed, unitFaceNormal, 1, pdf);
+			const float dotFaceDirNormal = dot(unitFaceNormal, ray.Direction);
+			if (pdf <= 0.f || dotFaceDirNormal <= 0.f)
+				break;
+
 			float3 brdfDiff = mat.Diffuse * OneOverPI;
 			if (mat.DiffuseTextureId >= 0)
 				brdfDiff *= gTextures[mat.DiffuseTextureId].SampleLevel(gSampler, getTextureLocation(rayPayload.bary, vertIndex), 0);
@@ -531,8 +537,8 @@ void rayGen()
 			// Diffuse reflection
 			if (rand_next(seed) <= prDiffRef)
 			{
-				fr = fresnel(dot(unitFaceNormal, ray.Direction), n1, n2);
-				localCoefficient *= brdfDiff * dot(unitFaceNormal, ray.Direction) * (1.f - fr) / (pdf * prDiffRef);
+				fr = fresnel(dotFaceDirNormal, n1, n2);
+				localCoefficient *= brdfDiff * dotFaceDirNormal * (1.f - fr) / (pdf * prDiffRef);
 				prevInteraction = Diffuse;
 			}
 			else // Diffuse Transmission
@@ -542,7 +548,7 @@ void rayGen()
 				{
 					prevInteraction = Refract;
 					fr = fresnel(-coeff * dot(unitFaceNormal, dir), n2, n1);
-					localCoefficient *= brdfDiff * dot(unitFaceNormal, ray.Direction) * (1.f - fr) / (pdf * (1.f - prDiffRef));
+					localCoefficient *= brdfDiff * dotFaceDirNormal * (1.f - fr) / (pdf * (1.f - prDiffRef));
 					ray.Direction = dir;
 				}
 				else break;
@@ -576,19 +582,21 @@ void rayGen()
 		if (!cBuffer.specularOnly)
 			gRayHitT[launchIndex].x = 0.f;
 	}
+
+	// Accumulate mean using Welford's method
 	if (isSpecularPath)
 	{
-		gRadianceSpec[launchIndex] += float4(radiance, 0.f);
+		gRadianceSpec[launchIndex] += (float4(radiance, 0.f) - gRadianceSpec[launchIndex]) / cBuffer.frameNumber;
 		gRayHitT[launchIndex].y = denoiserHitT;
 	}
 	else
 	{
-		gRadianceDiff[launchIndex] += float4(radiance, 0.f);
+		gRadianceDiff[launchIndex] += (float4(radiance, 0.f) - gRadianceDiff[launchIndex]) / cBuffer.frameNumber;
 		gRayHitT[launchIndex].x = denoiserHitT;
 	}
 	
-	gOutputDiff[launchIndex] = float4(gRadianceDiff[launchIndex].xyz / cBuffer.frameNumber, 1.f);
-	gOutputSpec[launchIndex] = float4(gRadianceSpec[launchIndex].xyz / cBuffer.frameNumber, 1.f);
+	gOutputDiff[launchIndex] = float4(gRadianceDiff[launchIndex].xyz, 1.f);
+	gOutputSpec[launchIndex] = float4(gRadianceSpec[launchIndex].xyz, 1.f);
 
 	// Anvil
 	ANVIL_CODE(

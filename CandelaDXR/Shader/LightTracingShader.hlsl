@@ -66,6 +66,8 @@ void rayGen()
                 ray.Direction = randomRaySphere(seed, pdf);
             else
                 ray.Direction = randomRaySphericalCap(seed, pdf, eLight.InnerConeAngle, eLight.Direction.xyz);
+			//if (pdf <= 0.f) // This check is not really necessary
+			//	return;
 			localContribution *= 1.f / (eLight.Attenuation[2] * pdf);
 		}
 		else if (eLight.Type == LT_DIRECTIONAL)
@@ -84,7 +86,10 @@ void rayGen()
 		if (!lightDirectional)
 		{
 			ray.Direction = randomRayLobe(seed, unitLightNormal, 1, pdf);
-			localContribution *= dot(unitLightNormal, ray.Direction) / pdf;
+			const float dotLightRayDir = dot(unitLightNormal, ray.Direction);
+			if (pdf <= 0.f || dotLightRayDir <= 0.f)
+				return;
+			localContribution *= dotLightRayDir / pdf;
 		}
 	}
 
@@ -224,10 +229,13 @@ void rayGen()
 		{
 			// Sample the brdf and generate a new ray
 			ray.Direction = randomRayLobe(seed, unitFaceNormal, 1, pdf);
+			const float dotFaceRayDir = dot(unitFaceNormal, ray.Direction);
+			if (pdf <= 0.f || dotFaceRayDir <= 0.f)
+				break;
 			float3 brdfDiff = mat.Diffuse * OneOverPI;
 			if (mat.DiffuseTextureId >= 0)
 				brdfDiff *= gTextures[mat.DiffuseTextureId].SampleLevel(gSampler, getTextureLocation(rayPayload.bary, vertIndex), 0);
-			localContribution *= brdfDiff * dot(unitFaceNormal, ray.Direction) / pdf;
+			localContribution *= brdfDiff * dotFaceRayDir / pdf;
 			prevStateFlags = Diffuse;
 		}
 		else
