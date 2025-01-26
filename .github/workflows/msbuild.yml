@@ -278,6 +278,7 @@ jobs:
       run: |
         Copy-Item ".\installed\bin\Core.dll" -Destination "${{github.workspace}}\${{env.OUT_DIR}}\"
         Copy-Item ".\installed\bin\Anvil.dll" -Destination "${{github.workspace}}\${{env.OUT_DIR}}\"
+        Copy-Item ".\installed\bin\zlib1.dll" -Destination "${{github.workspace}}\${{env.OUT_DIR}}\"
         Copy-Item ".\installed\bin\glew32.dll" -Destination "${{github.workspace}}\${{env.OUT_DIR}}\"
         Copy-Item ".\installed\bin\glfw3.dll" -Destination "${{github.workspace}}\${{env.OUT_DIR}}\"
         Copy-Item ".\installed\bin\assimp-vc143-mt.dll" -Destination "${{github.workspace}}\${{env.OUT_DIR}}\"
