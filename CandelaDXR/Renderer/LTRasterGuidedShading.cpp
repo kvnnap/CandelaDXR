@@ -184,7 +184,7 @@ void LTRasterGuidedShading::generateCDF(wrl::ComPtr<ID3D12GraphicsCommandList> p
 			DirectX::XMLoadFloat3(&normals[i2]));
 
 		auto& sceneNode = scene->getSceneGraph();
-		const auto& lightTransform = sceneNode.getFlattenedMeshNodes()[light.InstanceIndex].ComputedTransform;
+		const auto lightTransform = sceneNode.getFlattenedMeshNodes()[light.InstanceIndex].ComputedTransform;
 		const auto normalTransform = DirectX::XMMatrixTranspose(DirectX::XMMatrixInverse(nullptr, lightTransform));
 
 		// Apply necessary transforms
