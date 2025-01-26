@@ -304,7 +304,7 @@ vector<SingleMeshSceneNode> SceneNode::getFlattenedMeshNodes()
 AABB Scene::getSceneAABB()
 {
 	AABB aabb;
-	for (auto &s : sceneGraph.getFlattenedMeshNodes())
+	for (const auto &s : sceneGraph.getFlattenedMeshNodes())
 	{
 		const auto& otherAABB = getMeshIndexedSpan(s.MeshId).AxisAlignedBB;
 		aabb.contain(otherAABB.transform(s.ComputedTransform));

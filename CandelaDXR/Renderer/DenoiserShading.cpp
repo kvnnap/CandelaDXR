@@ -89,7 +89,7 @@ void DenoiserShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12GraphicsCo
 	rendererResources = rRes;
 
 	prevMat.clear();
-	for (auto sn : rRes->scene->getSceneGraph().getFlattenedMeshNodes())
+	for (const auto& sn : rRes->scene->getSceneGraph().getFlattenedMeshNodes())
 		prevMat.push_back(sn.ComputedTransform);
 
 	auto mvMats = getMVMatrices();
