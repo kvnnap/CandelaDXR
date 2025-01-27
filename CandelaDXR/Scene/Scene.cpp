@@ -32,7 +32,7 @@ using candela::scene::AnimationRecord;
 using candela::renderer::Camera;
 
 Scene::Scene()
-	: sceneGraph(*this)
+	: sceneGraph(*this), posAccumulator()
 {
 	sceneGraph.NodeName = "_root_";
 	sceneGraph.Transform = DirectX::XMMatrixIdentity();

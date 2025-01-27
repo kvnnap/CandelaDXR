@@ -12,6 +12,11 @@ using candela::directx::DXUtil;
 using candela::renderer::RendererResources;
 using candela::renderer::AccelerationStructure;
 
+AccelerationStructure::AccelerationStructure()
+	: rendererResources()
+{
+}
+
 void AccelerationStructure::init(RendererResources* rendererResources, wrl::ComPtr<ID3D12GraphicsCommandList>& pCurrentCommandList)
 {
 	this->rendererResources = rendererResources;

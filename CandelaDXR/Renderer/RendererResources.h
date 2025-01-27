@@ -41,7 +41,7 @@ namespace candela::renderer
 		directx::Resource* pRTVDiff{};
 		directx::Resource* pRTVSpec{};
 		directx::CommandQueue* commandQueue{};
-		mathematics::UVector2 winDimensions;
+		mathematics::UVector2 winDimensions{};
 		UINT numBackBuffers{};
 		scene::Scene* scene{};
 		Camera* camera{};
@@ -52,8 +52,8 @@ namespace candela::renderer
 		std::vector<IDrawable*>* drawables{};
 		std::uint64_t frameNumber{};
 		std::vector<candela::scene::Light> processedExternalLights{};
-		feanor::io::IKeyReader* keyboard;
-		feanor::io::IMouseReader* mouse;
+		feanor::io::IKeyReader* keyboard{};
+		feanor::io::IMouseReader* mouse{};
 
 		directx::DXResource& getTempResource()
 		{

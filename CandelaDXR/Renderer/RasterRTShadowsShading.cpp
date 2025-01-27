@@ -38,7 +38,7 @@ using candela::renderer::ResourceRegFunction;
 using candela::renderer::RasterRTShadowsShading;
 
 RasterRTShadowsShading::RasterRTShadowsShading(unique_ptr<ISampler> sampler)
-	: rasterShader(true), rendererResources(), constBuffer(), sampler(std::move(sampler)), clear()
+	: rasterShader(true), rendererResources(), constBuffer(), radianceTexture(), sampler(std::move(sampler)), clear()
 {
 }
 

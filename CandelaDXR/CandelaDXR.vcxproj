@@ -752,6 +752,7 @@
     </FxCompile>
   </ItemGroup>
   <ItemGroup>
+    <None Include="cpp.hint" />
     <None Include="Shader\AccumulatorShader.hlsli" />
     <None Include="Shader\IrradianceItem.hlsli" />
     <None Include="Shader\LightTracingLightCodeSection.hlsli" />

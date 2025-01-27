@@ -60,7 +60,7 @@ struct DenoiserResource
 	nri::Format format;
 };
 
-D3D12_RESOURCE_STATES GetResourceState(nri::AccessBits accessBits)
+static D3D12_RESOURCE_STATES GetResourceState(nri::AccessBits accessBits)
 {
 	D3D12_RESOURCE_STATES result{};
 	if (accessBits & nri::AccessBits::SHADER_RESOURCE)
@@ -72,7 +72,7 @@ D3D12_RESOURCE_STATES GetResourceState(nri::AccessBits accessBits)
 	return result;
 }
 
-nri::AccessBits GetResourceState(D3D12_RESOURCE_STATES d3dResourceState)
+static nri::AccessBits GetResourceState(D3D12_RESOURCE_STATES d3dResourceState)
 {
 	nri::AccessBits result{};
 	if (d3dResourceState & D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE)
@@ -124,7 +124,7 @@ void DenoiserShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12GraphicsCo
 
 	// Setup compute shader RS
 	auto rsm = make_shared<RootSignatureManager>();
-	CD3DX12_ROOT_PARAMETER1 param;
+	CD3DX12_ROOT_PARAMETER1 param{};
 	rsm->addDescriptorRange("IORange", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 10u, 0u));
 	rsm->addDescriptorRange("IORange", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 9u, 0u));
 	rsm->setDescriptorTableParameter("IODescTable", "IORange");
@@ -260,8 +260,8 @@ void DenoiserShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentComman
 
 	auto camera = rendererResources->camera;
 	// transform to column-Major
-	auto viewMatrix = camera->getViewMatrix();
-	auto persMatrix = camera->getPerspectiveMatrix();
+	const auto& viewMatrix = camera->getViewMatrix();
+	const auto& persMatrix = camera->getPerspectiveMatrix();
 
 	if (nrdCommonSettings.frameIndex == 0)
 	{

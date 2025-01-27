@@ -607,5 +607,6 @@
     <None Include="Shader\RayTracingUtils.hlsli" />
     <None Include="Shader\AccumulatorShader.hlsli" />
     <None Include="Shader\LightTracingLightCodeSection.hlsli" />
+    <None Include="cpp.hint" />
   </ItemGroup>
 </Project>

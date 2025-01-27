@@ -25,7 +25,7 @@ using candela::renderer::DenoiserShading;
 using candela::renderer::imgui::ImGuiShading;
 
 ImGuiShading::ImGuiShading(IDrawable* drawable)
-	: drawable(drawable), initialised(), changed(), enabled(drawable->isEnabled())
+	: drawable(drawable), initialised(), changed(), enabled(drawable->isEnabled()), computeRadiance(), computeEmissiveIfRadOff()
 {
 }
 

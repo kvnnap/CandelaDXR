@@ -164,13 +164,13 @@ void LTRasterGuidedShading::generateCDF(wrl::ComPtr<ID3D12GraphicsCommandList> p
 		// Choose light
 		auto& lights = scene->getLights();
 		auto& light = lights[lightIndex]; // lights[0]
-		auto lightIndexId = light.PrimitiveId * 3;
+		auto lightIndexId = static_cast<size_t>(light.PrimitiveId) * 3;
 		auto i0 = indices[lightIndexId + 0];
 		auto i1 = indices[lightIndexId + 1];
 		auto i2 = indices[lightIndexId + 2];
 
-		Vector2 uv;//  = SamplePointOnTriangle(*sampler);
-		uv.x = uv.y = 1.f / 3.f;
+		constexpr float OneThird = 1.f / 3.f;
+		Vector2 uv{OneThird, OneThird};//  = SamplePointOnTriangle(*sampler);
 
 		pos = InterpolateVertices(uv,
 			DirectX::XMLoadFloat3(&vertices[i0]),
@@ -300,7 +300,7 @@ std::uint32_t candela::renderer::LTRasterGuidedShading::getBufferUsage() const
 
 void LTRasterGuidedShading::appendToPipeline(directx::RootSignatureManager* rootSignatureManager)
 {
-	CD3DX12_ROOT_PARAMETER1 param;
+	CD3DX12_ROOT_PARAMETER1 param{};
 	param.InitAsConstantBufferView(0u, 1u); rootSignatureManager->setParameter("SecondConstBuff", param);
 	rootSignatureManager->addParameterToRootSignature("RayGenRootSignature", "SecondConstBuff");
 	auto numLights = static_cast<uint32_t>(rendererResources->scene->getLights().size());

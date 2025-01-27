@@ -19,7 +19,7 @@ using candela::directx::RootSignatureManager;
 using candela::mathematics::Plane;
 
 ExternalObjectDebugShading::ExternalObjectDebugShading()
-	: bufferView{}, scissorRect(CD3DX12_RECT(0, 0, LONG_MAX, LONG_MAX)), viewport{}, dsvDescriptorSize{}, pDepthBuffer{}, needsUpdate{}, displaySceneAabb{}
+	: rendererResources(), constBuffer(), bufferView{}, scissorRect(CD3DX12_RECT(0, 0, LONG_MAX, LONG_MAX)), viewport{}, dsvDescriptorSize{}, pDepthBuffer{}, needsUpdate{}, displaySceneAabb{}
 {
 	setName("EODebug");
 }
@@ -138,7 +138,7 @@ void ExternalObjectDebugShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCu
 	pCurrentCommandList->RSSetScissorRects(1u, &scissorRect);
 	pCurrentCommandList->RSSetViewports(1u, &viewport);
 
-	D3D12_CPU_DESCRIPTOR_HANDLE rtvDescriptorHandles[1];
+	D3D12_CPU_DESCRIPTOR_HANDLE rtvDescriptorHandles[1]{};
 	const auto incrementSize = rendererResources->pDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 	rtvDescriptorHandles[0] = CD3DX12_CPU_DESCRIPTOR_HANDLE(rendererResources->pRTVDescriptorHeap->GetCPUDescriptorHandleForHeapStart(),
 		rendererResources->numBackBuffers, incrementSize);

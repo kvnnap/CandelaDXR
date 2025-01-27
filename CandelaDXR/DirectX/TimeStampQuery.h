@@ -18,6 +18,8 @@ namespace candela::directx
 	class TimeStampQuery
 	{
 	public:
+		TimeStampQuery();
+
 		void init(DXDevice pDevice, ResourceManager *resourceManager, DXCommandQueue& commandQueue, DXCommandList pCommandList);
 		void addTimeStampQuery(DXCommandList pCommandList, const std::string& profName);
 		const std::vector<ProfileItem>& load();

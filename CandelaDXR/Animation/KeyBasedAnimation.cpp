@@ -11,7 +11,7 @@ using candela::mathematics::Matrix;
 using candela::mathematics::Vector;
 
 KeyBasedAnimation::KeyBasedAnimation()
-	: duration()
+	: duration(), ticksPerSecond()
 {
 }
 

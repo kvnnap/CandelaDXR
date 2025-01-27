@@ -39,7 +39,7 @@ namespace candela::renderer
 	private:
 		void updateBuffer(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList);
 		void appendAabb(const mathematics::AABB& aabb);
-		RendererResources* rendererResources{};
+		RendererResources* rendererResources;
 
 		struct alignas(16) ConstBuff
 		{

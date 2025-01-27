@@ -13,6 +13,11 @@ using candela::directx::TimeStampQuery;
 using candela::directx::DXUtil;
 using candela::directx::ProfileItem;
 
+TimeStampQuery::TimeStampQuery()
+	: queryResource(), frequency()
+{
+}
+
 void TimeStampQuery::init(DXDevice pDevice, ResourceManager *resourceManager, DXCommandQueue& commandQueue, DXCommandList pCommandList)
 {
 	queryHeap = DXUtil::createQueryHeap(pDevice, numTimeStamps);

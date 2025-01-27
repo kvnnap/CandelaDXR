@@ -17,6 +17,8 @@ namespace candela::renderer
 		: public IResource
 	{
 	public:
+		AccelerationStructure();
+
 		void init(RendererResources* rendererResources, wrl::ComPtr<ID3D12GraphicsCommandList> &pCurrentCommandList) override;
 		void onChange(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, std::uint32_t currentBackBufferIndex, ChangeEvent_t changeEvent) override;
 		void buildTlas(wrl::ComPtr<ID3D12GraphicsCommandList>& commandList, wrl::ComPtr<ID3D12Resource>& tempResource);

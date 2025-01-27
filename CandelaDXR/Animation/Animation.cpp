@@ -33,6 +33,11 @@ Matrix Animation::animate(std::uint32_t timeMs, const DirectX::XMVECTOR& centreT
 	return computedMS.transform(centreTranslation, translationAbsolute);
 }
 
+Animation::Animation()
+	: initialMeshStateId(), translationAbsolute()
+{
+}
+
 uint32_t Animation::getTotalTimeMs() const
 {
 	return transitions.back().CumulativeTimeMS;

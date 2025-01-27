@@ -18,6 +18,67 @@
 //	Area = 5
 //};
 
+#ifdef __cplusplus
+
+namespace candela::scene
+{
+	struct alignas(16) FaceAttributes
+	{
+		std::uint32_t MaterialId;
+		std::uint32_t MeshIndex;
+	};
+
+	// TODO: Change name to EmissivePrimitive
+	struct alignas(16) AreaLight
+	{
+		std::uint32_t InstanceIndex;
+		std::uint32_t PrimitiveId;
+		std::uint32_t MaterialId;
+	};
+
+	// Same as ExternalLight
+	struct alignas(16) Light
+	{
+		mathematics::Vector Position;
+		mathematics::Vector Direction;
+		mathematics::Vector Up; // matches V
+		mathematics::Vector Right; // matches U = Direction CROSS Up - Custom
+		mathematics::Vector3 Attenuation; // 1.f / ([0] + [1]*d + [2]*d^2) - d is distance
+		std::uint32_t Type;
+		mathematics::Vector3 Diffuse;
+		float InnerConeAngle;
+		mathematics::Vector3 Specular;
+		float OuterConeAngle;
+		mathematics::Vector2 AreaDimensions;
+	};
+
+	struct alignas(16) SpecularPrimitive
+	{
+		std::uint32_t InstanceIndex;
+		std::uint32_t PrimitiveId;
+		std::uint32_t MaterialId;
+	};
+
+	struct alignas(16) Material
+	{
+		mathematics::Vector3 Diffuse;
+		std::int32_t DiffuseTextureId;
+		mathematics::Vector3 Emissive;
+		std::int32_t EmissiveTextureId;
+		mathematics::Vector3 Specular;
+		std::int32_t SpecularTextureId;
+		mathematics::Vector3 TransmissiveFilter;
+		float RefractiveIndex;
+		float Dissolve;
+		std::uint32_t EmissiveType; // This should move in the AreaLight struct but is easier here
+
+		bool isEmissive() const;
+		bool isSpecular() const;
+	};
+}
+
+#else
+
 struct FaceAttributes
 {
 	uint MaterialId;
@@ -72,4 +133,5 @@ struct Material
 	uint2 padding;
 };
 
+#endif
 #endif

@@ -22,6 +22,7 @@ namespace candela::animation
 		: public IAnimation
 	{
 	public:
+		Animation();
 		mathematics::Matrix animate(std::uint32_t timeMs, const mathematics::Vector& centreTranslation = {}) const override;
 		std::uint32_t getTotalTimeMs() const;
 
