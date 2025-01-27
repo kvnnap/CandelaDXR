@@ -31,7 +31,7 @@ jobs:
     outputs:
       sha: ${{ steps.build.outputs.sha }}
     steps:
-    - uses: actions/checkout@v4.1.2
+    - uses: actions/checkout@v4
     - name: Build Feanor Core
       id: build
       uses: ./.github/actions/build-feanor
@@ -45,7 +45,7 @@ jobs:
     outputs:
       sha: ${{ steps.build.outputs.sha }}
     steps:
-    - uses: actions/checkout@v4.1.2
+    - uses: actions/checkout@v4
     - name: Build Feanor External
       id: build
       uses: ./.github/actions/build-feanor
@@ -61,18 +61,18 @@ jobs:
     outputs:
       sha: ${{ steps.build.outputs.sha }}
     steps:
-    - uses: actions/checkout@v4.1.2
+    - uses: actions/checkout@v4
     # Get cache contents
     - name: Cache Feanor Core
       id: cache-core
-      uses: actions/cache@v4.0.2
+      uses: actions/cache@v4
       with:
         path: installed-core
         key: feanor-core-${{ needs.build-feanor-core.outputs.sha }}
 
     - name: Cache Feanor External
       id: cache-external
-      uses: actions/cache@v4.0.2
+      uses: actions/cache@v4
       with:
         path: installed-external
         key: feanor-external-${{ needs.build-feanor-external.outputs.sha }}
@@ -122,7 +122,7 @@ jobs:
     
     - name: Cache NVIDIA NRI
       id: cache-nri
-      uses: actions/cache@v4.0.2
+      uses: actions/cache@v4
       with:
         path: NRI\_NRI_SDK
         key: nvidia-nri-${{ steps.nri-sha.outputs.sha }}
@@ -161,7 +161,7 @@ jobs:
     
     - name: Cache NVIDIA NRD
       id: cache-nrd
-      uses: actions/cache@v4.0.2
+      uses: actions/cache@v4
       with:
         path: RayTracingDenoiser\_NRD_SDK
         key: nvidia-nrd-${{ steps.nrd-sha.outputs.sha }}
@@ -202,40 +202,40 @@ jobs:
     runs-on: windows-2022
     needs: [build-feanor-core, build-feanor-external, build-feanor-anvil, build-nvidia-nri, build-nvidia-nrd]
     steps:
-    - uses: actions/checkout@v4.1.2
+    - uses: actions/checkout@v4
     
     # Get cache contents
     - name: Cache Feanor Core
       id: cache-core
-      uses: actions/cache@v4.0.2
+      uses: actions/cache@v4
       with:
         path: installed-core
         key: feanor-core-${{ needs.build-feanor-core.outputs.sha }}
 
     - name: Cache Feanor External
       id: cache-external
-      uses: actions/cache@v4.0.2
+      uses: actions/cache@v4
       with:
         path: installed-external
         key: feanor-external-${{ needs.build-feanor-external.outputs.sha }}
 
     - name: Cache Feanor Anvil
       id: cache-anvil
-      uses: actions/cache@v4.0.2
+      uses: actions/cache@v4
       with:
         path: installed-anvil
         key: feanor-anvil-${{ needs.build-feanor-anvil.outputs.sha }}-${{ needs.build-feanor-core.outputs.sha }}-${{ needs.build-feanor-external.outputs.sha }}
 
     - name: Cache NVIDIA NRI
       id: cache-nri
-      uses: actions/cache@v4.0.2
+      uses: actions/cache@v4
       with:
         path: NRI\_NRI_SDK
         key: nvidia-nri-${{ needs.build-nvidia-nri.outputs.sha }}
 
     - name: Cache NVIDIA NRD
       id: cache-nrd
-      uses: actions/cache@v4.0.2
+      uses: actions/cache@v4
       with:
         path: RayTracingDenoiser\_NRD_SDK
         key: nvidia-nrd-${{ needs.build-nvidia-nrd.outputs.sha }}
@@ -292,7 +292,7 @@ jobs:
         Copy-Item ".\NRI\_NRI_SDK\Lib\Release\NRI.dll" -Destination "${{github.workspace}}\${{env.OUT_DIR}}\"
         Copy-Item ".\RayTracingDenoiser\_NRD_SDK\Lib\Release\NRD.dll" -Destination "${{github.workspace}}\${{env.OUT_DIR}}\"
 
-    - uses: actions/upload-artifact@v4.3.1
+    - uses: actions/upload-artifact@v4
       with:
         name: CandelaDXR
         path: ${{github.workspace}}\${{env.OUT_DIR}}\

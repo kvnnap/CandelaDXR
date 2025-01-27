@@ -20,7 +20,7 @@ jobs:
   build:
     runs-on: windows-2022
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
     
     - name: Get Feanor Core and External Commit SHA
       run: |
@@ -42,7 +42,7 @@ jobs:
     # Feanor Core
     - name: Cache Feanor Core
       id: cache-core
-      uses: actions/cache@v2
+      uses: actions/cache@v4
       with:
         path: installed-core
         key: feanor-debug-core-${{ fromJson(steps.read-core-sha.outputs.content).id }}
@@ -62,7 +62,7 @@ jobs:
     # Feanor External
     - name: Cache Feanor External
       id: cache-external
-      uses: actions/cache@v2
+      uses: actions/cache@v4
       with:
         path: installed-external
         key: feanor-external-${{ fromJson(steps.read-external-sha.outputs.content).id }}
@@ -104,7 +104,7 @@ jobs:
       # See https://docs.microsoft.com/visualstudio/msbuild/msbuild-command-line-reference
       run: msbuild /m /p:Configuration=${{env.BUILD_CONFIGURATION}} /p:OutDir=${{github.workspace}}\${{env.OUT_DIR}}\ ${{env.SOLUTION_FILE_PATH}}
       
-    - uses: actions/upload-artifact@v2
+    - uses: actions/upload-artifact@v4
       with:
         name: CandelaDXR
         path: ${{github.workspace}}\${{env.OUT_DIR}}\

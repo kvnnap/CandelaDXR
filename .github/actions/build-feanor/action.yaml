@@ -51,7 +51,7 @@ runs:
         
     - name: Cache Feanor Component
       id: cache-component
-      uses: actions/cache@v4.0.2
+      uses: actions/cache@v4
       with:
         path: ${{ inputs.install_path }}
         key: feanor-${{ inputs.component }}-${{ steps.sha.outputs.sha }}${{ inputs.append_key }}
