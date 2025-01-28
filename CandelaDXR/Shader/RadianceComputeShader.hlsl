@@ -45,7 +45,7 @@ void main( uint3 DTid : SV_DispatchThreadID )
 	gIrradianceDS[flatLaunchIndex].caust = 0;
 
 	// Average using Wilford's method - technically gIrradiance and Caustics are now storing average radiance
-	const float irrCoeff = gIrrToRad[DTid.xy] / LightSamples;
+	const float irrCoeff = 1.f / (gIrrToRad[DTid.xy] * LightSamples);
 	gIrradiance[DTid.xy]		 += ((result * irrCoeff) - gIrradiance[DTid.xy]) / FrameNumber;
 	gIrradianceCaustics[DTid.xy] += ((caust * irrCoeff) - gIrradianceCaustics[DTid.xy]) / FrameNumberCaustics;
 

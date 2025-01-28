@@ -455,7 +455,7 @@ void LightTracingShading::generateIrrToRadTexture(wrl::ComPtr<ID3D12GraphicsComm
 	irradianceToRadianceConstants.reserve(dim.x * dim.y);
 	for (uint32_t y = 0; y < dim.y; ++y)
 		for (uint32_t x = 0; x < dim.x; ++x)
-			irradianceToRadianceConstants.push_back(1.f / cosIntegral(x, y));
+			irradianceToRadianceConstants.push_back(cosIntegral(x, y));
 	irrToRad->write(commandList, tempResource, irradianceToRadianceConstants.data());
 }
 

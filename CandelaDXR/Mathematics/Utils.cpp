@@ -58,37 +58,31 @@ float candela::mathematics::GaussIntegral(float a, float b, float stdDev)
 }
 
 // Integral cos(theta) * cos(theta_area)/r^2 dA - for special case
-float candela::mathematics::f1(float x, float y, float z)
+double candela::mathematics::f1(double x, double y, double z)
 {
-	float zSq = z * z;
-	float r1 = 1.f / sqrt(y * y + zSq);
-	float r2 = 1.f / sqrt(x * x + zSq);
+	double zSq = z * z;
+	double r1 = sqrt(y * y + zSq);
+	double r2 = sqrt(x * x + zSq);
 
-	return 0.5f * (
-		y * atan(x * r1) * r1 +
-		x * atan(y * r2) * r2);
+	return 0.5 * (
+		y / r1 * atan(x / r1) +
+		x / r2 * atan(y / r2));
 }
 
 float candela::mathematics::f1Definite(float x0, float x1, float y0, float y1, float z)
 {
-	return f1(x1, y1, z)
-		 + f1(x0, y0, z)
-		 - f1(x1, y0, z)
-		 - f1(x0, y1, z);
+	return static_cast<float>(f1(x1, y1, z) + f1(x0, y0, z) - f1(x1, y0, z) - f1(x0, y1, z));
 }
 
 // Integral cos(theta_area)/r^2 dA - for special case
-float candela::mathematics::f2(float x, float y, float z)
+double candela::mathematics::f2(double x, double y, double z)
 {
 	return atan((x * y) / (z * sqrt(x * x + y * y + z * z)));
 }
 
 float candela::mathematics::f2Definite(float x0, float x1, float y0, float y1, float z)
 {
-	return f2(x1, y1, z)
-		 + f2(x0, y0, z)
-		 - f2(x1, y0, z)
-		 - f2(x0, y1, z);
+	return static_cast<float>(f2(x1, y1, z) + f2(x0, y0, z) - f2(x1, y0, z) - f2(x0, y1, z));
 }
 
 Vector3 candela::mathematics::QuaternionToRotationXYZ(const Vector& rot)
