@@ -18,12 +18,11 @@ TimeStampQuery::TimeStampQuery()
 {
 }
 
-void TimeStampQuery::init(DXDevice pDevice, ResourceManager *resourceManager, DXCommandQueue& commandQueue, DXCommandList pCommandList)
+void TimeStampQuery::init(DXDevice pDevice, ResourceManager *resourceManager, DXCommandQueue& commandQueue)
 {
 	queryHeap = DXUtil::createQueryHeap(pDevice, numTimeStamps);
-	queryResource = &resourceManager->createResource(D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_FLAG_NONE, 8u * numTimeStamps, 1U, DXGI_FORMAT_UNKNOWN, false, "", D3D12_HEAP_TYPE_READBACK);
+	queryResource = &resourceManager->createResource(D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_FLAG_NONE, 8u * numTimeStamps, 1U, DXGI_FORMAT_UNKNOWN, false, "", D3D12_HEAP_TYPE_READBACK);
 	queryResource->setName("Query Resource");
-	queryResource->transistionBarrier(pCommandList, D3D12_RESOURCE_STATE_COPY_DEST);
 	UINT64 freq{};
 	commandQueue->getCommandQueue()->GetTimestampFrequency(&freq);
 	frequency = 1000. / freq;

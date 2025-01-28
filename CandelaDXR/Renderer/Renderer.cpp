@@ -249,7 +249,7 @@ void Renderer::init()
 
 	// Queries
 	for (UINT i = 0; i < NumBackBuffers; ++i)
-		timeStampQuery[i].init(pDevice, rendererResources.resourceManager.get(), commandQueue, pCurrentCommandList);
+		timeStampQuery[i].init(pDevice, rendererResources.resourceManager.get(), commandQueue);
 
 	// Init Resources
 	for (auto &resource : resources)
