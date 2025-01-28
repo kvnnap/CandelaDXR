@@ -138,6 +138,10 @@ void Renderer::init()
 	setSceneCameraFromNodeTransform();
 	windowDimensions.x = static_cast<uint32_t>(windowDimensions.y * camera->getAspectRatio());
 	window = make_unique<Window>("CandelaDXR", windowDimensions.x, windowDimensions.y, &keyboard, &mouse, !isRecording());
+	int x{}, y{};
+	window->getClientWindowSize(x, y);
+	if (x != windowDimensions.x || y != windowDimensions.y)
+		cout << "Warning: Mismatching buffer size. Window: (" << x << ", " << y << "), Buffer: (" << windowDimensions.x << ", " << windowDimensions.y << "). Stretching will occur only during presentation" << endl;
 	using namespace std::placeholders;
 	window->addWndProcCallback(std::bind(&Renderer::wndCallback, this, _1, _2, _3, _4), 0);
 
@@ -167,7 +171,7 @@ void Renderer::init()
 	commandQueue = make_unique<CommandQueue>(pDevice, D3D12_COMMAND_LIST_TYPE_DIRECT);
 
 	// Create swap chain
-	pSwapChain = DXUtil::createSwapChain(dxgiFactory, commandQueue->getCommandQueue(), window->getHandle(), NumBackBuffers);
+	pSwapChain = DXUtil::createSwapChain(dxgiFactory, commandQueue->getCommandQueue(), window->getHandle(), NumBackBuffers, windowDimensions.x, windowDimensions.y);
 
 	// Create descriptor heap for render target view - Num + pRTVRad, pRTVDiff, PRTVSpec
 	pRTVDescriptorHeap = DXUtil::createDescriptorHeap(pDevice, NumBackBuffers + 3, D3D12_DESCRIPTOR_HEAP_TYPE_RTV);

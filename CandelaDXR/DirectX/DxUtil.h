@@ -28,7 +28,7 @@ namespace candela::directx
 		static Microsoft::WRL::ComPtr<ID3D12Device> createDeviceFromAdapter(Microsoft::WRL::ComPtr<IDXGIAdapter> adapter, D3D_FEATURE_LEVEL featureLevel);
 		static Microsoft::WRL::ComPtr<IDXGIFactory> createDXGIFactory(bool debugEnabled);
 		static Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> createDescriptorHeap(Microsoft::WRL::ComPtr<ID3D12Device> device, UINT count, D3D12_DESCRIPTOR_HEAP_TYPE type, bool shaderVisible = false);
-		static Microsoft::WRL::ComPtr<IDXGISwapChain> createSwapChain(Microsoft::WRL::ComPtr<IDXGIFactory> dxgiFactory, Microsoft::WRL::ComPtr<ID3D12CommandQueue> commandQueue, HWND hWnd, UINT numBuffers);
+		static Microsoft::WRL::ComPtr<IDXGISwapChain> createSwapChain(Microsoft::WRL::ComPtr<IDXGIFactory> dxgiFactory, Microsoft::WRL::ComPtr<ID3D12CommandQueue> commandQueue, HWND hWnd, UINT numBuffers, UINT width = 0u, UINT height = 0u);
 
 		static std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>> createRenderTargetViews(
 			Microsoft::WRL::ComPtr<ID3D12Device> device,

@@ -212,7 +212,7 @@ ComPtr<ID3D12DescriptorHeap> DXUtil::createDescriptorHeap(ComPtr<ID3D12Device> d
 {
 	HRESULT hr;
 	ComPtr<ID3D12DescriptorHeap> descriptorHeap;
-
+	
 	D3D12_DESCRIPTOR_HEAP_DESC desc = {};
 	desc.NumDescriptors = count;
 	desc.Type = type;
@@ -222,12 +222,12 @@ ComPtr<ID3D12DescriptorHeap> DXUtil::createDescriptorHeap(ComPtr<ID3D12Device> d
 	return descriptorHeap;
 }
 
-ComPtr<IDXGISwapChain> DXUtil::createSwapChain(ComPtr<IDXGIFactory> dxgiFactory, ComPtr<ID3D12CommandQueue> commandQueue, HWND hWnd, UINT numBuffers)
+ComPtr<IDXGISwapChain> DXUtil::createSwapChain(ComPtr<IDXGIFactory> dxgiFactory, ComPtr<ID3D12CommandQueue> commandQueue, HWND hWnd, UINT numBuffers, UINT width, UINT height)
 {
 	DXGI_SWAP_CHAIN_DESC1 sd = {};
 	// Use the window (hWnd) dimensions
-	sd.Width = 0;
-	sd.Height = 0;
+	sd.Width = width;
+	sd.Height = height;
 
 	// Pixel format (TODO: Try srgb too)
 	sd.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
@@ -236,7 +236,7 @@ ComPtr<IDXGISwapChain> DXUtil::createSwapChain(ComPtr<IDXGIFactory> dxgiFactory,
 	sd.SampleDesc.Quality = 0;
 	sd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
 	sd.BufferCount = numBuffers;
-	sd.Scaling = DXGI_SCALING_NONE;
+	sd.Scaling = DXGI_SCALING_STRETCH;
 	sd.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
 	sd.AlphaMode = DXGI_ALPHA_MODE_UNSPECIFIED;
 	sd.Flags = checkTearingSupport(dxgiFactory) ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING : 0;
