@@ -56,7 +56,7 @@ using candela::util::StringToWString;
 LightTracingShading::LightTracingShading(unique_ptr<ISampler> sampler, UVector2 lightSamples)
 	: rendererResources(), constBuffer(), lightSamples(lightSamples),
 	irradianceDataStructure(), irrToRad(), rayHitT(), irradianceCaustics(),
-	outputCaustics(), irradianceTexture(), sampler(std::move(sampler)), frameNumberCaustics(),
+	irradianceTexture(), sampler(std::move(sampler)), frameNumberCaustics(),
 	clear(), clearCaustics(), allowClearCaustics(true), currentShader()
 {
 }
@@ -90,7 +90,6 @@ void LightTracingShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12Graphi
 	rayHitT = &rRes->resourceManager->createResourceIfNotExists(D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
 		rRes->winDimensions.x, rRes->winDimensions.y, DXGI_FORMAT_R32G32B32A32_FLOAT, true, "ray_hitT");
 	irradianceCaustics = &rendererResources->resourceManager->createResource(D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, dim.x, dim.y, DXGI_FORMAT_R32G32B32A32_FLOAT, true, "lt_irr_caustics");
-	outputCaustics = &rendererResources->resourceManager->createResourceIfNotExists(D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, dim.x, dim.y, DXGI_FORMAT_R32G32B32A32_FLOAT, true, "caustics");
 
 	// Init components
 	for (auto& ltShader : ltShaders)
@@ -117,7 +116,7 @@ void LightTracingShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12Graphi
 
 	// To blur caustics
 	guassResources = { 
-		outputCaustics, // this is the input AND output
+		rRes->pRTVCaus, // this is the input AND output
 		irradianceCaustics // This is a dummy
 	};
 	guassianCS.setDxgiFormat(DXGI_FORMAT_R32G32B32A32_FLOAT);
@@ -136,8 +135,11 @@ void LightTracingShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> currentCom
 		ltShader.component->draw(currentCommandList, currentBackBufferIndex);
 
 	// Pre-stuff
-	auto &backBuff = rendererResources->pRTVDiff;
+	auto& backBuff = rendererResources->pRTVDiff;
+	auto &caustBuff = rendererResources->pRTVCaus;
 	backBuff->transistionBarrier(currentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+	if (constBuffer.seperateCaustics)
+		caustBuff->transistionBarrier(currentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
 	// Copy and update camera
 	auto cam = rendererResources->camera;
@@ -186,7 +188,10 @@ void LightTracingShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> currentCom
 
 	// Caustics blur
 	if (constBuffer.seperateCaustics)
+	{
 		guassianCS.compute(currentCommandList);
+		caustBuff->transistionBarrier(currentCommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);
+	}
 
 	// After
 	backBuff->transistionBarrier(currentCommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);
@@ -410,7 +415,7 @@ void LightTracingShading::createShaderResources(wrl::ComPtr<ID3D12GraphicsComman
 	cmpDescHeapManager.setUAV(2, uavDesc, rendererResources->pDevice, *irradianceTexture);
 	cmpDescHeapManager.setUAV(3, uavDesc, rendererResources->pDevice, *rayHitT);
 	cmpDescHeapManager.setUAV(4, uavDesc, rendererResources->pDevice, *irradianceCaustics);
-	cmpDescHeapManager.setUAV(5, uavDesc, rendererResources->pDevice, *outputCaustics);
+	cmpDescHeapManager.setUAV(5, uavDesc, rendererResources->pDevice, *rendererResources->pRTVCaus);
 	cmpDescHeapManager.setSRV(6, irrToRadSrvDesc, rendererResources->pDevice, *irrToRad);
 	computeDescriptorHeap = cmpDescHeapManager.getDescriptorHeap();
 }
@@ -511,7 +516,10 @@ void LightTracingShading::accept(IVisitor* visitor)
 uint32_t LightTracingShading::getBufferUsage() const
 {
 	auto &c = ltShaders[currentShader].component;
-	return c ? c->getBufferUsage() : BufferUsage::Diffuse;
+	auto ret = c ? c->getBufferUsage() : BufferUsage::Diffuse; //
+	if (constBuffer.seperateCaustics)
+		ret |= BufferUsage::Caustics;
+	return ret;
 }
 
 const UVector2& LightTracingShading::getLightSamples() const

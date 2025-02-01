@@ -40,6 +40,7 @@ namespace candela::renderer
 		directx::Resource* pRTVRad{};
 		directx::Resource* pRTVDiff{};
 		directx::Resource* pRTVSpec{};
+		directx::Resource* pRTVCaus{};
 		directx::CommandQueue* commandQueue{};
 		mathematics::UVector2 winDimensions{};
 		UINT numBackBuffers{};

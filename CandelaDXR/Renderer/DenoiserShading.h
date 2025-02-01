@@ -88,9 +88,9 @@ namespace candela::renderer
 		*  normal - use from normal texture
 		*/
 		directx::Resource* diffRadAccumulator;
-		directx::Resource* causticsAccumulator;
 		directx::Resource* diffUnmerged;
 		directx::Resource* specRadAccumulator;
+		directx::Resource* causRadAccumulator;
 		directx::Resource* albedo; // need to radAccum/albedo --> IN_DIFF_RADIANCE_HITDIST 
 		directx::Resource* normal; // Produce (normal, 0.f)  --> IN_NORMAL_ROUGHNESS
 		directx::Resource* depth; // 

@@ -100,9 +100,11 @@ namespace candela::renderer
 			RTVRad = 1,
 			RTVDiff = 2,
 			RTVSpec = 3,
-			RadAccumulator = 4,
-			DiffAccumulator = 5,
-			SpecAccumulator = 6,
+			RTVCaus = 4,
+			RadAccumulator = 5,
+			DiffAccumulator = 6,
+			SpecAccumulator = 7,
+			CausAccumulator = 8
 		};
 
 		// Accum Const Buff
@@ -128,6 +130,7 @@ namespace candela::renderer
 		void resize();
 		void refreshMaterialResources();
 		void bindComputePipeline();
+		void dispatchCompute(wrl::ComPtr<ID3D12GraphicsCommandList>& pCurrentCommandList, const AccumConstBuff& c32Data);
 		bool isRecording() const;
 		void recordingChange();
 		directx::DXResource& getTempResource();
@@ -153,8 +156,8 @@ namespace candela::renderer
 		wrl::ComPtr<IDXGISwapChain> pSwapChain;
 		wrl::ComPtr<ID3D12DescriptorHeap> pRTVDescriptorHeap;
 		directx::Resource * pRTV8Bit; // This is the 8-bit target that will then be copied to swap-chain
-		directx::Resource * pRTVRad, * pRTVDiff, * pRTVSpec; // This is the target for drawables (32-bit)
-		directx::Resource * pRadAccumulator, * pDiffAccumulator, * pSpecAccumulator; // 32-bit
+		directx::Resource * pRTVRad, * pRTVDiff, * pRTVSpec, *pRTVCaus; // This is the target for drawables (32-bit)
+		directx::Resource * pRadAccumulator, * pDiffAccumulator, * pSpecAccumulator, * pCausAccumulator; // 32-bit
 		ResPtrVec pRTVBackBuffers; // Buffers retrieved from swap-chain (these are 8-bit)
 
 		// ImGui Manager - is also a drawable

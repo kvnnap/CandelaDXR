@@ -84,7 +84,7 @@ Renderer::Renderer(Scene *scene, Camera *camera, const UVector2 &windowDimension
 	uint32_t adapterIndex, bool debugEnabled, bool breakEnabled, bool vsync, bool exitOnAnimCompl, bool shaderAccumulation)
 	: windowDimensions(windowDimensions),
 	  adapterIndex(adapterIndex),
-	  pRTV8Bit(), pRTVRad(), pRTVDiff(), pRTVSpec(), pRadAccumulator(), pDiffAccumulator(), pSpecAccumulator(),
+	  pRTV8Bit(), pRTVRad(), pRTVDiff(), pRTVSpec(), pRTVCaus(), pRadAccumulator(), pDiffAccumulator(), pSpecAccumulator(), pCausAccumulator(),
 	  rtvDescriptorSize(),
 	  currentBackBufferIndex(),
 	  frameGrabCounter(),
@@ -173,8 +173,8 @@ void Renderer::init()
 	// Create swap chain
 	pSwapChain = DXUtil::createSwapChain(dxgiFactory, commandQueue->getCommandQueue(), window->getHandle(), NumBackBuffers, windowDimensions.x, windowDimensions.y);
 
-	// Create descriptor heap for render target view - Num + pRTVRad, pRTVDiff, PRTVSpec
-	pRTVDescriptorHeap = DXUtil::createDescriptorHeap(pDevice, NumBackBuffers + 3, D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+	// Create descriptor heap for render target view - Num + pRTVRad, pRTVDiff, PRTVSpec, pRTVCaus
+	pRTVDescriptorHeap = DXUtil::createDescriptorHeap(pDevice, NumBackBuffers + 4, D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 	pRTVDescriptorHeap->SetName(L"RTV Descriptor Heap");
 
 	// Other tex
@@ -199,10 +199,14 @@ void Renderer::init()
 		D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS | D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET,
 		windowDimensions.x, windowDimensions.y, DXGI_FORMAT_R32G32B32A32_FLOAT, true);
 	pRTVSpec->setName(L"pRTVSpec");
+	pRTVCaus = &rMan->createResource(D3D12_RESOURCE_STATE_RENDER_TARGET,
+		D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS | D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET,
+		windowDimensions.x, windowDimensions.y, DXGI_FORMAT_R32G32B32A32_FLOAT, true);
+	pRTVCaus->setName(L"pRTVCaus");
 
 	// Create render target Views
 	rtvDescriptorSize = pDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-	pRTVBackBuffers = DXUtil::createRenderTargetViewsEx(pDevice, pRTVDescriptorHeap, pSwapChain, { pRTVRad, pRTVDiff, pRTVSpec }, NumBackBuffers);
+	pRTVBackBuffers = DXUtil::createRenderTargetViewsEx(pDevice, pRTVDescriptorHeap, pSwapChain, { pRTVRad, pRTVDiff, pRTVSpec, pRTVCaus }, NumBackBuffers);
 	
 	// Upload scene resources
 	initSceneResources();
@@ -226,6 +230,7 @@ void Renderer::init()
 		.pRTVRad = pRTVRad,
 		.pRTVDiff = pRTVDiff,
 		.pRTVSpec = pRTVSpec,
+		.pRTVCaus = pRTVCaus,
 		.commandQueue = commandQueue.get(),
 		.winDimensions = windowDimensions,
 		.numBackBuffers = NumBackBuffers,
@@ -452,9 +457,9 @@ void Renderer::renderFrame()
 
 			// Clear the RadRTV 
 			auto rtvDescHandle = rtvDescriptorHandle;
-			for (uint32_t j = 0; j < 3; ++j)
+			for (uint32_t j = 0; j < 4; ++j)
 			{
-				if (buffUsage & (BufferUsage::Radiance << j)) // Clear the RadRTV, RTVDiff, RTVSpec
+				if (buffUsage & (BufferUsage::Radiance << j)) // Clear the RadRTV, RTVDiff, RTVSpec, RTVCaus
 					pCurrentCommandList->ClearRenderTargetView(rtvDescHandle, color, 0, nullptr);
 				rtvDescHandle.Offset(rtvDescriptorSize);
 			}
@@ -463,35 +468,34 @@ void Renderer::renderFrame()
 			pRTVRad->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 			pRTVDiff->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 			pRTVSpec->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+			pRTVCaus->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
 			// Copy - per loop - testing here
 			bindComputePipeline();
-			uint32_t flags{};
-			flags |= isFirst || drawable->shouldClearAccumulation() ? ACC_CLEAR : ACC_NONE;
-			flags |= ACC_ACCUMULATE;
 			AccumConstBuff c32Data{};
-			uint32_t bUsageIndex{}; // Accumulate rtvRad, rtvDiff and rtvSpec into their accumulators and optionnally clear.
-			for (uint32_t bUI = 0; bUI < 3; ++bUI)
+			c32Data.Flags |= isFirst || drawable->shouldClearAccumulation() ? ACC_CLEAR : ACC_NONE;
+			c32Data.Flags |= ACC_ACCUMULATE;
+			// Accumulate rtvRad, rtvDiff and rtvSpec into their accumulators and optionally clear.
+			for (uint32_t bUI = 0; bUI < 4; ++bUI)
 			{
 				if (buffUsage & (BufferUsage::Radiance << bUI))
 				{
-					c32Data.InIndex[bUsageIndex] = static_cast<AccumResource>(AccumResource::RTVRad + bUI);
-					c32Data.OutIndex[bUsageIndex] = static_cast<AccumResource>(AccumResource::RadAccumulator + bUI);
-					++bUsageIndex;
+					c32Data.InIndex[c32Data.PairCount] = static_cast<AccumResource>(AccumResource::RTVRad + bUI);
+					c32Data.OutIndex[c32Data.PairCount] = static_cast<AccumResource>(AccumResource::RadAccumulator + bUI);
+					++c32Data.PairCount;
 				}
 			}
-			c32Data.PairCount = bUsageIndex;
-			c32Data.Flags = flags;
 
-			pCurrentCommandList->SetComputeRoot32BitConstants(0u, sizeof(AccumConstBuff) / sizeof(uint32_t), &c32Data, 0);
-			pCurrentCommandList->Dispatch(dim.x / 8 + (dim.x % 8 == 0 ? 0 : 1), dim.y / 8 + (dim.y % 8 == 0 ? 0 : 1), 1);
+			dispatchCompute(pCurrentCommandList, c32Data);
 
+			pRTVCaus->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);
 			pRTVSpec->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);
 			pRTVDiff->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);
 			pRTVRad->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);
 			pRadAccumulator->uavBarrier(pCurrentCommandList);
 			pDiffAccumulator->uavBarrier(pCurrentCommandList);
 			pSpecAccumulator->uavBarrier(pCurrentCommandList);
+			pCausAccumulator->uavBarrier(pCurrentCommandList);
 			isFirst = false;
 		}
 
@@ -502,12 +506,11 @@ void Renderer::renderFrame()
 	bindComputePipeline();
 
 	{
-		// Accum Diff and Spec and Rad into RAD
+		// Accum Diff and Spec and Caus and Rad into RAD
 		AccumConstBuff c32Data{ 
-			{AccumResource::DiffAccumulator, AccumResource::SpecAccumulator}, 
-			{AccumResource::RadAccumulator, AccumResource::RadAccumulator}, 2U, ACC_ACCUMULATE };
-		pCurrentCommandList->SetComputeRoot32BitConstants(0u, sizeof(AccumConstBuff) / sizeof(uint32_t), &c32Data, 0);
-		pCurrentCommandList->Dispatch(dim.x / 8 + (dim.x % 8 == 0 ? 0 : 1), dim.y / 8 + (dim.y % 8 == 0 ? 0 : 1), 1);
+			{AccumResource::DiffAccumulator, AccumResource::SpecAccumulator, AccumResource::CausAccumulator},
+			{AccumResource::RadAccumulator, AccumResource::RadAccumulator, AccumResource::RadAccumulator,}, 3U, ACC_ACCUMULATE };
+		dispatchCompute(pCurrentCommandList, c32Data);
 
 		pRadAccumulator->uavBarrier(pCurrentCommandList);
 
@@ -515,8 +518,7 @@ void Renderer::renderFrame()
 		if (!grabRadiance)
 		{
 			c32Data = { {AccumResource::RadAccumulator}, {AccumResource::RadAccumulator}, 1U, ppParams.Flags, ppParams.Exposure };
-			pCurrentCommandList->SetComputeRoot32BitConstants(0u, sizeof(AccumConstBuff) / sizeof(uint32_t), &c32Data, 0);
-			pCurrentCommandList->Dispatch(dim.x / 8 + (dim.x % 8 == 0 ? 0 : 1), dim.y / 8 + (dim.y % 8 == 0 ? 0 : 1), 1);
+			dispatchCompute(pCurrentCommandList, c32Data);
 			pRadAccumulator->uavBarrier(pCurrentCommandList);
 		}
 	}
@@ -565,15 +567,13 @@ void Renderer::renderFrame()
 
 		// Perform tone mapping
 		AccumConstBuff c32Data{ {AccumResource::RadAccumulator}, {AccumResource::RadAccumulator}, 1U, ppParams.Flags, ppParams.Exposure };
-		pCurrentCommandList->SetComputeRoot32BitConstants(0u, sizeof(AccumConstBuff) / sizeof(uint32_t), &c32Data, 0);
-		pCurrentCommandList->Dispatch(dim.x / 8 + (dim.x % 8 == 0 ? 0 : 1), dim.y / 8 + (dim.y % 8 == 0 ? 0 : 1), 1);
+		dispatchCompute(pCurrentCommandList, c32Data);
 		pRadAccumulator->uavBarrier(pCurrentCommandList);
 	}
 
 	// Copy accumulator to 8-bit Texture
 	AccumConstBuff c32Data{ {AccumResource::RadAccumulator}, {AccumResource::RTV8BitBackBuffer}, 1U, ACC_CLEAR | ACC_ACCUMULATE };
-	pCurrentCommandList->SetComputeRoot32BitConstants(0u, sizeof(AccumConstBuff) / sizeof(uint32_t), &c32Data, 0);
-	pCurrentCommandList->Dispatch(dim.x / 8 + (dim.x % 8 == 0 ? 0 : 1), dim.y / 8 + (dim.y % 8 == 0 ? 0 : 1), 1);
+	dispatchCompute(pCurrentCommandList, c32Data);
 
 	// Point to 8-bit swap chain buffers
 	rtvDescriptorHandle.Offset(rtvDescriptorSize* (currentBackBufferIndex - NumBackBuffers));
@@ -831,7 +831,7 @@ void Renderer::initShaders()
 	// Compute shader
 	computeRSM = make_shared<RootSignatureManager>();
 	CD3DX12_ROOT_PARAMETER1 param{};
-	computeRSM->addDescriptorRange("ComputeData", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 7, 0));
+	computeRSM->addDescriptorRange("ComputeData", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 9, 0));
 	computeRSM->setDescriptorTableParameter("ComputeDataDescTable", "ComputeData");
 	param.InitAsConstants(sizeof(AccumConstBuff) / sizeof(uint32_t), 0u);
 	computeRSM->setParameter("ComputeConstants", param); // inIndex, outIndex, flags
@@ -865,6 +865,8 @@ void Renderer::initShaders()
 		windowDimensions.x, windowDimensions.y, DXGI_FORMAT_R32G32B32A32_FLOAT, true, "diff_acc");
 	pSpecAccumulator = &rendererResources.resourceManager->createResource(D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
 		windowDimensions.x, windowDimensions.y, DXGI_FORMAT_R32G32B32A32_FLOAT, true, "spec_acc");
+	pCausAccumulator = &rendererResources.resourceManager->createResource(D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
+		windowDimensions.x, windowDimensions.y, DXGI_FORMAT_R32G32B32A32_FLOAT, true, "caus_acc");
 }
 
 void Renderer::createShaderResources()
@@ -876,9 +878,11 @@ void Renderer::createShaderResources()
 	cmpDescHeapManager.setUAV(1, uavDesc, pDevice, *pRTVRad);
 	cmpDescHeapManager.setUAV(2, uavDesc, pDevice, *pRTVDiff);
 	cmpDescHeapManager.setUAV(3, uavDesc, pDevice, *pRTVSpec);
-	cmpDescHeapManager.setUAV(4, uavDesc, pDevice, *pRadAccumulator);
-	cmpDescHeapManager.setUAV(5, uavDesc, pDevice, *pDiffAccumulator);
-	cmpDescHeapManager.setUAV(6, uavDesc, pDevice, *pSpecAccumulator);
+	cmpDescHeapManager.setUAV(4, uavDesc, pDevice, *pRTVCaus);
+	cmpDescHeapManager.setUAV(5, uavDesc, pDevice, *pRadAccumulator);
+	cmpDescHeapManager.setUAV(6, uavDesc, pDevice, *pDiffAccumulator);
+	cmpDescHeapManager.setUAV(7, uavDesc, pDevice, *pSpecAccumulator);
+	cmpDescHeapManager.setUAV(8, uavDesc, pDevice, *pCausAccumulator);
 
 	computeDescriptorHeap = cmpDescHeapManager.getDescriptorHeap();
 }
@@ -938,7 +942,7 @@ void Renderer::resize()
 	GFXTHROWIFFAILED(pSwapChain->ResizeBuffers(NumBackBuffers, windowDimensions.x, windowDimensions.y, DXGI_FORMAT_UNKNOWN, flags));
 	// Resize textures in resource manager
 	rendererResources.resourceManager->resize(windowDimensions.x, windowDimensions.y);
-	pRTVBackBuffers = DXUtil::createRenderTargetViewsEx(pDevice, pRTVDescriptorHeap, pSwapChain, { pRTVRad, pRTVDiff, pRTVSpec }, NumBackBuffers);
+	pRTVBackBuffers = DXUtil::createRenderTargetViewsEx(pDevice, pRTVDescriptorHeap, pSwapChain, { pRTVRad, pRTVDiff, pRTVSpec, pRTVCaus }, NumBackBuffers);
 	fpsCounter.resetFrameCount();
 	
 	createShaderResources(); // some resources used in renderer depend on resizing
@@ -1068,6 +1072,13 @@ void Renderer::bindComputePipeline()
 	pCurrentCommandList->SetComputeRootSignature(computeRootSignature.Get());
 	pCurrentCommandList->SetDescriptorHeaps(1u, computeDescriptorHeap.GetAddressOf());
 	pCurrentCommandList->SetComputeRootDescriptorTable(1u, computeDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
+}
+
+void Renderer::dispatchCompute(wrl::ComPtr<ID3D12GraphicsCommandList>& pCurrentCommandList, const AccumConstBuff& c32Data)
+{
+	const auto& dim = windowDimensions;
+	pCurrentCommandList->SetComputeRoot32BitConstants(0u, sizeof(AccumConstBuff) / sizeof(uint32_t), &c32Data, 0);
+	pCurrentCommandList->Dispatch(dim.x / 8 + (dim.x % 8 == 0 ? 0 : 1), dim.y / 8 + (dim.y % 8 == 0 ? 0 : 1), 1);
 }
 
 bool Renderer::isRecording() const

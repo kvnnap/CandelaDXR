@@ -126,7 +126,6 @@ namespace candela::renderer
 		directx::Resource* irrToRad;
 		directx::Resource* rayHitT;
 		directx::Resource* irradianceCaustics;
-		directx::Resource* outputCaustics;
 
 		directx::Resource* irradianceTexture;
 		std::unique_ptr<sampler::ISampler> sampler;

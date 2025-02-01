@@ -39,7 +39,7 @@ namespace candela::renderer
 
 DenoiserShading::DenoiserShading()
 	: rendererResources(), nriDevice(),
-	  diffRadAccumulator(), causticsAccumulator(), diffUnmerged(), specRadAccumulator(), albedo(), 
+	  diffRadAccumulator(), diffUnmerged(), specRadAccumulator(), causRadAccumulator(), albedo(),
 	  normal(), depth(), gRayHitT(), position(), meshInfo(), matrices(),
 	  in_mv(), in_normal_roughness(), in_view_z(),
 	  in_diff_radiance_hitdist(), in_spec_radiance_hitdist(),
@@ -101,12 +101,10 @@ void DenoiserShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12GraphicsCo
 	// Get resources & create new ones
 	auto& dim = rRes->winDimensions;
 	diffRadAccumulator = rRes->resourceManager->getNamedResource("diff_acc");
-	//causticsAccumulator = rRes->resourceManager->getNamedResource("caustics");
-	causticsAccumulator = &rendererResources->resourceManager->createResourceIfNotExists(D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
-		dim.x, dim.y, DXGI_FORMAT_R32G32B32A32_FLOAT, true, "caustics");
 	diffUnmerged = &rendererResources->resourceManager->createResourceIfNotExists(D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
 		dim.x, dim.y, DXGI_FORMAT_R32G32B32A32_FLOAT, true, "diff_unmerged");
 	specRadAccumulator = rRes->resourceManager->getNamedResource("spec_acc");
+	causRadAccumulator = rRes->resourceManager->getNamedResource("caus_acc");
 	albedo = rRes->resourceManager->getNamedResource("gAlb");
 	normal = rRes->resourceManager->getNamedResource("gNorm");
 	depth = rRes->resourceManager->getNamedResource("gDepth");
@@ -125,12 +123,12 @@ void DenoiserShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12GraphicsCo
 	// Setup compute shader RS
 	auto rsm = make_shared<RootSignatureManager>();
 	CD3DX12_ROOT_PARAMETER1 param{};
-	rsm->addDescriptorRange("IORange", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 10u, 0u));
+	rsm->addDescriptorRange("IORange", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 11u, 0u));
 	rsm->addDescriptorRange("IORange", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 9u, 0u));
 	rsm->setDescriptorTableParameter("IODescTable", "IORange");
 	param.InitAsConstants(8u, 0u); rsm->setParameter("Constants", param);
-	param.InitAsShaderResourceView(10u); rsm->setParameter("Matrices", param);
-	param.InitAsShaderResourceView(11u); rsm->setParameter("Materials", param);
+	param.InitAsShaderResourceView(11u); rsm->setParameter("Matrices", param);
+	param.InitAsShaderResourceView(12u); rsm->setParameter("Materials", param);
 	rsm->addParametersToRootSignature("ComputeRootSignature", { "IODescTable", "Constants", "Matrices", "Materials" });
 	computeRootSignature = rsm->generateRootSignature("ComputeRootSignature", rRes->pDevice, D3D12_ROOT_SIGNATURE_FLAG_NONE);
 
@@ -197,6 +195,7 @@ void DenoiserShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentComman
 	// Compute pre-pass
 	diffRadAccumulator->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
 	specRadAccumulator->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
+	causRadAccumulator->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
 	albedo->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
 	normal->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
 	position->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
@@ -205,6 +204,7 @@ void DenoiserShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentComman
 	gRayHitT->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
 	rendererResources->pRTVDiff->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 	rendererResources->pRTVSpec->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+	rendererResources->pRTVCaus->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
 	compute(pCurrentCommandList, 0);
 
@@ -336,6 +336,7 @@ void DenoiserShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentComman
 
 	diffRadAccumulator->transitionToPrevBarrier(pCurrentCommandList);
 	specRadAccumulator->transitionToPrevBarrier(pCurrentCommandList);
+	causRadAccumulator->transitionToPrevBarrier(pCurrentCommandList);
 	albedo->transitionToPrevBarrier(pCurrentCommandList);
 	normal->transitionToPrevBarrier(pCurrentCommandList);
 	position->transitionToPrevBarrier(pCurrentCommandList);
@@ -344,7 +345,7 @@ void DenoiserShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentComman
 	gRayHitT->transitionToPrevBarrier(pCurrentCommandList);
 	rendererResources->pRTVDiff->transitionToPrevBarrier(pCurrentCommandList);
 	rendererResources->pRTVSpec->transitionToPrevBarrier(pCurrentCommandList);
-	causticsAccumulator->uavBarrier(pCurrentCommandList);
+	rendererResources->pRTVCaus->transitionToPrevBarrier(pCurrentCommandList);
 	diffUnmerged->uavBarrier(pCurrentCommandList);
 
 	nrdCommonSettings.accumulationMode = nrd::AccumulationMode::CONTINUE;
@@ -374,7 +375,7 @@ bool DenoiserShading::shouldClearAccumulation() const
 
 std::uint32_t candela::renderer::DenoiserShading::getBufferUsage() const
 {
-	return BufferUsage::Diffuse | BufferUsage::Specular;
+	return BufferUsage::Diffuse | BufferUsage::Specular | BufferUsage::Caustics;
 }
 
 nrd::CommonSettings& DenoiserShading::getCommonSettings()
@@ -476,6 +477,7 @@ void DenoiserShading::createShaderResources()
 	uint32_t entryNum{};
 	descHeapManager->setSRV(entryNum++, srvDesc, rRes->pDevice, *diffRadAccumulator);
 	descHeapManager->setSRV(entryNum++, srvDesc, rRes->pDevice, *specRadAccumulator);
+	descHeapManager->setSRV(entryNum++, srvDesc, rRes->pDevice, *causRadAccumulator);
 	descHeapManager->setSRV(entryNum++, srvDesc, rRes->pDevice, *albedo);
 	descHeapManager->setSRV(entryNum++, srvDesc, rRes->pDevice, *normal);
 	srvDesc.Format = DXGI_FORMAT_R32_FLOAT;
@@ -502,7 +504,7 @@ void DenoiserShading::createShaderResources()
 	descHeapManager->setUAV(entryNum++, uavDesc, rRes->pDevice, *in_spec_radiance_hitdist);
 	descHeapManager->setUAV(entryNum++, uavDesc, rRes->pDevice, *rRes->pRTVDiff);
 	descHeapManager->setUAV(entryNum++, uavDesc, rRes->pDevice, *rRes->pRTVSpec);
-	descHeapManager->setUAV(entryNum++, uavDesc, rRes->pDevice, *causticsAccumulator);
+	descHeapManager->setUAV(entryNum++, uavDesc, rRes->pDevice, *rRes->pRTVCaus);
 	descHeapManager->setUAV(entryNum++, uavDesc, rRes->pDevice, *diffUnmerged);
 }
 

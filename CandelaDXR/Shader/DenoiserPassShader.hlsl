@@ -16,16 +16,17 @@ cbuffer CB1 : register(b0)
 
 Texture2D<float4> diffRadAcc : register(t0);
 Texture2D<float4> specRadAcc : register(t1);
-Texture2D<float4> albedo : register(t2);
-Texture2D<float4> normal : register(t3);
-Texture2D<float> depth : register(t4);
-Texture2D<float4> gRayHitT : register(t5);
-Texture2D<float4> out_diff_radiance_hitdist : register(t6);
-Texture2D<float4> out_spec_radiance_hitdist : register(t7);
-Texture2D<float4> position : register(t8);
-Texture2D<uint2> meshInfo : register(t9);
-StructuredBuffer<float4x3> matrices : register(t10); // WorldToLocalToPrevWorld
-StructuredBuffer<Material> materials : register(t11);
+Texture2D<float4> causRadAcc : register(t2);
+Texture2D<float4> albedo : register(t3);
+Texture2D<float4> normal : register(t4);
+Texture2D<float> depth : register(t5);
+Texture2D<float4> gRayHitT : register(t6);
+Texture2D<float4> out_diff_radiance_hitdist : register(t7);
+Texture2D<float4> out_spec_radiance_hitdist : register(t8);
+Texture2D<float4> position : register(t9);
+Texture2D<uint2> meshInfo : register(t10);
+StructuredBuffer<float4x3> matrices : register(t11); // WorldToLocalToPrevWorld
+StructuredBuffer<Material> materials : register(t12);
 
 RWTexture2D<float4> in_mv : register(u0);
 RWTexture2D<float4> in_normal_roughness : register(u1);
@@ -34,7 +35,7 @@ RWTexture2D<float4> in_diff_radiance_hitdist : register(u3);
 RWTexture2D<float4> in_spec_radiance_hitdist : register(u4);
 RWTexture2D<float4> gOutputDiff : register(u5);
 RWTexture2D<float4> gOutputSpec : register(u6);
-RWTexture2D<float4> causRadAcc : register(u7);
+RWTexture2D<float4> gOutputCaus : register(u7);
 RWTexture2D<float4> diffUnmerged : register(u8);
 
 [numthreads(8, 8, 1)]
@@ -106,7 +107,6 @@ void main(uint3 DTid : SV_DispatchThreadID)
 		float3 decodedDiff = diffResult.xyz * (albedo[DTid.xy].xyz / PI);
         if (denoiseCaustics != 0)
         {
-            causRadAcc[DTid.xy] = float4(decodedDiff.xyz, 1.f);
             diffUnmerged[DTid.xy] = float4(diffRadAcc[DTid.xy].xyz, 1.f);
             decodedDiff += diffRadAcc[DTid.xy].xyz;
         }
@@ -119,5 +119,6 @@ void main(uint3 DTid : SV_DispatchThreadID)
 		
 		gOutputDiff[DTid.xy] = float4(decodedDiff, 1.f);
 		gOutputSpec[DTid.xy] = float4(specResult.xyz, 1.f);
+		gOutputCaus[DTid.xy] = float4(0.f, 0.f, 0.f, 1.f);
 	}
 }

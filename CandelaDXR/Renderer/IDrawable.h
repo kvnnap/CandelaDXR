@@ -20,7 +20,8 @@ namespace candela::renderer
 		None = 0,
 		Radiance = 1,
 		Diffuse = 2,
-		Specular = 4
+		Specular = 4,
+		Caustics = 8
 	};
 
 	class IDrawable

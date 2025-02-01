@@ -81,12 +81,14 @@ struct RayPayload
 
 RWTexture2D<float4> gOutputDiff : register(u0);
 RWTexture2D<float4> gOutputSpec : register(u1);
-RWTexture2D<float4> gRadianceDiff : register(u2);
-RWTexture2D<float4> gRadianceSpec : register(u3);
-RWTexture2D<float4> gRayHitT : register(u4);
+RWTexture2D<float4> gOutputCaustics : register(u2);
+RWTexture2D<float4> gRadianceDiff : register(u3);
+RWTexture2D<float4> gRadianceSpec : register(u4);
+RWTexture2D<float4> gRadianceCaustics : register(u5);
+RWTexture2D<float4> gRayHitT : register(u6);
 
 // Anvil
-ANVIL_CODE(RWStructuredBuffer<PathTracingPath> gAnvilBuffer : register(u5);)
+ANVIL_CODE(RWStructuredBuffer<PathTracingPath> gAnvilBuffer : register(u6);)
 
 // SRVs
 StructuredBuffer<float3> verts : register(t0);
@@ -193,11 +195,13 @@ void rayGen()
 
 	float3 localCoefficient = 1.f;
 	float3 radiance = 0.f;
+	float3 causticsRadiance = 0.f;
 	
 	PathInteraction prevInteraction = Light;
 
 	float denoiserHitT = 0.f;
 	bool isSpecularPath = cBuffer.specularOnly;
+	bool isCausticsPath = false;
 
 	RayPayload rayPayload;
 	while (TraceRay(
@@ -309,7 +313,11 @@ void rayGen()
 				float3 albedo = mat.Emissive;
 				if (mat.EmissiveTextureId >= 0)
 					albedo *= gTextures[mat.EmissiveTextureId].SampleLevel(gSampler, getTextureLocation(rayPayload.bary, vertIndex), 0);
-				radiance += localCoefficient * albedo;
+				const float3 tempRad = localCoefficient * albedo;
+				if (isCausticsPath)
+					causticsRadiance += tempRad;
+				else
+					radiance += tempRad;
 			}
 
 			// Fresnel
@@ -339,6 +347,7 @@ void rayGen()
 		if (rand_next(seed) <= fr)
 		{
 			isSpecularPath |= i == 2;
+			isCausticsPath |= i == 3 && prevInteraction == Diffuse;
 			ray.Direction = reflect(ray.Direction, coeff * unitFaceNormal);
 			prevInteraction = Reflect;
 			continue;
@@ -415,7 +424,11 @@ void rayGen()
                                 if (mat.DiffuseTextureId >= 0)
                                     brdfDiff *= gTextures[mat.DiffuseTextureId].SampleLevel(gSampler, getTextureLocation(rayPayload.bary, vertIndex), 0);
                                 fr = fresnel(surfaceLightDot, n1, n2);
-                                radiance += localCoefficient * lightRadiance * brdfDiff * (1.f - fr);
+								const float3 tempRad = localCoefficient * lightRadiance * brdfDiff * (1.f - fr);
+								if (isCausticsPath)
+									causticsRadiance += tempRad;
+								else
+									radiance += tempRad;
                             }
                         }
                     }
@@ -496,7 +509,11 @@ void rayGen()
 							if (mat.DiffuseTextureId >= 0)
 								brdfDiff *= gTextures[mat.DiffuseTextureId].SampleLevel(gSampler, getTextureLocation(rayPayload.bary, vertIndex), 0);
 							fr = fresnel(surfaceLightDot, n1, n2);
-							radiance += localCoefficient * lightRadiance * brdfDiff * (1.f - fr);
+							const float3 tempRad = localCoefficient * lightRadiance * brdfDiff * (1.f - fr);
+							if (isCausticsPath)
+								causticsRadiance += tempRad;
+							else
+								radiance += tempRad;
 						}
 					}
 				}
@@ -558,6 +575,7 @@ void rayGen()
 		{
 			// Transmission
 			isSpecularPath |= i == 2;
+			isCausticsPath |= i == 3 && prevInteraction == Diffuse;
 			float3 dir = refract(ray.Direction, coeff * unitFaceNormal, n1 / n2);
 			// fr = fresnel(dot(unitFaceNormal, ray.Direction), n1, n2); TODO!!
 			if (any(dir))
@@ -577,26 +595,35 @@ void rayGen()
 	// Using this resource as a RADIANCE accumulator
 	if (cBuffer.frameNumber == 1)
 	{
-		gRadianceSpec[launchIndex] = gRadianceDiff[launchIndex] = float4(0.f, 0.f, 0.f, 1.f);
+		gRadianceSpec[launchIndex] = gRadianceDiff[launchIndex] = gRadianceCaustics[launchIndex] = float4(0.f, 0.f, 0.f, 1.f);
 		gRayHitT[launchIndex].y = 0.f;
 		if (!cBuffer.specularOnly)
-			gRayHitT[launchIndex].x = 0.f;
+		{
+			gRayHitT[launchIndex].xz = 0.f;
+		}
 	}
 
 	// Accumulate mean using Welford's method
+	const float4 ZERO = float4(0.f, 0.f, 0.f, 1.f);
 	if (isSpecularPath)
 	{
-		gRadianceSpec[launchIndex] += (float4(radiance, 0.f) - gRadianceSpec[launchIndex]) / cBuffer.frameNumber;
+		gRadianceDiff[launchIndex] += (ZERO - gRadianceDiff[launchIndex]) / cBuffer.frameNumber;
+		gRadianceSpec[launchIndex] += (float4(radiance, 1.f) - gRadianceSpec[launchIndex]) / cBuffer.frameNumber;
 		gRayHitT[launchIndex].y = denoiserHitT;
 	}
 	else
 	{
-		gRadianceDiff[launchIndex] += (float4(radiance, 0.f) - gRadianceDiff[launchIndex]) / cBuffer.frameNumber;
-		gRayHitT[launchIndex].x = denoiserHitT;
+		gRadianceDiff[launchIndex] += (float4(radiance, 1.f) - gRadianceDiff[launchIndex]) / cBuffer.frameNumber;
+		gRadianceSpec[launchIndex] += (ZERO - gRadianceSpec[launchIndex]) / cBuffer.frameNumber;
+		gRayHitT[launchIndex].xz = denoiserHitT;
 	}
-	
+
+	// Remember: isSpecularPath => !isCausticPath. Also: isCausticPath => !isSpecularPath
+	gRadianceCaustics[launchIndex] += (float4(causticsRadiance, 1.f) - gRadianceCaustics[launchIndex]) / cBuffer.frameNumber;
+
 	gOutputDiff[launchIndex] = float4(gRadianceDiff[launchIndex].xyz, 1.f);
 	gOutputSpec[launchIndex] = float4(gRadianceSpec[launchIndex].xyz, 1.f);
+	gOutputCaustics[launchIndex] = float4(gRadianceCaustics[launchIndex].xyz, 1.f);
 
 	// Anvil
 	ANVIL_CODE(

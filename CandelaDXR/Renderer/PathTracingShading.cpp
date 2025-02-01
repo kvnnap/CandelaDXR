@@ -40,7 +40,7 @@ using candela::renderer::PathTracingShading;
 using feanor::anvil::Anvil;
 
 PathTracingShading::PathTracingShading(unique_ptr<ISampler> sampler, bool specularOnly)
-	: rendererResources(), constBuffer(), sampler(std::move(sampler)), clear()
+	: rendererResources(), constBuffer(), diffTexture(), specTexture(), causTexture(), rayHitT(), sampler(std::move(sampler)), clear()
 {
 	setSpecularOnly(specularOnly);
 }
@@ -76,6 +76,9 @@ void PathTracingShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12Graphic
 	specTexture = &rRes->resourceManager->createResource(D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
 		rRes->winDimensions.x, rRes->winDimensions.y, DXGI_FORMAT_R32G32B32A32_FLOAT, true);
 	specTexture->setName("pt_spec");
+	causTexture = &rRes->resourceManager->createResource(D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
+		rRes->winDimensions.x, rRes->winDimensions.y, DXGI_FORMAT_R32G32B32A32_FLOAT, true);
+	causTexture->setName("pt_caus");
 	rayHitT = &rRes->resourceManager->createResourceIfNotExists(D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
 		rRes->winDimensions.x, rRes->winDimensions.y, DXGI_FORMAT_R32G32B32A32_FLOAT, true, "ray_hitT");
 
@@ -103,6 +106,7 @@ void PathTracingShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCom
 	// Pre-stuff
 	rendererResources->pRTVDiff->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 	rendererResources->pRTVSpec->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+	rendererResources->pRTVCaus->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
 	// Anvil
 	ANVIL_CODE_RAW(
@@ -157,6 +161,7 @@ void PathTracingShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCom
 	clear = false;
 
 	// After
+	rendererResources->pRTVCaus->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);
 	rendererResources->pRTVSpec->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);
 	rendererResources->pRTVDiff->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);
 
@@ -208,9 +213,9 @@ void PathTracingShading::accept(IVisitor* visitor)
 
 uint32_t PathTracingShading::getBufferUsage() const
 {
-	return getSpecularOnly() ? 
+	return (getSpecularOnly() ? 
 		BufferUsage::Specular : 
-		BufferUsage::Diffuse | BufferUsage::Specular;
+		BufferUsage::Diffuse | BufferUsage::Specular) | BufferUsage::Caustics;
 }
 
 void PathTracingShading::setSpecularOnly(bool specularOnly)
@@ -277,15 +282,14 @@ void PathTracingShading::buildPipeline()
 	// Third - Local Root Signature for Ray Gen shader
 	int amount = 0;
 	ANVIL_CODE_RAW(amount = 1;)
-	rootSignatureManager->addDescriptorRange("BVH", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 5 + amount, 0)); //gOutputDiff, gOutputSpec, gRadianceDiff, gRadianceSpec, gRayHitT, gAnvilDebug
+	rootSignatureManager->addDescriptorRange("BVH", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 7 + amount, 0)); //gOutputDiff, gOutputSpec, gRadianceDiff, gOutputCaustics, gRadianceSpec, gRadianceCaus, gRayHitT, gAnvilDebug
 	rootSignatureManager->addDescriptorRange("BVH", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 10)); //gRtScene
 	if (!rendererResources->textures.empty())
 		rootSignatureManager->addDescriptorRange("BVH", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, static_cast<UINT>(rendererResources->textures.size()), 12));
 
 	rootSignatureManager->setDescriptorTableParameter("BVHDescTable", "BVH");
 	CD3DX12_ROOT_PARAMETER1 param;
-	param.InitAsConstantBufferView(0);
-	rootSignatureManager->setParameter("ConstBuff", param);
+	param.InitAsConstantBufferView(0); rootSignatureManager->setParameter("ConstBuff", param);
 
 	param.InitAsShaderResourceView(0); rootSignatureManager->setParameter("verts", param);
 	param.InitAsShaderResourceView(1); rootSignatureManager->setParameter("texVerts", param);
@@ -361,8 +365,10 @@ void PathTracingShading::createShaderResources()
 	uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
 	descHeapManager->setUAV(entryNumber++, uavDesc, rendererResources->pDevice, *rendererResources->pRTVDiff);
 	descHeapManager->setUAV(entryNumber++, uavDesc, rendererResources->pDevice, *rendererResources->pRTVSpec);
+	descHeapManager->setUAV(entryNumber++, uavDesc, rendererResources->pDevice, *rendererResources->pRTVCaus);
 	descHeapManager->setUAV(entryNumber++, uavDesc, rendererResources->pDevice, *diffTexture);
 	descHeapManager->setUAV(entryNumber++, uavDesc, rendererResources->pDevice, *specTexture);
+	descHeapManager->setUAV(entryNumber++, uavDesc, rendererResources->pDevice, *causTexture);
 	descHeapManager->setUAV(entryNumber++, uavDesc, rendererResources->pDevice, *rayHitT);
 
 	// Anvil
