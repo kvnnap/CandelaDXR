@@ -428,7 +428,8 @@ uint32_t DenoiserShading::getDenoiseCaustics() const
 
 void DenoiserShading::setDenoiseCaustics(std::uint32_t den)
 {
-	if (den >= 2) return;
+	// 0 = denoise diff, 1 = denoise caustic, 2 = merge diff+caus and denoise, clearing caustics channel
+	if (den >= 3) return;
 	denoiseCaustics = den;
 	clearHistory();
 }

@@ -29,7 +29,7 @@ unique_ptr<IDrawable> DenoiserDrawableFactory::create(const ConfigurationNode& c
 
 	const auto& configObject = config.asObject();
 	if (configObject.keyExists("DenoiseCaustics"))
-		den->setDenoiseCaustics(configObject["DenoiseCaustics"].read<bool>() ? 1u : 0u);
+		den->setDenoiseCaustics(configObject["DenoiseCaustics"].read<std::uint32_t>());
 	if (configObject.keyExists("Denoiser"))
 	{
 		auto strDen = configObject["Denoiser"].read<std::string>();

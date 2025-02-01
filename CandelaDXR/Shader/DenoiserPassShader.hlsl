@@ -62,7 +62,14 @@ void main(uint3 DTid : SV_DispatchThreadID)
 		float vz = position[DTid.xy].z - camZ;
 		in_view_z[DTid.xy] = vz;
 
-		float3 radAcc = denoiseCaustics == 0 ? diffRadAcc[DTid.xy].xyz : causRadAcc[DTid.xy].xyz;
+		float3 radAcc = 0.f;
+		if (denoiseCaustics == 0)
+			radAcc = diffRadAcc[DTid.xy].xyz;
+		else if (denoiseCaustics == 1)
+			radAcc = causRadAcc[DTid.xy].xyz;
+		else
+			radAcc = diffRadAcc[DTid.xy].xyz + causRadAcc[DTid.xy].xyz;
+
 		float3 rad = albedo[DTid.xy].xyz / PI;
 		if (rad.x > 0)
 			rad.x = radAcc.x / rad.x;
@@ -73,7 +80,7 @@ void main(uint3 DTid : SV_DispatchThreadID)
 		float3 specRad = specRadAcc[DTid.xy].xyz;
 
 		// Normalize hit distance..
-		float diffHitDist = denoiseCaustics == 0 ? gRayHitT[DTid.xy].x : gRayHitT[DTid.xy].z;
+		float diffHitDist = denoiseCaustics != 1 ? gRayHitT[DTid.xy].x : gRayHitT[DTid.xy].z;
 		float specHitDist = gRayHitT[DTid.xy].y;
 		if (denoiserSelected == 0)
 		{
@@ -105,20 +112,26 @@ void main(uint3 DTid : SV_DispatchThreadID)
 		}
 
 		float3 decodedDiff = diffResult.xyz * (albedo[DTid.xy].xyz / PI);
-        if (denoiseCaustics != 0)
+        if (denoiseCaustics == 0)
         {
-            diffUnmerged[DTid.xy] = float4(diffRadAcc[DTid.xy].xyz, 1.f);
-            decodedDiff += diffRadAcc[DTid.xy].xyz;
+			// This (diffUnmerged) output is only used for the paper
+			diffUnmerged[DTid.xy] = float4(decodedDiff.xyz, 1.f);
+			gOutputDiff[DTid.xy] = float4(decodedDiff, 1.f);
+			gOutputCaus[DTid.xy] = float4(causRadAcc[DTid.xy].xyz, 1.f);
         }
+		else if (denoiseCaustics == 1)
+        {
+			diffUnmerged[DTid.xy] = float4(diffRadAcc[DTid.xy].xyz, 1.f);
+			gOutputDiff[DTid.xy] = float4(diffRadAcc[DTid.xy].xyz, 1.f);
+			gOutputCaus[DTid.xy] = float4(decodedDiff, 1.f);
+		}
 		else
-        {
-			// This output is only used for the paper
-            diffUnmerged[DTid.xy] = float4(decodedDiff.xyz, 1.f);
-            decodedDiff += causRadAcc[DTid.xy].xyz;
-        }
+		{
+			diffUnmerged[DTid.xy] = float4(decodedDiff.xyz, 1.f);
+			gOutputDiff[DTid.xy] = float4(decodedDiff, 1.f);
+			gOutputCaus[DTid.xy] = float4(0.f, 0.f, 0.f, 1.f);
+		}
 		
-		gOutputDiff[DTid.xy] = float4(decodedDiff, 1.f);
 		gOutputSpec[DTid.xy] = float4(specResult.xyz, 1.f);
-		gOutputCaus[DTid.xy] = float4(0.f, 0.f, 0.f, 1.f);
 	}
 }

@@ -98,20 +98,18 @@ void ImGuiShading::visit(DenoiserShading* denShading)
 	changed |= ImGui::DragFloat("Disocclusion Threshold", &common.disocclusionThreshold, 0.0001f, 0.0025f, 0.0150f);
 	changed |= ImGui::DragFloat("Split Screen", &common.splitScreen, 0.01f, 0.f, 1.f);
 
-	auto denSelected = denShading->getDenoiserSelected();
-	bool relax = denSelected;
-	if (ImGui::Checkbox("ReLax", &relax))
+	int denSelected = denShading->getDenoiserSelected();
+	if (ImGui::Combo("ReLax", &denSelected, "ReBLUR\0ReLAX"))
 	{
 		changed = true;
-		denShading->setDenoiserSelected(relax ? 1u : 0u);
+		denShading->setDenoiserSelected(static_cast<uint32_t>(denSelected));
 	}
 
-	auto denCaustics = denShading->getDenoiseCaustics();
-	bool denCBool = denCaustics;
-	if (ImGui::Checkbox("Denoise Caustics", &denCBool))
+	int selItem = denShading->getDenoiseCaustics();
+	if (ImGui::Combo("Denoise Caustics", &selItem, "Diff\0Caus\0Diff+Caus"))
 	{
 		changed = true;
-		denShading->setDenoiseCaustics(denCBool ? 1u : 0u);
+		denShading->setDenoiseCaustics(static_cast<uint32_t>(selItem));
 	}
 
 	if (denSelected == 0)
