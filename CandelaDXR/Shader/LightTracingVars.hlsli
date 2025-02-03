@@ -31,6 +31,7 @@ struct ConstBuff
 // UAVs
 
 // Output texture
+RWTexture2D<uint> prngState : register(u0);
 RWStructuredBuffer<IrradianceItem> gIrradianceDS : register(u1);
 //RWStructuredBuffer<IrradianceItemFloat> gIrradianceDSFloat : register(u1);
 

@@ -124,6 +124,7 @@ namespace candela::renderer
 		wrl::ComPtr<ID3D12Resource> constantBuffer;
 		directx::Resource* irradianceDataStructure;
 		directx::Resource* irrToRad;
+		directx::Resource* prngState;
 		directx::Resource* rayHitT;
 		directx::Resource* irradianceCaustics;
 

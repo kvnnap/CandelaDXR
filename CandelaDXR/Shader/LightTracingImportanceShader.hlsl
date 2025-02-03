@@ -45,7 +45,7 @@ uint2 getLightTexIndex(uint id)
 	return uint2(id % lBuff.lightCamDim.x, id / lBuff.lightCamDim.x);
 }
 
-uint2 sampleImportanceMap(inout uint seed, out float pdf, uint cdfIndex)
+uint2 sampleImportanceMap(inout PRNGState seed, out float pdf, uint cdfIndex)
 {
 	pdf = 0.f;
 
@@ -79,7 +79,7 @@ uint2 sampleImportanceMap(inout uint seed, out float pdf, uint cdfIndex)
 	return uv;
 }
 
-bool sampleImpMapWithCosCDF(inout uint seed, inout RayDesc ray, inout float pdf, out float coeff, float probSelectingRect, float3 unitLightNormal, uint cdfIndex)
+bool sampleImpMapWithCosCDF(inout PRNGState seed, inout RayDesc ray, inout float pdf, out float coeff, float probSelectingRect, float3 unitLightNormal, uint cdfIndex)
 {
 	// Light Camera basis
 	float3 w = unitLightNormal;
@@ -130,7 +130,7 @@ bool sampleImpMapWithCosCDF(inout uint seed, inout RayDesc ray, inout float pdf,
 	return true;
 }
 
-void sampleImpMapForDirectionalLight(inout uint seed, inout RayDesc ray, inout float pdf, out float coeff, float2 adPlane, float3 u, float3 v, uint cdfIndex)
+void sampleImpMapForDirectionalLight(inout PRNGState seed, inout RayDesc ray, inout float pdf, out float coeff, float2 adPlane, float3 u, float3 v, uint cdfIndex)
 {
 	coeff = 0.f;
 
@@ -162,14 +162,19 @@ void rayGen()
 	// Dimensions - the previous x,y point is contained within these dimensions
 	const uint2 launchDim = DispatchRaysDimensions().xy;
 
+	// Thread id
+	const uint tId = launchDim.x * launchIndex.y + launchIndex.x;
+
 	// Early-exit checks
 	if (cBuffer.numTotalLights == 0)
 		return;
 
 	// Initialise seed
-	uint seed = rand_init(
-		cBuffer.seeds.x + launchDim.x * (cBuffer.frameNumber + 0) + launchIndex.x,
-		cBuffer.seeds.y + launchDim.y * (cBuffer.frameNumber + 0) + launchIndex.y);
+	PRNGState seed;
+	if (cBuffer.frameNumber == 1)
+		seed = rand_init(cBuffer.seeds.x, tId);
+	else
+		seed = rand_init_from_state(prngState[launchIndex], tId);
 
 	// Choose light source
 	uint lightIndex = lBuff.lightIndex == UINT_MAX ? chooseInRange(seed, 0, cBuffer.numTotalLights - 1) : lBuff.lightIndex;
@@ -235,7 +240,10 @@ void rayGen()
 			sampleImpMapWithCosCDF(seed, ray, pdf, coeff, lBuff.lightCamPdf, unitLightNormal, cdfIndex);
 			const float dotLightRayDir = dot(unitLightNormal, ray.Direction);
 			if (pdf <= 0.f || dotLightRayDir <= 0.f)
+			{
+				prngState[launchIndex] = seed.state;
 				return;
+			}
 			localContribution *= dotLightRayDir * coeff / pdf;
 		}
 	}
@@ -400,6 +408,8 @@ void rayGen()
 			}
 		}
 	}
+
+	prngState[launchIndex] = seed.state;
 }
 
 // Ray

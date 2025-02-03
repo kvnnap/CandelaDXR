@@ -86,9 +86,10 @@ RWTexture2D<float4> gRadianceDiff : register(u3);
 RWTexture2D<float4> gRadianceSpec : register(u4);
 RWTexture2D<float4> gRadianceCaustics : register(u5);
 RWTexture2D<float4> gRayHitT : register(u6);
+RWTexture2D<uint> prngState : register(u7);
 
 // Anvil
-ANVIL_CODE(RWStructuredBuffer<PathTracingPath> gAnvilBuffer : register(u6);)
+ANVIL_CODE(RWStructuredBuffer<PathTracingPath> gAnvilBuffer : register(u8);)
 
 // SRVs
 StructuredBuffer<float3> verts : register(t0);
@@ -153,6 +154,9 @@ void rayGen()
 	// Dimensions - the previous x,y point is contained within these dimensions
 	const uint2 launchDim = DispatchRaysDimensions().xy;
 
+	// Thread id
+	const uint tId = launchDim.x * launchIndex.y + launchIndex.x;
+
 	// Anvil
 	ANVIL_CODE(
 		uint rayNumber = 0;
@@ -174,9 +178,11 @@ void rayGen()
 		return;
 
 	// Initialise seed
-	uint seed = rand_init(
-		cBuffer.seeds.x + launchDim.x * (cBuffer.frameNumber + 0) + launchIndex.x,
-		cBuffer.seeds.y + launchDim.y * (cBuffer.frameNumber + 0) + launchIndex.y);
+	PRNGState seed;
+	if (cBuffer.frameNumber == 1)
+		seed = rand_init(cBuffer.seeds.x, tId);
+	else
+		seed = rand_init_from_state(prngState[launchIndex], tId);
 
 	// Camera
 	const float2 ratio = (launchIndex + float2(rand_next(seed), rand_next(seed))) / launchDim;
@@ -624,6 +630,8 @@ void rayGen()
 	gOutputDiff[launchIndex] = float4(gRadianceDiff[launchIndex].xyz, 1.f);
 	gOutputSpec[launchIndex] = float4(gRadianceSpec[launchIndex].xyz, 1.f);
 	gOutputCaustics[launchIndex] = float4(gRadianceCaustics[launchIndex].xyz, 1.f);
+
+	prngState[launchIndex] = seed.state;
 
 	// Anvil
 	ANVIL_CODE(

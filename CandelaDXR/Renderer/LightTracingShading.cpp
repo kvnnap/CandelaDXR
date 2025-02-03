@@ -55,7 +55,7 @@ using candela::util::StringToWString;
 
 LightTracingShading::LightTracingShading(unique_ptr<ISampler> sampler, UVector2 lightSamples)
 	: rendererResources(), constBuffer(), lightSamples(lightSamples),
-	irradianceDataStructure(), irrToRad(), rayHitT(), irradianceCaustics(),
+	irradianceDataStructure(), irrToRad(), prngState(), rayHitT(), irradianceCaustics(),
 	irradianceTexture(), sampler(std::move(sampler)), frameNumberCaustics(),
 	clear(), clearCaustics(), allowClearCaustics(true), currentShader()
 {
@@ -78,6 +78,7 @@ void LightTracingShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12Graphi
 	constBuffer.numLights = static_cast<uint32_t>(rRes->scene->getLights().size());
 	constBuffer.numTotalLights = constBuffer.numLights + static_cast<uint32_t>(rRes->scene->getExternalLights().size());
 	constBuffer.frameNumber = 0;
+	constBuffer.seeds[0] = sampler->nextUInt32();
 	constBuffer.pathFilter = 0xFFFFFFFF;
 	auto& scene = *rRes->scene;
 
@@ -85,6 +86,8 @@ void LightTracingShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12Graphi
 	const auto& dim = rendererResources->winDimensions;
 	irradianceTexture = &rendererResources->resourceManager->createResource(D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, dim.x, dim.y, DXGI_FORMAT_R32G32B32A32_FLOAT, true, "lt_irr");
 	irradianceTexture->setName(L"Irradiance Texture");
+	prngState = &rendererResources->resourceManager->createResource(D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, dim.x, dim.y, DXGI_FORMAT_R32_UINT, true);
+	prngState->setName(L"prngState Texture");
 	irrToRad = &rendererResources->resourceManager->createResource(D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_FLAG_NONE, dim.x, dim.y, DXGI_FORMAT_R32_FLOAT, true);
 	irrToRad->setName(L"irrToRad Texture");
 	rayHitT = &rRes->resourceManager->createResourceIfNotExists(D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
@@ -149,11 +152,12 @@ void LightTracingShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> currentCom
 	constBuffer.position = cam->getPosition();
 	constBuffer.direction = cam->getDirection();
 	constBuffer.plane = cam->getNearPlaneDimensions();
-	constBuffer.seeds[0] = sampler->nextUInt32();
-	constBuffer.seeds[1] = sampler->nextUInt32();
 	constBuffer.winDimensions = rendererResources->winDimensions;
 	if (clear)
+	{
 		constBuffer.frameNumber = 0;
+		constBuffer.seeds[0] = sampler->nextUInt32();
+	}
 	if (clearCaustics)
 		frameNumberCaustics = 0;
 	++constBuffer.frameNumber;
@@ -244,7 +248,7 @@ void LightTracingShading::buildPipeline()
 		ltShader.rootSignatureManager = make_shared<RootSignatureManager>();
 		auto rootSignatureManager = ltShader.rootSignatureManager;
 
-		rootSignatureManager->addDescriptorRange("BVH", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 1, 1)); //gIrradianceDS
+		rootSignatureManager->addDescriptorRange("BVH", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 2, 0)); //gIrradianceDS
 		rootSignatureManager->addDescriptorRange("BVH", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 1, 11)); //gRtScene
 		if (!rendererResources->textures.empty())
 			rootSignatureManager->addDescriptorRange("BVH", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, static_cast<UINT>(rendererResources->textures.size()), 12));
@@ -346,6 +350,10 @@ void LightTracingShading::createShaderResources(wrl::ComPtr<ID3D12GraphicsComman
 {
 	const auto& dim = rendererResources->winDimensions;
 
+	// Uav Desc 
+	D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
+	uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
+
 	D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc2 = {};
 	uavDesc2.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
 	uavDesc2.Buffer.NumElements = dim.x * dim.y;
@@ -372,6 +380,8 @@ void LightTracingShading::createShaderResources(wrl::ComPtr<ID3D12GraphicsComman
 		
 		// Set irradiance DS UAV
 		size_t entryNumber{};
+		//uavDesc.Format = DXGI_FORMAT_R32_UINT;
+		descHeapManager->setUAV(entryNumber++, uavDesc, rendererResources->pDevice, *prngState);
 		descHeapManager->setUAV(entryNumber++, uavDesc2, rendererResources->pDevice, *irradianceDataStructure);
 
 		// Create the SRV descriptor in second place (following same order as in root signature)
@@ -396,10 +406,6 @@ void LightTracingShading::createShaderResources(wrl::ComPtr<ID3D12GraphicsComman
 		if (ltShader.component)
 			ltShader.component->appendToDescHeapManager(descHeapManager.get());
 	}
-
-	// Uav Desc 
-	D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
-	uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
 
 	// Irr to Rad
 	D3D12_SHADER_RESOURCE_VIEW_DESC irrToRadSrvDesc = {};

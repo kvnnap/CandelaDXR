@@ -38,7 +38,7 @@ using candela::renderer::ResourceRegFunction;
 using candela::renderer::RasterRTShadowsShading;
 
 RasterRTShadowsShading::RasterRTShadowsShading(unique_ptr<ISampler> sampler)
-	: rasterShader(true), rendererResources(), constBuffer(), radianceTexture(), sampler(std::move(sampler)), clear()
+	: rasterShader(true), rendererResources(), constBuffer(), radianceTexture(), prngState(), sampler(std::move(sampler)), clear()
 {
 }
 
@@ -62,6 +62,7 @@ void RasterRTShadowsShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12Gra
 
 	// Const buffer initial values
 	constBuffer.numLights = static_cast<uint32_t>(rRes->scene->getLights().size());
+	constBuffer.seeds[0] = sampler->nextUInt32();
 
 	// Build Pipeline
 	buildPipeline();
@@ -70,6 +71,9 @@ void RasterRTShadowsShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12Gra
 	radianceTexture = &rRes->resourceManager->createResource(D3D12_RESOURCE_STATE_COPY_SOURCE, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS,
 		rRes->winDimensions.x, rRes->winDimensions.y, DXGI_FORMAT_R32G32B32A32_FLOAT, true, "rt_shad_rad");
 	radianceTexture->setName(L"RasterRT Radiance Texture");
+	prngState = &rendererResources->resourceManager->createResource(D3D12_RESOURCE_STATE_UNORDERED_ACCESS, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, 
+		rRes->winDimensions.x, rRes->winDimensions.y, DXGI_FORMAT_R32_UINT, true);
+	prngState->setName(L"prngState Texture");
 
 	// Create Shader resources
 	createShaderResources();
@@ -97,11 +101,12 @@ void RasterRTShadowsShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurren
 
 	// Copy and update camera
 	auto cam = rendererResources->camera;
-	constBuffer.seeds[0] = sampler->nextUInt32();
-	constBuffer.seeds[1] = sampler->nextUInt32();
 	constBuffer.winDimensions = rendererResources->winDimensions;
 	if (clear)
+	{
 		constBuffer.frameNumber = 0;
+		constBuffer.seeds[0] = sampler->nextUInt32();
+	}
 	++constBuffer.frameNumber;
 	DXUtil::updateDataInDefaultHeap(rendererResources->pDevice, pCurrentCommandList, constantBuffer, 
 		rendererResources->getTempResource(),
@@ -187,7 +192,7 @@ void RasterRTShadowsShading::buildPipeline()
 	hitSubObject.SetHitGroupExport(L"HitGroup");
 
 	// Third - Local Root Signature for Ray Gen shader
-	rootSignatureManager->addDescriptorRange("BVH", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 2, 0)); //gOutput, gRadiance
+	rootSignatureManager->addDescriptorRange("BVH", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_UAV, 3, 0)); //gOutput, gRadiance, prngState
 	rootSignatureManager->addDescriptorRange("BVH", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, 4, 10)); //gRtScene, gPos, gNorm, gAlb
 	if (!rendererResources->textures.empty())
 		rootSignatureManager->addDescriptorRange("BVH", CD3DX12_DESCRIPTOR_RANGE1(D3D12_DESCRIPTOR_RANGE_TYPE_SRV, static_cast<UINT>(rendererResources->textures.size()), 14));
@@ -269,6 +274,7 @@ void RasterRTShadowsShading::createShaderResources()
 	uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2D;
 	descHeapManager->setUAV(entryNumber++, uavDesc, rendererResources->pDevice, *rendererResources->pRTVRad);
 	descHeapManager->setUAV(entryNumber++, uavDesc, rendererResources->pDevice, *radianceTexture);
+	descHeapManager->setUAV(entryNumber++, uavDesc, rendererResources->pDevice, *prngState);
 
 	// Create the SRV descriptor in second place (following same order as in root signature)
 	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};

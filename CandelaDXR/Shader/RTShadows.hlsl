@@ -17,6 +17,7 @@ struct ShadowPayload
 
 RWTexture2D<float4> gOutput : register(u0);
 RWTexture2D<float4> gRadiance : register(u1);
+RWTexture2D<uint> prngState : register(u2);
 
 // SRVs
 StructuredBuffer<float3> verts : register(t0);
@@ -67,9 +68,11 @@ void rayGen()
 		return;
 
 	// Initialise seed
-	uint seed = rand_init(
-		cBuffer.seeds.x + launchDim.x * (cBuffer.frameNumber + 0) + launchIndex.x,
-		cBuffer.seeds.y + launchDim.y * (cBuffer.frameNumber + 0) + launchIndex.y);
+	PRNGState seed;
+	if (cBuffer.frameNumber == 1)
+		seed = rand_init(cBuffer.seeds.x, flatLaunchIndex);
+	else
+		seed = rand_init_from_state(prngState[launchIndex], flatLaunchIndex);
 
 	float3 radiance = 0.f;
 
@@ -159,6 +162,7 @@ void rayGen()
 	gRadiance[launchIndex] += float4(radiance, 0.f);
 	gOutput[launchIndex] += float4(gRadiance[launchIndex].xyz / cBuffer.frameNumber, 0.f);
 	gOutput[launchIndex] = max(float4(0.f, 0.f, 0.f, 0.f), gOutput[launchIndex]);
+	prngState[launchIndex] = seed.state;
 }
 
 // Shadow

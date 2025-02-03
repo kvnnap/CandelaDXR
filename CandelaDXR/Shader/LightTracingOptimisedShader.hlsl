@@ -28,7 +28,7 @@ struct ShadowPayload
 };
 
 // Functions
-bool sampleDiffuse(inout uint seed, inout RayDesc ray, inout float3 localContribution, inout bool causticsPath, inout uint specularPrimitiveId, float3 unitNormal, bool isPoint = false)
+bool sampleDiffuse(inout PRNGState seed, inout RayDesc ray, inout float3 localContribution, inout bool causticsPath, inout uint specularPrimitiveId, float3 unitNormal, bool isPoint = false)
 {
 	float localCR;
 	if (cOptBuffer.numSpeculars == 0)
@@ -99,14 +99,19 @@ void rayGen()
 	// Dimensions - the previous x,y point is contained within these dimensions
 	const uint2 launchDim = DispatchRaysDimensions().xy;
 
+	// Thread id
+	const uint tId = launchDim.x * launchIndex.y + launchIndex.x;
+
 	// Early-exit checks
 	if (cBuffer.numTotalLights == 0)
 		return;
 
 	// Initialise seed
-	uint seed = rand_init(
-		cBuffer.seeds.x + launchDim.x * (cBuffer.frameNumber + 0) + launchIndex.x,
-		cBuffer.seeds.y + launchDim.y * (cBuffer.frameNumber + 0) + launchIndex.y);
+	PRNGState seed;
+	if (cBuffer.frameNumber == 1)
+		seed = rand_init(cBuffer.seeds.x, tId);
+	else
+		seed = rand_init_from_state(prngState[launchIndex], tId);
 
 	// Choose light source
 	uint lightIndex = chooseInRange(seed, 0, cBuffer.numTotalLights - 1);
@@ -140,7 +145,10 @@ void rayGen()
 			localContribution *= 1.f / eLight.Attenuation[2];
 
 			if (!sampleDiffuse(seed, ray, localContribution, causticsPath, specularPrimitiveId, ray.Direction, true))
+			{
+				prngState[launchIndex] = seed.state;
 				return;
+			}
 
 			if (!causticsPath)
 			{
@@ -167,8 +175,13 @@ void rayGen()
 		performChecks = !lightDirectional; // true for diffuse lighting
 
 		if (!lightDirectional)
+		{
 			if (!sampleDiffuse(seed, ray, localContribution, causticsPath, specularPrimitiveId, ray.Direction))
+			{
+				prngState[launchIndex] = seed.state;
 				return;
+			}
+		}
 	}
 
 	// Traverse scene to another surface
@@ -193,9 +206,9 @@ void rayGen()
 		// Get appropriate BRDF - assuming Diffuse (Will handle Reflective and Transmissive later)
 		Material mat = materials[fAttr.MaterialId];
 
-		// If we hit spec object when we're not sampling them, return [Rejection Sampling pt2])
+		// If we hit spec object when we're not sampling them, break [Rejection Sampling pt2])
 		if (performChecks && !causticsPath && mat.Dissolve != 1.f)
-			return;
+			break;
 
 		performChecks = false;
 
@@ -336,6 +349,8 @@ void rayGen()
 			}
 		}
 	}
+
+	prngState[launchIndex] = seed.state;
 }
 
 // Ray

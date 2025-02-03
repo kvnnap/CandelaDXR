@@ -27,14 +27,19 @@ void rayGen()
 	// Dimensions - the previous x,y point is contained within these dimensions
 	const uint2 launchDim = DispatchRaysDimensions().xy;
 
+	// Thread id
+	const uint tId = launchDim.x * launchIndex.y + launchIndex.x;
+
 	// Early-exit checks
 	if (cBuffer.numTotalLights == 0)
 		return;
 	
 	// Initialise seed
-	uint seed = rand_init(
-		cBuffer.seeds.x + launchDim.x * (cBuffer.frameNumber + 0) + launchIndex.x,
-		cBuffer.seeds.y + launchDim.y * (cBuffer.frameNumber + 0) + launchIndex.y);
+	PRNGState seed;
+	if (cBuffer.frameNumber == 1)
+		seed = rand_init(cBuffer.seeds.x, tId);
+	else
+		seed = rand_init_from_state(prngState[launchIndex], tId);
 
 	// Choose light source
 	uint lightIndex = chooseInRange(seed, 0, cBuffer.numTotalLights - 1);
@@ -88,7 +93,10 @@ void rayGen()
 			ray.Direction = randomRayLobe(seed, unitLightNormal, 1, pdf);
 			const float dotLightRayDir = dot(unitLightNormal, ray.Direction);
 			if (pdf <= 0.f || dotLightRayDir <= 0.f)
+			{
+				prngState[launchIndex] = seed.state;
 				return;
+			}
 			localContribution *= dotLightRayDir / pdf;
 		}
 	}
@@ -253,6 +261,8 @@ void rayGen()
 			}
 		}
 	}
+
+	prngState[launchIndex] = seed.state;
 }
 
 // Ray

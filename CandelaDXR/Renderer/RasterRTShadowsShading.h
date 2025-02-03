@@ -67,6 +67,7 @@ namespace candela::renderer
 		} constBuffer;
 
 		directx::Resource *radianceTexture;
+		directx::Resource *prngState;
 		wrl::ComPtr<ID3D12Resource> constantBuffer;
 		std::unique_ptr<sampler::ISampler> sampler;
 		bool clear;
