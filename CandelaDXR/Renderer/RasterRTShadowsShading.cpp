@@ -63,6 +63,7 @@ void RasterRTShadowsShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12Gra
 	// Const buffer initial values
 	constBuffer.numLights = static_cast<uint32_t>(rRes->scene->getLights().size());
 	constBuffer.seeds[0] = sampler->nextUInt32();
+	constBuffer.seeds[1] = 1u; // Set to one so the shader consumes this seed
 
 	// Build Pipeline
 	buildPipeline();
@@ -103,10 +104,7 @@ void RasterRTShadowsShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurren
 	auto cam = rendererResources->camera;
 	constBuffer.winDimensions = rendererResources->winDimensions;
 	if (clear)
-	{
 		constBuffer.frameNumber = 0;
-		constBuffer.seeds[0] = sampler->nextUInt32();
-	}
 	++constBuffer.frameNumber;
 	DXUtil::updateDataInDefaultHeap(rendererResources->pDevice, pCurrentCommandList, constantBuffer, 
 		rendererResources->getTempResource(),
@@ -124,6 +122,7 @@ void RasterRTShadowsShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurren
 	D3D12_DISPATCH_RAYS_DESC dispatchRaysDesc = shadingTable->getDispatchRaysDescriptor(rayDimensions.x, rayDimensions.y);
 	commandList4->DispatchRays(&dispatchRaysDesc);
 	clear = false;
+	constBuffer.seeds[1] = 0u;
 
 	// After
 	for (UINT i = 0; i < c; ++i)

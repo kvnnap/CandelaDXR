@@ -65,6 +65,7 @@ void PathTracingShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12Graphic
 	constBuffer.numExternalLights = static_cast<uint32_t>(rRes->scene->getExternalLights().size());
 	constBuffer.numTotalLights = constBuffer.numLights + constBuffer.numExternalLights;
 	constBuffer.seeds[0] = sampler->nextUInt32();
+	constBuffer.seeds[1] = 1u; // Set to one so the shader consumes this seed
 	constBuffer.pathFilter = 0xFFFFFFFF;
 
 	// Build Pipeline
@@ -129,10 +130,7 @@ void PathTracingShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCom
 	constBuffer.plane = cam->getNearPlaneDimensions();
 	constBuffer.winDimensions = rendererResources->winDimensions;
 	if (clear)
-	{
 		constBuffer.frameNumber = 0;
-		constBuffer.seeds[0] = sampler->nextUInt32();
-	}
 	++constBuffer.frameNumber;
 	
 	// Anvil
@@ -164,6 +162,7 @@ void PathTracingShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCom
 	D3D12_DISPATCH_RAYS_DESC dispatchRaysDesc = shadingTable->getDispatchRaysDescriptor(rayDimensions.x, rayDimensions.y);
 	commandList4->DispatchRays(&dispatchRaysDesc);
 	clear = false;
+	constBuffer.seeds[1] = 0u;
 
 	// After
 	rendererResources->pRTVCaus->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);

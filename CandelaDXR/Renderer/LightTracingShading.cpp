@@ -79,6 +79,7 @@ void LightTracingShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12Graphi
 	constBuffer.numTotalLights = constBuffer.numLights + static_cast<uint32_t>(rRes->scene->getExternalLights().size());
 	constBuffer.frameNumber = 0;
 	constBuffer.seeds[0] = sampler->nextUInt32();
+	constBuffer.seeds[1] = 1u; // Set to one so the shader consumes this seed
 	constBuffer.pathFilter = 0xFFFFFFFF;
 	auto& scene = *rRes->scene;
 
@@ -154,10 +155,7 @@ void LightTracingShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> currentCom
 	constBuffer.plane = cam->getNearPlaneDimensions();
 	constBuffer.winDimensions = rendererResources->winDimensions;
 	if (clear)
-	{
 		constBuffer.frameNumber = 0;
-		constBuffer.seeds[0] = sampler->nextUInt32();
-	}
 	if (clearCaustics)
 		frameNumberCaustics = 0;
 	++constBuffer.frameNumber;
@@ -189,6 +187,7 @@ void LightTracingShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> currentCom
 	currentCommandList->SetComputeRoot32BitConstants(1u, static_cast<UINT>(std::size(c32data)), &c32data[0], 0);
 	currentCommandList->Dispatch(dim.x / 8 + (dim.x % 8 == 0 ? 0 : 1), dim.y / 8 + (dim.y % 8 == 0 ? 0 : 1), 1);
 	clear = clearCaustics = false;
+	constBuffer.seeds[1] = 0u;
 
 	// Caustics blur
 	if (constBuffer.seperateCaustics)

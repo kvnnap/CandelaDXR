@@ -104,7 +104,7 @@ uint rand_next_u32(inout PRNGState r)
 
 float rand_next(inout PRNGState r)
 {
-    return rand_next_u32(r) / 4294967295.f;
+    return ldexp(rand_next_u32(r), -32);
 }
 
 uint chooseInRange_other(inout PRNGState s, uint bound)
@@ -207,12 +207,12 @@ float3 randomRaySphericalCap(inout PRNGState s, inout float p, float oneMinusCos
 
 uint4 floatToFixed(float4 value, uint rangeBits)
 {
-	return round(value * pow(2.f, rangeBits));
+    return round(ldexp(value, rangeBits));
 }
 
 float4 fixedToFloat(uint4 value, uint rangeBits)
 {
-	return value * pow(2.f, -(float)rangeBits);
+    return ldexp(value, -(float)rangeBits);
 }
 
 // Fresnel
@@ -242,7 +242,7 @@ float fresnel(const float cosx, const float n1, const float n2)
 
 float3 exposure(float3 x, float c)
 {
-    return x * pow(2, c);
+    return ldexp(x, c);
 }
 
 float3 toneMap(float3 c)

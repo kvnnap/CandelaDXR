@@ -63,16 +63,12 @@ void rayGen()
 	// Flat dimensions
 	const uint flatLaunchIndex = launchIndex.y * launchDim.x + launchIndex.x;
 
+	// Initialise seed
+	PRNGState seed = init_prng(launchIndex, launchDim);
+
 	// Early-exit checks
 	if (cBuffer.numLights == 0 || gOutput[launchIndex].w == 0.f || gNorm[launchIndex].w == 0.f)
 		return;
-
-	// Initialise seed
-	PRNGState seed;
-	if (cBuffer.frameNumber == 1)
-		seed = rand_init(cBuffer.seeds.x, flatLaunchIndex);
-	else
-		seed = rand_init_from_state(prngState[launchIndex], flatLaunchIndex);
 
 	float3 radiance = 0.f;
 

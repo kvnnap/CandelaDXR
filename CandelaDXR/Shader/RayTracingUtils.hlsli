@@ -31,4 +31,24 @@ void getVertexWorldCoordinates(inout float3 lv[3], uint vertBaseId, uint matrixI
 	lv[2] = mul(float4(verts[indices[vertBaseId + 2]], 1.f), matrices[matrixId]);
 }
 
+PRNGState init_prng(uint2 launchIndex, uint2 launchDim)
+{
+	PRNGState seed;
+	
+	// Thread id
+    const uint threadId = launchDim.x * launchIndex.y + launchIndex.x;
+	
+    if (cBuffer.seeds.y == 1u)
+    {
+        seed = rand_init(cBuffer.seeds.x, threadId);
+        prngState[launchIndex] = seed.state;
+    }
+    else
+    {
+        seed = rand_init_from_state(prngState[launchIndex], threadId);
+    }
+	
+    return seed;
+}
+
 #endif

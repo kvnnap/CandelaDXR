@@ -154,8 +154,8 @@ void rayGen()
 	// Dimensions - the previous x,y point is contained within these dimensions
 	const uint2 launchDim = DispatchRaysDimensions().xy;
 
-	// Thread id
-	const uint tId = launchDim.x * launchIndex.y + launchIndex.x;
+	// Initialise seed
+	PRNGState seed = init_prng(launchIndex, launchDim);
 
 	// Anvil
 	ANVIL_CODE(
@@ -176,13 +176,6 @@ void rayGen()
 	// Early-exit checks
 	if (cBuffer.numTotalLights == 0)
 		return;
-
-	// Initialise seed
-	PRNGState seed;
-	if (cBuffer.frameNumber == 1)
-		seed = rand_init(cBuffer.seeds.x, tId);
-	else
-		seed = rand_init_from_state(prngState[launchIndex], tId);
 
 	// Camera
 	const float2 ratio = (launchIndex + float2(rand_next(seed), rand_next(seed))) / launchDim;
