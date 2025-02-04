@@ -142,7 +142,7 @@ void LightTracingShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> currentCom
 	auto& backBuff = rendererResources->pRTVDiff;
 	auto &caustBuff = rendererResources->pRTVCaus;
 	backBuff->transistionBarrier(currentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-	if (constBuffer.seperateCaustics)
+	if (constBuffer.seperateCaustics && guassianCS.getFiltersize() > 1)
 		caustBuff->transistionBarrier(currentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
 	// Copy and update camera
@@ -190,7 +190,7 @@ void LightTracingShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> currentCom
 	constBuffer.seeds[1] = 0u;
 
 	// Caustics blur
-	if (constBuffer.seperateCaustics)
+	if (constBuffer.seperateCaustics && guassianCS.getFiltersize() > 1)
 	{
 		guassianCS.compute(currentCommandList);
 		caustBuff->transistionBarrier(currentCommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);
