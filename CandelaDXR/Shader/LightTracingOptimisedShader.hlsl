@@ -63,12 +63,14 @@ bool sampleDiffuse(inout PRNGState seed, inout RayDesc ray, inout float3 localCo
 		ray.Direction *= invDistance; // Get Unit Direction
 
 		float3 specularUnitNormal = getUnitNormal(specularBary, specularIndexId, specularPrimitive.InstanceIndex);
+		float3 flatSpecNormal = getUnitNormal(lv);
 		float surfaceDot = isPoint ? 1.f : dot(unitNormal, ray.Direction);
 		float causticsDot = -dot(specularUnitNormal, ray.Direction);
+		float flatCausticsDot = abs(-dot(flatSpecNormal, ray.Direction));
 
 		if (surfaceDot < 0.f || causticsDot < 0.f)
 			return false;
-		localContribution *= getTriangleArea(lv) * cOptBuffer.numSpeculars * surfaceDot * causticsDot * invDistance * invDistance / localCR;
+		localContribution *= getTriangleArea(lv) * cOptBuffer.numSpeculars * surfaceDot * flatCausticsDot * invDistance * invDistance / localCR;
 	}
 	else
 	{
