@@ -134,7 +134,7 @@ void rayGen()
 
 		localContribution *= eLight.Diffuse;
 
-		if (eLight.Type == LT_POINT)
+		if (eLight.Type == LT_POINT || eLight.Type == LT_SPOT)
 		{
 			ray.Origin = eLight.Position.xyz;
 			localContribution *= 1.f / eLight.Attenuation[2];
@@ -147,10 +147,21 @@ void rayGen()
 
 			if (!causticsPath)
 			{
-				ray.Direction = randomRaySphere(seed, pdf);
+				if (eLight.Type == LT_POINT)
+					ray.Direction = randomRaySphere(seed, pdf);
+				else
+					ray.Direction = randomRaySphericalCap(seed, pdf, eLight.InnerConeAngle, eLight.Direction.xyz);
 				//if (pdf <= 0.f) // Not necessary as pdf always 1/(4Pi) here
 				//	return;
 				localContribution *= 1.f / pdf;
+			}
+			else if (eLight.Type == LT_SPOT)
+			{
+				if ((1.f - dot(ray.Direction, eLight.Direction.xyz)) > eLight.InnerConeAngle)
+				{
+					prngState[launchIndex] = seed.state;
+					return;
+				}
 			}
 		}
 		else if (eLight.Type == LT_DIRECTIONAL)
