@@ -50,6 +50,8 @@ namespace candela::scene
 		mathematics::Vector3 Specular;
 		float OuterConeAngle;
 		mathematics::Vector2 AreaDimensions;
+		float InnerConeOneMinusCosPhi;
+		float OuterConeOneMinusCosPhi;
 	};
 
 	struct alignas(16) SpecularPrimitive
@@ -107,7 +109,8 @@ struct ExternalLight
 	float3 Specular;
 	float OuterConeAngle;
 	float2 AreaDimensions;
-	uint2 padding;
+    float InnerConeOneMinusCosPhi;
+    float OuterConeOneMinusCosPhi;
 };
 
 struct SpecularPrimitive

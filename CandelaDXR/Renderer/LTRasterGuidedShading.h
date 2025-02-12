@@ -26,13 +26,16 @@ namespace candela::renderer
 
 		struct alignas(16) ConstBuff
 		{
-			DirectX::XMVECTOR plane; // x, y and z (distance from point to plane)
 			DirectX::XMVECTOR sceneCentre; // Scene centre in world coordinates
 			mathematics::UVector2 lightCamDim;
 			std::uint32_t lightIndex;
-			float lightCamPdf;	// the pdf of hitting the square in a cosine-weighted sphere - cos/pi
-			float lightCamPdfPoint; // the pdf of hitting the square in a uniform pdf sphere - 1/4pi
 		} constBuffer;
+
+		struct alignas(16) ImportanceMetadata
+		{
+			candela::mathematics::Vector3 plane; // x, y and z (distance from point to plane)
+			float probSelectingRect; // the pdf of hitting the square in a uniform pdf sphere - 1/4pi or Spotlight
+		};
 
 		// IDrawable
 		virtual void init(RendererResources* rendererResources, wrl::ComPtr<ID3D12GraphicsCommandList>& pCurrentCommandList, ResourceRegFunction& resRegFn) override;
@@ -67,11 +70,14 @@ namespace candela::renderer
 		bool isExternalLight(std::uint32_t lightIndex) const;
 		void generateCDF(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, std::uint32_t currentBackBufferIndex, std::uint32_t lightIndex);
 		void regenerateCDFs(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, std::uint32_t currentBackBufferIndex);
+		void regenImpMetaVec(std::uint32_t lightIndex);
 
 		sampler::ISampler* sampler;
 
 		RendererResources *rendererResources;
 		wrl::ComPtr<ID3D12Resource> constantBuffer;
+		wrl::ComPtr<ID3D12Resource> impMetaBuffer;
+		std::vector<ImportanceMetadata> impMetaVec;
 
 		mathematics::UVector2 cdfSize;
 		directx::Resource* cumulativeDistributionTexture;
@@ -87,6 +93,8 @@ namespace candela::renderer
 		NormalisationComputeShader normalisationComputeShader;
 		NormalisationPass2ComputeShader normalisationPass2ComputeShader;
 
+		float lightCamPdf;	// the pdf of hitting the square in a cosine-weighted sphere - cos/pi
+		float lightCamPdfPoint; // the pdf of hitting the square in a uniform pdf sphere - 1/4pi
 		bool storePerLightCDF;
 		bool regenerateCDFFlag;
 	};

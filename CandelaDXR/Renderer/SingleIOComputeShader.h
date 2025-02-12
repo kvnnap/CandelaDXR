@@ -88,6 +88,7 @@ namespace candela::renderer
 			std::uint32_t mode;
 			std::uint32_t orthographic;
 			std::uint32_t singlePointSource;
+			std::uint32_t lightType;
 		} distConstBuffer;
 	private:
 		directx::Resource* faceIndexResource;

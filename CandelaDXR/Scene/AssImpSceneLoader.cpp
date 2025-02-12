@@ -259,18 +259,21 @@ void AssImpSceneLoader::loadScene()
 			float attQuad = pLight->mAttenuationQuadratic == 0.f ? 1.f : pLight->mAttenuationQuadratic;
 			float attConst = pLight->mAttenuationConstant == 0.f ? 1.f : pLight->mAttenuationConstant;
 
-			scene->addExternalLight({ Light{
+			auto tempLight = Light{
 				.Position = DirectX::XMVectorSet(pLight->mPosition.x, pLight->mPosition.y, pLight->mPosition.z, 1.f),
 				.Direction = DirectX::XMVector3Normalize(DirectX::XMVectorSet(pLight->mDirection.x, pLight->mDirection.y, pLight->mDirection.z, 0.f)),
 				.Up = DirectX::XMVector3Normalize(DirectX::XMVectorSet(pLight->mUp.x, pLight->mUp.y, pLight->mUp.z, 0.f)),
 				.Attenuation = Vector3(attConst, pLight->mAttenuationLinear, attQuad),
 				.Type = static_cast<uint32_t>(pLight->mType),
 				.Diffuse = Vector3(pLight->mColorDiffuse.r * coeff, pLight->mColorDiffuse.g * coeff, pLight->mColorDiffuse.b * coeff),
-				.InnerConeAngle = pLight->mAngleInnerCone,
+				.InnerConeAngle = pLight->mAngleInnerCone * 0.5f, // We need the half angle, from the center to one side
 				.Specular = Vector3(pLight->mColorSpecular.r * coeff, pLight->mColorSpecular.g * coeff, pLight->mColorSpecular.b * coeff),
-				.OuterConeAngle = pLight->mAngleOuterCone,
+				.OuterConeAngle = pLight->mAngleOuterCone * 0.5f, // We need the half angle, from the center to one side
 				.AreaDimensions = Vector2(pLight->mSize.x, pLight->mSize.y)
-			}, myLightNode });
+			};
+			tempLight.InnerConeOneMinusCosPhi = 1.f - cosf(tempLight.InnerConeAngle);
+			tempLight.OuterConeOneMinusCosPhi = 1.f - cosf(tempLight.OuterConeAngle);
+			scene->addExternalLight({ tempLight, myLightNode });
 		}
 	}
 

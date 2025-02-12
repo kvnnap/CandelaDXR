@@ -150,14 +150,14 @@ void rayGen()
 				if (eLight.Type == LT_POINT)
 					ray.Direction = randomRaySphere(seed, pdf);
 				else
-					ray.Direction = randomRaySphericalCap(seed, pdf, eLight.InnerConeAngle, eLight.Direction.xyz);
+					ray.Direction = randomRaySphericalCap(seed, pdf, eLight.InnerConeOneMinusCosPhi, eLight.Direction.xyz);
 				//if (pdf <= 0.f) // Not necessary as pdf always 1/(4Pi) here
 				//	return;
 				localContribution *= 1.f / pdf;
 			}
 			else if (eLight.Type == LT_SPOT)
 			{
-				if ((1.f - dot(ray.Direction, eLight.Direction.xyz)) > eLight.InnerConeAngle)
+				if ((1.f - dot(ray.Direction, eLight.Direction.xyz)) > eLight.InnerConeOneMinusCosPhi)
 				{
 					prngState[launchIndex] = seed.state;
 					return;

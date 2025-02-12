@@ -68,10 +68,16 @@ unique_ptr<Light> LightFactory::create(const ConfigurationNode& config) const
 	setVec3("Specular", light->Specular);
 
 	if (configObject.keyExists("InnerConeAngle"))
-		light->InnerConeAngle = 1.f - cosf(config["InnerConeAngle"].read<float>());
+	{
+		light->InnerConeAngle = config["InnerConeAngle"].read<float>();
+		light->InnerConeOneMinusCosPhi = 1.f - cosf(light->InnerConeAngle);
+	}
 
 	if (configObject.keyExists("OuterConeAngle"))
-		light->OuterConeAngle = 1.f - cosf(config["OuterConeAngle"].read<float>());
+	{
+		light->OuterConeAngle = config["OuterConeAngle"].read<float>();
+		light->OuterConeOneMinusCosPhi = 1.f - cosf(light->OuterConeAngle);
+	}
 
 	if (configObject.keyExists("AreaDimensions"))
 		light->AreaDimensions = *Vector2Factory().create(config["AreaDimensions"]);

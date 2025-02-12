@@ -19,6 +19,7 @@ cbuffer CB1 : register(b0, space1)
 	uint Mode;
 	uint Orthographic;
 	uint SinglePointSource;
+	uint LightType;
 }
 
 Texture2D<float4> input[] : register(t0);
@@ -51,11 +52,14 @@ void main( uint3 DTid : SV_DispatchThreadID )
 		float3 worldPt = float3(planePt, LightPlane.z); // Origin is (0,0,0) and normal (0,0,1)
 		float3 vecDir = worldPt;
 		float invDistance = 1.f / length(vecDir);
-		vecDir *= invDistance;
-		float coeff = vecDir.z * vecDir.z * invDistance * invDistance; // cos weighted solid angle approx
-		result = coeff;
+		vecDir *= invDistance; // z is now equal to z/r
+
+		if (LightType == LT_UNDEFINED) // Internal  (model based) Area light only
+			result = vecDir.z * vecDir.z * invDistance * invDistance; // cos weighted solid angle approx (z^2/r^4)
+		else if (LightType == LT_POINT || LightType == LT_SPOT)
+			result = vecDir.z * invDistance * invDistance; // uniform solid angle approx (z/r^3)
 	}
-	else
+	else // LT_DIRECTIONAL case since Orthograpic is true here
 	{
 		lightPos += planePt.x * LightPlaneU + planePt.y * LightPlaneV;
 	}
@@ -67,6 +71,8 @@ void main( uint3 DTid : SV_DispatchThreadID )
 	const Material gMat = materials[meshInfo[DTid.xy].x];
 	const float3 dir = gPos - lightPos;
 	const float lenDir = length(dir);
+	// FLT_MIN = 1.175494351e-38F
+	// Need some value with non-directional area lights. TODO: let this be dynamic ? 
 	const float noValue = SinglePointSource == 0 ? 0.015625f : 0.f;
 
 	//

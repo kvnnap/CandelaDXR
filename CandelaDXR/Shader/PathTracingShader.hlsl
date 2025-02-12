@@ -388,7 +388,7 @@ void rayGen()
                         if (eLight.Type == LT_SPOT)
                         {
                             const float lightDot = -dot(normalize(shadowRay.Direction), eLight.Direction.xyz);
-                            proceed = (1.f - lightDot) <= eLight.InnerConeAngle;
+                            proceed = (1.f - lightDot) <= eLight.InnerConeOneMinusCosPhi;
                         }
                     }
 					else if (eLight.Type == LT_DIRECTIONAL)

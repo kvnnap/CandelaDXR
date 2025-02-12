@@ -7,16 +7,16 @@
 
 struct ConstBuff2
 {
-	// Light Camera
-	float3 plane; // sensor dimensions (z contains distance to sensor plane)
 	float3 sceneCentre; // Scene centre in world coordinates
+	uint2 lightCamDim; //cdfSize - 512,512
+	uint lightIndex; // if not max, then we're sampling one light only
+	uint padding;
+};
 
-	// Other
-	uint2 lightCamDim;
-	uint lightIndex;
-	float lightCamPdf;
-	float lightCamPdfPoint;
-	uint2 padding;
+struct ImportanceMetadata
+{
+	float3 plane; // sensor dimensions (z contains distance to sensor plane)
+	float probSelectingRect; // For this light type (if applicable)
 };
 
 // CBVs
@@ -25,7 +25,8 @@ cbuffer CB2 : register(b0, space1)
 	ConstBuff2 lBuff;
 }
 
-Texture2D<float> cdf[] : register(t0, space1);
+StructuredBuffer<ImportanceMetadata> impMeta : register(t0, space1);
+Texture2D<float> cdf[] : register(t1, space1);
 
 struct RayPayload
 {
@@ -79,7 +80,7 @@ uint2 sampleImportanceMap(inout PRNGState seed, out float pdf, uint cdfIndex)
 	return uv;
 }
 
-bool sampleImpMapWithCosCDF(inout PRNGState seed, inout RayDesc ray, inout float pdf, out float coeff, float probSelectingRect, float3 unitLightNormal, uint cdfIndex)
+bool sampleImpMapWithCosCDF(inout PRNGState seed, inout RayDesc ray, inout float pdf, out float coeff, float3 unitLightNormal, uint cdfIndex)
 {
 	// Light Camera basis
 	float3 w = unitLightNormal;
@@ -95,7 +96,8 @@ bool sampleImpMapWithCosCDF(inout PRNGState seed, inout RayDesc ray, inout float
 	if (den == 0.f)
 		return false;
 
-	const float3 posPlane = ray.Origin + w * lBuff.plane.z;
+	const float3 lightPlane = impMeta[cdfIndex].plane;
+	const float3 posPlane = ray.Origin + w * lightPlane.z;
 	const float t = dot(w, (posPlane - ray.Origin)) / den;
 	if (t < ray.TMin || t > ray.TMax)
 		return false;
@@ -104,7 +106,7 @@ bool sampleImpMapWithCosCDF(inout PRNGState seed, inout RayDesc ray, inout float
 	float2 pt = float2(dot(R, u), dot(R, v));
 
 	// Check if point is in bounds or not
-	float2 halfPlane = lBuff.plane.xy * 0.5f;
+	float2 halfPlane = lightPlane.xy * 0.5f;
 	if (any(pt > halfPlane) || any(pt < -halfPlane))
 		return false;
 
@@ -114,7 +116,7 @@ bool sampleImpMapWithCosCDF(inout PRNGState seed, inout RayDesc ray, inout float
 	if (localPdf == 0.f)
 		return false;
 
-	float2 ratio = lBuff.plane.xy / lBuff.lightCamDim;
+	float2 ratio = lightPlane.xy / lBuff.lightCamDim;
 	float texelArea = ratio.x * ratio.y;
 	ratio.y = -ratio.y;
 
@@ -126,7 +128,7 @@ bool sampleImpMapWithCosCDF(inout PRNGState seed, inout RayDesc ray, inout float
 	float invDistance = 1.f / length(ray.Direction);
 	ray.Direction *= invDistance;
 	coeff = dot(w, ray.Direction) * invDistance * invDistance;
-	pdf = localPdf * probSelectingRect / texelArea;
+	pdf = localPdf * impMeta[cdfIndex].probSelectingRect / texelArea;
 	return true;
 }
 
@@ -190,8 +192,7 @@ void rayGen()
 
 	if (isExternalLight)
 	{
-		lightIndex -= cBuffer.numLights;
-		ExternalLight eLight = eLights[lightIndex];
+		ExternalLight eLight = eLights[lightIndex - cBuffer.numLights];
 
 		localContribution *= eLight.Diffuse;
 		float coeff = 1.f;
@@ -203,9 +204,16 @@ void rayGen()
 			//if (pdf <= 0.f) // Not necessary as pdf always 1/(4Pi) here
 			//	return;
 			const float3 unitLightNormal = normalize(lBuff.sceneCentre - ray.Origin);
-			sampleImpMapWithCosCDF(seed, ray, pdf, coeff, lBuff.lightCamPdfPoint, unitLightNormal, cdfIndex);
+			sampleImpMapWithCosCDF(seed, ray, pdf, coeff, unitLightNormal, cdfIndex);
 			localContribution *= coeff / (eLight.Attenuation[2] * pdf);
 
+		}
+		else if (eLight.Type == LT_SPOT)
+		{
+			ray.Origin = eLight.Position.xyz;
+			ray.Direction = randomRaySphericalCap(seed, pdf, eLight.InnerConeOneMinusCosPhi, eLight.Direction.xyz);
+			sampleImpMapWithCosCDF(seed, ray, pdf, coeff, eLight.Direction.xyz, cdfIndex);
+			localContribution *= coeff / (eLight.Attenuation[2] * pdf);
 		}
 		else if (eLight.Type == LT_DIRECTIONAL)
 		{
@@ -230,7 +238,7 @@ void rayGen()
 			float coeff = 1.f;
 
 			// If this succeeds, ray.Direction, coeff and pdf will be updated
-			sampleImpMapWithCosCDF(seed, ray, pdf, coeff, lBuff.lightCamPdf, unitLightNormal, cdfIndex);
+			sampleImpMapWithCosCDF(seed, ray, pdf, coeff, unitLightNormal, cdfIndex);
 			const float dotLightRayDir = dot(unitLightNormal, ray.Direction);
 			if (pdf <= 0.f || dotLightRayDir <= 0.f)
 			{
