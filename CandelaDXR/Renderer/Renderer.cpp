@@ -1067,8 +1067,8 @@ void Renderer::refreshMaterialResources()
 
 void Renderer::bindComputePipeline()
 {
-	pCurrentCommandList->SetPipelineState(computePipelineState.Get());
 	pCurrentCommandList->SetComputeRootSignature(computeRootSignature.Get());
+	pCurrentCommandList->SetPipelineState(computePipelineState.Get());
 	pCurrentCommandList->SetDescriptorHeaps(1u, computeDescriptorHeap.GetAddressOf());
 	pCurrentCommandList->SetComputeRootDescriptorTable(1u, computeDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
 }

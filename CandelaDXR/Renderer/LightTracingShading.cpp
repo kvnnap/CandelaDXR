@@ -178,8 +178,8 @@ void LightTracingShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> currentCom
 	// Launch compute shader -  Make sure all writes to this UAV have completed from DispatchRays
 	irradianceDataStructure->uavBarrier(currentCommandList);
 	
-	currentCommandList->SetPipelineState(computePipelineState.Get());
 	currentCommandList->SetComputeRootSignature(computeRootSignature.Get());
+	currentCommandList->SetPipelineState(computePipelineState.Get());
 	currentCommandList->SetDescriptorHeaps(1u, computeDescriptorHeap.GetAddressOf());
 	currentCommandList->SetComputeRootDescriptorTable(0u, computeDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
 	auto& dim = rendererResources->winDimensions;
