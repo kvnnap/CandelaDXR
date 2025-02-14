@@ -59,19 +59,19 @@
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-    <Import Project="SharedWithShaders.props" />
+    <Import Project="CandelaSheet.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-    <Import Project="SharedWithShaders.props" />
+    <Import Project="CandelaSheet.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-    <Import Project="SharedWithShaders.props" />
+    <Import Project="CandelaSheet.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
-    <Import Project="SharedWithShaders.props" />
+    <Import Project="CandelaSheet.props" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
@@ -224,7 +224,12 @@
     <ClCompile Include="Chain\FileOutput.cpp" />
     <ClCompile Include="Chain\ToneMapping.cpp" />
     <ClCompile Include="DirectX\CommandQueue.cpp" />
-    <ClCompile Include="DirectX\DxUtil.cpp" />
+    <ClCompile Include="DirectX\DxUtil.cpp">
+      <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">RC_SHADERS=$(RCShaders);WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">RC_SHADERS=$(RCShaders);WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">RC_SHADERS=$(RCShaders);_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Release|x64'">RC_SHADERS=$(RCShaders);NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
     <ClCompile Include="DirectX\Resource.cpp" />
     <ClCompile Include="DirectX\ResourceManager.cpp" />
     <ClCompile Include="DirectX\RootSignatureManager.cpp" />
@@ -760,6 +765,14 @@
     <None Include="Shader\RayTracingUtils.hlsli" />
     <None Include="Shader\Scene.hlsli" />
     <None Include="Shader\Utils.hlsli" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="CandelaDXR.rc">
+      <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">RC_SHADERS_DIR=$(OutDir)Shaders;RC_SHADERS=$(RCShaders)</PreprocessorDefinitions>
+      <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">RC_SHADERS_DIR=$(OutDir)Shaders;RC_SHADERS=$(RCShaders)</PreprocessorDefinitions>
+      <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">RC_SHADERS_DIR=$(OutDir)Shaders;RC_SHADERS=$(RCShaders)</PreprocessorDefinitions>
+      <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Release|x64'">RC_SHADERS_DIR=$(OutDir)Shaders;RC_SHADERS=$(RCShaders)</PreprocessorDefinitions>
+    </ResourceCompile>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

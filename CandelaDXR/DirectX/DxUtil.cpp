@@ -7,6 +7,9 @@
 #include <DirectXMath.h>
 
 #include "d3dx12.h"
+#include <d3dcompiler.h>
+
+#include "Util/StringUtil.h"
 
 #include "Exception/WindowException.h"
 #include "Exception/DxgiInfoException.h"
@@ -670,4 +673,35 @@ ComPtr<ID3D12QueryHeap> DXUtil::createQueryHeap(ComPtr<ID3D12Device> pDevice, UI
 	};
 	GFXTHROWIFFAILED(pDevice->CreateQueryHeap(&heapDesc, IID_PPV_ARGS(&queryHeap)));
 	return queryHeap;
+}
+
+
+ComPtr<ID3DBlob> DXUtil::LoadShaderResource(const char* path)
+{
+	ComPtr<ID3DBlob> pBlob;
+
+	HRESULT hr{};
+	constexpr bool useResources = RC_SHADERS;
+
+	if constexpr(useResources)
+	{
+		HMODULE hModule = GetModuleHandle(NULL); // Get the handle to the current executable
+		HRSRC hResource = FindResource(hModule, path, "SHADER");
+		if (!hResource)
+			ThrowException("Resource not found: " + std::string(path));
+
+		HGLOBAL hMemory = LoadResource(hModule, hResource);
+		if (!hMemory)
+			ThrowException("Failed to load resource: " + std::string(path));
+
+		const auto sizeOfResource = SizeofResource(hModule, hResource);
+		GFXTHROWIFFAILED(D3DCreateBlob(sizeOfResource, &pBlob));
+		memcpy(pBlob->GetBufferPointer(), LockResource(hMemory), sizeOfResource);
+	}
+	else
+	{
+		GFXTHROWIFFAILED(D3DReadFileToBlob(candela::util::StringToWString(path).c_str(), &pBlob));
+	}
+
+	return pBlob;
 }

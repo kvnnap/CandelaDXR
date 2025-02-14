@@ -31,10 +31,8 @@ void ExternalObjectDebugShading::init(RendererResources* rRes, wrl::ComPtr<ID3D1
 	HRESULT hr;
 
 	// Load shaders
-	wrl::ComPtr<ID3DBlob> pVertexShaderBlob;
-	wrl::ComPtr<ID3DBlob> pPixelShaderBlob;
-	GFXTHROWIFFAILED(D3DReadFileToBlob(L"./Shaders/ExternalObjectVS.cso", &pVertexShaderBlob));
-	GFXTHROWIFFAILED(D3DReadFileToBlob(L"./Shaders/ExternalObjectPS.cso", &pPixelShaderBlob));
+	wrl::ComPtr<ID3DBlob> pVertexShaderBlob = DXUtil::LoadShaderResource("./Shaders/ExternalObjectVS.cso");
+	wrl::ComPtr<ID3DBlob> pPixelShaderBlob = DXUtil::LoadShaderResource("./Shaders/ExternalObjectPS.cso");
 
 	// Input Assembler config
 	D3D12_INPUT_ELEMENT_DESC ied[] = {

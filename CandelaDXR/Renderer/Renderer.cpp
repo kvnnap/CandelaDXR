@@ -839,8 +839,7 @@ void Renderer::initShaders()
 	computeRootSignature = computeRSM->generateRootSignature("ComputeRootSignature", pDevice, D3D12_ROOT_SIGNATURE_FLAG_NONE);
 
 	// Get shader
-	wrl::ComPtr<ID3DBlob> pComputeBlob;
-	GFXTHROWIFFAILED(D3DReadFileToBlob(L"./Shaders/AccumulatorShader.cso", &pComputeBlob));
+	wrl::ComPtr<ID3DBlob> pComputeBlob = DXUtil::LoadShaderResource("./Shaders/AccumulatorShader.cso");
 
 	struct PipelineStateStream
 	{

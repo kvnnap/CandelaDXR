@@ -62,10 +62,8 @@ void RasterShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12GraphicsComm
 	HRESULT hr;
 
 	// Load shaders
-	wrl::ComPtr<ID3DBlob> pVertexShaderBlob;
-	wrl::ComPtr<ID3DBlob> pPixelShaderBlob;
-	GFXTHROWIFFAILED(D3DReadFileToBlob(L"./Shaders/VertexShader.cso", &pVertexShaderBlob));
-	GFXTHROWIFFAILED(D3DReadFileToBlob(L"./Shaders/PixelShader.cso", &pPixelShaderBlob));
+	wrl::ComPtr<ID3DBlob> pVertexShaderBlob = DXUtil::LoadShaderResource("./Shaders/VertexShader.cso");
+	wrl::ComPtr<ID3DBlob> pPixelShaderBlob = DXUtil::LoadShaderResource("./Shaders/PixelShader.cso");
 
 	// Input Assembler config
 	D3D12_INPUT_ELEMENT_DESC ied[] = {

@@ -3,8 +3,8 @@
   <ImportGroup Label="PropertySheets" />
   <PropertyGroup Label="UserMacros">
     <SharedDefinitions>ANVIL_DISABLED</SharedDefinitions>
+    <RCShaders>0</RCShaders>
   </PropertyGroup>
-  <PropertyGroup />
   <ItemDefinitionGroup>
     <FxCompile>
       <PreprocessorDefinitions>$(SharedDefinitions);%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -16,6 +16,9 @@
   <ItemGroup>
     <BuildMacro Include="SharedDefinitions">
       <Value>$(SharedDefinitions)</Value>
+    </BuildMacro>
+    <BuildMacro Include="RCShaders">
+      <Value>$(RCShaders)</Value>
     </BuildMacro>
   </ItemGroup>
 </Project>

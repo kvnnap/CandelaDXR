@@ -113,5 +113,6 @@ namespace candela::directx
 
 		// Queries
 		static Microsoft::WRL::ComPtr<ID3D12QueryHeap> createQueryHeap(Microsoft::WRL::ComPtr<ID3D12Device> pDevice, UINT heapSize);
+		static Microsoft::WRL::ComPtr<ID3DBlob> LoadShaderResource(const char* path);
 	};
 }

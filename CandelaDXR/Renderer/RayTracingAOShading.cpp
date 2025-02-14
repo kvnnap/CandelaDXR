@@ -156,8 +156,7 @@ void RayTracingAOShading::buildPipeline()
 	shadingTable->addProgramAssociationsToSubobject(stateObjectDesc);
 
 	// Load shader
-	wrl::ComPtr<ID3DBlob> pBlob;
-	GFXTHROWIFFAILED(D3DReadFileToBlob(StringToWString("./Shaders/RayTracingAOShader.cso").c_str(), &pBlob));
+	wrl::ComPtr<ID3DBlob> pBlob = DXUtil::LoadShaderResource("./Shaders/RayTracingAOShader.cso");
 	auto shaderByteCodeDesc = CD3DX12_SHADER_BYTECODE(pBlob.Get());
 	dxilSubObject.SetDXILLibrary(&shaderByteCodeDesc);
 

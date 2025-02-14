@@ -609,4 +609,9 @@
     <None Include="Shader\LightTracingLightCodeSection.hlsli" />
     <None Include="cpp.hint" />
   </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="CandelaDXR.rc">
+      <Filter>Resource Files</Filter>
+    </ResourceCompile>
+  </ItemGroup>
 </Project>

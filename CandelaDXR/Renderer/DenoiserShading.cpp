@@ -139,8 +139,7 @@ void DenoiserShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12GraphicsCo
 	// CS Pipeline
 	// Load Shader
 	HRESULT hr;
-	wrl::ComPtr<ID3DBlob> pComputeBlob;
-	GFXTHROWIFFAILED(D3DReadFileToBlob(util::StringToWString("./Shaders/DenoiserPassShader.cso").c_str(), &pComputeBlob));
+	wrl::ComPtr<ID3DBlob> pComputeBlob = DXUtil::LoadShaderResource("./Shaders/DenoiserPassShader.cso");
 
 	// Finally generate pipeline state
 	struct PipelineStateStream

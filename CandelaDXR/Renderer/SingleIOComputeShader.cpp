@@ -60,8 +60,7 @@ void SingleIOComputeShader::init(RendererResources* rendererResources, wrl::ComP
 
 	// Load Shader
 	HRESULT hr;
-	wrl::ComPtr<ID3DBlob> pComputeBlob;
-	GFXTHROWIFFAILED(D3DReadFileToBlob(util::StringToWString(shaderPath).c_str(), &pComputeBlob));
+	wrl::ComPtr<ID3DBlob> pComputeBlob = DXUtil::LoadShaderResource(shaderPath.c_str());
 
 	// Finally generate pipeline state
 	struct PipelineStateStream

@@ -346,8 +346,7 @@ void PathTracingShading::buildPipeline()
 	shadingTable->addProgram(L"shadowMiss", ShadingRecordType::Miss, "EmptyRootSignature");
 	shadingTable->addProgram(L"HitGroup", ShadingRecordType::HitGroup, "EmptyRootSignature");
 	shadingTable->addProgramAssociationsToSubobject(stateObjectDesc);
-	wrl::ComPtr<ID3DBlob> pBlob;
-	GFXTHROWIFFAILED(D3DReadFileToBlob(StringToWString("./Shaders/PathTracingShader.cso").c_str(), &pBlob));
+	wrl::ComPtr<ID3DBlob> pBlob = DXUtil::LoadShaderResource("./Shaders/PathTracingShader.cso");
 	auto shaderByteCodeDesc = CD3DX12_SHADER_BYTECODE(pBlob.Get());
 	dxilSubObject.SetDXILLibrary(&shaderByteCodeDesc);
 	GFXTHROWIFFAILED(pDevice5->CreateStateObject(stateObjectDesc, IID_PPV_ARGS(&stateObject)));

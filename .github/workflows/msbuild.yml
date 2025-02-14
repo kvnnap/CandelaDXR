@@ -17,6 +17,8 @@ env:
   # Only Release tested!
   BUILD_CONFIGURATION: Release
   BUILD_SHARED: ON
+  SHARED_DEFINITIONS: ANVIL_DISABLED
+  RC_SHADERS: 1
   OUT_DIR: dist
   GITLAB_TOKEN: ${{ secrets.GITLAB_TOKEN }}
   FEANOR_ANVIL_ID: 13937410
@@ -271,21 +273,31 @@ jobs:
       working-directory: ${{github.workspace}}
       # Add additional options to the MSBuild command line here (like platform or verbosity level).
       # See https://docs.microsoft.com/visualstudio/msbuild/msbuild-command-line-reference
-      run: msbuild /m /p:Configuration=${{env.BUILD_CONFIGURATION}} /p:ForceImportBeforeCppTargets=${{github.workspace}}\MyProps.props /p:OutDir=${{github.workspace}}\${{env.OUT_DIR}}\ ${{env.SOLUTION_FILE_PATH}}
+      run: msbuild /m /p:Configuration=${{env.BUILD_CONFIGURATION}} /p:ForceImportBeforeCppTargets=${{github.workspace}}\MyProps.props /p:SharedDefinitions=${{env.SHARED_DEFINITIONS}} /p:RCShaders=${{env.RC_SHADERS}} /p:OutDir=${{github.workspace}}\${{env.OUT_DIR}}\ ${{env.SOLUTION_FILE_PATH}}
       
+    - name: Remove Shaders Directory if RC_SHADERS is 1
+      if: env.RC_SHADERS == '1'
+      run: |
+        Remove-Item -Recurse -Force "${{github.workspace}}\${{env.OUT_DIR}}\Shaders"
+        Write-Host "Shaders directory removed."
+
     - name: Copy Feanor Core and External DLLs
       if: env.BUILD_SHARED == 'ON'
       run: |
         Copy-Item ".\installed\bin\Core.dll" -Destination "${{github.workspace}}\${{env.OUT_DIR}}\"
-        Copy-Item ".\installed\bin\Anvil.dll" -Destination "${{github.workspace}}\${{env.OUT_DIR}}\"
-        Copy-Item ".\installed\bin\zlib1.dll" -Destination "${{github.workspace}}\${{env.OUT_DIR}}\"
-        Copy-Item ".\installed\bin\glew32.dll" -Destination "${{github.workspace}}\${{env.OUT_DIR}}\"
-        Copy-Item ".\installed\bin\glfw3.dll" -Destination "${{github.workspace}}\${{env.OUT_DIR}}\"
         Copy-Item ".\installed\bin\assimp-vc143-mt.dll" -Destination "${{github.workspace}}\${{env.OUT_DIR}}\"
         Copy-Item ".\installed\bin\imgui.dll" -Destination "${{github.workspace}}\${{env.OUT_DIR}}\"
         Copy-Item ".\installed\bin\stb.dll" -Destination "${{github.workspace}}\${{env.OUT_DIR}}\"
         Copy-Item ".\installed\bin\tinyexr.dll" -Destination "${{github.workspace}}\${{env.OUT_DIR}}\"
         Copy-Item ".\installed\bin\tinyobjloader.dll" -Destination "${{github.workspace}}\${{env.OUT_DIR}}\"
+
+    - name: Copy Anvil DLLs if needed
+      if: env.BUILD_SHARED == 'ON' && !contains(env.SHARED_DEFINITIONS, 'ANVIL_DISABLED')
+      run: |
+        Copy-Item ".\installed\bin\Anvil.dll" -Destination "${{github.workspace}}\${{env.OUT_DIR}}\"
+        Copy-Item ".\installed\bin\zlib1.dll" -Destination "${{github.workspace}}\${{env.OUT_DIR}}\"
+        Copy-Item ".\installed\bin\glew32.dll" -Destination "${{github.workspace}}\${{env.OUT_DIR}}\"
+        Copy-Item ".\installed\bin\glfw3.dll" -Destination "${{github.workspace}}\${{env.OUT_DIR}}\"
 
     - name: Copy NRI and NRD DLL
       run: |

@@ -250,8 +250,7 @@ void RasterRTShadowsShading::buildPipeline()
 	shadingTable->addProgram(L"rayGen", ShadingRecordType::RayGeneration, "RayGenRootSignature");
 	shadingTable->addProgram(L"shadowMiss", ShadingRecordType::Miss, "EmptyRootSignature");
 	shadingTable->addProgramAssociationsToSubobject(stateObjectDesc);
-	wrl::ComPtr<ID3DBlob> pBlob;
-	GFXTHROWIFFAILED(D3DReadFileToBlob(StringToWString("./Shaders/RTShadows.cso").c_str(), &pBlob));
+	wrl::ComPtr<ID3DBlob> pBlob = DXUtil::LoadShaderResource("./Shaders/RTShadows.cso");
 	auto shaderByteCodeDesc = CD3DX12_SHADER_BYTECODE(pBlob.Get());
 	dxilSubObject.SetDXILLibrary(&shaderByteCodeDesc);
 	GFXTHROWIFFAILED(pDevice5->CreateStateObject(stateObjectDesc, IID_PPV_ARGS(&stateObject)));
