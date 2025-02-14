@@ -122,6 +122,9 @@ void ExternalObjectDebugShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCu
 	if (needsUpdate)
 		updateBuffer(pCurrentCommandList);
 
+	if (vertices.empty())
+		return;	
+
 	// Clear Depth
 	CD3DX12_CPU_DESCRIPTOR_HANDLE dsvDescriptorHandle(pDepthDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), 0, dsvDescriptorSize);
 	pCurrentCommandList->ClearDepthStencilView(dsvDescriptorHandle, D3D12_CLEAR_FLAG_DEPTH, 1.f, 0, 0, nullptr);
@@ -229,7 +232,7 @@ void ExternalObjectDebugShading::updateBuffer(wrl::ComPtr<ID3D12GraphicsCommandL
 
 	for (const auto& myLight : rendererResources->processedExternalLights)
 	{
-		if (myLight.Type == LT_POINT)
+		if (myLight.Type == LT_POINT || myLight.Type == LT_SPOT)
 		{
 			mathematics::AABB pointAABB;
 			constexpr float deltaP = 0.01f;
@@ -267,6 +270,10 @@ void ExternalObjectDebugShading::updateBuffer(wrl::ComPtr<ID3D12GraphicsCommandL
 		}
 	}
 
+	needsUpdate = false;
+	if (vertices.empty())
+		return;
+
 	// need to flush when replacing buffer (or keep old one around until it is not used anymore)
 	rendererResources->commandQueue->flush();
 	
@@ -282,8 +289,6 @@ void ExternalObjectDebugShading::updateBuffer(wrl::ComPtr<ID3D12GraphicsCommandL
 		.SizeInBytes = static_cast<std::uint32_t>(vertices.size() * sizeof(Vector3)),
 		.StrideInBytes = sizeof(Vector3)
 	};
-
-	needsUpdate = false;
 }
 
 void ExternalObjectDebugShading::appendAabb(const mathematics::AABB& aabb)
