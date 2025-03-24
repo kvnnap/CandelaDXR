@@ -121,8 +121,8 @@ void LTRasterGuidedShading::regenImpMetaVec(std::uint32_t lightIndex)
 		}
 		else if (lightData.Type == LT_SPOT)
 		{
-			// Use 99% to ensure bounds
-			const float squareWidth = 0.99f * nearZ * sqrtf(2.f) * tanf(lightData.InnerConeAngle);
+			// Use 99% to ensure bounds - 1.39754199732 = 8/(0.99*sqrt(2)) - to get 8x ratio between width and nearZ
+			const float squareWidth = 0.99f * nearZ * sqrtf(2.f) * tanf(fmin(1.39754199732f, lightData.InnerConeAngle));
 			const float h = squareWidth * 0.5f;
 			float lightCamPdfPoint = f2Definite(-h, h, -h, h, nearZ) / (2.f * lightData.InnerConeOneMinusCosPhi * candela::mathematics::constants::Pi);
 			impMeta = ImportanceMetadata{ Vector3(squareWidth, squareWidth, nearZ), lightCamPdfPoint };
