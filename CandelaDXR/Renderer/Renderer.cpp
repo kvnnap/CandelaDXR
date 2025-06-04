@@ -1154,16 +1154,32 @@ ANVIL_CODE_RAW(
 		using feanor::anvil::visualisation::PathVisualiser;
 		using feanor::anvil::WebSystem;
 
-		auto scene = make_shared<Scene>();
-		WavefrontLoader().loadScene(*scene, "Assets/CornellBox-Original.obj");
-		auto glRenderer = make_shared<OpenGLRenderer>(anvilParallel);
+
+		auto& anvil = Anvil::getInstance();
+		auto& env = anvil.getEnvironment();
+		
+
+		auto scene = env.getSceneManager().createInstanceAndSet("Scene", "Scene");
+		WavefrontLoader(scene, "Assets/CornellBox-Original.obj").loadScene();
+
+		auto renCam = env.getCameraManager().createInstanceAndSet("Camera", "Camera");
+
+		auto& renInstanceManager = env.getRendererManager().getInstanceManager();
+		renInstanceManager.registerItem("Renderer", make_unique<OpenGLRenderer>(anvilParallel));
+		auto glRenderer = &renInstanceManager.get("Renderer");
 		glRenderer->setScene(scene);
+		glRenderer->setCamera(renCam);
 		glRenderer->render();
 
+		auto& systemInstanceManager = env.getSystemManager().getInstanceManager();
+		systemInstanceManager.registerItem("CamSys", make_unique<CameraSystem>(glRenderer));
+		systemInstanceManager.registerItem("PathVis", make_unique<PathVisualiser>(glRenderer, scene));
+		systemInstanceManager.registerItem("WebSys", make_unique<WebSystem>());
+
 		//Anvil::getInstance().addSystem(make_shared<BasicVisualiser>(glRenderer, scene));
-		Anvil::getInstance().addSystem(make_shared<CameraSystem>(glRenderer));
-		Anvil::getInstance().addSystem(make_shared<PathVisualiser>(glRenderer, scene));
-		Anvil::getInstance().addSystem(make_shared<WebSystem>());
+		anvil.addSystem(&systemInstanceManager.get("CamSys"));
+		anvil.addSystem(&systemInstanceManager.get("PathVis"));
+		anvil.addSystem(&systemInstanceManager.get("WebSys"));
 		Anvil::addReflectionEntity("Camera", *camera);
 	}
 )

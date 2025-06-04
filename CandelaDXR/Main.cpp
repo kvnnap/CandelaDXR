@@ -70,7 +70,7 @@ int main(int argc, char** argv)
     }
 
     // Cleanup Anvil - since it's currently static, do it here
-    ANVIL_CODE_RAW(feanor::anvil::Anvil::getInstance().clear();)
+    ANVIL_CODE_RAW(feanor::anvil::Anvil::getInstance().destroy();)
 
     cout << err << endl;
     return EXIT_FAILURE;
