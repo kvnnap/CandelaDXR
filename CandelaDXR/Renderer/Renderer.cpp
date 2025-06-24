@@ -1121,14 +1121,6 @@ LRESULT Renderer::wndCallback(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 }
 
 // Anvil
-#include "feanor/anvil/scene/scene.h"
-#include "feanor/anvil/scene/wavefront_loader.h"
-#include "feanor/anvil/core/renderer/opengl_renderer.h"
-#include "feanor/anvil/system/camera_system.h"
-#include "feanor/anvil/visualisation/basic_visualiser.h"
-#include "feanor/anvil/visualisation/path_visualiser.h"
-//#include "feanor/anvil/system/web_system.h"
-
 ANVIL_CODE_RAW(
 	bool Renderer::isAnvilEnabled() const
 	{
@@ -1142,44 +1134,30 @@ ANVIL_CODE_RAW(
 
 	void Renderer::initAnvil()
 	{
+		using feanor::anvil::Anvil;
+
 		if (!isAnvilEnabled())
 			return;
-
-		using feanor::anvil::Anvil;
-		using feanor::anvil::CameraSystem;
-		using feanor::anvil::scene::Scene;
-		using feanor::anvil::scene::WavefrontLoader;
-		using feanor::anvil::renderer::OpenGLRenderer;
-		using feanor::anvil::visualisation::BasicVisualiser;
-		using feanor::anvil::visualisation::PathVisualiser;
-		using feanor::anvil::WebSystem;
-
+		
+		const std::string strParallel = anvilParallel ? "true" : "false";
+		
+		static const std::string anvilConfig = R"(
+		{
+			"Scenes": [{"Type": "Scene"}],
+			"Cameras": [{"Type": "Camera"}],
+			"SceneLoaders": [{"Type": "WavefrontSceneLoader", 
+							  "FilePath": "Assets/CornellBox-Original.obj"}],
+			"Renderers": [{"Type": "OpenGLRenderer", "WinWidth": 1350, "WinHeight": 900, "Parallel": )" + strParallel + R"( }],
+			"Systems": [
+				{"Type": "CameraSystem"},
+				{"Type": "PathVisualiserSystem"}
+			]
+		})";
 
 		auto& anvil = Anvil::getInstance();
-		auto& env = anvil.getEnvironment();
-		
-
-		auto scene = env.getSceneManager().createInstanceAndSet("Scene", "Scene");
-		WavefrontLoader(scene, "Assets/CornellBox-Original.obj").loadScene();
-
-		auto renCam = env.getCameraManager().createInstanceAndSet("Camera", "Camera");
-
-		auto& renInstanceManager = env.getRendererManager().getInstanceManager();
-		renInstanceManager.registerItem("Renderer", make_unique<OpenGLRenderer>(anvilParallel));
-		auto glRenderer = &renInstanceManager.get("Renderer");
-		glRenderer->setScene(scene);
-		glRenderer->setCamera(renCam);
-		glRenderer->render();
-
-		auto& systemInstanceManager = env.getSystemManager().getInstanceManager();
-		systemInstanceManager.registerItem("CamSys", make_unique<CameraSystem>(glRenderer));
-		systemInstanceManager.registerItem("PathVis", make_unique<PathVisualiser>(glRenderer, scene));
-		systemInstanceManager.registerItem("WebSys", make_unique<WebSystem>());
-
-		//Anvil::getInstance().addSystem(make_shared<BasicVisualiser>(glRenderer, scene));
-		anvil.addSystem(&systemInstanceManager.get("CamSys"));
-		anvil.addSystem(&systemInstanceManager.get("PathVis"));
-		anvil.addSystem(&systemInstanceManager.get("WebSys"));
-		Anvil::addReflectionEntity("Camera", *camera);
+		anvil.configureAndAddSystems(anvilConfig);
+		auto& renderer = anvil.getEnvironment().getRendererManager().getInstanceManager().get(0);
+		renderer.render();
+		anvil.addReflectionEntity("Camera", *camera);
 	}
 )
