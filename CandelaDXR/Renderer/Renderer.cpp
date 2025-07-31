@@ -97,6 +97,8 @@ Renderer::Renderer(Scene *scene, Camera *camera, const UVector2 &windowDimension
 	  breakEnabled(breakEnabled),
 	  vsync(vsync),
 	  exitOnAnimationCompletion(exitOnAnimCompl),
+	  isFullScreen(),
+	  tearingSupported(),
 	  shaderAccumulation(shaderAccumulation)
 {
 	eoDebug.setEnabled(false);
@@ -157,6 +159,7 @@ void Renderer::init()
 	}
 
 	dxgiFactory = DXUtil::createDXGIFactory(debugEnabled);
+	tearingSupported = DXUtil::checkTearingSupport(dxgiFactory);
 
 	// Get DX12 compatible hardware device - Adapter contains info about the actual device
 	D3D_FEATURE_LEVEL featureLevel;
@@ -172,6 +175,7 @@ void Renderer::init()
 
 	// Create swap chain
 	pSwapChain = DXUtil::createSwapChain(dxgiFactory, commandQueue->getCommandQueue(), window->getHandle(), NumBackBuffers, windowDimensions.x, windowDimensions.y);
+	checkAndSetFullScreenMode();
 
 	// Create descriptor heap for render target view - Num + pRTVRad, pRTVDiff, PRTVSpec, pRTVCaus
 	pRTVDescriptorHeap = DXUtil::createDescriptorHeap(pDevice, NumBackBuffers + 4, D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
@@ -626,7 +630,7 @@ void Renderer::renderFrame()
 	HRESULT hr;
 	// Present may wait on or execute the message pump when mode changes (fullscreen to windowed, etc)
 	// Therefore, make sure RTV buffers are not referenced here
-	GFXTHROWIFFAILED(pSwapChain->Present(vsync ? 1u : 0u, 0u));
+	GFXTHROWIFFAILED(pSwapChain->Present(vsync ? 1u : 0u, vsync ? 0u : tearingSupported && !isFullScreen ? DXGI_PRESENT_ALLOW_TEARING: 0u));
 	ComPtr<IDXGISwapChain3> pSwapChain3;
 	GFXTHROWIFFAILED(pSwapChain.As(&pSwapChain3));
 	rendererResources.currentBackBufferIndex = currentBackBufferIndex = pSwapChain3->GetCurrentBackBufferIndex();
@@ -707,6 +711,14 @@ const Scene& Renderer::getScene() const
 void Renderer::setChain(chain::CFList* chain)
 {
 	this->chain = chain;
+}
+
+void Renderer::checkAndSetFullScreenMode()
+{
+	HRESULT hr;
+	BOOL fullScreenMode{};
+	GFXTHROWIFFAILED(pSwapChain->GetFullscreenState(&fullScreenMode, NULL));
+	isFullScreen = fullScreenMode != 0;
 }
 
 RendererTime& Renderer::getRendererTime()
@@ -931,13 +943,15 @@ void Renderer::updateCamera()
 
 void Renderer::resize()
 {
+	checkAndSetFullScreenMode();
+
 	// Wait for all GPU operations to complete
 	commandQueue->flush();
 	pRTVBackBuffers.clear();
 	rendererResources.currentBackBufferIndex = currentBackBufferIndex = 0;
 	camera->setAspectRatio(static_cast<float>(windowDimensions.x) / windowDimensions.y);
 	HRESULT hr;
-	auto flags = DXUtil::checkTearingSupport(dxgiFactory) ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING : 0;
+	auto flags = tearingSupported ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING : 0;
 	GFXTHROWIFFAILED(pSwapChain->ResizeBuffers(NumBackBuffers, windowDimensions.x, windowDimensions.y, DXGI_FORMAT_UNKNOWN, flags));
 	// Resize textures in resource manager
 	rendererResources.resourceManager->resize(windowDimensions.x, windowDimensions.y);

@@ -75,6 +75,7 @@ namespace candela::renderer
 		const scene::Scene& getScene() const;
 
 		void setChain(chain::CFList* chain);
+		void checkAndSetFullScreenMode();
 
 		// Promote to interface?
 		RendererTime& getRendererTime();
@@ -225,6 +226,8 @@ namespace candela::renderer
 		const bool breakEnabled;
 		const bool vsync;
 		const bool exitOnAnimationCompletion;
+		bool isFullScreen;
+		bool tearingSupported;
 		bool shaderAccumulation;
 
 		ExternalObjectDebugShading eoDebug;
