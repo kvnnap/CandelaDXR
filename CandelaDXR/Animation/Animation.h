@@ -15,7 +15,9 @@ namespace candela::animation
 	{
 		std::size_t MeshStateId; // Transition to this state
 		std::uint32_t TimeMS; // Duration of this transition
-		std::uint32_t CumulativeTimeMS; // Filled automatically - Total time from start including this transition
+		std::uint32_t CumulativeTimeMS; // Filled automatically - Total time from start including this transition (Cumulative end time)
+
+		std::uint32_t getStartCumulativeTimeMS() const; // Cumulative Start Time
 	};
 
 	class Animation
