@@ -23,13 +23,13 @@ namespace candela::renderer
 		SingleIOComputeShader(const std::string& shaderPath, bool launchAsFlatArray = false);
 		virtual ~SingleIOComputeShader() = default;
 
-		void init(RendererResources* rendererResources, wrl::ComPtr<ID3D12GraphicsCommandList>& pCurrentCommandList, std::vector<directx::Resource*>* res, std::uint32_t numOutputs = 1u, std::uint32_t numInputs = 1u);
+		void init(RendererResources* rendererResources, directx::DXCommandList& pCurrentCommandList, std::vector<directx::Resource*>* res, std::uint32_t numOutputs = 1u, std::uint32_t numInputs = 1u);
 
 		void setInputTexture(std::uint32_t inputIndex);
 		void setOutputTexture(std::uint32_t outputIndex);
 		void setAdditionalConstantBuffer(const void* p_cbData, std::size_t p_cbSize);
 
-		void compute(wrl::ComPtr<ID3D12GraphicsCommandList> currentCommandList);
+		void compute(directx::DXCommandList currentCommandList);
 
 		// Call if resources change size
 		void bindResources();
@@ -39,9 +39,9 @@ namespace candela::renderer
 		virtual mathematics::UVector2 getLaunchDimensions(const mathematics::UVector2& originalDimensions) const;
 		virtual void addAdditionalResources(directx::RootSignatureManager* rsm, const std::string& rangeName);
 		virtual void bindAdditionalResources(UINT baseIndex);
-		virtual void updateData(wrl::ComPtr<ID3D12GraphicsCommandList> currentCommandList);
-		virtual void dispatch(wrl::ComPtr<ID3D12GraphicsCommandList> currentCommandList);
-		virtual void initComponent(RendererResources* rendererResources, wrl::ComPtr<ID3D12GraphicsCommandList>& pCurrentCommandList);
+		virtual void updateData(directx::DXCommandList currentCommandList);
+		virtual void dispatch(directx::DXCommandList currentCommandList);
+		virtual void initComponent(RendererResources* rendererResources, directx::DXCommandList& pCurrentCommandList);
 	//private:
 		RendererResources* rendererResources;
 		const std::string shaderPath;
@@ -72,8 +72,8 @@ namespace candela::renderer
 		DistanceComputeShader();
 		void addAdditionalResources(directx::RootSignatureManager* rsm, const std::string& rangeName) override;
 		void bindAdditionalResources(UINT baseIndex) override;
-		void updateData(wrl::ComPtr<ID3D12GraphicsCommandList> currentCommandList) override;
-		void dispatch(wrl::ComPtr<ID3D12GraphicsCommandList> currentCommandList) override;
+		void updateData(directx::DXCommandList currentCommandList) override;
+		void dispatch(directx::DXCommandList currentCommandList) override;
 		void setMode(std::uint32_t mode);
 		std::uint32_t getMode() const;
 
@@ -104,9 +104,9 @@ namespace candela::renderer
 		FilterComputeShader();
 		void addAdditionalResources(directx::RootSignatureManager* rsm, const std::string& rangeName) override;
 		void bindAdditionalResources(UINT baseIndex) override;
-		void updateData(wrl::ComPtr<ID3D12GraphicsCommandList> currentCommandList) override;
-		void dispatch(wrl::ComPtr<ID3D12GraphicsCommandList> currentCommandList) override;
-		void initComponent(RendererResources* rendererResources, wrl::ComPtr<ID3D12GraphicsCommandList>& pCurrentCommandList) override;
+		void updateData(directx::DXCommandList currentCommandList) override;
+		void dispatch(directx::DXCommandList currentCommandList) override;
+		void initComponent(RendererResources* rendererResources, directx::DXCommandList& pCurrentCommandList) override;
 
 		void setDxgiFormat(DXGI_FORMAT format);
 		void setFiltersize(std::uint32_t filterSize);
@@ -135,7 +135,7 @@ namespace candela::renderer
 		mathematics::UVector2 getLaunchDimensions(const mathematics::UVector2& dim) const override;
 		void addAdditionalResources(directx::RootSignatureManager* rsm, const std::string& rangeName) override;
 		void bindAdditionalResources(UINT baseIndex) override;
-		void dispatch(wrl::ComPtr<ID3D12GraphicsCommandList> currentCommandList) override;
+		void dispatch(directx::DXCommandList currentCommandList) override;
 	private:
 		directx::Resource* scratchResource;
 	};
@@ -153,7 +153,7 @@ namespace candela::renderer
 	public:
 		NormalisationPass2ComputeShader() : SingleIOComputeShader("./Shaders/NormalisationPass2ComputeShader.cso") {}
 
-		void dispatch(wrl::ComPtr<ID3D12GraphicsCommandList> currentCommandList) override
+		void dispatch(directx::DXCommandList currentCommandList) override
 		{
 			currentCommandList->Dispatch(1u, 1u, 1u);
 		}

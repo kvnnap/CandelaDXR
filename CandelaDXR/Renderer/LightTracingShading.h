@@ -33,9 +33,9 @@ namespace candela::renderer
 	public:
 		LightTracingShading(std::unique_ptr<sampler::ISampler> sampler, mathematics::UVector2 lightSamples);
 
-		void init(RendererResources* rendererResources, wrl::ComPtr<ID3D12GraphicsCommandList> &pCurrentCommandList, ResourceRegFunction& resRegFn) override;
-		void draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, std::uint32_t currentBackBufferIndex) override;
-		void onChange(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, std::uint32_t currentBackBufferIndex, ChangeEvent_t changeEvent) override;
+		void init(RendererResources* rendererResources, directx::DXCommandList &pCurrentCommandList, ResourceRegFunction& resRegFn) override;
+		void draw(directx::DXCommandList pCurrentCommandList, std::uint32_t currentBackBufferIndex) override;
+		void onChange(directx::DXCommandList pCurrentCommandList, std::uint32_t currentBackBufferIndex, ChangeEvent_t changeEvent) override;
 		void onResize() override;
 		void accept(IVisitor* visitor) override;
 		std::uint32_t getBufferUsage() const override;
@@ -75,10 +75,10 @@ namespace candela::renderer
 
 	private:
 		void buildPipeline();
-		void createShaderResources(wrl::ComPtr<ID3D12GraphicsCommandList>& commandList);
-		void createShaderTable(wrl::ComPtr<ID3D12GraphicsCommandList> &commandList);
+		void createShaderResources(directx::DXCommandList& commandList);
+		void createShaderTable(directx::DXCommandList &commandList);
 		
-		void generateIrrToRadTexture(wrl::ComPtr<ID3D12GraphicsCommandList>& commandList, wrl::ComPtr<ID3D12Resource>& tempResource);
+		void generateIrrToRadTexture(directx::DXCommandList& commandList, directx::DXResource& tempResource);
 
 		mathematics::Vector2 toSensorSpace(std::uint32_t x, std::uint32_t y) const;
 		float cosIntegral(std::uint32_t x, std::uint32_t y) const;
@@ -121,7 +121,7 @@ namespace candela::renderer
 		} constBuffer;
 		mathematics::UVector2 lightSamples;
 
-		wrl::ComPtr<ID3D12Resource> constantBuffer;
+		directx::DXResource constantBuffer;
 		directx::Resource* irradianceDataStructure;
 		directx::Resource* irrToRad;
 		directx::Resource* prngState;

@@ -26,10 +26,10 @@ namespace candela::renderer::imgui
 		directx::Resource* getResourceToSave() const;
 
 		// IDrawable interface
-		void init(RendererResources* rendererResources, wrl::ComPtr<ID3D12GraphicsCommandList>& pCurrentCommandList, ResourceRegFunction& resRegFn) override;
-		void draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, std::uint32_t currentBackBufferIndex) override;
+		void init(RendererResources* rendererResources, directx::DXCommandList& pCurrentCommandList, ResourceRegFunction& resRegFn) override;
+		void draw(directx::DXCommandList pCurrentCommandList, std::uint32_t currentBackBufferIndex) override;
 		void accept(IVisitor* visitor) override;
-		void onChange(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, std::uint32_t currentBackBufferIndex, ChangeEvent_t changeEvent) override;
+		void onChange(directx::DXCommandList pCurrentCommandList, std::uint32_t currentBackBufferIndex, ChangeEvent_t changeEvent) override;
 		void onResize() override;
 	private:
 		// ImGui

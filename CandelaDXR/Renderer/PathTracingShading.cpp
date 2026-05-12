@@ -27,6 +27,8 @@ using candela::directx::DescriptorHeap;
 using candela::directx::ShadingTable;
 using candela::directx::ShadingRecordType;
 using candela::directx::Resource;
+using candela::directx::DXResource;
+using candela::directx::DXCommandList;
 
 using candela::sampler::ISampler;
 
@@ -45,7 +47,7 @@ PathTracingShading::PathTracingShading(unique_ptr<ISampler> sampler, bool specul
 	setSpecularOnly(specularOnly);
 }
 
-void PathTracingShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12GraphicsCommandList>& pCurrentCommandList, ResourceRegFunction& resRegFn)
+void PathTracingShading::init(RendererResources* rRes, DXCommandList& pCurrentCommandList, ResourceRegFunction& resRegFn)
 {
 	if (!DXUtil::checkDeviceRTSupport(rRes->pDevice))
 		ThrowException("Ray tracing is not supported on this device");
@@ -106,7 +108,7 @@ void PathTracingShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12Graphic
 	createShaderTable(pCurrentCommandList, rendererResources->getTempResource());
 }
 
-void PathTracingShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, std::uint32_t currentBackBufferIndex)
+void PathTracingShading::draw(DXCommandList pCurrentCommandList, std::uint32_t currentBackBufferIndex)
 {
 	// Pre-stuff
 	rendererResources->pRTVDiff->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
@@ -193,7 +195,7 @@ void PathTracingShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCom
 	)
 }
 
-void PathTracingShading::onChange(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, std::uint32_t currentBackBufferIndex, ChangeEvent_t changeEvent)
+void PathTracingShading::onChange(DXCommandList pCurrentCommandList, std::uint32_t currentBackBufferIndex, ChangeEvent_t changeEvent)
 {
 	if (changeEvent & static_cast<ChangeEvent_t>(ChangeEvent::SceneChange))
 	{
@@ -403,7 +405,7 @@ void PathTracingShading::createShaderResources()
 	}
 }
 
-void PathTracingShading::createShaderTable(wrl::ComPtr<ID3D12GraphicsCommandList>& commandList, wrl::ComPtr<ID3D12Resource>& tempBuffer)
+void PathTracingShading::createShaderTable(DXCommandList& commandList, DXResource& tempBuffer)
 {
 	// Link rayGen
 	shadingTable->setInputForDescriptorTableParameter(L"rayGen", "BVHDescTable", "BVH1");

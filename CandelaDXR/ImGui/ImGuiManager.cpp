@@ -15,6 +15,7 @@ using std::make_unique;
 
 using candela::directx::DXUtil;
 using candela::directx::Resource;
+using candela::directx::DXCommandList;
 
 using candela::renderer::imgui::ImGuiResourceManager;
 using candela::renderer::imgui::ImGuiRenderer;
@@ -101,7 +102,7 @@ Resource* ImGuiManager::getResourceToSave() const
 	return imguiResourceManager->getResourceToSave();
 }
 
-void ImGuiManager::init(RendererResources* rRes, wrl::ComPtr<ID3D12GraphicsCommandList>& pCurrentCommandList, ResourceRegFunction& resRegFn)
+void ImGuiManager::init(RendererResources* rRes, DXCommandList& pCurrentCommandList, ResourceRegFunction& resRegFn)
 {
 	rendererResources = rRes;
 
@@ -132,7 +133,7 @@ void ImGuiManager::init(RendererResources* rRes, wrl::ComPtr<ID3D12GraphicsComma
 	imguiRenderer = make_unique<ImGuiRenderer>(*rRes->renderer);
 }
 
-void ImGuiManager::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, std::uint32_t currentBackBufferIndex)
+void ImGuiManager::draw(DXCommandList pCurrentCommandList, std::uint32_t currentBackBufferIndex)
 {
 	if (!isEnabled())
 		return;
@@ -150,7 +151,7 @@ void ImGuiManager::accept(IVisitor* visitor)
 {
 }
 
-void ImGuiManager::onChange(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, std::uint32_t currentBackBufferIndex, ChangeEvent_t changeEvent)
+void ImGuiManager::onChange(DXCommandList pCurrentCommandList, std::uint32_t currentBackBufferIndex, ChangeEvent_t changeEvent)
 {
 }
 

@@ -46,6 +46,6 @@ namespace candela::directx
 		NamedResType namedResources;
 
 		// Temporary Buffers
-		std::vector<std::vector<wrl::ComPtr<ID3D12Resource>>> tempBuffers;
+		std::vector<std::vector<DXResource>> tempBuffers;
 	};
 }

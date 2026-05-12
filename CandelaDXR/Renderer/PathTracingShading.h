@@ -32,9 +32,9 @@ namespace candela::renderer
 	public:
 		PathTracingShading(std::unique_ptr<sampler::ISampler> sampler, bool specularOnly);
 
-		void init(RendererResources* rendererResources, wrl::ComPtr<ID3D12GraphicsCommandList>& pCurrentCommandList, ResourceRegFunction& resRegFn) override;
-		void draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, std::uint32_t currentBackBufferIndex) override;
-		void onChange(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, std::uint32_t currentBackBufferIndex, ChangeEvent_t changeEvent) override;
+		void init(RendererResources* rendererResources, directx::DXCommandList& pCurrentCommandList, ResourceRegFunction& resRegFn) override;
+		void draw(directx::DXCommandList pCurrentCommandList, std::uint32_t currentBackBufferIndex) override;
+		void onChange(directx::DXCommandList pCurrentCommandList, std::uint32_t currentBackBufferIndex, ChangeEvent_t changeEvent) override;
 		void onResize() override;
 		void accept(IVisitor* visitor) override;
 		std::uint32_t getBufferUsage() const override;
@@ -84,7 +84,7 @@ namespace candela::renderer
 	private:
 		void buildPipeline();
 		void createShaderResources();
-		void createShaderTable(wrl::ComPtr<ID3D12GraphicsCommandList>& commandList, wrl::ComPtr<ID3D12Resource>& tempBuffer);
+		void createShaderTable(directx::DXCommandList& commandList, directx::DXResource& tempBuffer);
 
 		// Common renderer resources
 		RendererResources* rendererResources;
@@ -122,7 +122,7 @@ namespace candela::renderer
 		directx::Resource* causTexture;
 		directx::Resource* rayHitT;
 		directx::Resource* prngState;
-		wrl::ComPtr<ID3D12Resource> constantBuffer;
+		directx::DXResource constantBuffer;
 		std::unique_ptr<sampler::ISampler> sampler;
 		bool clear;
 

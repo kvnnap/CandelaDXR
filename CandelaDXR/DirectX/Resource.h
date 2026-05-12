@@ -19,7 +19,7 @@ namespace candela::directx
 		std::wstring Name;
 		UINT64 Width;
 		UINT Height;
-		std::vector<DirectX::XMFLOAT4> data;
+		std::vector<mathematics::Vector4> data;
 	};
 
 	class Resource 

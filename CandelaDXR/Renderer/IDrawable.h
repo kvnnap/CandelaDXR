@@ -28,11 +28,11 @@ namespace candela::renderer
 	{
 	public:
 		virtual ~IDrawable() = default;
-		virtual void init(RendererResources *rendererResources, wrl::ComPtr<ID3D12GraphicsCommandList>& pCurrentCommandList, ResourceRegFunction& resRegFn) = 0;
-		virtual void draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, std::uint32_t currentBackBufferIndex) = 0;
+		virtual void init(RendererResources *rendererResources, directx::DXCommandList& pCurrentCommandList, ResourceRegFunction& resRegFn) = 0;
+		virtual void draw(directx::DXCommandList pCurrentCommandList, std::uint32_t currentBackBufferIndex) = 0;
 		virtual void accept(IVisitor *visitor) = 0;
 		// On matrix change
-		virtual void onChange(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, std::uint32_t currentBackBufferIndex, ChangeEvent_t changeEvent) = 0;
+		virtual void onChange(directx::DXCommandList pCurrentCommandList, std::uint32_t currentBackBufferIndex, ChangeEvent_t changeEvent) = 0;
 
 		// On window resize
 		virtual void onResize() = 0;

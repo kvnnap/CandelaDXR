@@ -27,6 +27,7 @@ using candela::directx::DescriptorHeap;
 using candela::directx::ShadingTable;
 using candela::directx::ShadingRecordType;
 using candela::directx::Resource;
+using candela::directx::DXCommandList;
 
 using candela::sampler::ISampler;
 
@@ -42,7 +43,7 @@ RasterRTShadowsShading::RasterRTShadowsShading(unique_ptr<ISampler> sampler)
 {
 }
 
-void RasterRTShadowsShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12GraphicsCommandList>& pCurrentCommandList, ResourceRegFunction& resRegFn)
+void RasterRTShadowsShading::init(RendererResources* rRes, DXCommandList& pCurrentCommandList, ResourceRegFunction& resRegFn)
 {
 	rasterShader.setGlobaResourcePrefix("rrt_");
 	rasterShader.init(rRes, pCurrentCommandList, resRegFn);
@@ -87,7 +88,7 @@ void RasterRTShadowsShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12Gra
 	createShaderTable(pCurrentCommandList);
 }
 
-void RasterRTShadowsShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, std::uint32_t currentBackBufferIndex)
+void RasterRTShadowsShading::draw(DXCommandList pCurrentCommandList, std::uint32_t currentBackBufferIndex)
 {
 	rasterShader.draw(pCurrentCommandList, currentBackBufferIndex);
 
@@ -130,7 +131,7 @@ void RasterRTShadowsShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurren
 	backBuff->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);
 }
 
-void RasterRTShadowsShading::onChange(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, std::uint32_t currentBackBufferIndex, ChangeEvent_t changeEvent)
+void RasterRTShadowsShading::onChange(DXCommandList pCurrentCommandList, std::uint32_t currentBackBufferIndex, ChangeEvent_t changeEvent)
 {
 	rasterShader.onChange(pCurrentCommandList, currentBackBufferIndex, changeEvent);
 
@@ -304,7 +305,7 @@ void RasterRTShadowsShading::createShaderResources()
 	}
 }
 
-void RasterRTShadowsShading::createShaderTable(wrl::ComPtr<ID3D12GraphicsCommandList>& commandList)
+void RasterRTShadowsShading::createShaderTable(DXCommandList& commandList)
 {
 	// Link rayGen
 	shadingTable->setInputForDescriptorTableParameter(L"rayGen", "BVHDescTable", "BVH1");

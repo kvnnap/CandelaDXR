@@ -23,6 +23,9 @@ using candela::directx::ShadingTable;
 using candela::directx::ShadingRecordType;
 using candela::directx::DescriptorHeap;
 using candela::directx::RootSignatureManager;
+using candela::directx::DXDevice;
+using candela::directx::DXResource;
+using candela::directx::DXCommandList;
 
 using candela::util::WStringToString;
 
@@ -36,7 +39,7 @@ void ShadingTable::addProgram(const wstring& programName, ShadingRecordType shad
 	shadingRecords.push_back({ programName, rootSignatureName, shadingRecordType });
 }
 
-DescriptorHeap& ShadingTable::generateDescriptorHeapIfNotExists(const std::string& parameterName, const std::string& instanceName, Microsoft::WRL::ComPtr<ID3D12Device> pDevice)
+DescriptorHeap& ShadingTable::generateDescriptorHeapIfNotExists(const std::string& parameterName, const std::string& instanceName, DXDevice pDevice)
 {
 	return *descriptorHeaps.emplace(instanceName, make_shared<DescriptorHeap>(rootSignatureManager, parameterName, instanceName, pDevice)).first->second;
 }
@@ -62,7 +65,7 @@ void ShadingTable::setInputForDescriptorTableParameter(const std::wstring& progr
 	programStruct.managedDescriptorHeapMap[parameterName] = descriptorHeaps.at(instanceName).get();
 }
 
-void ShadingTable::setInputForViewParameter(const wstring& programName, const std::string& parameterName, Microsoft::WRL::ComPtr<ID3D12Resource> resource, UINT64 offsetInBytes)
+void ShadingTable::setInputForViewParameter(const wstring& programName, const std::string& parameterName, DXResource resource, UINT64 offsetInBytes)
 {
 	// Get Program data
 	auto& programStruct = shadingRecords[shadingRecordsMap.at(programName)];
@@ -90,11 +93,11 @@ void ShadingTable::setInputForConstantParameter(const wstring& programName, cons
 	programStruct.constantsMap[parameterName] = constant;
 }
 
-Microsoft::WRL::ComPtr<ID3D12Resource> ShadingTable::generateShadingTable(
-	Microsoft::WRL::ComPtr<ID3D12Device> pDevice,
-	Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList,
+DXResource ShadingTable::generateShadingTable(
+	DXDevice pDevice,
+	DXCommandList pCurrentCommandList,
 	Microsoft::WRL::ComPtr<ID3D12StateObject> pStateObject,
-	Microsoft::WRL::ComPtr<ID3D12Resource>& shadingTableTempResource)
+	DXResource& shadingTableTempResource)
 {
 	validateInputs();
 	sortShadingRecords();
@@ -325,7 +328,7 @@ size_t ShadingTable::getLargestRecordTypeSize(ShadingRecordType shadingRecordTyp
 	return recordSize;
 }
 
-DescriptorHeap::DescriptorHeap(std::shared_ptr<RootSignatureManager> rootSignatureManager, const std::string& parameterName, const std::string& instanceName, Microsoft::WRL::ComPtr<ID3D12Device> pDevice)
+DescriptorHeap::DescriptorHeap(std::shared_ptr<RootSignatureManager> rootSignatureManager, const std::string& parameterName, const std::string& instanceName, DXDevice pDevice)
 	: rootSignatureManager(rootSignatureManager), parameterName(parameterName), instanceName(instanceName)
 {
 	UINT32 descriptorHeapSize = rootSignatureManager->getDescriptorHeapTotalEntrySize(parameterName);
@@ -333,7 +336,7 @@ DescriptorHeap::DescriptorHeap(std::shared_ptr<RootSignatureManager> rootSignatu
 	resources.resize(descriptorHeapSize);
 }
 
-void DescriptorHeap::setCBV(size_t entryNumber, const D3D12_CONSTANT_BUFFER_VIEW_DESC& cbvDescriptor, Microsoft::WRL::ComPtr<ID3D12Device> pDevice, const Microsoft::WRL::ComPtr<ID3D12Resource>& resource)
+void DescriptorHeap::setCBV(size_t entryNumber, const D3D12_CONSTANT_BUFFER_VIEW_DESC& cbvDescriptor, DXDevice pDevice, const DXResource& resource)
 {
 	if (rootSignatureManager->getDescriptorHeapRangeType(parameterName, entryNumber) != D3D12_DESCRIPTOR_RANGE_TYPE_CBV)
 		throw runtime_error("Entry " + to_string(entryNumber) + " in not of type CBV");
@@ -341,7 +344,7 @@ void DescriptorHeap::setCBV(size_t entryNumber, const D3D12_CONSTANT_BUFFER_VIEW
 	setResource(entryNumber, resource);
 }
 
-void DescriptorHeap::setUAV(size_t entryNumber, const D3D12_UNORDERED_ACCESS_VIEW_DESC& uavDescriptor, Microsoft::WRL::ComPtr<ID3D12Device> pDevice, Microsoft::WRL::ComPtr<ID3D12Resource> resource)
+void DescriptorHeap::setUAV(size_t entryNumber, const D3D12_UNORDERED_ACCESS_VIEW_DESC& uavDescriptor, DXDevice pDevice, DXResource resource)
 {
 	if (rootSignatureManager->getDescriptorHeapRangeType(parameterName, entryNumber) != D3D12_DESCRIPTOR_RANGE_TYPE_UAV)
 		throw runtime_error("Entry " + to_string(entryNumber) + " in not of type UAV");
@@ -349,7 +352,7 @@ void DescriptorHeap::setUAV(size_t entryNumber, const D3D12_UNORDERED_ACCESS_VIE
 	setResource(entryNumber, resource);
 }
 
-void DescriptorHeap::setSRV(size_t entryNumber, const D3D12_SHADER_RESOURCE_VIEW_DESC& srvDescriptor, Microsoft::WRL::ComPtr<ID3D12Device> pDevice, const Microsoft::WRL::ComPtr<ID3D12Resource>& resource)
+void DescriptorHeap::setSRV(size_t entryNumber, const D3D12_SHADER_RESOURCE_VIEW_DESC& srvDescriptor, DXDevice pDevice, const DXResource& resource)
 {
 	if (rootSignatureManager->getDescriptorHeapRangeType(parameterName, entryNumber) != D3D12_DESCRIPTOR_RANGE_TYPE_SRV)
 		throw runtime_error("Entry " + to_string(entryNumber) + " in not of type SRV");
@@ -385,14 +388,14 @@ size_t DescriptorHeap::getSetResourcesSize() const
 	return resources.size();
 }
 
-D3D12_CPU_DESCRIPTOR_HANDLE DescriptorHeap::getCpuDescHandle(size_t entryNumber, Microsoft::WRL::ComPtr<ID3D12Device> pDevice) const
+D3D12_CPU_DESCRIPTOR_HANDLE DescriptorHeap::getCpuDescHandle(size_t entryNumber, DXDevice pDevice) const
 {
 	D3D12_CPU_DESCRIPTOR_HANDLE cpuDescHandle = descriptorHeap->GetCPUDescriptorHandleForHeapStart();
 	cpuDescHandle.ptr += entryNumber * pDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 	return cpuDescHandle;
 }
 
-void DescriptorHeap::setResource(size_t entryNumber, Microsoft::WRL::ComPtr<ID3D12Resource> resource)
+void DescriptorHeap::setResource(size_t entryNumber, DXResource resource)
 {
 	resources[entryNumber].resource = resource;
 	resources[entryNumber].set = true;

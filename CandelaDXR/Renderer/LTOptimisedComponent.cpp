@@ -5,6 +5,7 @@
 using candela::renderer::LTOptimisedComponent;
 
 using candela::directx::DXUtil;
+using candela::directx::DXCommandList;
 
 LTOptimisedComponent::LTOptimisedComponent()
 	: rendererResources(), constBuffer()
@@ -21,7 +22,7 @@ float LTOptimisedComponent::getCausticsRatio() const
 	return constBuffer.causticsRatio;
 }
 
-void LTOptimisedComponent::init(RendererResources* rRes, wrl::ComPtr<ID3D12GraphicsCommandList>& pCurrentCommandList, ResourceRegFunction& resRegFn)
+void LTOptimisedComponent::init(RendererResources* rRes, DXCommandList& pCurrentCommandList, ResourceRegFunction& resRegFn)
 {
 	rendererResources = rRes;
 	constBuffer.numSpeculars = static_cast<uint32_t>(rRes->scene->getSpeculars().size());
@@ -31,7 +32,7 @@ void LTOptimisedComponent::init(RendererResources* rRes, wrl::ComPtr<ID3D12Graph
 	constantBuffer->SetName(L"LT Optimised Constant Buffer");
 }
 
-void LTOptimisedComponent::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, std::uint32_t currentBackBufferIndex)
+void LTOptimisedComponent::draw(DXCommandList pCurrentCommandList, std::uint32_t currentBackBufferIndex)
 {
 	DXUtil::updateDataInDefaultHeap(rendererResources->pDevice, pCurrentCommandList, constantBuffer, rendererResources->getTempResource(),
 		&constBuffer, sizeof(constBuffer), D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
@@ -42,7 +43,7 @@ void LTOptimisedComponent::accept(IVisitor* visitor)
 	visitor->visit(this);
 }
 
-void LTOptimisedComponent::onChange(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, std::uint32_t currentBackBufferIndex, ChangeEvent_t changeEvent)
+void LTOptimisedComponent::onChange(DXCommandList pCurrentCommandList, std::uint32_t currentBackBufferIndex, ChangeEvent_t changeEvent)
 {
 	if (changeEvent & static_cast<ChangeEvent_t>(ChangeEvent::SceneChange))
 		constBuffer.numSpeculars = static_cast<uint32_t>(rendererResources->scene->getSpeculars().size());

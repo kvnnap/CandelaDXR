@@ -14,7 +14,7 @@ namespace candela::renderer
 	{
 	public:
 		virtual ~IResource() = default;
-		virtual void init(RendererResources* rendererResources, wrl::ComPtr<ID3D12GraphicsCommandList>& pCurrentCommandList) = 0;
-		virtual void onChange(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, std::uint32_t currentBackBufferIndex, ChangeEvent_t changeEvent) = 0;
+		virtual void init(RendererResources* rendererResources, directx::DXCommandList& pCurrentCommandList) = 0;
+		virtual void onChange(directx::DXCommandList pCurrentCommandList, std::uint32_t currentBackBufferIndex, ChangeEvent_t changeEvent) = 0;
 	};
 }

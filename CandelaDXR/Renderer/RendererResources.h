@@ -25,15 +25,15 @@ namespace candela::renderer
 	struct RendererResources
 	{
 		Renderer* renderer{};
-		wrl::ComPtr<ID3D12Device> pDevice;
-		wrl::ComPtr<ID3D12Resource> sceneBuffer;
-		wrl::ComPtr<ID3D12Resource> materialBuffer;
-		wrl::ComPtr<ID3D12Resource> faceAttributeBuffer;
-		wrl::ComPtr<ID3D12Resource> lightBuffer;
-		wrl::ComPtr<ID3D12Resource> specularBuffer;
-		wrl::ComPtr<ID3D12Resource> matrices;
-		wrl::ComPtr<ID3D12Resource> normalMatrices;
-		wrl::ComPtr<ID3D12Resource> externalLights;
+		directx::DXDevice pDevice;
+		directx::DXResource sceneBuffer;
+		directx::DXResource materialBuffer;
+		directx::DXResource faceAttributeBuffer;
+		directx::DXResource lightBuffer;
+		directx::DXResource specularBuffer;
+		directx::DXResource matrices;
+		directx::DXResource normalMatrices;
+		directx::DXResource externalLights;
 		wrl::ComPtr<IDXGIAdapter> adapter;
 		std::vector<directx::Resource> textures;
 		wrl::ComPtr<ID3D12DescriptorHeap> pRTVDescriptorHeap;

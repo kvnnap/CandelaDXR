@@ -8,6 +8,8 @@ using std::string;
 using std::size_t;
 
 using candela::directx::DXUtil;
+using candela::directx::DXCommandList;
+using candela::directx::DXResource;
 
 using candela::renderer::RendererResources;
 using candela::renderer::AccelerationStructure;
@@ -17,7 +19,7 @@ AccelerationStructure::AccelerationStructure()
 {
 }
 
-void AccelerationStructure::init(RendererResources* rendererResources, wrl::ComPtr<ID3D12GraphicsCommandList>& pCurrentCommandList)
+void AccelerationStructure::init(RendererResources* rendererResources, DXCommandList& pCurrentCommandList)
 {
 	this->rendererResources = rendererResources;
 
@@ -58,13 +60,13 @@ void AccelerationStructure::init(RendererResources* rendererResources, wrl::ComP
 	DXUtil::buildTopLevelAS(rendererResources->pDevice, pCurrentCommandList, tlasInstanceData, rendererResources->getTempResource(), false, tlasBuffers);
 }
 
-void candela::renderer::AccelerationStructure::onChange(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, std::uint32_t currentBackBufferIndex, ChangeEvent_t changeEvent)
+void candela::renderer::AccelerationStructure::onChange(DXCommandList pCurrentCommandList, std::uint32_t currentBackBufferIndex, ChangeEvent_t changeEvent)
 {
 	if (changeEvent & static_cast<ChangeEvent_t>(ChangeEvent::Transformation))
 		buildTlas(pCurrentCommandList, tlasTempBuffer[currentBackBufferIndex]);
 }
 
-void AccelerationStructure::buildTlas(wrl::ComPtr<ID3D12GraphicsCommandList>& commandList, wrl::ComPtr<ID3D12Resource>& tempResource)
+void AccelerationStructure::buildTlas(DXCommandList& commandList, DXResource& tempResource)
 {
 	// Warning, we are assuming order - assuming scene graph structure isn't changing
 	auto tlas = tlasInstanceData.begin();

@@ -14,12 +14,12 @@ namespace candela::renderer
 		float getCausticsRatio() const;
 
 		// IDrawable
-		virtual void init(RendererResources* rendererResources, wrl::ComPtr<ID3D12GraphicsCommandList>& pCurrentCommandList, ResourceRegFunction& resRegFn) override;
-		virtual void draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, std::uint32_t currentBackBufferIndex) override;
+		virtual void init(RendererResources* rendererResources, directx::DXCommandList& pCurrentCommandList, ResourceRegFunction& resRegFn) override;
+		virtual void draw(directx::DXCommandList pCurrentCommandList, std::uint32_t currentBackBufferIndex) override;
 		virtual void accept(IVisitor* visitor) override;
 
 		// On matrix change
-		virtual void onChange(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, std::uint32_t currentBackBufferIndex, ChangeEvent_t changeEvent) override;
+		virtual void onChange(directx::DXCommandList pCurrentCommandList, std::uint32_t currentBackBufferIndex, ChangeEvent_t changeEvent) override;
 
 		// On window resize
 		virtual void onResize() override;
@@ -44,6 +44,6 @@ namespace candela::renderer
 			std::uint32_t numSpeculars;
 			float causticsRatio;
 		} constBuffer;
-		wrl::ComPtr<ID3D12Resource> constantBuffer;
+		directx::DXResource constantBuffer;
 	};
 }

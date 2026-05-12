@@ -11,13 +11,13 @@ namespace candela::directx
 	class CommandQueue
 	{
 	public:
-		CommandQueue(Microsoft::WRL::ComPtr<ID3D12Device> pDevice, D3D12_COMMAND_LIST_TYPE listType);
+		CommandQueue(DXDevice pDevice, D3D12_COMMAND_LIST_TYPE listType);
 		virtual ~CommandQueue();
 
 		Microsoft::WRL::ComPtr<ID3D12CommandQueue> getCommandQueue() const;
-		Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> getCommandList();
-		std::uint64_t executeCommandList(Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> commandList);
-		ID3D12CommandAllocator* getCommandAllocator(Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> commandList);
+		DXCommandList getCommandList();
+		std::uint64_t executeCommandList(DXCommandList commandList);
+		ID3D12CommandAllocator* getCommandAllocator(DXCommandList commandList);
 		std::uint64_t signal();
 		bool isFenceComplete(std::uint64_t fenceValue);
 		void waitForFenceValue(std::uint64_t fenceValue);
@@ -27,7 +27,7 @@ namespace candela::directx
 
 	protected:
 		Microsoft::WRL::ComPtr<ID3D12CommandAllocator> createCommandAllocator();
-		Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> createCommandList(Microsoft::WRL::ComPtr<ID3D12CommandAllocator> allocator);
+		DXCommandList createCommandList(Microsoft::WRL::ComPtr<ID3D12CommandAllocator> allocator);
 
 	private:
 
@@ -37,11 +37,11 @@ namespace candela::directx
 		};
 
 		using CommandAllocatorQueue = std::queue<CommandAllocatorEntry>;
-		using CommandListQueue = std::queue<Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList>>;
+		using CommandListQueue = std::queue<DXCommandList>;
 
 		//Data
 		D3D12_COMMAND_LIST_TYPE listType;
-		Microsoft::WRL::ComPtr<ID3D12Device> pDevice;
+		DXDevice pDevice;
 		Microsoft::WRL::ComPtr<ID3D12CommandQueue> pCommandQueue;
 
 		// Queues

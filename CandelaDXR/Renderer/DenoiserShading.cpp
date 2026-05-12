@@ -24,6 +24,7 @@ using std::vector;
 using candela::renderer::DenoiserShading;
 using candela::directx::RootSignatureManager;
 using candela::directx::Resource;
+using candela::directx::DXCommandList;
 using candela::directx::DescriptorHeap;
 using candela::directx::DXUtil;
 using candela::mathematics::UVector2;
@@ -84,7 +85,7 @@ static nri::AccessBits GetResourceState(D3D12_RESOURCE_STATES d3dResourceState)
 	return result;
 }
 
-void DenoiserShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12GraphicsCommandList>& pCurrentCommandList, ResourceRegFunction& resRegFn)
+void DenoiserShading::init(RendererResources* rRes, DXCommandList& pCurrentCommandList, ResourceRegFunction& resRegFn)
 {
 	rendererResources = rRes;
 
@@ -183,7 +184,7 @@ void DenoiserShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12GraphicsCo
 	// --- END NVIDIA Wrap device
 }
 
-void DenoiserShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, uint32_t currentBackBufferIndex)
+void DenoiserShading::draw(DXCommandList pCurrentCommandList, uint32_t currentBackBufferIndex)
 {
 	wrl::ComPtr<ID3D12DebugCommandList> pDbgCmdList;
 	pCurrentCommandList.As(&pDbgCmdList);
@@ -350,7 +351,7 @@ void DenoiserShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentComman
 	nrdCommonSettings.accumulationMode = nrd::AccumulationMode::CONTINUE;
 }
 
-void DenoiserShading::onChange(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, uint32_t currentBackBufferIndex, ChangeEvent_t changeEvent)
+void DenoiserShading::onChange(DXCommandList pCurrentCommandList, uint32_t currentBackBufferIndex, ChangeEvent_t changeEvent)
 {
 	if (changeEvent & static_cast<ChangeEvent_t>(ChangeEvent::Statistics))
 		clearHistory();
@@ -438,7 +439,7 @@ uint32_t DenoiserShading::getDenoiserSelected() const
 	return denoiserSelected;
 }
 
-void DenoiserShading::compute(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, uint32_t mode)
+void DenoiserShading::compute(DXCommandList pCurrentCommandList, uint32_t mode)
 {
 	out_diff_radiance_hitdist->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 	out_spec_radiance_hitdist->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);

@@ -38,12 +38,12 @@ namespace candela::renderer
 		};
 
 		// IDrawable
-		virtual void init(RendererResources* rendererResources, wrl::ComPtr<ID3D12GraphicsCommandList>& pCurrentCommandList, ResourceRegFunction& resRegFn) override;
-		virtual void draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, std::uint32_t currentBackBufferIndex) override;
+		virtual void init(RendererResources* rendererResources, directx::DXCommandList& pCurrentCommandList, ResourceRegFunction& resRegFn) override;
+		virtual void draw(directx::DXCommandList pCurrentCommandList, std::uint32_t currentBackBufferIndex) override;
 		virtual void accept(IVisitor* visitor) override;
 
 		// On matrix change
-		virtual void onChange(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, std::uint32_t currentBackBufferIndex, ChangeEvent_t changeEvent) override;
+		virtual void onChange(directx::DXCommandList pCurrentCommandList, std::uint32_t currentBackBufferIndex, ChangeEvent_t changeEvent) override;
 
 		// On window resize
 		virtual void onResize() override;
@@ -68,15 +68,15 @@ namespace candela::renderer
 		const char* getName() const override;
 	private:
 		bool isExternalLight(std::uint32_t lightIndex) const;
-		void generateCDF(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, std::uint32_t currentBackBufferIndex, std::uint32_t lightIndex);
-		void regenerateCDFs(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, std::uint32_t currentBackBufferIndex);
+		void generateCDF(directx::DXCommandList pCurrentCommandList, std::uint32_t currentBackBufferIndex, std::uint32_t lightIndex);
+		void regenerateCDFs(directx::DXCommandList pCurrentCommandList, std::uint32_t currentBackBufferIndex);
 		void regenImpMetaVec(std::uint32_t lightIndex);
 
 		sampler::ISampler* sampler;
 
 		RendererResources *rendererResources;
-		wrl::ComPtr<ID3D12Resource> constantBuffer;
-		wrl::ComPtr<ID3D12Resource> impMetaBuffer;
+		directx::DXResource constantBuffer;
+		directx::DXResource impMetaBuffer;
 		std::vector<ImportanceMetadata> impMetaVec;
 
 		mathematics::UVector2 cdfSize;

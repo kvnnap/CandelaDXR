@@ -131,7 +131,7 @@ namespace candela::renderer
 		void resize();
 		void refreshMaterialResources();
 		void bindComputePipeline();
-		void dispatchCompute(wrl::ComPtr<ID3D12GraphicsCommandList>& pCurrentCommandList, const AccumConstBuff& c32Data);
+		void dispatchCompute(directx::DXCommandList& pCurrentCommandList, const AccumConstBuff& c32Data);
 		bool isRecording() const;
 		void recordingChange();
 		directx::DXResource& getTempResource();
@@ -148,9 +148,9 @@ namespace candela::renderer
 
 		// DirectX
 		const std::uint32_t adapterIndex;
-		wrl::ComPtr<ID3D12Device> pDevice;
+		directx::DXDevice pDevice;
 		std::unique_ptr<directx::CommandQueue> commandQueue;
-		wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList;
+		directx::DXCommandList pCurrentCommandList;
 
 		static constexpr UINT NumBackBuffers = 2;
 		wrl::ComPtr<IDXGIFactory> dxgiFactory;
@@ -181,14 +181,14 @@ namespace candela::renderer
 		// Scene
 		scene::Scene *scene;
 		Camera *camera;
-		wrl::ComPtr<ID3D12Resource> sceneBuffer;
-		wrl::ComPtr<ID3D12Resource> faceAttributeBuffer;
-		wrl::ComPtr<ID3D12Resource> materialBuffer;
-		wrl::ComPtr<ID3D12Resource> lightBuffer;
-		wrl::ComPtr<ID3D12Resource> specularBuffer;
-		wrl::ComPtr<ID3D12Resource> matrices;
-		wrl::ComPtr<ID3D12Resource> normalMatrices;
-		wrl::ComPtr<ID3D12Resource> externalLights;
+		directx::DXResource sceneBuffer;
+		directx::DXResource faceAttributeBuffer;
+		directx::DXResource materialBuffer;
+		directx::DXResource lightBuffer;
+		directx::DXResource specularBuffer;
+		directx::DXResource matrices;
+		directx::DXResource normalMatrices;
+		directx::DXResource externalLights;
 		std::vector<directx::Resource> textures;
 
 		// Chain

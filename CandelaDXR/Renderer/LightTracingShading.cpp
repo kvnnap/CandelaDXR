@@ -35,6 +35,8 @@ using candela::directx::ShadingTable;
 using candela::directx::DescriptorHeap;
 using candela::directx::ShadingRecordType;
 using candela::directx::Resource;
+using candela::directx::DXResource;
+using candela::directx::DXCommandList;
 
 using candela::renderer::LightTracingShading;
 using candela::renderer::ILightTracingComponent;
@@ -61,7 +63,7 @@ LightTracingShading::LightTracingShading(unique_ptr<ISampler> sampler, UVector2 
 {
 }
 
-void LightTracingShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12GraphicsCommandList> &pCurrentCommandList, ResourceRegFunction& resRegFn)
+void LightTracingShading::init(RendererResources* rRes, DXCommandList &pCurrentCommandList, ResourceRegFunction& resRegFn)
 {
 	if (!DXUtil::checkDeviceRTSupport(rRes->pDevice))
 		ThrowException("Ray tracing is not supported on this device");
@@ -130,7 +132,7 @@ void LightTracingShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12Graphi
 	//guassianCS.setFiltersize(17);
 }
 
-void LightTracingShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> currentCommandList, uint32_t currentBackBufferIndex)
+void LightTracingShading::draw(DXCommandList currentCommandList, uint32_t currentBackBufferIndex)
 {
 	auto& ltShader = ltShaders[currentShader];
 
@@ -343,7 +345,7 @@ void LightTracingShading::buildPipeline()
 	GFXTHROWIFFAILED(pDevice5->CreatePipelineState(&pipelineStateStreamDesc, IID_PPV_ARGS(&computePipelineState)));
 }
 
-void LightTracingShading::createShaderResources(wrl::ComPtr<ID3D12GraphicsCommandList>& commandList)
+void LightTracingShading::createShaderResources(DXCommandList& commandList)
 {
 	const auto& dim = rendererResources->winDimensions;
 
@@ -423,7 +425,7 @@ void LightTracingShading::createShaderResources(wrl::ComPtr<ID3D12GraphicsComman
 	computeDescriptorHeap = cmpDescHeapManager.getDescriptorHeap();
 }
 
-void LightTracingShading::createShaderTable(wrl::ComPtr<ID3D12GraphicsCommandList> &commandList)
+void LightTracingShading::createShaderTable(DXCommandList &commandList)
 {
 	for (auto& ltShader : ltShaders)
 	{
@@ -455,7 +457,7 @@ void LightTracingShading::createShaderTable(wrl::ComPtr<ID3D12GraphicsCommandLis
 	}
 }
 
-void LightTracingShading::generateIrrToRadTexture(wrl::ComPtr<ID3D12GraphicsCommandList>& commandList, wrl::ComPtr<ID3D12Resource>& tempResource)
+void LightTracingShading::generateIrrToRadTexture(DXCommandList& commandList, DXResource& tempResource)
 {
 	// Compute irradianceToRadianceConstants
 	const auto& dim = rendererResources->winDimensions;
@@ -467,7 +469,7 @@ void LightTracingShading::generateIrrToRadTexture(wrl::ComPtr<ID3D12GraphicsComm
 	irrToRad->write(commandList, tempResource, irradianceToRadianceConstants.data());
 }
 
-void LightTracingShading::onChange(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, uint32_t currentBackBufferIndex, ChangeEvent_t changeEvent)
+void LightTracingShading::onChange(DXCommandList pCurrentCommandList, uint32_t currentBackBufferIndex, ChangeEvent_t changeEvent)
 {
 	if (changeEvent & static_cast<ChangeEvent_t>(ChangeEvent::SceneChange))
 	{
@@ -494,7 +496,7 @@ void LightTracingShading::onChange(wrl::ComPtr<ID3D12GraphicsCommandList> pCurre
 void LightTracingShading::onResize()
 {
 	auto commandList = rendererResources->commandQueue->getCommandList();
-	wrl::ComPtr<ID3D12Resource> irrToRadTempBuffer;
+	DXResource irrToRadTempBuffer;
 	generateIrrToRadTexture(commandList, irrToRadTempBuffer);
 	guassianCS.bindResources();
 	guassianCS.setInputTexture(static_cast<uint32_t>(guassResources.size() - 1));

@@ -17,6 +17,7 @@ using std::uint32_t;
 using candela::mathematics::UVector2;
 using candela::mathematics::GaussIntegral;
 using candela::directx::DXUtil;
+using candela::directx::DXCommandList;
 using candela::directx::DescriptorHeap;
 using candela::directx::RootSignatureManager;
 using candela::renderer::SingleIOComputeShader;
@@ -30,7 +31,7 @@ SingleIOComputeShader::SingleIOComputeShader(const string& shaderPath, bool laun
 {
 }
 
-void SingleIOComputeShader::init(RendererResources* rendererResources, wrl::ComPtr<ID3D12GraphicsCommandList>& pCurrentCommandList, std::vector<directx::Resource*>* res, uint32_t numOutputs, uint32_t numInputs)
+void SingleIOComputeShader::init(RendererResources* rendererResources, DXCommandList& pCurrentCommandList, std::vector<directx::Resource*>* res, uint32_t numOutputs, uint32_t numInputs)
 {
 	this->rendererResources = rendererResources;
 	resourceManager = rendererResources->resourceManager.get();
@@ -83,7 +84,7 @@ void SingleIOComputeShader::init(RendererResources* rendererResources, wrl::ComP
 	initComponent(rendererResources, pCurrentCommandList);
 }
 
-void SingleIOComputeShader::compute(wrl::ComPtr<ID3D12GraphicsCommandList> currentCommandList)
+void SingleIOComputeShader::compute(DXCommandList currentCommandList)
 {
 	inputTexture->getAspectRatio();
 	auto dim = inputTexture->getDimensions();
@@ -151,18 +152,18 @@ void SingleIOComputeShader::bindAdditionalResources(UINT baseIndex)
 {
 }
 
-void SingleIOComputeShader::updateData(wrl::ComPtr<ID3D12GraphicsCommandList> currentCommandList)
+void SingleIOComputeShader::updateData(DXCommandList currentCommandList)
 {
 }
 
-void SingleIOComputeShader::dispatch(wrl::ComPtr<ID3D12GraphicsCommandList> currentCommandList)
+void SingleIOComputeShader::dispatch(DXCommandList currentCommandList)
 {
 	auto dim = inputTexture->getDimensions();
 	auto launchDimensions = getLaunchDimensions(dim);
 	currentCommandList->Dispatch(launchDimensions.x, launchDimensions.y, 1u);
 }
 
-void SingleIOComputeShader::initComponent(RendererResources* rendererResources, wrl::ComPtr<ID3D12GraphicsCommandList>& pCurrentCommandList)
+void SingleIOComputeShader::initComponent(RendererResources* rendererResources, DXCommandList& pCurrentCommandList)
 {
 }
 
@@ -230,7 +231,7 @@ void PrefixSumComputeShader::bindAdditionalResources(UINT baseIndex)
 	descHeapManager->setUAV(baseIndex, uavDesc, pDevice, *scratchResource);
 }
 
-void PrefixSumComputeShader::dispatch(wrl::ComPtr<ID3D12GraphicsCommandList> currentCommandList)
+void PrefixSumComputeShader::dispatch(DXCommandList currentCommandList)
 {
 	auto dim = inputTexture->getDimensions();
 	auto launchDimensions = getLaunchDimensions(dim);
@@ -295,14 +296,14 @@ void FilterComputeShader::bindAdditionalResources(UINT baseIndex)
 	descHeapManager->setUAV(baseIndex++, uavDesc, pDevice, *scratchResource);
 }
 
-void FilterComputeShader::updateData(wrl::ComPtr<ID3D12GraphicsCommandList> currentCommandList)
+void FilterComputeShader::updateData(DXCommandList currentCommandList)
 {
 	if (changed)
 		cbvResource->write(currentCommandList, rendererResources->getTempResource(), linearFilterCoeff.data());
 	changed = false;
 }
 
-void FilterComputeShader::dispatch(wrl::ComPtr<ID3D12GraphicsCommandList> currentCommandList)
+void FilterComputeShader::dispatch(DXCommandList currentCommandList)
 {
 	auto dim = inputTexture->getDimensions();
 	auto launchDimensions = getLaunchDimensions(dim);
@@ -322,7 +323,7 @@ void FilterComputeShader::dispatch(wrl::ComPtr<ID3D12GraphicsCommandList> curren
 	currentCommandList->Dispatch(launchDimensions.x, launchDimensions.y, 1u);
 }
 
-void FilterComputeShader::initComponent(RendererResources* rendererResources, wrl::ComPtr<ID3D12GraphicsCommandList>& pCurrentCommandList)
+void FilterComputeShader::initComponent(RendererResources* rendererResources, DXCommandList& pCurrentCommandList)
 {
 	cbvResource = &resourceManager->createResource(D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_FLAG_NONE, static_cast<UINT>(MaxSize * sizeof(float)));
 	cbvResource->setName("Gaussian Constant Data");
@@ -409,7 +410,7 @@ void DistanceComputeShader::bindAdditionalResources(UINT baseIndex)
 
 }
 
-void DistanceComputeShader::updateData(wrl::ComPtr<ID3D12GraphicsCommandList> currentCommandList)
+void DistanceComputeShader::updateData(DXCommandList currentCommandList)
 {
 	faceIndexResource->transistionBarrier(currentCommandList, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 	normalResource->transistionBarrier(currentCommandList, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
@@ -419,7 +420,7 @@ void DistanceComputeShader::updateData(wrl::ComPtr<ID3D12GraphicsCommandList> cu
 	constBufferResource->write(currentCommandList, rendererResources->getTempResource(), &distConstBuffer);
 }
 
-void DistanceComputeShader::dispatch(wrl::ComPtr<ID3D12GraphicsCommandList> currentCommandList)
+void DistanceComputeShader::dispatch(DXCommandList currentCommandList)
 {
 	SingleIOComputeShader::dispatch(currentCommandList);
 	faceIndexResource->transistionBarrier(currentCommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);

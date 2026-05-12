@@ -15,6 +15,7 @@ using Microsoft::WRL::ComPtr;
 using candela::renderer::ExternalObjectDebugShading;
 using candela::mathematics::Vector3;
 using candela::directx::DXUtil;
+using candela::directx::DXCommandList;
 using candela::directx::RootSignatureManager;
 using candela::mathematics::Plane;
 
@@ -24,7 +25,7 @@ ExternalObjectDebugShading::ExternalObjectDebugShading()
 	setName("EODebug");
 }
 
-void ExternalObjectDebugShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12GraphicsCommandList>& pCurrentCommandList, ResourceRegFunction& resRegFn)
+void ExternalObjectDebugShading::init(RendererResources* rRes, DXCommandList& pCurrentCommandList, ResourceRegFunction& resRegFn)
 {
 	this->rendererResources = rRes;
 	// Handle result used for errors
@@ -117,7 +118,7 @@ void ExternalObjectDebugShading::init(RendererResources* rRes, wrl::ComPtr<ID3D1
 	updateBuffer(pCurrentCommandList);
 }
 
-void ExternalObjectDebugShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, std::uint32_t currentBackBufferIndex)
+void ExternalObjectDebugShading::draw(DXCommandList pCurrentCommandList, std::uint32_t currentBackBufferIndex)
 {
 	if (needsUpdate)
 		updateBuffer(pCurrentCommandList);
@@ -159,7 +160,7 @@ void ExternalObjectDebugShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCu
 	pCurrentCommandList->DrawInstanced(static_cast<UINT>(vertices.size()), 1u, 0u, 0u);
 }
 
-void ExternalObjectDebugShading::onChange(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList,
+void ExternalObjectDebugShading::onChange(DXCommandList pCurrentCommandList,
 	std::uint32_t currentBackBufferIndex, ChangeEvent_t changeEvent)
 {
 	if (changeEvent & static_cast<ChangeEvent_t>(ChangeEvent::Transformation) | changeEvent & static_cast<ChangeEvent_t>(ChangeEvent::SceneChange))
@@ -216,7 +217,7 @@ bool ExternalObjectDebugShading::getDisplaySceneAabb() const
 	return displaySceneAabb;
 }
 
-void ExternalObjectDebugShading::updateBuffer(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList)
+void ExternalObjectDebugShading::updateBuffer(DXCommandList pCurrentCommandList)
 {
 	if (!isEnabled())
 		return;

@@ -29,6 +29,8 @@ using Microsoft::WRL::ComPtr;
 
 using candela::directx::DXUtil;
 using candela::directx::Resource;
+using candela::directx::DXDevice;
+using candela::directx::DXResource;
 
 void DXUtil::enableDebugLayer()
 {
@@ -38,7 +40,7 @@ void DXUtil::enableDebugLayer()
 	debugInterface->EnableDebugLayer();
 }
 
-void DXUtil::setupDebugLayer(ComPtr<ID3D12Device> pDevice, bool breakEnabled)
+void DXUtil::setupDebugLayer(DXDevice pDevice, bool breakEnabled)
 {
 	HRESULT hr;
 	ComPtr<ID3D12InfoQueue> infoQueue;
@@ -173,7 +175,7 @@ vector<ComPtr<IDXGIAdapter>> DXUtil::getAdapters(ComPtr<IDXGIFactory> dxgiFactor
 	return adapters;
 }
 
-bool DXUtil::checkDeviceRTSupport(ComPtr<ID3D12Device> device)
+bool DXUtil::checkDeviceRTSupport(DXDevice device)
 {
 	HRESULT hr;
 	D3D12_FEATURE_DATA_D3D12_OPTIONS5 features5 = {};
@@ -189,10 +191,10 @@ bool DXUtil::checkDeviceRTSupport(ComPtr<IDXGIAdapter> adapter, D3D_FEATURE_LEVE
 	return features5.RaytracingTier != D3D12_RAYTRACING_TIER_NOT_SUPPORTED;
 }
 
-ComPtr<ID3D12Device> DXUtil::createDeviceFromAdapter(ComPtr<IDXGIAdapter> adapter, D3D_FEATURE_LEVEL featureLevel)
+DXDevice DXUtil::createDeviceFromAdapter(ComPtr<IDXGIAdapter> adapter, D3D_FEATURE_LEVEL featureLevel)
 {
 	HRESULT hr;
-	ComPtr<ID3D12Device> pDevice;
+	DXDevice pDevice;
 	GFXTHROWIFFAILED(D3D12CreateDevice(adapter.Get(), featureLevel, IID_PPV_ARGS(&pDevice)));
 	return pDevice;
 }
@@ -211,7 +213,7 @@ ComPtr<IDXGIFactory> DXUtil::createDXGIFactory(bool debugEnabled)
 	return dxgiFactory;
 }
 
-ComPtr<ID3D12DescriptorHeap> DXUtil::createDescriptorHeap(ComPtr<ID3D12Device> device, UINT count, D3D12_DESCRIPTOR_HEAP_TYPE type, bool shaderVisible)
+ComPtr<ID3D12DescriptorHeap> DXUtil::createDescriptorHeap(DXDevice device, UINT count, D3D12_DESCRIPTOR_HEAP_TYPE type, bool shaderVisible)
 {
 	HRESULT hr;
 	ComPtr<ID3D12DescriptorHeap> descriptorHeap;
@@ -257,13 +259,13 @@ ComPtr<IDXGISwapChain> DXUtil::createSwapChain(ComPtr<IDXGIFactory> dxgiFactory,
 	return swapChain;
 }
 
-std::vector<ComPtr<ID3D12Resource>> DXUtil::createRenderTargetViews(
-	ComPtr<ID3D12Device> device,
+std::vector<DXResource> DXUtil::createRenderTargetViews(
+	DXDevice device,
 	ComPtr<ID3D12DescriptorHeap> descriptorHeap,
 	ComPtr<IDXGISwapChain> swapChain,
 	UINT numRTV)
 {
-	std::vector<ComPtr<ID3D12Resource>> backBuffers(numRTV);
+	std::vector<DXResource> backBuffers(numRTV);
 
 	auto pRTVDescriptorSize = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(descriptorHeap->GetCPUDescriptorHandleForHeapStart());
@@ -282,12 +284,12 @@ std::vector<ComPtr<ID3D12Resource>> DXUtil::createRenderTargetViews(
 }
 
 vector<shared_ptr<Resource>> DXUtil::createRenderTargetViewsEx(
-	ComPtr<ID3D12Device> device,
+	DXDevice device,
 	ComPtr<ID3D12DescriptorHeap> descriptorHeap,
 	ComPtr<IDXGISwapChain> swapChain,
 	const vector<Resource*>& textureTargets, UINT numRTV)
 {
-	vector<ComPtr<ID3D12Resource>> conv;
+	vector<DXResource> conv;
 	conv.reserve(textureTargets.size());
 	for (auto& t : textureTargets)
 		conv.push_back(*t);
@@ -296,10 +298,10 @@ vector<shared_ptr<Resource>> DXUtil::createRenderTargetViewsEx(
 
 // Fills in heap for texture targets and the coupled swap chain render targets
 vector<shared_ptr<Resource>> DXUtil::createRenderTargetViewsEx(
-	ComPtr<ID3D12Device> device, 
+	DXDevice device, 
 	ComPtr<ID3D12DescriptorHeap> descriptorHeap, 
 	ComPtr<IDXGISwapChain> swapChain,
-	vector<ComPtr<ID3D12Resource>>& textureTargets, UINT numRTV)
+	vector<DXResource>& textureTargets, UINT numRTV)
 {
 	auto rtvDescSize = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(descriptorHeap->GetCPUDescriptorHandleForHeapStart());
@@ -308,7 +310,7 @@ vector<shared_ptr<Resource>> DXUtil::createRenderTargetViewsEx(
 	HRESULT hr;
 	vector<shared_ptr<Resource>> backBuffers;
 	for (UINT i = 0; i < numRTV; ++i) {
-		ComPtr<ID3D12Resource> res;
+		DXResource res;
 		GFXTHROWIFFAILED(swapChain->GetBuffer(i, IID_PPV_ARGS(&res)));
 		backBuffers.emplace_back(std::make_shared<Resource>(res, D3D12_RESOURCE_STATE_PRESENT));
 		device->CreateRenderTargetView(*backBuffers[i], nullptr, rtvHandle);
@@ -326,13 +328,13 @@ vector<shared_ptr<Resource>> DXUtil::createRenderTargetViewsEx(
 	return backBuffers;
 }
 
-std::vector<ComPtr<ID3D12Resource>> DXUtil::createDepthStencilView(
-	ComPtr<ID3D12Device> device,
+std::vector<DXResource> DXUtil::createDepthStencilView(
+	DXDevice device,
 	ComPtr<ID3D12DescriptorHeap> depthDescriptorHeap,
 	UINT winWidth, UINT winHeight,
 	UINT numDSV)
 {
-	std::vector<ComPtr<ID3D12Resource>> depthBuffers(numDSV);
+	std::vector<DXResource> depthBuffers(numDSV);
 
 	auto pDSVDescriptorSize = device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
 	CD3DX12_CPU_DESCRIPTOR_HANDLE dsvHandle(depthDescriptorHeap->GetCPUDescriptorHandleForHeapStart());
@@ -371,9 +373,9 @@ std::vector<ComPtr<ID3D12Resource>> DXUtil::createDepthStencilView(
 	return depthBuffers;
 }
 
-ComPtr<ID3D12Resource> DXUtil::createCommittedResource(ComPtr<ID3D12Device> device, D3D12_HEAP_TYPE heapType, UINT64 size, D3D12_RESOURCE_STATES resourceState, D3D12_RESOURCE_FLAGS resourceFlags, D3D12_CLEAR_VALUE* clearValue)
+DXResource DXUtil::createCommittedResource(DXDevice device, D3D12_HEAP_TYPE heapType, UINT64 size, D3D12_RESOURCE_STATES resourceState, D3D12_RESOURCE_FLAGS resourceFlags, D3D12_CLEAR_VALUE* clearValue)
 {
-	ComPtr<ID3D12Resource> buffer;
+	DXResource buffer;
 
 	HRESULT hr;
 	auto heapPropDesc = CD3DX12_HEAP_PROPERTIES(heapType);
@@ -390,9 +392,9 @@ ComPtr<ID3D12Resource> DXUtil::createCommittedResource(ComPtr<ID3D12Device> devi
 	return buffer;
 }
 
-ComPtr<ID3D12Resource> DXUtil::createTextureCommittedResource(ComPtr<ID3D12Device> device, D3D12_HEAP_TYPE heapType, UINT64 width, UINT height, D3D12_RESOURCE_STATES resourceState, D3D12_RESOURCE_FLAGS resourceFlags, DXGI_FORMAT format, D3D12_CLEAR_VALUE* clearValue)
+DXResource DXUtil::createTextureCommittedResource(DXDevice device, D3D12_HEAP_TYPE heapType, UINT64 width, UINT height, D3D12_RESOURCE_STATES resourceState, D3D12_RESOURCE_FLAGS resourceFlags, DXGI_FORMAT format, D3D12_CLEAR_VALUE* clearValue)
 {
-	ComPtr<ID3D12Resource> buffer;
+	DXResource buffer;
 
 	// TODO: Check - Do we need mip level 1 for Ray Tracing?
 	HRESULT hr;
@@ -410,20 +412,20 @@ ComPtr<ID3D12Resource> DXUtil::createTextureCommittedResource(ComPtr<ID3D12Devic
 	return buffer;
 }
 
-ComPtr<ID3D12Resource> DXUtil::uploadDataToDefaultHeap(ComPtr<ID3D12Device> pDevice, ComPtr<ID3D12GraphicsCommandList> pCommandList, ComPtr<ID3D12Resource>& tempResource, const void* ptData, std::size_t dataSize, D3D12_RESOURCE_STATES finalState)
+DXResource DXUtil::uploadDataToDefaultHeap(DXDevice pDevice, DXCommandList pCommandList, DXResource& tempResource, const void* ptData, std::size_t dataSize, D3D12_RESOURCE_STATES finalState)
 {
 	// Upload buffer to gpu
-	ComPtr<ID3D12Resource> defaultResource = DXUtil::createCommittedResource(pDevice, D3D12_HEAP_TYPE_DEFAULT, dataSize, D3D12_RESOURCE_STATE_COMMON);
+	DXResource defaultResource = DXUtil::createCommittedResource(pDevice, D3D12_HEAP_TYPE_DEFAULT, dataSize, D3D12_RESOURCE_STATE_COMMON);
 
 	updateDataInDefaultHeap(pDevice, pCommandList, defaultResource, tempResource, ptData, dataSize, D3D12_RESOURCE_STATE_COMMON, finalState);
 
 	return defaultResource;
 }
 
-ComPtr<ID3D12Resource> DXUtil::uploadTextureDataToDefaultHeap(ComPtr<ID3D12Device> device, ComPtr<ID3D12GraphicsCommandList> pCommandList, ComPtr<ID3D12Resource>& tempResource, const void* ptData, std::size_t width, std::size_t height, std::size_t bitsPerPixel, DXGI_FORMAT format, D3D12_RESOURCE_STATES finalState)
+DXResource DXUtil::uploadTextureDataToDefaultHeap(DXDevice device, DXCommandList pCommandList, DXResource& tempResource, const void* ptData, std::size_t width, std::size_t height, std::size_t bitsPerPixel, DXGI_FORMAT format, D3D12_RESOURCE_STATES finalState)
 {
 	// create texture
-	ComPtr<ID3D12Resource> texResource = createTextureCommittedResource(device, D3D12_HEAP_TYPE_DEFAULT, width, static_cast<UINT>(height), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_FLAG_NONE, format);
+	DXResource texResource = createTextureCommittedResource(device, D3D12_HEAP_TYPE_DEFAULT, width, static_cast<UINT>(height), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_FLAG_NONE, format);
 
 	const UINT64 uploadBufferSize = GetRequiredIntermediateSize(texResource.Get(), 0, 1);
 	//const UINT64 uploadBufferSize = width * height * 4;
@@ -443,7 +445,7 @@ ComPtr<ID3D12Resource> DXUtil::uploadTextureDataToDefaultHeap(ComPtr<ID3D12Devic
 	return texResource;
 }
 
-void DXUtil::updateDataInDefaultHeap(ComPtr<ID3D12Device> pDevice, ComPtr<ID3D12GraphicsCommandList> pCommandList, ComPtr<ID3D12Resource>& resource, ComPtr<ID3D12Resource>& tempResource, const void* ptData, std::size_t dataSize, D3D12_RESOURCE_STATES previousState, D3D12_RESOURCE_STATES finalState)
+void DXUtil::updateDataInDefaultHeap(DXDevice pDevice, DXCommandList pCommandList, DXResource& resource, DXResource& tempResource, const void* ptData, std::size_t dataSize, D3D12_RESOURCE_STATES previousState, D3D12_RESOURCE_STATES finalState)
 {
 	// Transition to correct state
 	if (previousState != D3D12_RESOURCE_STATE_COPY_DEST) {
@@ -465,7 +467,7 @@ void DXUtil::updateDataInDefaultHeap(ComPtr<ID3D12Device> pDevice, ComPtr<ID3D12
 }
 
 
-ComPtr<ID3D12RootSignature> DXUtil::createRootSignature(ComPtr<ID3D12Device> pDevice, const D3D12_VERSIONED_ROOT_SIGNATURE_DESC& rootSignatureDesc)
+ComPtr<ID3D12RootSignature> DXUtil::createRootSignature(DXDevice pDevice, const D3D12_VERSIONED_ROOT_SIGNATURE_DESC& rootSignatureDesc)
 {
 	// Check which root signature version we support - 1.1 is better than 1.0...
 	// Root signature - https://docs.microsoft.com/en-us/windows/desktop/direct3d12/root-signatures-overview
@@ -490,17 +492,17 @@ ComPtr<ID3D12RootSignature> DXUtil::createRootSignature(ComPtr<ID3D12Device> pDe
 	return rootSignature;
 }
 
-ComPtr<ID3D12Device> DXUtil::createRTDeviceFromAdapter(ComPtr<IDXGIAdapter> adapter, D3D_FEATURE_LEVEL featureLevel)
+DXDevice DXUtil::createRTDeviceFromAdapter(ComPtr<IDXGIAdapter> adapter, D3D_FEATURE_LEVEL featureLevel)
 {
-	ComPtr<ID3D12Device> pDevice = createDeviceFromAdapter(adapter, featureLevel);
+	DXDevice pDevice = createDeviceFromAdapter(adapter, featureLevel);
 	if (!checkDeviceRTSupport(pDevice))
 		ThrowException("Ray tracing is not supported on this device");
 	return pDevice;
 }
 
 DXUtil::AccelerationStructureBuffers DXUtil::createBottomLevelAS(
-	ComPtr<ID3D12Device> pDevice,
-	ComPtr<ID3D12GraphicsCommandList> pCommandList,
+	DXDevice pDevice,
+	DXCommandList pCommandList,
 	const std::vector<BottomLevelAccelerationData>& blasData,
 	UINT vertexSize)
 {
@@ -561,10 +563,10 @@ DXUtil::AccelerationStructureBuffers DXUtil::createBottomLevelAS(
 }
 
 void DXUtil::buildTopLevelAS(
-	ComPtr<ID3D12Device> pDevice,
-	ComPtr<ID3D12GraphicsCommandList> pCommandList,
+	DXDevice pDevice,
+	DXCommandList pCommandList,
 	const std::vector<TopLevelAccelerationData>& instanceData,
-	ComPtr<ID3D12Resource>& tlasTempBuffer,
+	DXResource& tlasTempBuffer,
 	bool update,
 	DXUtil::AccelerationStructureBuffers& tlasBuffers)
 {
@@ -663,7 +665,7 @@ D3D12_STATIC_SAMPLER_DESC DXUtil::getDefaultSamplerDesc()
 	return sampler;
 }
 
-ComPtr<ID3D12QueryHeap> DXUtil::createQueryHeap(ComPtr<ID3D12Device> pDevice, UINT heapSize)
+ComPtr<ID3D12QueryHeap> DXUtil::createQueryHeap(DXDevice pDevice, UINT heapSize)
 {
 	HRESULT hr{};
 	ComPtr<ID3D12QueryHeap> queryHeap;

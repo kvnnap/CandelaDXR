@@ -28,9 +28,9 @@ namespace candela::renderer
 	public:
 		RasterShading(bool computeGBuffer = false);
 
-		void init(RendererResources* rendererResources, wrl::ComPtr<ID3D12GraphicsCommandList>& pCurrentCommandList, ResourceRegFunction& resRegFn) override;
-		void draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, std::uint32_t currentBackBufferIndex) override;
-		void onChange(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, std::uint32_t currentBackBufferIndex, ChangeEvent_t changeEvent) override;
+		void init(RendererResources* rendererResources, directx::DXCommandList& pCurrentCommandList, ResourceRegFunction& resRegFn) override;
+		void draw(directx::DXCommandList pCurrentCommandList, std::uint32_t currentBackBufferIndex) override;
+		void onChange(directx::DXCommandList pCurrentCommandList, std::uint32_t currentBackBufferIndex, ChangeEvent_t changeEvent) override;
 		void onResize() override;
 		void accept(IVisitor* visitor) override;
 		std::uint32_t getBufferUsage() const override;
@@ -71,7 +71,7 @@ namespace candela::renderer
 		const UINT numRenderTargets;
 
 		wrl::ComPtr<ID3D12DescriptorHeap> pDepthDescriptorHeap;
-		wrl::ComPtr<ID3D12Resource> constantBuffer;
+		directx::DXResource constantBuffer;
 		wrl::ComPtr<ID3D12PipelineState> pipelineState;
 
 		std::shared_ptr<directx::RootSignatureManager> rootSignatureManager;

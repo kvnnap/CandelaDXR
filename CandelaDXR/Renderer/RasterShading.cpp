@@ -23,6 +23,7 @@ using candela::renderer::ResPtrVec;
 using candela::directx::DXUtil;
 using candela::directx::RootSignatureManager;
 using candela::directx::DescriptorHeap;
+using candela::directx::DXCommandList;
 using candela::directx::Resource;
 using DirectX::XMMATRIX;
 using std::make_shared;
@@ -50,7 +51,7 @@ RasterShading::RasterShading(bool computeGBuffer)
 	constBuffer.computeRadiance = 1;
 }
 
-void RasterShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12GraphicsCommandList>& pCurrentCommandList, ResourceRegFunction& resRegFn)
+void RasterShading::init(RendererResources* rRes, DXCommandList& pCurrentCommandList, ResourceRegFunction& resRegFn)
 {
 	this->rendererResources = rRes;
 	if (!camera)
@@ -206,7 +207,7 @@ void RasterShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12GraphicsComm
 	resize(winDimensions);
 }
 
-void RasterShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, uint32_t currentBackBufferIndex)
+void RasterShading::draw(DXCommandList pCurrentCommandList, uint32_t currentBackBufferIndex)
 {
 	// Clear Depth
 	CD3DX12_CPU_DESCRIPTOR_HANDLE dsvDescriptorHandle(pDepthDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), 0, dsvDescriptorSize);
@@ -279,7 +280,7 @@ void RasterShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandL
 	}
 }
 
-void RasterShading::onChange(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, uint32_t currentBackBufferIndex, ChangeEvent_t changeEvent)
+void RasterShading::onChange(DXCommandList pCurrentCommandList, uint32_t currentBackBufferIndex, ChangeEvent_t changeEvent)
 {
 	if (changeEvent & static_cast<ChangeEvent_t>(ChangeEvent::SceneChange))
 		constBuffer.numLights = static_cast<uint32_t>(rendererResources->scene->getLights().size());

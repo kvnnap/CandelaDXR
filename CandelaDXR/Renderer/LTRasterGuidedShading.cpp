@@ -8,6 +8,7 @@ using std::uint32_t;
 
 using candela::renderer::Camera;
 using candela::directx::DXUtil;
+using candela::directx::DXCommandList;
 using candela::sampler::ISampler;
 using candela::mathematics::SamplePointOnTriangle;
 using candela::mathematics::InterpolateVertices;
@@ -27,7 +28,7 @@ LTRasterGuidedShading::LTRasterGuidedShading(ISampler* sampler, bool storePerLig
 {
 }
 
-void LTRasterGuidedShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12GraphicsCommandList>& pCurrentCommandList, ResourceRegFunction& resRegFn)
+void LTRasterGuidedShading::init(RendererResources* rRes, DXCommandList& pCurrentCommandList, ResourceRegFunction& resRegFn)
 {
 	rendererResources = rRes;
 	//lightCamera = std::make_unique<Camera>(*rRes->camera);
@@ -169,7 +170,7 @@ bool LTRasterGuidedShading::isExternalLight(uint32_t lightIndex) const
 	return lightIndex >= rendererResources->scene->getLights().size();
 }
 
-void LTRasterGuidedShading::generateCDF(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, uint32_t currentBackBufferIndex, uint32_t lightIndex)
+void LTRasterGuidedShading::generateCDF(DXCommandList pCurrentCommandList, uint32_t currentBackBufferIndex, uint32_t lightIndex)
 {
 	using namespace DirectX;
 
@@ -289,7 +290,7 @@ void LTRasterGuidedShading::generateCDF(wrl::ComPtr<ID3D12GraphicsCommandList> p
 	distanceComputerShader.distConstBuffer.lightType = LT_UNDEFINED;
 }
 
-void LTRasterGuidedShading::regenerateCDFs(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, uint32_t currentBackBufferIndex)
+void LTRasterGuidedShading::regenerateCDFs(DXCommandList pCurrentCommandList, uint32_t currentBackBufferIndex)
 {
 	for (uint32_t i = 0; i < cdfs.size(); ++i)
 	{
@@ -303,7 +304,7 @@ void LTRasterGuidedShading::regenerateCDFs(wrl::ComPtr<ID3D12GraphicsCommandList
 	}
 }
 
-void LTRasterGuidedShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, uint32_t currentBackBufferIndex)
+void LTRasterGuidedShading::draw(DXCommandList pCurrentCommandList, uint32_t currentBackBufferIndex)
 {
 	constBuffer.lightIndex = storePerLightCDF ? UINT_MAX : static_cast<uint32_t>(sampler->chooseInRange(0, rendererResources->scene->getLights().size() + rendererResources->scene->getExternalLights().size() - 1));
 	DXUtil::updateDataInDefaultHeap(rendererResources->pDevice, pCurrentCommandList, constantBuffer, rendererResources->getTempResource(),
@@ -337,7 +338,7 @@ void LTRasterGuidedShading::accept(IVisitor* visitor)
 	visitor->visit(this);
 }
 
-void LTRasterGuidedShading::onChange(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, uint32_t currentBackBufferIndex, ChangeEvent_t changeEvent)
+void LTRasterGuidedShading::onChange(DXCommandList pCurrentCommandList, uint32_t currentBackBufferIndex, ChangeEvent_t changeEvent)
 {
 	rasterShader.onChange(pCurrentCommandList, currentBackBufferIndex, changeEvent);
 	constBuffer.sceneCentre = rendererResources->scene->getSceneAABB().getCentre();

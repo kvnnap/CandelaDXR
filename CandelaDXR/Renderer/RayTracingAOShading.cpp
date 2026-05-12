@@ -20,6 +20,7 @@ using candela::renderer::RendererResources;
 using candela::renderer::ResourceRegFunction;
 
 using candela::directx::DXUtil;
+using candela::directx::DXCommandList;
 using candela::directx::RootSignatureManager;
 using candela::directx::DescriptorHeap;
 using candela::directx::ShadingTable;
@@ -34,7 +35,7 @@ RayTracingAOShading::RayTracingAOShading(std::vector<std::string> inputs, std::v
 {
 }
 
-void RayTracingAOShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12GraphicsCommandList>& pCurrentCommandList, ResourceRegFunction& resRegFn)
+void RayTracingAOShading::init(RendererResources* rRes, DXCommandList& pCurrentCommandList, ResourceRegFunction& resRegFn)
 {
 	if (!DXUtil::checkDeviceRTSupport(rRes->pDevice))
 		ThrowException("Ray tracing is not supported on this device");
@@ -61,7 +62,7 @@ void RayTracingAOShading::init(RendererResources* rRes, wrl::ComPtr<ID3D12Graphi
 	createShaderTable(pCurrentCommandList);
 }
 
-void RayTracingAOShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, std::uint32_t currentBackBufferIndex)
+void RayTracingAOShading::draw(DXCommandList pCurrentCommandList, std::uint32_t currentBackBufferIndex)
 {
 	for (auto res : inputResources)
 		res->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
@@ -85,7 +86,7 @@ void RayTracingAOShading::draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCo
 		res->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);
 }
 
-void RayTracingAOShading::onChange(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, std::uint32_t currentBackBufferIndex, ChangeEvent_t changeEvent)
+void RayTracingAOShading::onChange(DXCommandList pCurrentCommandList, std::uint32_t currentBackBufferIndex, ChangeEvent_t changeEvent)
 {
 }
 
@@ -201,7 +202,7 @@ void RayTracingAOShading::createDescriptorTable()
 		descHeapManager->setSRV(entryNumber++, srvDesc, rendererResources->pDevice, *res);
 }
 
-void RayTracingAOShading::createShaderTable(wrl::ComPtr<ID3D12GraphicsCommandList>& commandList)
+void RayTracingAOShading::createShaderTable(DXCommandList& commandList)
 {
 	// Link rayGen
 	shadingTable->setInputForDescriptorTableParameter(L"rayGen", "BVHDescTable", "BVH1");

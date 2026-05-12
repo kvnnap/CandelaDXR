@@ -32,9 +32,9 @@ namespace candela::renderer
 	public:
 		RasterRTShadowsShading(std::unique_ptr<sampler::ISampler> sampler);
 
-		void init(RendererResources* rendererResources, wrl::ComPtr<ID3D12GraphicsCommandList>& pCurrentCommandList, ResourceRegFunction& resRegFn) override;
-		void draw(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, std::uint32_t currentBackBufferIndex) override;
-		void onChange(wrl::ComPtr<ID3D12GraphicsCommandList> pCurrentCommandList, std::uint32_t currentBackBufferIndex, ChangeEvent_t changeEvent) override;
+		void init(RendererResources* rendererResources, directx::DXCommandList& pCurrentCommandList, ResourceRegFunction& resRegFn) override;
+		void draw(directx::DXCommandList pCurrentCommandList, std::uint32_t currentBackBufferIndex) override;
+		void onChange(directx::DXCommandList pCurrentCommandList, std::uint32_t currentBackBufferIndex, ChangeEvent_t changeEvent) override;
 		void onResize() override;
 		void accept(IVisitor* visitor) override;
 		std::uint32_t getBufferUsage() const override;
@@ -44,7 +44,7 @@ namespace candela::renderer
 	private:
 		void buildPipeline();
 		void createShaderResources();
-		void createShaderTable(wrl::ComPtr<ID3D12GraphicsCommandList>& commandList);
+		void createShaderTable(directx::DXCommandList& commandList);
 
 		// Raster Shader
 		RasterShading rasterShader;
@@ -68,7 +68,7 @@ namespace candela::renderer
 
 		directx::Resource *radianceTexture;
 		directx::Resource *prngState;
-		wrl::ComPtr<ID3D12Resource> constantBuffer;
+		directx::DXResource constantBuffer;
 		std::unique_ptr<sampler::ISampler> sampler;
 		bool clear;
 

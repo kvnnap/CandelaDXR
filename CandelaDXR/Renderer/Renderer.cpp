@@ -54,6 +54,8 @@ using candela::directx::CommandQueue;
 using candela::directx::RootSignatureManager;
 using candela::directx::DescriptorHeap;
 using candela::directx::Resource;
+using candela::directx::DXResource;
+using candela::directx::DXCommandList;
 using candela::directx::ResourceManager;
 using candela::directx::ProfileItem;
 
@@ -758,7 +760,7 @@ void Renderer::initSceneResources()
 	if (totalSize == 0 || scene->getFaceAttributes().empty())
 		ThrowException("Scene is empty - nothing to render");
 
-	wrl::ComPtr<ID3D12Resource> tempVB;
+	DXResource tempVB;
 	auto tempResource = DXUtil::createCommittedResource(pDevice, D3D12_HEAP_TYPE_UPLOAD, totalSize, D3D12_RESOURCE_STATE_GENERIC_READ);
 	uint8_t* data{};
 	auto readRange = D3D12_RANGE(0, 0);
@@ -788,14 +790,14 @@ void Renderer::initSceneResources()
 	// Copy Matrices
 	auto matVec = getMatrices();
 	const auto& matrs = matVec.empty() ? decltype(matVec)(1ULL) : matVec;
-	wrl::ComPtr<ID3D12Resource> tempMatrices;
+	DXResource tempMatrices;
 	matrices = DXUtil::uploadDataToDefaultHeap(pDevice, pCurrentCommandList, tempMatrices,
 		matrs.data(), sizeof(decltype(matVec)::value_type) * matrs.size(), flags);
 	matrices->SetName(L"Matrices Buffer");
 
 	auto normMatVec = getNormalMatrices();
 	const auto& normMatrs = normMatVec.empty() ? decltype(normMatVec)(1ULL) : normMatVec;
-	wrl::ComPtr<ID3D12Resource> tempNormalMatrices;
+	DXResource tempNormalMatrices;
 	normalMatrices = DXUtil::uploadDataToDefaultHeap(pDevice, pCurrentCommandList, tempNormalMatrices,
 		normMatrs.data(), sizeof(decltype(normMatVec)::value_type) * normMatrs.size(), flags);
 	normalMatrices->SetName(L"Normal Matrices Buffer");
@@ -804,13 +806,13 @@ void Renderer::initSceneResources()
 	rendererResources.processedExternalLights = getTransformedExternalLights();
 	const auto& eLights = rendererResources.processedExternalLights;
 	const auto& eLightsTemp = eLights.empty() ? std::vector<candela::scene::Light>(1ULL) : eLights;
-	wrl::ComPtr<ID3D12Resource> tempELight;
+	DXResource tempELight;
 	externalLights = DXUtil::uploadDataToDefaultHeap(pDevice, pCurrentCommandList, tempELight,
 		eLightsTemp.data(), sizeof(std::vector<candela::scene::Light>::value_type) * eLightsTemp.size(), flags);
 	externalLights->SetName(L"External Lights");
 
 	// Upload textures
-	vector<wrl::ComPtr<ID3D12Resource>> texTempBuffer (scene->getTextures().size());
+	vector<DXResource> texTempBuffer (scene->getTextures().size());
 	auto tempTexBuffer = texTempBuffer.begin();
 	for (const auto& texture : scene->getTextures())
 	{
@@ -1087,7 +1089,7 @@ void Renderer::bindComputePipeline()
 	pCurrentCommandList->SetComputeRootDescriptorTable(1u, computeDescriptorHeap->GetGPUDescriptorHandleForHeapStart());
 }
 
-void Renderer::dispatchCompute(wrl::ComPtr<ID3D12GraphicsCommandList>& pCurrentCommandList, const AccumConstBuff& c32Data)
+void Renderer::dispatchCompute(DXCommandList& pCurrentCommandList, const AccumConstBuff& c32Data)
 {
 	const auto& dim = windowDimensions;
 	pCurrentCommandList->SetComputeRoot32BitConstants(0u, sizeof(AccumConstBuff) / sizeof(uint32_t), &c32Data, 0);
