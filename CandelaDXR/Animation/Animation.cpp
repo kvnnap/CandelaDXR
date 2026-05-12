@@ -24,7 +24,7 @@ Matrix Animation::animate(uint32_t timeMs, const Vector& centreTranslation) cons
 	// Cycle the animation
 	timeMs %= getTotalTimeMs();
 
-	// Find the current transistion (binary search)
+	// Find the current transition (binary search)
 	auto lower = std::lower_bound(transitions.begin(), transitions.end(), timeMs,
 		[] (const Transition& transition, uint32_t value)
 		{

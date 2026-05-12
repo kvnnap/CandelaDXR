@@ -65,7 +65,7 @@ void RayTracingAOShading::init(RendererResources* rRes, DXCommandList& pCurrentC
 void RayTracingAOShading::draw(DXCommandList pCurrentCommandList, std::uint32_t currentBackBufferIndex)
 {
 	for (auto res : inputResources)
-		res->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+		res->transitionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 	cdfMask->uavBarrier(pCurrentCommandList);
 
 	pCurrentCommandList->SetDescriptorHeaps(1u, descHeapManager->getDescriptorHeap().GetAddressOf());
@@ -83,7 +83,7 @@ void RayTracingAOShading::draw(DXCommandList pCurrentCommandList, std::uint32_t 
 	commandList4->DispatchRays(&dispatchRaysDesc);
 
 	for (auto res : inputResources)
-		res->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);
+		res->transitionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);
 }
 
 void RayTracingAOShading::onChange(DXCommandList pCurrentCommandList, std::uint32_t currentBackBufferIndex, ChangeEvent_t changeEvent)

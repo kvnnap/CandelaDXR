@@ -29,7 +29,7 @@ void Resource::rewriteState(D3D12_RESOURCE_STATES currentState)
 	state = currentState;
 }
 
-void Resource::transistionBarrier(DXCommandList& commandList, D3D12_RESOURCE_STATES nextState)
+void Resource::transitionBarrier(DXCommandList& commandList, D3D12_RESOURCE_STATES nextState)
 {
 	auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(resource.Get(), state, nextState);
 	commandList->ResourceBarrier(1u, &barrier);
@@ -39,7 +39,7 @@ void Resource::transistionBarrier(DXCommandList& commandList, D3D12_RESOURCE_STA
 
 void Resource::transitionToPrevBarrier(DXCommandList& commandList)
 {
-	transistionBarrier(commandList, prevState);
+	transitionBarrier(commandList, prevState);
 }
 
 void Resource::uavBarrier(DXCommandList& commandList)
@@ -88,7 +88,7 @@ ResourceData Resource::read(DXCommandQueue& commandQueue)
 	auto commandList = commandQueue->getCommandList();
 	auto res = createCommittedResource(device, totalSize, D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_FLAG_NONE, D3D12_HEAP_TYPE_READBACK);
 	const auto prevState = state;
-	transistionBarrier(commandList, D3D12_RESOURCE_STATE_COPY_SOURCE);
+	transitionBarrier(commandList, D3D12_RESOURCE_STATE_COPY_SOURCE);
 
 	D3D12_PLACED_SUBRESOURCE_FOOTPRINT bufferFootprint = {};
 	bufferFootprint.Footprint.Width = static_cast<UINT>(desc.Width);
@@ -100,7 +100,7 @@ ResourceData Resource::read(DXCommandQueue& commandQueue)
 	CD3DX12_TEXTURE_COPY_LOCATION Dst(res, bufferFootprint);
 	CD3DX12_TEXTURE_COPY_LOCATION Src(resource.Get(), 0u);
 	commandList->CopyTextureRegion(&Dst, 0u, 0u, 0u, &Src, nullptr);
-	transistionBarrier(commandList, prevState);
+	transitionBarrier(commandList, prevState);
 
 	auto fenceValue = commandQueue->executeCommandList(commandList);
 	commandQueue->waitForFenceValue(fenceValue);
@@ -162,9 +162,9 @@ void Resource::write(DXCommandList& commandList, DXResource& tempResource, const
 	subresourceData.SlicePitch = subresourceData.RowPitch * desc.Height;
 
 	auto prevState = getState();
-	transistionBarrier(commandList, D3D12_RESOURCE_STATE_COPY_DEST);
+	transitionBarrier(commandList, D3D12_RESOURCE_STATE_COPY_DEST);
 	UpdateSubresources(commandList.Get(), *this, tempResource.Get(), 0, 0, 1, &subresourceData);
-	transistionBarrier(commandList, prevState);
+	transitionBarrier(commandList, prevState);
 }
 
 void Resource::resize(uint32_t width, uint32_t height)

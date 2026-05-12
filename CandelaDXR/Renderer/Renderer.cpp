@@ -298,7 +298,7 @@ void Renderer::renderFrame()
 {
 	// Clear frame and start frame
 	pCurrentCommandList = commandQueue->getCommandList();
-	pRTVBackBuffers[currentBackBufferIndex]->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);
+	pRTVBackBuffers[currentBackBufferIndex]->transitionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);
 
 	// Initially points to 32-bit RTV
 	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvDescriptorHandle(pRTVDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), NumBackBuffers, rtvDescriptorSize);
@@ -471,10 +471,10 @@ void Renderer::renderFrame()
 			}
 
 			drawable->draw(pCurrentCommandList, currentBackBufferIndex);
-			pRTVRad->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-			pRTVDiff->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-			pRTVSpec->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-			pRTVCaus->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+			pRTVRad->transitionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+			pRTVDiff->transitionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+			pRTVSpec->transitionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+			pRTVCaus->transitionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
 			// Copy - per loop - testing here
 			bindComputePipeline();
@@ -494,10 +494,10 @@ void Renderer::renderFrame()
 
 			dispatchCompute(pCurrentCommandList, c32Data);
 
-			pRTVCaus->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);
-			pRTVSpec->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);
-			pRTVDiff->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);
-			pRTVRad->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);
+			pRTVCaus->transitionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);
+			pRTVSpec->transitionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);
+			pRTVDiff->transitionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);
+			pRTVRad->transitionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);
 			pRadAccumulator->uavBarrier(pCurrentCommandList);
 			pDiffAccumulator->uavBarrier(pCurrentCommandList);
 			pSpecAccumulator->uavBarrier(pCurrentCommandList);
@@ -587,14 +587,14 @@ void Renderer::renderFrame()
 	// Copy 8-bit Texture to swap-chain 8-bit back buffer
 	if (!isFirst)
 	{
-		pRTVBackBuffers[currentBackBufferIndex]->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_COPY_DEST);
-		pRTV8Bit->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_COPY_SOURCE);
+		pRTVBackBuffers[currentBackBufferIndex]->transitionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_COPY_DEST);
+		pRTV8Bit->transitionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_COPY_SOURCE);
 
 		// Copy 8-bit tex to rtv
 		pCurrentCommandList->CopyResource(*pRTVBackBuffers[currentBackBufferIndex], *pRTV8Bit);
 
-		pRTV8Bit->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-		pRTVBackBuffers[currentBackBufferIndex]->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);
+		pRTV8Bit->transitionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+		pRTVBackBuffers[currentBackBufferIndex]->transitionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);
 	}
 	else {
 		pCurrentCommandList->ClearRenderTargetView(rtvDescriptorHandle, color, 0, nullptr);
@@ -613,7 +613,7 @@ void Renderer::renderFrame()
 	tsQuery.resolve(pCurrentCommandList);
 
 	// End frame
-	pRTVBackBuffers[currentBackBufferIndex]->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_PRESENT);
+	pRTVBackBuffers[currentBackBufferIndex]->transitionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_PRESENT);
 	frameFenceValues[currentBackBufferIndex] = commandQueue->executeCommandList(pCurrentCommandList);
 	pCurrentCommandList.Reset();
 

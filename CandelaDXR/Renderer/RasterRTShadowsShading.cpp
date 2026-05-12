@@ -94,12 +94,12 @@ void RasterRTShadowsShading::draw(DXCommandList pCurrentCommandList, std::uint32
 
 	// Pre-stuff
 	auto& backBuff = rendererResources->pRTVRad;
-	backBuff->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+	backBuff->transitionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
 	// Do we need these barriers? I think so
 	const auto c = 3;
 	for (UINT i = 0; i < c; ++i)
-		rasterShader.getGBuffer()[i]->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+		rasterShader.getGBuffer()[i]->transitionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
 	// Copy and update camera
 	auto cam = rendererResources->camera;
@@ -127,8 +127,8 @@ void RasterRTShadowsShading::draw(DXCommandList pCurrentCommandList, std::uint32
 
 	// After
 	for (UINT i = 0; i < c; ++i)
-		rasterShader.getGBuffer()[i]->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);
-	backBuff->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);
+		rasterShader.getGBuffer()[i]->transitionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);
+	backBuff->transitionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);
 }
 
 void RasterRTShadowsShading::onChange(DXCommandList pCurrentCommandList, std::uint32_t currentBackBufferIndex, ChangeEvent_t changeEvent)

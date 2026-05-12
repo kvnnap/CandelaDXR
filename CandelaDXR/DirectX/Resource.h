@@ -29,7 +29,7 @@ namespace candela::directx
 
 		// Use when external api's modify the state - DOES NOT emit a barrier
 		void rewriteState(D3D12_RESOURCE_STATES currentState);
-		void transistionBarrier(DXCommandList& commandList, D3D12_RESOURCE_STATES state);
+		void transitionBarrier(DXCommandList& commandList, D3D12_RESOURCE_STATES state);
 		void transitionToPrevBarrier(DXCommandList &commandList);
 		void uavBarrier(DXCommandList &commandList);
 		D3D12_RESOURCE_STATES getState() const;

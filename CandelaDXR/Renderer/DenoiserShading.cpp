@@ -96,7 +96,7 @@ void DenoiserShading::init(RendererResources* rRes, DXCommandList& pCurrentComma
 	auto mvMats = getMVMatrices();
 	matrices = &rRes->resourceManager->createResource(D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, static_cast<UINT>(sizeof(decltype(mvMats)::value_type) * mvMats.size()));
 	matrices->setName("Denoiser MV Matrices");
-	matrices->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
+	matrices->transitionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
 	matrices->write(pCurrentCommandList, rendererResources->getTempResource(), mvMats.data());
 
 	// Get resources & create new ones
@@ -193,26 +193,26 @@ void DenoiserShading::draw(DXCommandList pCurrentCommandList, uint32_t currentBa
 	matrices->write(pCurrentCommandList, rendererResources->getTempResource(), getMVMatrices().data());
 
 	// Compute pre-pass
-	diffRadAccumulator->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
-	specRadAccumulator->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
-	causRadAccumulator->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
-	albedo->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
-	normal->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
-	position->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
-	meshInfo->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
-	depth->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
-	gRayHitT->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
-	rendererResources->pRTVDiff->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-	rendererResources->pRTVSpec->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-	rendererResources->pRTVCaus->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+	diffRadAccumulator->transitionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
+	specRadAccumulator->transitionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
+	causRadAccumulator->transitionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
+	albedo->transitionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
+	normal->transitionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
+	position->transitionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
+	meshInfo->transitionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
+	depth->transitionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
+	gRayHitT->transitionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
+	rendererResources->pRTVDiff->transitionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+	rendererResources->pRTVSpec->transitionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+	rendererResources->pRTVCaus->transitionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
 	compute(pCurrentCommandList, 0);
 
-	in_mv->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
-	in_normal_roughness->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
-	in_view_z->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
-	in_diff_radiance_hitdist->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
-	in_spec_radiance_hitdist->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
+	in_mv->transitionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
+	in_normal_roughness->transitionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
+	in_view_z->transitionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
+	in_diff_radiance_hitdist->transitionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
+	in_spec_radiance_hitdist->transitionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
 
 	/// Pass to convert radiance without albedo - compute shader required
 
@@ -316,7 +316,7 @@ void DenoiserShading::draw(DXCommandList pCurrentCommandList, uint32_t currentBa
 		if (entryDescs[i].nextAccess != reqState || entryDescs[i].nextLayout != reqLayout)
 		{
 			denResource.resource->rewriteState(GetResourceState(entryDescs[i].nextAccess));
-			denResource.resource->transistionBarrier(pCurrentCommandList, denResource.requiredState);
+			denResource.resource->transitionBarrier(pCurrentCommandList, denResource.requiredState);
 		}
 	}
 
@@ -441,8 +441,8 @@ uint32_t DenoiserShading::getDenoiserSelected() const
 
 void DenoiserShading::compute(DXCommandList pCurrentCommandList, uint32_t mode)
 {
-	out_diff_radiance_hitdist->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-	out_spec_radiance_hitdist->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+	out_diff_radiance_hitdist->transitionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+	out_spec_radiance_hitdist->transitionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 
 	pCurrentCommandList->SetComputeRootSignature(computeRootSignature.Get());
 	pCurrentCommandList->SetPipelineState(computePipelineState.Get());

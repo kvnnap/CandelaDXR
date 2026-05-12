@@ -111,15 +111,15 @@ void PathTracingShading::init(RendererResources* rRes, DXCommandList& pCurrentCo
 void PathTracingShading::draw(DXCommandList pCurrentCommandList, std::uint32_t currentBackBufferIndex)
 {
 	// Pre-stuff
-	rendererResources->pRTVDiff->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-	rendererResources->pRTVSpec->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
-	rendererResources->pRTVCaus->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+	rendererResources->pRTVDiff->transitionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+	rendererResources->pRTVSpec->transitionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+	rendererResources->pRTVCaus->transitionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
 	// Anvil
 	ANVIL_CODE_RAW(
 		const auto anvilEnabled = rendererResources->renderer->isAnvilEnabled();
 		if (anvilEnabled)
-			outputAnvilBuffer->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+			outputAnvilBuffer->transitionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 	)
 
 	// Copy and update camera
@@ -167,15 +167,15 @@ void PathTracingShading::draw(DXCommandList pCurrentCommandList, std::uint32_t c
 	constBuffer.seeds[1] = 0u;
 
 	// After
-	rendererResources->pRTVCaus->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);
-	rendererResources->pRTVSpec->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);
-	rendererResources->pRTVDiff->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);
+	rendererResources->pRTVCaus->transitionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);
+	rendererResources->pRTVSpec->transitionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);
+	rendererResources->pRTVDiff->transitionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);
 
 	// Anvil
 	ANVIL_CODE_RAW(
 		if (anvilEnabled)
 		{
-			outputAnvilBuffer->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_COPY_SOURCE);
+			outputAnvilBuffer->transitionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_COPY_SOURCE);
 			pCurrentCommandList->CopyResource(*readbackAnvilBuffer, *outputAnvilBuffer);
 
 			// Anvil

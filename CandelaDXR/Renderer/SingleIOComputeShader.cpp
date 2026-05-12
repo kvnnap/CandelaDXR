@@ -98,7 +98,7 @@ void SingleIOComputeShader::compute(DXCommandList currentCommandList)
 
 	std::array<UINT, 4> constants = { dim.x, dim.y, inputTextureIndex - numOutputs, outputTextureIndex };
 	auto prevState = inputTexture->getState();
-	inputTexture->transistionBarrier(currentCommandList, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+	inputTexture->transitionBarrier(currentCommandList, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 	currentCommandList->SetComputeRootSignature(computeRootSignature.Get());
 	currentCommandList->SetPipelineState(computePipelineState.Get());
 	currentCommandList->SetDescriptorHeaps(1u, descHeapManager->getDescriptorHeap().GetAddressOf());
@@ -107,7 +107,7 @@ void SingleIOComputeShader::compute(DXCommandList currentCommandList)
 		currentCommandList->SetComputeRoot32BitConstants(1u, static_cast<UINT>(cbSize / 4u), cbData, 0u);
 	currentCommandList->SetComputeRootDescriptorTable(2u, descHeapManager->getDescriptorHeap()->GetGPUDescriptorHandleForHeapStart());
 	dispatch(currentCommandList);
-	inputTexture->transistionBarrier(currentCommandList, prevState);
+	inputTexture->transitionBarrier(currentCommandList, prevState);
 	outputTexture->uavBarrier(currentCommandList);
 }
 
@@ -241,7 +241,7 @@ void PrefixSumComputeShader::dispatch(DXCommandList currentCommandList)
 	currentCommandList->Dispatch(launchDimensions.x, launchDimensions.y, 1u);
 	outputTexture->uavBarrier(currentCommandList);
 	if (scratchResource->getState() != D3D12_RESOURCE_STATE_UNORDERED_ACCESS)
-		scratchResource->transistionBarrier(currentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+		scratchResource->transitionBarrier(currentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 	else
 		scratchResource->uavBarrier(currentCommandList);
 
@@ -327,7 +327,7 @@ void FilterComputeShader::initComponent(RendererResources* rendererResources, DX
 {
 	cbvResource = &resourceManager->createResource(D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_FLAG_NONE, static_cast<UINT>(MaxSize * sizeof(float)));
 	cbvResource->setName("Gaussian Constant Data");
-	cbvResource->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+	cbvResource->transitionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 	changed = true;
 }
 
@@ -412,20 +412,20 @@ void DistanceComputeShader::bindAdditionalResources(UINT baseIndex)
 
 void DistanceComputeShader::updateData(DXCommandList currentCommandList)
 {
-	faceIndexResource->transistionBarrier(currentCommandList, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-	normalResource->transistionBarrier(currentCommandList, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
-	cdfMaskResource->transistionBarrier(currentCommandList, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+	faceIndexResource->transitionBarrier(currentCommandList, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+	normalResource->transitionBarrier(currentCommandList, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
+	cdfMaskResource->transitionBarrier(currentCommandList, D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 	if (constBufferResource->getState() != D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER)
-		constBufferResource->transistionBarrier(currentCommandList, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
+		constBufferResource->transitionBarrier(currentCommandList, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
 	constBufferResource->write(currentCommandList, rendererResources->getTempResource(), &distConstBuffer);
 }
 
 void DistanceComputeShader::dispatch(DXCommandList currentCommandList)
 {
 	SingleIOComputeShader::dispatch(currentCommandList);
-	faceIndexResource->transistionBarrier(currentCommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);
-	normalResource->transistionBarrier(currentCommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);
-	cdfMaskResource->transistionBarrier(currentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+	faceIndexResource->transitionBarrier(currentCommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);
+	normalResource->transitionBarrier(currentCommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);
+	cdfMaskResource->transitionBarrier(currentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 }
 
 void DistanceComputeShader::setMode(uint32_t mode)

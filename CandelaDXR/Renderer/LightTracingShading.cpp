@@ -143,9 +143,9 @@ void LightTracingShading::draw(DXCommandList currentCommandList, uint32_t curren
 	// Pre-stuff
 	auto& backBuff = rendererResources->pRTVDiff;
 	auto &caustBuff = rendererResources->pRTVCaus;
-	backBuff->transistionBarrier(currentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+	backBuff->transitionBarrier(currentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 	if (constBuffer.seperateCaustics && guassianCS.getFiltersize() > 1)
-		caustBuff->transistionBarrier(currentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+		caustBuff->transitionBarrier(currentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
 	// Copy and update camera
 	auto cam = rendererResources->camera;
@@ -195,11 +195,11 @@ void LightTracingShading::draw(DXCommandList currentCommandList, uint32_t curren
 	if (constBuffer.seperateCaustics && guassianCS.getFiltersize() > 1)
 	{
 		guassianCS.compute(currentCommandList);
-		caustBuff->transistionBarrier(currentCommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);
+		caustBuff->transitionBarrier(currentCommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);
 	}
 
 	// After
-	backBuff->transistionBarrier(currentCommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);
+	backBuff->transitionBarrier(currentCommandList, D3D12_RESOURCE_STATE_RENDER_TARGET);
 }
 
 vector<LightTracingShading::LTShaderInfo> LightTracingShading::getLTShaderInfo()
@@ -361,7 +361,7 @@ void LightTracingShading::createShaderResources(DXCommandList& commandList)
 	// The output resource
 	irradianceDataStructure = &rendererResources->resourceManager->createResource(D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS, uavDesc2.Buffer.NumElements * uavDesc2.Buffer.StructureByteStride);
 	irradianceDataStructure->setName(L"Irradiance DS");
-	irradianceDataStructure->transistionBarrier(commandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+	irradianceDataStructure->transitionBarrier(commandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 
 	for (auto& ltShader : ltShaders)
 	{

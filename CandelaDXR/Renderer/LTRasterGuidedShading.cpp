@@ -274,13 +274,13 @@ void LTRasterGuidedShading::generateCDF(DXCommandList pCurrentCommandList, uint3
 	if (getDistanceMetricMode() == 2)
 		rtaoShading.draw(pCurrentCommandList, currentBackBufferIndex);
 	if (cumulativeDistributionTexture->getState() != D3D12_RESOURCE_STATE_UNORDERED_ACCESS)
-		cumulativeDistributionTexture->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
+		cumulativeDistributionTexture->transitionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_UNORDERED_ACCESS);
 	distanceComputerShader.compute(pCurrentCommandList);
 	guassianComputerShader.compute(pCurrentCommandList);
 	prefixSumComputeShader.compute(pCurrentCommandList);
 	normalisationComputeShader.compute(pCurrentCommandList);
 	normalisationPass2ComputeShader.compute(pCurrentCommandList);
-	cumulativeDistributionTexture->transistionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+	cumulativeDistributionTexture->transitionBarrier(pCurrentCommandList, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
 	// Reset state
 	lightCamera->setNearPlaneDimensions(0.125f, 0.125f);
