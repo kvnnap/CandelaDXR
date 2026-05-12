@@ -2,6 +2,11 @@ name: MSBuild
 
 on: [push]
 
+
+# Needed for release job
+permissions:
+  contents: write
+
 # on:
 #   push:
 #     branches: 
@@ -309,3 +314,64 @@ jobs:
         name: CandelaDXR
         path: ${{github.workspace}}\${{env.OUT_DIR}}\
         retention-days: 14
+
+  release:
+    runs-on: ubuntu-latest
+    needs: [build]
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v6
+        
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Get short SHA
+        id: vars
+        run: echo "sha_short=$(echo $GITHUB_SHA | cut -c 1-7)" >> $GITHUB_OUTPUT
+
+      - name: Delete previous rolling release (if exists)
+        run: |
+          if gh release view rolling &>/dev/null; then
+            echo "Existing rolling release. Deleting it."
+            gh release delete rolling -y
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update rolling tag
+        run: |
+          git tag -f rolling
+          git push origin rolling --force
+
+      - name: Create rolling pre-release
+        run: |
+          NOTES=$(cat <<EOF
+          Latest build from main branch.
+
+          **Build Info:**
+          - Commit: $GITHUB_SHA
+          - Workflow: [View workflow run](https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID)
+          EOF
+          )
+
+          gh release create rolling \
+            --title "Rolling Build (${{ steps.vars.outputs.sha_short }})" \
+            --notes "$NOTES" \
+            --prerelease
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload binaries
+        run: |
+          cd artifacts
+          for dir in ./*/; do
+            name=$(basename "$dir")
+            echo "Zipping $name"
+            zip -r "../${name}.zip" "$dir"
+            gh release upload rolling "../${name}.zip" --clobber
+          done
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
