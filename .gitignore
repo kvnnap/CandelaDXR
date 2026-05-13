@@ -370,3 +370,6 @@ FodyWeavers.xsd
 
 # Ignore auto-generated version file
 /CandelaDXR/Version/AutoVersion.h
+
+# Doxygen generated HTML output
+Docs/html/
