@@ -17,7 +17,6 @@ namespace candela::directx
 		Microsoft::WRL::ComPtr<ID3D12CommandQueue> getCommandQueue() const;
 		DXCommandList getCommandList();
 		std::uint64_t executeCommandList(DXCommandList commandList);
-		ID3D12CommandAllocator* getCommandAllocator(DXCommandList commandList);
 		std::uint64_t signal();
 		bool isFenceComplete(std::uint64_t fenceValue);
 		void waitForFenceValue(std::uint64_t fenceValue);
@@ -25,11 +24,11 @@ namespace candela::directx
 
 		static void waitForEvent(HANDLE handleEvent);
 
-	protected:
+	private:
+
+		wrl::ComPtr<ID3D12CommandAllocator> getCommandAllocator(DXCommandList commandList);
 		Microsoft::WRL::ComPtr<ID3D12CommandAllocator> createCommandAllocator();
 		DXCommandList createCommandList(Microsoft::WRL::ComPtr<ID3D12CommandAllocator> allocator);
-
-	private:
 
 		struct CommandAllocatorEntry {
 			std::uint64_t fenceValue;

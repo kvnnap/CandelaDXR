@@ -1,4 +1,3 @@
-#define NOMINMNAX
 #include "feanor/anvil/system/web_system.h"
 
 #include "Renderer.h"

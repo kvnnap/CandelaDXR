@@ -75,7 +75,7 @@ std::uint64_t CommandQueue::executeCommandList(DXCommandList commandList)
 	GFXTHROWIFFAILED(commandList->Close());
 
 	// Get command allocator from list
-	ID3D12CommandAllocator* pCommandAllocator = getCommandAllocator(commandList);
+	auto pCommandAllocator = getCommandAllocator(commandList);
 	ID3D12CommandList* const commandLists[] = {
 		commandList.Get()
 	};
@@ -87,16 +87,14 @@ std::uint64_t CommandQueue::executeCommandList(DXCommandList commandList)
 	commandAllocatorQueue.emplace(CommandAllocatorEntry{ fV, pCommandAllocator });
 	commandListQueue.push(commandList);
 
-	pCommandAllocator->Release();
-
 	return fV;
 }
 
-ID3D12CommandAllocator* CommandQueue::getCommandAllocator(DXCommandList commandList)
+wrl::ComPtr<ID3D12CommandAllocator> CommandQueue::getCommandAllocator(DXCommandList commandList)
 {
-	ID3D12CommandAllocator* pCommandAllocator;
-	UINT pointerSize = sizeof(pCommandAllocator);
-	commandList->GetPrivateData(__uuidof(ID3D12CommandAllocator), &pointerSize, &pCommandAllocator);
+	wrl::ComPtr<ID3D12CommandAllocator> pCommandAllocator;
+	UINT pointerSize = sizeof(ID3D12CommandAllocator*);
+	commandList->GetPrivateData(__uuidof(ID3D12CommandAllocator), &pointerSize, pCommandAllocator.GetAddressOf());
 	return pCommandAllocator;
 }
 
