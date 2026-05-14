@@ -5,14 +5,22 @@
 
 #include <vector>
 
+namespace candela::environment
+{
+    class Environment;
+}
+
 namespace candela::chain::factory
 {
     class ChainFactory
         : public feanor::factory::Factory<CFList>
     {
     public:
+        ChainFactory(candela::environment::Environment& env);
         std::unique_ptr<CFList> create() const override;
         std::unique_ptr<CFList> create(const feanor::configuration::ConfigurationNode& config) const override;
+    private:
+        candela::environment::Environment& env;
     };
 
     class AlphaCorrectionChainFactory

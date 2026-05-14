@@ -131,8 +131,8 @@ unique_ptr<IRenderer> RendererFactory::create(const ConfigurationNode& config) c
 	// Chain
 	if (confObject.keyExists("Chain"))
 	{
-		auto chain = &env.getChainManager().getInstanceManager().get(config["Chain"]);
-		renderer->setChain(chain);
+		auto chainList = &env.getChainListManager().getInstanceManager().get(config["Chain"]);
+		renderer->setChainList(chainList);
 	}
 
 	// Frames to grab

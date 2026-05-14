@@ -27,6 +27,7 @@ using candela::environment::RendererManager;
 using candela::environment::DrawableManager;
 using candela::environment::AnimationManager;
 using candela::environment::ChainManager;
+using candela::environment::ChainListManager;
 
 using feanor::configuration::ObjectNode;
 using feanor::configuration::LiteralNode;
@@ -47,6 +48,10 @@ using candela::renderer::factory::CameraFactory;
 using candela::animation::factory::AnimationFactory;
 
 using candela::chain::factory::ChainFactory;
+using candela::chain::factory::AlphaCorrectionChainFactory;
+using candela::chain::factory::ExposureChainFactory;
+using candela::chain::factory::FileOutputChainFactory;
+using candela::chain::factory::ToneMappingChainFactory;
 
 using std::string;
 using std::vector;
@@ -123,7 +128,7 @@ void Environment::bootstrap(const string& configPath)
 
     // Load chains
     if (configuration->asObject().keyExists("Chains"))
-        chainManager.loadSection("Chains", configuration);
+        chainListManager.loadSection("Chains", configuration);
     
     // Load renderers
     rendererManager.loadSection("Renderers", configuration);
@@ -166,8 +171,14 @@ void Environment::loadCoreFactories()
     // Animation
     animationManager.getFactoryManager().registerItem<AnimationFactory>("Animation");
 
-    // Chains
-    chainManager.getFactoryManager().registerItem<ChainFactory>("Chain");
+    // Chain items
+    chainManager.getFactoryManager().registerItem<AlphaCorrectionChainFactory>("AlphaCorrection");
+    chainManager.getFactoryManager().registerItem<FileOutputChainFactory>("FileOutput");
+    chainManager.getFactoryManager().registerItem<ToneMappingChainFactory>("ToneMapping");
+    chainManager.getFactoryManager().registerItem<ExposureChainFactory>("Exposure");
+
+    // Chain List
+    chainListManager.getFactoryManager().registerItem<ChainFactory>("Chain", *this);
 }
 
 const vector<string>& Environment::getArguments() const
@@ -183,4 +194,5 @@ RendererManager& Environment::getRendererManager() { return rendererManager; }
 DrawableManager& Environment::getDrawableManager() { return drawableManager; }
 AnimationManager& Environment::getAnimationManager() { return animationManager; }
 ChainManager& Environment::getChainManager() { return chainManager; }
+ChainListManager& Environment::getChainListManager() { return chainListManager; }
 

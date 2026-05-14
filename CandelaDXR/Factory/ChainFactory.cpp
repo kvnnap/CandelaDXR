@@ -10,6 +10,8 @@
 
 #include "Util/StringUtil.h"
 
+#include "Environment/Environment.h"
+
 using std::unique_ptr;
 using std::make_unique;
 
@@ -32,11 +34,14 @@ using candela::mathematics::Vector;
 using candela::mathematics::Vector3;
 using candela::util::ToLower;
 
+ChainFactory::ChainFactory(candela::environment::Environment& env)
+	: env(env)
+{}
+
 unique_ptr<CFList> ChainFactory::create() const
 {
 	return make_unique<CFList>();
 }
-
 
 unique_ptr<CFList> ChainFactory::create(const ConfigurationNode& config) const
 {
@@ -45,21 +50,11 @@ unique_ptr<CFList> ChainFactory::create(const ConfigurationNode& config) const
 	if (!configObj.keyExists("Chain"))
 		return chain;
 
-	CFList& list = *chain;
+	auto& chainFactory = env.getChainManager().getFactoryManager();
 	for (const auto& chainItemConfig : configObj["Chain"].asList())
 	{
-		if (!chainItemConfig.asObject().keyExists("Type"))
-			continue;
-		if (chainItemConfig["Type"].read<std::string>() == "AlphaCorrection")
-			list.emplace_back(AlphaCorrectionChainFactory().create(chainItemConfig));
-		else if (chainItemConfig["Type"].read<std::string>() == "FileOutput")
-			list.emplace_back(FileOutputChainFactory().create(chainItemConfig));
-		else if (chainItemConfig["Type"].read<std::string>() == "ToneMapping")
-			list.emplace_back(ToneMappingChainFactory().create(chainItemConfig));
-		else if (chainItemConfig["Type"].read<std::string>() == "Exposure")
-			list.emplace_back(ExposureChainFactory().create(chainItemConfig));
-		else
-			ThrowException("Invalid chain item type");
+		if (chainItemConfig.asObject().keyExists("Type"))
+			chain->push_back(chainFactory.get(chainItemConfig["Type"]).create(chainItemConfig));
 	}
 
 	return chain;

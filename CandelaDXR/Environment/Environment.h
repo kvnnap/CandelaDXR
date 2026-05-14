@@ -26,7 +26,8 @@ namespace candela::environment
     using RendererManager = feanor::environment::ResourceManager<renderer::IRenderer>;
     using DrawableManager = feanor::environment::ResourceManager<renderer::IDrawable>;
     using AnimationManager = feanor::environment::ResourceManager<animation::IAnimation>;
-    using ChainManager = feanor::environment::ResourceManager<chain::CFList>;
+    using ChainManager = feanor::environment::ResourceManager<chain::IChain>;
+    using ChainListManager = feanor::environment::ResourceManager<chain::CFList>;
 
     class Environment
     {
@@ -45,6 +46,7 @@ namespace candela::environment
         DrawableManager& getDrawableManager();
         AnimationManager& getAnimationManager();
         ChainManager& getChainManager();
+        ChainListManager& getChainListManager();
 
         static Environment& getInstance();
     private:
@@ -66,5 +68,6 @@ namespace candela::environment
         AnimationManager animationManager;
         RendererManager rendererManager;
         ChainManager chainManager;
+        ChainListManager chainListManager;
     };
 }

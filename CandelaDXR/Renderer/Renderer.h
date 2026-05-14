@@ -74,7 +74,7 @@ namespace candela::renderer
 		void setCameraCopy(const Camera& camera);
 		const scene::Scene& getScene() const;
 
-		void setChain(chain::CFList* chain);
+		void setChainList(chain::CFList* chainList);
 		void checkAndSetFullScreenMode();
 
 		// Promote to interface?
@@ -192,7 +192,7 @@ namespace candela::renderer
 		std::vector<directx::Resource> textures;
 
 		// Chain
-		chain::CFList* chain;
+		chain::CFList* chainList;
 
 		// Data dump stuff
 		std::vector<std::uint64_t> frameNumbersForGrab;

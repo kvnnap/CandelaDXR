@@ -91,7 +91,7 @@ Renderer::Renderer(Scene *scene, Camera *camera, const UVector2 &windowDimension
 	  frameGrabCounter(),
 	  scene(scene),
 	  camera(camera),
-	  chain(),
+	  chainList(),
 	  drawables(std::move(p_drawables)),
 	  ppParams({ ACC_TONEMAP | ACC_LINEARTOSRGB }),
 	  debugEnabled(debugEnabled),
@@ -445,7 +445,7 @@ void Renderer::renderFrame()
 	}
 	++frameGrabCounter;
 
-	const auto grabRadiance = chain != nullptr && !buffersToGrab.empty() && (!recordingInitialState && keyboard.hasKeyChanged('P') && keyboard.isKeyPressed('P') || (animationSequencer.isEnabled() && animationSequencer.isNewFrame()) || needToGrab);
+	const auto grabRadiance = chainList != nullptr && !buffersToGrab.empty() && (!recordingInitialState && keyboard.hasKeyChanged('P') && keyboard.isKeyPressed('P') || (animationSequencer.isEnabled() && animationSequencer.isNewFrame()) || needToGrab);
 	const auto& dim = windowDimensions;
 
 	tsQuery.addTimeStampQuery(pCurrentCommandList, "Begin");
@@ -551,7 +551,7 @@ void Renderer::renderFrame()
 			RadianceBuffer radBuffer = buffer->read(commandQueue);
 
 			// Execute Chain to output data
-			for (auto& chainItem : *chain)
+			for (auto& chainItem : *chainList)
 				chainItem->process(radBuffer);
 
 			ANVIL_CODE_RAW(
@@ -618,13 +618,13 @@ void Renderer::renderFrame()
 
 	// Process any other resource dumps here (synch) TODO: do it async
 	auto resourceToSave = imguiManager.getResourceToSave();
-	if (resourceToSave && chain != nullptr)
+	if (resourceToSave && chainList != nullptr)
 	{
 		// Will cause synchronous behaviour (blocking)
 		RadianceBuffer radBuffer = resourceToSave->read(commandQueue);
 
 		// Execute Chain to output data
-		for (auto& chainItem : *chain)
+		for (auto& chainItem : *chainList)
 			chainItem->process(radBuffer);
 	}
 
@@ -709,9 +709,9 @@ const Scene& Renderer::getScene() const
 	return *scene;
 }
 
-void Renderer::setChain(chain::CFList* chain)
+void Renderer::setChainList(chain::CFList* chainList)
 {
-	this->chain = chain;
+	this->chainList = chainList;
 }
 
 void Renderer::checkAndSetFullScreenMode()
